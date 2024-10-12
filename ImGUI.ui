@@ -433,13 +433,74 @@
                 <string>Brachy</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_45">
-                <item row="1" column="0">
-                 <widget class="QComboBox" name="brachy_combobox_01"/>
-                </item>
-                <item row="1" column="2">
-                 <widget class="QCheckBox" name="checkBox">
+                <item row="1" column="3">
+                 <widget class="QCheckBox" name="display_dw_overlay">
                   <property name="text">
                    <string>Show dwell</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="5">
+                 <widget class="QCheckBox" name="overlay_all_channels">
+                  <property name="text">
+                   <string>All channels</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLineEdit" name="lineEdit_63">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Point size</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="4">
+                 <widget class="QCheckBox" name="display_brachy_channel_overlay">
+                  <property name="text">
+                   <string>Show channel</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QSpinBox" name="dw_ch_point_size">
+                  <property name="font">
+                   <font>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                  <property name="value">
+                   <number>3</number>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="3" colspan="2">
+                 <spacer name="horizontalSpacer_45">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="2" column="5">
+                 <widget class="QPushButton" name="pushButton_4">
+                  <property name="text">
+                   <string>PushButton</string>
                   </property>
                  </widget>
                 </item>
@@ -452,21 +513,10 @@
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="4">
-                 <widget class="QPushButton" name="pushButton_4">
-                  <property name="text">
-                   <string>PushButton</string>
-                  </property>
-                 </widget>
+                <item row="1" column="0">
+                 <widget class="QComboBox" name="brachy_combobox_01"/>
                 </item>
-                <item row="1" column="3">
-                 <widget class="QCheckBox" name="checkBox_2">
-                  <property name="text">
-                   <string>Show channel</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="0" colspan="5">
+                <item row="0" column="0" colspan="6">
                  <widget class="QTableWidget" name="brachy_table_01">
                   <property name="font">
                    <font>
@@ -474,6 +524,19 @@
                    </font>
                   </property>
                  </widget>
+                </item>
+                <item row="2" column="2">
+                 <spacer name="horizontalSpacer_46">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
                 </item>
                </layout>
               </widget>

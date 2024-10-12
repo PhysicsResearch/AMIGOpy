@@ -40,8 +40,13 @@ def on_DataTreeView_clicked(self,index):
             self.modality  = hierarchy[3].replace("Modality: ", "")
             #
             if self.modality == 'RTPLAN':
+                # keep track of the last selected plan ... if user chose and image or dose this will not change
+                self.patientID_plan    = hierarchy[1].replace("PatientID: ", "")
+                self.studyID_plan      = hierarchy[2].replace("StudyID: ", "")
+                self.modality_plan     = hierarchy[3].replace("Modality: ", "")
+                self.series_index_plan = self.series_index
                 # update_metadata_table(self,self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata'])
-                update_meta_view_table_dicom(self,self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'])
+                update_meta_view_table_dicom(self,self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['DCM_Info'])
                 update_plan_tables(self)
                 
                 return

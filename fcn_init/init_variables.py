@@ -52,6 +52,11 @@ def initialize_software_variables(self):
     # [:,15] - Channel (Z)
     # [:,16] - Ac (Z)
     self.Dw_pos_info   = np.zeros((1,17))
+    
+    # Dw pos brachy plans
+    self.dwell_actors = []  # Initialize an empty list to store dwell actors
+    # Ch pos brachy plans
+    self.channel_actors = []  # Initialize an empty list to store dwell actors
 
     # Circle ROI -----------------------------------------------------------------------------------
     # Initialize a list to store circle actors if it doesn't exist

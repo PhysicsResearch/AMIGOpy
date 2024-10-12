@@ -17,8 +17,8 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 
 def update_plan_tables(self):
-    if 'Plan_Brachy_Channels' in self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']:
-        N_channels = len(self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels'])
+    if 'Plan_Brachy_Channels' in self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
+        N_channels = len(self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels'])
         #
         self.brachy_N_channels.setText(f"{N_channels:.0f}")
         #
@@ -37,7 +37,7 @@ def update_plan_tables(self):
         print("'Plan_Brachy_Channels' does NOT exist.")
 
 def update_disp_brachy_plan(self):
-    channels   = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+    channels   = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
     current_ch = channels[self.brachy_spinBox_01.value()-1]
     #
     #
@@ -63,7 +63,7 @@ def calculate_total_time(self):
     
     :return: None
     """
-    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+    channels = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
     
     total_time = 0.0  # Initialize total time across all channels
     selected_channel_time = 0.0  # Initialize total time for the selected channel
@@ -302,7 +302,7 @@ def plot_brachy_3D_dwell_channels(self):
     ax.set_zlabel("Z (mm)", fontsize=font_size, color=text_color)
     
     # Retrieve channels from dicom_data
-    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+    channels = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
     
     # Determine whether to plot all channels or just the selected one
     if self.checkBox_dw_ch_plot.isChecked():
@@ -328,7 +328,7 @@ def plot_brachy_3D_dwell_channels(self):
 
         # Filter dwell points based on dwell time > 0 if self.checkBox_show_dw_plot is selected
         if self.checkBox_show_dw_plot.isChecked():
-            valid_dwell_indices = dwell_info[:, 2] > 0  # Assuming column 2 is the "Time (s)" column
+            valid_dwell_indices = dwell_info[:, 2] > 0    #  column 2 is the "Time (s)" column
             dwell_info = dwell_info[valid_dwell_indices]  # Filter rows where time > 0
 
         # Ensure there's valid data after filtering
@@ -433,7 +433,7 @@ def plot_brachy_bar_channels(self):
     ax.set_ylabel("Dwell Time (s)", fontsize=font_size, color='black' if background_color.lower() == 'white' else 'white')
 
     # Retrieve the channels from dicom_data
-    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+    channels = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
     
     # Check if the selected channel is valid
     channel_idx = selected_channel - 1  # Adjust to zero-based indexing
