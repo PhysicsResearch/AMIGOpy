@@ -1,0 +1,162 @@
+from PyQt5.QtWidgets import QApplication, QPushButton, QWidget, QVBoxLayout
+from fcn_IrIS.FindDwell_IrIS import add_row_dw_table, remove_row_dw_table
+from fcn_processing.Im_process_list import image_processing_undo, run_image_processing
+from fcn_processing.split_dcm_series import shift_and_split_3D_matrix
+from fcn_csv_explorer.general_functions_csv_exp import openCSVFile_exp,plotCSV_ViewData, CSV_apply_oper,exp_csv2_gcode
+from fcn_processing.roi_circle import (toggle_rois, roi_c_add_row, roi_c_remove_row, export_roi_circ_table_to_csv, import_roi_circ_table, 
+                                       c_roi_getdata, export_roi_circ_values_to_csv)
+from fcn_IrIS.Load_CorrectionFrames import load_offset_IrIS, load_CorrectionFrame_IrIS
+from fcn_DECT.DECT_table_disp        import remove_coll2table, add_row2table, remove_row2table, reset_matTable, add_coll2table, calc_material_parameters, load_csv_mat_info
+from fcn_4DCT.disp_4D import play_4D_sequence
+from fcn_DECT.export_data import export_matinfotable_to_csv
+from fcn_DECT.RED_calc_plot import RED_copy_ref_columns, RED_fit_plot_fcn
+from fcn_DECT.zeff_calc_plot import Zeff_copy_ref_columns, Zeff_fit_plot_fcn
+from fcn_DECT.ivalue_calc_plot import Iv_copy_ref_columns, Iv_fit_plot_fcn
+from fcn_DECT.spr_calc_plot import SPR_copy_ref_columns, SPR_fit_plot_fcn
+from fcn_DECT.DECT_table_disp import c_roi_getdata_HU_high_low
+from fcn_DECT.Ivalue_Zeff_fit import plot_I_value_points, plot_I_value_precalc, cal_plot_I_value_points
+from fcn_DECT.create_process_dect import creat_DECT_derived_maps, c_roi_scatter_plot, export_all_DECT_tables, save_parameters_to_csv, load_parameters_from_csv
+from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwell_channels
+
+def initialize_software_buttons(self):
+    # IrIS add row dw table
+    self.add_dw_table.clicked.connect(lambda: add_row_dw_table(self))
+    self.remove_dw_table.clicked.connect(lambda: remove_row_dw_table(self))
+    
+    
+    # Image processing
+    self.ImageUndo_operation.clicked.connect(lambda: image_processing_undo(self))
+    self.ImageUndo_operation.setStyleSheet("background-color: green; color: white;")
+    #
+    # Connect the button's clicked signal to the slot function - run im processing operations
+    self.run_im_process.clicked.connect(lambda: run_image_processing(self))
+    self.run_im_process.setStyleSheet("background-color: blue; color: white;")
+    
+    # IrIS correction
+    self.IrIS_Load_Offset.clicked.connect(lambda: load_offset_IrIS(self))
+    self.IrIS_Load_Offset.setStyleSheet("background-color: red; color: white;")
+    self.IrIS_Load_CorrectionFrame.clicked.connect(lambda: load_CorrectionFrame_IrIS(self))
+    self.IrIS_Load_CorrectionFrame.setStyleSheet("background-color: red; color: white;")
+    
+    # CSV explore
+    self.LoadCSVView.clicked.connect(lambda: openCSVFile_exp(self))
+    self.LoadCSVView.setStyleSheet("background-color: green; color: white;")
+    self.PlotCSVView.clicked.connect(lambda: plotCSV_ViewData(self))
+    self.PlotCSVView.setStyleSheet("background-color: blue; color: white;")
+    self.CSV_Oper_Apply.clicked.connect(lambda: CSV_apply_oper(self))
+    self.CSV_Oper_Apply.setStyleSheet("background-color: blue; color: white;")
+    self.exp_csv_2_gcode.clicked.connect(lambda: exp_csv2_gcode(self))
+    self.exp_csv_2_gcode.setStyleSheet("background-color: blue; color: white;")
+    
+    
+    # 4D Display
+    self.Play4D_Buttom.toggled.connect(lambda: play_4D_sequence(self))
+    self.Play4D_Buttom.setStyleSheet("background-color: blue; color: white;")
+
+    # DECT
+    self.add_coll_table_mat.clicked.connect(lambda: add_coll2table(self))
+    self.add_coll_table_mat.setStyleSheet("background-color: blue; color: white;")
+    self.remove_coll_table_mat.clicked.connect(lambda: remove_coll2table(self))
+    self.remove_coll_table_mat.setStyleSheet("background-color: blue; color: white;")
+    self.add_row_table_mat.clicked.connect(lambda: add_row2table(self))
+    self.add_row_table_mat.setStyleSheet("background-color: blue; color: white;")
+    self.remove_row_table_mat.clicked.connect(lambda: remove_row2table(self))
+    self.remove_row_table_mat.setStyleSheet("background-color: blue; color: white;")
+    self.reset_table_mat.clicked.connect(lambda: reset_matTable(self))
+    self.reset_table_mat.setStyleSheet("background-color: blue; color: white;")
+    
+    # Load material composition and additional info
+    self.Load_csv_mat.clicked.connect(lambda: load_csv_mat_info(self))
+    self.Load_csv_mat.setStyleSheet("background-color: blue; color: white;")
+    self.cal_mat_ref_info.clicked.connect(lambda: calc_material_parameters(self))
+    self.cal_mat_ref_info.setStyleSheet("background-color: blue; color: white;")
+    # I-value plot
+    self.Ivalue_plot.clicked.connect(lambda: plot_I_value_points(self))
+    self.Ivalue_plot.setStyleSheet("background-color: blue; color: white;")
+    # Instead of plotting from data use the providded coefficients
+    self.Ivalue_pre_calc_fit.clicked.connect(lambda: plot_I_value_precalc(self))
+    self.Ivalue_pre_calc_fit.setStyleSheet("background-color: blue; color: white;")
+    self.Ivalue_calc_fit.clicked.connect(lambda: cal_plot_I_value_points(self))
+    self.Ivalue_calc_fit.setStyleSheet("background-color: blue; color: white;")
+    # export mat table
+    self.export_table_mat.clicked.connect(lambda: export_matinfotable_to_csv(self))
+    self.export_table_mat.setStyleSheet("background-color: blue; color: white;")
+    self.get_HU_high.clicked.connect(lambda: c_roi_getdata_HU_high_low(self))
+    self.get_HU_high.setStyleSheet("background-color: green; color: white;")
+    # RED
+    self.RED_get_ref.clicked.connect(lambda: RED_copy_ref_columns(self))
+    self.RED_get_ref.setStyleSheet("background-color: green; color: white;")
+    self.RED_calc_cal.clicked.connect(lambda: RED_fit_plot_fcn(self))
+    self.RED_calc_cal.setStyleSheet("background-color: blue; color: white;")
+    
+    # Zeff
+    self.Zeff_get_ref.clicked.connect(lambda: Zeff_copy_ref_columns(self))
+    self.Zeff_get_ref.setStyleSheet("background-color: green; color: white;")
+    self.Zeff_calc_cal.clicked.connect(lambda: Zeff_fit_plot_fcn(self))
+    self.Zeff_calc_cal.setStyleSheet("background-color: blue; color: white;")
+    
+    # I-value
+    self.Iv_get_ref.clicked.connect(lambda: Iv_copy_ref_columns(self))
+    self.Iv_get_ref.setStyleSheet("background-color: green; color: white;")
+    self.Iv_calc_cal.clicked.connect(lambda: Iv_fit_plot_fcn(self))
+    self.Iv_calc_cal.setStyleSheet("background-color: blue; color: white;")
+    
+    # SPR
+    self.SPR_get_ref.clicked.connect(lambda: SPR_copy_ref_columns(self))
+    self.SPR_get_ref.setStyleSheet("background-color: green; color: white;")
+    self.SPR_calc_cal.clicked.connect(lambda: SPR_fit_plot_fcn(self))
+    self.SPR_calc_cal.setStyleSheet("background-color: blue; color: white;")
+    
+    # Process Eval - DECT
+    self.Create_DECT_Images.clicked.connect(lambda: creat_DECT_derived_maps(self))
+    self.Create_DECT_Images.setStyleSheet("background-color: green; color: white;")
+    #
+    self.plot_roi_scatter.clicked.connect(lambda: c_roi_scatter_plot(self))
+    self.plot_roi_scatter.setStyleSheet("background-color: green; color: white;")
+    
+    #
+    self.export_all_DECT_tables.clicked.connect(lambda: export_all_DECT_tables(self))
+    self.export_all_DECT_tables.setStyleSheet("background-color: blue; color: white;")
+    #
+    self.DECT_exp_fit_par.clicked.connect(lambda: save_parameters_to_csv(self))
+    self.DECT_exp_fit_par.setStyleSheet("background-color: blue; color: white;")
+    #
+    self.DECT_load_fit_par.clicked.connect(lambda: load_parameters_from_csv(self))
+    self.DECT_load_fit_par.setStyleSheet("background-color: green; color: white;")
+    
+    # Plan
+    # Brachy 
+    # spin
+    self.brachy_spinBox_01.valueChanged.connect(lambda: update_disp_brachy_plan(self))
+    self.brachy_spinBox_02.valueChanged.connect(lambda: sync_spinBox_01(self))
+    def sync_spinBox_01(self):
+        # Update brachy_spinBox_01's value to match brachy_spinBox_02
+        self.brachy_spinBox_01.setValue(self.brachy_spinBox_02.value())
+    #
+    # buttom    
+    self.brachy_ch_plot.clicked.connect(lambda:  plot_brachy_dwell_channels(self))
+    self.brachy_ch_plot.setStyleSheet("background-color: blue; color: white;")
+    
+    
+    # Circle ROI -----------------------------------------------------------------------------------
+    # display (or not) ROI
+    self.checkBox_circ_roi_data_2.clicked.connect(lambda: toggle_rois(self)) 
+    self.roi_circle_add_row.clicked.connect(lambda: roi_c_add_row(self))
+    self.roi_circle_remove_row.clicked.connect(lambda: roi_c_remove_row(self))
+    self.circ_roi_exp_csv.clicked.connect(lambda: export_roi_circ_table_to_csv(self))
+    self.circ_roi_exp_csv.setStyleSheet("background-color: blue; color: white;")
+    self.circ_roi_load_csv.clicked.connect(lambda: import_roi_circ_table(self))
+    self.circ_roi_load_csv.setStyleSheet("background-color: red; color: white;")
+    self.get_circ_roi_data.clicked.connect(lambda: c_roi_getdata(self))
+    self.get_circ_roi_data.setStyleSheet("background-color: blue; color: white;")
+    self.get_circ_roi_data2.clicked.connect(lambda: c_roi_getdata(self))
+    self.get_circ_roi_data2.setStyleSheet("background-color: blue; color: white;")
+    #
+    self.exp_csv_roi_c_values.clicked.connect(lambda: export_roi_circ_values_to_csv(self))
+    self.exp_csv_roi_c_values.setStyleSheet("background-color: blue; color: white;")
+    
+    
+    
+    
+    
+    

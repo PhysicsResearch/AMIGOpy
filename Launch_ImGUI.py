@@ -1,0 +1,190 @@
+import sys
+import qdarkstyle
+from PyQt5.QtWidgets import QApplication, QMainWindow, QToolBar
+from ImGUI import Ui_AMIGOpy  # Assuming this is the name of your main window class in ImGUI.py
+from fcn_load.sort_dcm import get_data_description
+from fcn_load.org_fol_dcm import organize_files_into_folders
+from fcn_display.mouse_move_slicechanges import change_sliceAxial, change_sliceSagittal, change_sliceCoronal
+from fcn_display.Data_tree_general import on_DataTreeView_clicked
+from fcn_init.create_menu import initializeMenuBar
+from fcn_init.vtk_comp import setup_vtk_comp
+from fcn_init.transp_slider_spin_set  import set_transp_slider_fcn
+from fcn_init.set_menu_bar_icons      import menu_bar_icon_actions
+from fcn_init.vtk_IrIS_eval_axes      import setup_vtk_IrISEval
+from fcn_display.display_images       import update_layer_view
+from fcn_init.vtk_comparison_axes     import create_vtk_elements_comp
+from fcn_init.ModulesTab_change       import set_fcn_tabModules_changed
+from fcn_init.IrIS_cal_init           import init_cal_markers_IrIS
+from fcn_init.init_variables          import initialize_software_variables
+from fcn_init.init_tables             import initialize_software_tables
+from fcn_init.init_buttons            import initialize_software_buttons
+from fcn_init.init_load_files         import load_Source_cal_csv_file
+from fcn_init.init_list_menus         import populate_operation_list
+
+
+class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
+    def __init__(self):
+        super(MyApp, self).__init__()
+        #
+        # Set up the user interface from Designer.
+        self.setupUi(self)
+        initializeMenuBar(self)
+        
+        self.DataType = "None"
+        # Create a toolbar
+        self.toolbar = QToolBar("My main toolbar")
+        self.addToolBar(self.toolbar)
+        
+        # initialize variables
+        initialize_software_variables(self)
+        # initialize tables
+        initialize_software_tables(self)
+        # initialize buttons
+        initialize_software_buttons(self)
+        # load ref csv files
+        load_Source_cal_csv_file(self)
+        
+        self.LeftButtonAxialDown    = False
+        self.LeftButtonSagittalDown = False
+        self.LeftButtonCoronalDown  = False
+        self.LeftButtonRuler        = False
+        #
+        set_fcn_tabModules_changed(self)
+        
+        # populate the list of image processign operations
+        populate_operation_list(self);
+
+        #
+        self.layerTab = {}
+        self.transTab = {}
+        #
+        self.layerTab['View']    = 0
+        self.transTab['View']    = [1,0,0,0]
+        self.layerTab['Compare'] = 0
+        self.transTab['Compare'] = [1,0,0,0]
+        self.layerTab['IrIS']    = 0
+        self.transTab['IrIS']    = [1,0,0,0]
+        self.layerTab['DECT']    = 0
+        self.transTab['DECT']    = [1,0,0,0]
+        self.layerTab['Plan']    = 0
+        self.transTab['Plan']    = [1,0,0,0]
+        menu_bar_icon_actions(self)
+        #
+        # create vtk comp axes -buttom
+        self.but_create_comp_axes.clicked.connect(lambda: create_vtk_elements_comp(self))
+        # This section initialize variables related to images dimentions, currentl displaying set
+        # slice index ... It is important so different element of the GUI can have access to them 
+        #
+        self.dicom_data   = None            # Initialize the attribute to store DICOM data
+        self.IrIS_data    = None            # Initialize the attribute to store IrIS data
+        self.IrIS_corr    = {}            # Initialize the attribute to store IrIS correction data
+        self.current_slice_index = [-1,-1,-1]  # axial, sagital and coronal slices
+        #
+        # information about dwell positions and dwell times
+        self.IrIS_Eval = {}
+        #
+        #
+        self.LeftButtonAxialDown     = False
+        self.LeftButtonSagittalDown  = False
+        #
+        # Set the progress bar value to 0
+        self.progressBar.setValue(0)
+        # This section coonects GUI elemtns with functions
+        # slider to adjust the images
+        self.AxialSlider.valueChanged.connect(self.on_axialslider_change)
+        self.SagittalSlider.valueChanged.connect(self.on_sagittalslider_change)
+        self.CoronalSlider.valueChanged.connect(self.on_coronalslider_change)
+        
+        set_transp_slider_fcn(self)
+              
+        self.layer_selection_box.currentIndexChanged.connect(lambda: update_layer_view(self))
+        # # Initialize VTK components
+        setup_vtk_comp(self)
+        setup_vtk_IrISEval(self)
+        # Calibration module IrIS
+        init_cal_markers_IrIS(self)
+        #
+        # VTK C omparison module
+        self.vtkWidgetsComp = []
+        self.renAxComp      = []
+        self.dataImporterAxComp = {}
+        self.windowLevelAxComp  = {}
+        self.imageActorAxComp   = {}
+        #
+        self.DataTreeView.clicked.connect(lambda index: on_DataTreeView_clicked(self, index))
+
+    def organize_dcm_folder(self):
+        self.label.setText("Reading folders")
+        detailed_files_info, unique_files_info = get_data_description(folder_path=None, progress_callback=self.update_progress,update_label=self.label)
+        total_steps = len(detailed_files_info)
+        self.label.setText(f"Copying {total_steps} files")
+        organize_files_into_folders(detailed_files_info,progress_callback=self.update_progress,update_label=self.label)
+        
+            
+    # Slot for the 'About' action
+    def on_about_click(self):
+        # Your logic for displaying info about the application goes here.
+        pass
+     
+
+        
+    def left_button_presssagittal_event(self, obj, event):
+        self.LeftButtonSagittalDown = True
+
+    def left_button_releasesagittal_event(self, obj, event):
+        self.LeftButtonSagittalDown = False
+        
+    def left_button_presscoronal_event(self, obj, event):
+        self.LeftButtonCoronalDown = True
+
+    def left_button_releasecoronal_event(self, obj, event):
+        self.LeftButtonCoronalDown = False
+
+    def on_axialslider_change(self):
+        idx = self.layer_selection_box.currentIndex()
+        # Set the slice index based on the slider value.
+        self.current_axial_slice_index[idx] = self.AxialSlider.value()
+        change_sliceAxial(self,0)
+        
+    def on_sagittalslider_change(self):
+        idx = self.layer_selection_box.currentIndex()
+        # Set the slice index based on the slider value.
+        self.current_sagittal_slice_index[idx] = self.SagittalSlider.value()
+        change_sliceSagittal(self,0)
+            
+    def on_coronalslider_change(self):
+        idx = self.layer_selection_box.currentIndex()
+        # Set the slice index based on the slider value.
+        self.current_coronal_slice_index[idx] = self.CoronalSlider.value()
+        change_sliceCoronal(self,0)
+                    
+    def on_scroll_forwardAxial(self, obj, ev):
+        change_sliceAxial(self,1)
+    
+    def on_scroll_backwardAxial(self, obj, ev):
+        change_sliceAxial(self,-1)
+        
+    def on_scroll_forwardSagittal(self, obj, ev):
+        change_sliceSagittal(self,1)
+    
+    def on_scroll_backwardSagittal(self, obj, ev):
+        change_sliceSagittal(self,-1)
+        
+    def on_scroll_forwardCoronal(self, obj, ev):
+        change_sliceCoronal(self,1)
+    
+    def on_scroll_backwardCoronal(self, obj, ev):
+        change_sliceCoronal(self,-1)
+        
+    def update_progress(self, progress):
+        self.progressBar.setValue(int(progress))
+
+   
+      
+        
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MyApp()
+    app.setStyleSheet(qdarkstyle.load_stylesheet())
+    window.show()
+    sys.exit(app.exec_())
