@@ -1,4 +1,6 @@
+import vtk
 from PyQt5.QtWidgets import QApplication, QPushButton, QWidget, QVBoxLayout
+from PyQt5 import QtWidgets  # Import the correct module for QMessageBox
 from fcn_IrIS.FindDwell_IrIS import add_row_dw_table, remove_row_dw_table
 from fcn_processing.Im_process_list import image_processing_undo, run_image_processing
 from fcn_processing.split_dcm_series import shift_and_split_3D_matrix
@@ -17,6 +19,7 @@ from fcn_DECT.DECT_table_disp import c_roi_getdata_HU_high_low
 from fcn_DECT.Ivalue_Zeff_fit import plot_I_value_points, plot_I_value_precalc, cal_plot_I_value_points
 from fcn_DECT.create_process_dect import creat_DECT_derived_maps, c_roi_scatter_plot, export_all_DECT_tables, save_parameters_to_csv, load_parameters_from_csv
 from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwell_channels
+from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
 
 def initialize_software_buttons(self):
     # IrIS add row dw table
@@ -133,6 +136,8 @@ def initialize_software_buttons(self):
         # Update brachy_spinBox_01's value to match brachy_spinBox_02
         self.brachy_spinBox_01.setValue(self.brachy_spinBox_02.value())
     #
+    self.display_dw_overlay.stateChanged.connect(lambda: on_display_dw_overlay_clicked(self))
+    self.display_brachy_channel_overlay.stateChanged.connect(lambda: on_display_dw_overlay_clicked(self))
     # buttom    
     self.brachy_ch_plot.clicked.connect(lambda:  plot_brachy_dwell_channels(self))
     self.brachy_ch_plot.setStyleSheet("background-color: blue; color: white;")
@@ -156,6 +161,70 @@ def initialize_software_buttons(self):
     self.exp_csv_roi_c_values.setStyleSheet("background-color: blue; color: white;")
     
     
+def on_display_dw_overlay_clicked(self):
+    """
+    Slot called when the display_dw_overlay checkbox is clicked.
+    Checks if the plan exists and shows an error if not. Otherwise, displays dwell overlay.
+    """
+    renderer_ax = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    renderer_co = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    renderer_sa = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    # Remove any previous dwell actors
+    for actor in self.dwell_actors_ax:
+        renderer_ax.RemoveActor(actor)
+    self.dwell_actors_ax.clear()
+    #
+    for actor in self.dwell_actors_co:
+        renderer_co.RemoveActor(actor)
+    self.dwell_actors_co.clear()
+    #
+    for actor in self.dwell_actors_sa:
+        renderer_sa.RemoveActor(actor)
+    self.dwell_actors_sa.clear()
+    #
+    # Remove any previous channelactors
+    for actor in self.channel_actors_ax:
+        renderer_ax.RemoveActor(actor)
+    self.channel_actors_ax.clear()
+    #
+    for actor in self.channel_actors_co:
+        renderer_co.RemoveActor(actor)
+    self.channel_actors_co.clear()
+    #
+    for actor in self.channel_actors_sa:
+        renderer_sa.RemoveActor(actor)
+    self.channel_actors_sa.clear()
+    #    #
+    displayaxial(self)
+    displaysagittal(self)
+    displaycoronal(self)
+    #
+    # Check if the required fields exist in dicom_data
+    try:
+        dicom_data = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
+    except KeyError:
+        # Show an error message if plan metadata is missing
+        QtWidgets.QMessageBox.critical(self, "Plan Missing", "Please select a plan first.")
+        self.display_dw_overlay.setChecked(False)  # Uncheck the checkbox if plan is missing
+        return
+
+    # Check if 'Plan_Brachy_Channels' exists in 'metadata'
+    if 'Plan_Brachy_Channels' not in dicom_data:
+        # Show an error message if Plan_Brachy_Channels is missing
+        QtWidgets.QMessageBox.critical(self, "Plan Missing", "Please select a plan first.")
+        self.display_dw_overlay.setChecked(False)  # Uncheck the checkbox if plan is missing
+        return
+
+    channels = dicom_data['Plan_Brachy_Channels']
+
+    # Check if 'Plan_Brachy_Channels' contains valid data (e.g., non-empty list or array)
+    if not channels or not isinstance(channels, list):
+        # Show an error message if the plan exists but is invalid or empty
+        QtWidgets.QMessageBox.critical(self, "Invalid Plan", "The selected plan is invalid or empty.")
+        self.display_dw_overlay.setChecked(False)  # Uncheck the checkbox if plan is invalid
+        return
+
+
     
     
     

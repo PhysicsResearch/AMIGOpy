@@ -44,7 +44,6 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         # load ref csv files
         load_Source_cal_csv_file(self)
         
-        self.LeftButtonAxialDown    = False
         self.LeftButtonSagittalDown = False
         self.LeftButtonCoronalDown  = False
         self.LeftButtonRuler        = False

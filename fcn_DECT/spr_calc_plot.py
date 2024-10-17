@@ -53,6 +53,8 @@ def extract_data_and_fit(self):
     SPR_cal = []
     SPR_ref = []
     #
+    # Initialize a list to store squared percentage errors
+    squared_percentage_errors = []
     for row in range(row_count):
         I_item   = self.tableIv.item(row, 2)
         RED_item = self.tableRED.item(row, 2)
@@ -65,6 +67,7 @@ def extract_data_and_fit(self):
         
         difference = SPR_c - SPR_r
         percentage = difference/SPR_r * 100
+        squared_percentage_errors.append(percentage**2)
         self.tableSPR.setItem(row, 2, QTableWidgetItem(f"{SPR_c:.3f}"))
         self.tableSPR.setItem(row, 3, QTableWidgetItem(f"{difference:.3f}"))
         self.tableSPR.setItem(row, 4, QTableWidgetItem(f"{percentage:.2f}%"))
@@ -75,9 +78,8 @@ def extract_data_and_fit(self):
     SPR_cal = np.array(SPR_cal)
     SPR_ref = np.array(SPR_ref)
     #
-    residuals = SPR_cal - SPR_ref
     # Calculate RMSE
-    rmse = np.sqrt(np.mean(residuals**2))
+    rmse = np.sqrt(np.mean(squared_percentage_errors))      
     self.SPR_RMSE_text.setText(f"{rmse:.4f}")
     #
     

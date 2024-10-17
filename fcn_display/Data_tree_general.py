@@ -40,8 +40,13 @@ def on_DataTreeView_clicked(self,index):
             self.modality  = hierarchy[3].replace("Modality: ", "")
             #
             if self.modality == 'RTPLAN':
+                # keep track of the last selected plan ... if user chose and image or dose this will not change
+                self.patientID_plan    = hierarchy[1].replace("PatientID: ", "")
+                self.studyID_plan      = hierarchy[2].replace("StudyID: ", "")
+                self.modality_plan     = hierarchy[3].replace("Modality: ", "")
+                self.series_index_plan = self.series_index
                 # update_metadata_table(self,self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata'])
-                update_meta_view_table_dicom(self,self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'])
+                update_meta_view_table_dicom(self,self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['DCM_Info'])
                 update_plan_tables(self)
                 
                 return
@@ -79,12 +84,6 @@ def on_DataTreeView_clicked(self,index):
                 #
                 self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
                 adjust_data_type_input(self,idx)
-                # This is a workaround to avoid issues when changing the data type ... It basically plots the image on the 3 axis to ensure that when the display function
-                # is called all axes have the same type of data (e.g. float) ... Using display without update the images cause issues. E.g. display axial will update some 
-                # elements on the cornoal axis and the software will crash if axial and coronal images have different types (because one axes update the data type before the other)
-                update_axial_image(self)
-                update_coronal_image(self)
-                update_sagittal_image(self)
                 #
                 self.current_axial_slice_index[idx]    = round(self.display_data[idx].shape[0]/2)
                 self.current_sagittal_slice_index[idx] = round(self.display_data[idx].shape[1]/2)
@@ -113,6 +112,21 @@ def on_DataTreeView_clicked(self,index):
                 Sa_s = self.current_sagittal_slice_index[idx]
                 Co_s = self.current_coronal_slice_index[idx]
                 #
+                # This is a workaround to avoid issues when changing the data type ... It basically plots the image on the 3 axis to ensure that when the display function
+                # is called all axes have the same type of data (e.g. float) ... Using display without update the images cause issues. E.g. display axial will update some 
+                # elements on the cornoal axis and the software will crash if axial and coronal images have different types (because one axes update the data type before the other)
+                update_axial_image(self)
+                self.vtkWidgetAxial.GetRenderWindow().Render()
+                update_coronal_image(self)
+                self.vtkWidgetCoronal.GetRenderWindow().Render()
+                update_sagittal_image(self)
+                self.vtkWidgetSagittal.GetRenderWindow().Render()
+                #
+                #
+                displayaxial(self)
+                displaysagittal(self)
+                displaycoronal(self)
+                #
                 self.AxialSlider.setMaximum(self.display_data[idx].shape[0] - 1)
                 self.SagittalSlider.setMaximum(self.display_data[idx].shape[2] - 1)
                 self.CoronalSlider.setMaximum(self.display_data[idx].shape[1] - 1)
@@ -137,7 +151,6 @@ def on_DataTreeView_clicked(self,index):
                 self.renSagittal.ResetCamera()
                 self.renCoronal.ResetCamera() 
                 #
-
                 #
                 displayaxial(self)
                 displaysagittal(self)
@@ -528,6 +541,7 @@ def update_axial_image(self,  Im = None):
             imageProperty = self.imageActorAxial[i].GetProperty()
             imageProperty.SetOpacity(0)
             self.dataImporterAxial[i].Modified()
+            #  Render to update
         #     
 
 def update_coronal_image(self,  Im = None):
@@ -587,7 +601,8 @@ def update_coronal_image(self,  Im = None):
         else:
             imageProperty = self.imageActorCoronal[i].GetProperty()
             imageProperty.SetOpacity(0) 
-            self.dataImporterCoronal[i].Modified()  
+            self.dataImporterCoronal[i].Modified() 
+        #    
 
 def update_sagittal_image(self,  Im = None):
     idx = self.layer_selection_box.currentIndex()
@@ -640,4 +655,6 @@ def update_sagittal_image(self,  Im = None):
                 self.coronalLineSource.Modified()  # Notify VTK of the changes     
         else: 
             imageProperty = self.imageActorSagittal[i].GetProperty()
-            imageProperty.SetOpacity(0)  
+            imageProperty.SetOpacity(0)
+            self.dataImporterSagittal[i].Modified() 
+        #    

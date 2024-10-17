@@ -1,4 +1,5 @@
 import vtk
+import numpy as np
 import math
 
 def displayaxial(self, Im = None):
@@ -7,12 +8,18 @@ def displayaxial(self, Im = None):
     for i in range(len(self.dataImporterAxial)):
         # Add or update circular ROIs in the 4th layer
         if i == 3 and self.checkBox_circ_roi_data_2.isChecked():
-            renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
-            for actor in self.circle_actors_ax:
-                renderer.RemoveActor(actor)
-            self.circle_actors_ax.clear()
-            # self.vtkWidgetAxial.GetRenderWindow().Render() 
-            disp_roi_axial(self)
+                renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+                for actor in self.circle_actors_ax:
+                    renderer.RemoveActor(actor)
+                self.circle_actors_ax.clear()
+                # self.vtkWidgetAxial.GetRenderWindow().Render() 
+                disp_roi_axial(self)
+        if i == 3 and  self.display_dw_overlay.isChecked():
+            # Check if the required fields exist in dicom_data
+                display_dwell_positions_ax(self)
+        if i == 3 and  self.display_brachy_channel_overlay.isChecked():
+            # Check if the required fields exist in dicom_data
+                display_brachy_channel_overlay_ax(self)
 
   
         if self.slice_thick[i] ==0:
@@ -138,6 +145,191 @@ def disp_roi_axial(self):
             print(f'Skipping row {row} due to invalid data')
             continue  
 
+def display_dwell_positions_ax(self):
+    """
+    Display the dwell positions on top of the DICOM images using VTK.
+    - If self.overlay_all_channels is selected, show all dwell positions from all channels.
+    - Otherwise, show dwell positions for the channel selected by self.brachy_spinBox_01.
+    - Uses the same point size as defined by self.dw_ch_point_size.
+    - Dwell positions with dwell_time == 0 are shown in red.
+    - Dwell positions with dwell_time > 0 are shown in dark green.
+    - Dwell positions within Ref_Z ± slice_thickness/2 are shown in light green.
+    """
+    renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+
+    # Remove any previous dwell actors
+    for actor in self.dwell_actors_ax:
+        renderer.RemoveActor(actor)
+    self.dwell_actors_ax.clear()
+
+    # Retrieve channels from dicom_data
+    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+
+    # Determine whether to show all channels or only the one selected by the spinbox
+    if self.overlay_all_channels.isChecked():
+        channels_to_display = channels  # Show all channels
+    else:
+        selected_channel_idx = self.brachy_spinBox_01.value() - 1  # Get the index from the spinbox
+        channels_to_display = [channels[selected_channel_idx]]  # Show only the selected channel
+
+    # Get the point size from the spinbox
+    point_size = self.dw_ch_point_size.value() /1.5
+
+    # Get the current slice reference Z position and tolerance
+    Ref_z = self.current_axial_slice_index[0] * self.slice_thick[0] + self.Im_Offset[0, 2]
+    z_tolerance = self.slice_thick[0] /2
+
+    # Iterate through the channels to display dwell positions
+    for current_ch in channels_to_display:
+        dwell_info = current_ch.get('DwellInfo')
+
+        if dwell_info is None or not isinstance(dwell_info, np.ndarray) or dwell_info.shape[1] < 7:
+            continue  # Skip invalid channels
+
+        # Extract dwell positions (X, Y, Z coordinates) and convert them to image space
+        dwell_times = dwell_info[:, 2]  # Assuming dwell time is in column 2
+        x = dwell_info[:, 3] - self.Im_PatPosition[0, 0]  # X coordinate in mm
+        y = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (dwell_info[:, 4] - self.Im_PatPosition[0, 1])  # Y coordinate
+        z = dwell_info[:, 5] - self.Im_PatPosition[0, 2]  # Z coordinate in mm
+
+        for i in range(len(x)):
+            # Convert physical coordinates (mm) to pixel coordinates
+            x_pixel = x[i]
+            y_pixel = y[i]
+            z_position = 0.5  # Set Z position slightly above the DICOM slice
+
+            # Determine the color based on dwell time and Z position
+            if dwell_times[i] == 0:
+                # Dwell time is 0, show in red
+                color = (1.0, 0.0, 0.0)  # Red
+            elif Ref_z - z_tolerance <= z[i] <= Ref_z + z_tolerance:
+                # Z position is within Ref_Z ± slice_thickness/2, show in light green
+                color = (0.6, 1.0, 0.8)  # Light green
+            else:
+                # Dwell time > 0 and Z position is outside the tolerance, show in dark green
+                color = (0.0, 0.5, 0.0)  # Dark green
+
+            # Create a sphere to represent the dwell position
+            sphere_source = vtk.vtkSphereSource()
+            sphere_source.SetCenter(x_pixel, y_pixel, z_position)
+            sphere_source.SetRadius(point_size)  # Use point size from the spinbox
+            sphere_source.SetPhiResolution(20)
+            sphere_source.SetThetaResolution(20)
+
+            # Map the sphere to an actor
+            sphere_mapper = vtk.vtkPolyDataMapper()
+            sphere_mapper.SetInputConnection(sphere_source.GetOutputPort())
+
+            sphere_actor = vtk.vtkActor()
+            sphere_actor.SetMapper(sphere_mapper)
+
+            # Set the color based on the logic above
+            sphere_actor.GetProperty().SetColor(*color)
+            sphere_actor.GetProperty().SetOpacity(0.8)  # Full opacity
+
+            # Add the actor for the sphere to the renderer
+            renderer.AddActor(sphere_actor)
+            self.dwell_actors_ax.append(sphere_actor)
+
+    # Re-render to show the updated scene with dwell positions
+    self.vtkWidgetAxial.GetRenderWindow().Render()
+
+
+def display_brachy_channel_overlay_ax(self):
+    """
+    Display brachytherapy channels as connected blue lines with solid blue spheres at each channel point.
+    - If the checkbox self.overlay_all_channels is selected, display all channels.
+    - Otherwise, display only the channel indicated by self.brachy_spinBox_01.
+    """
+    renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+
+    # Remove any previous channel actors
+    for actor in self.channel_actors_ax:
+        renderer.RemoveActor(actor)
+    self.channel_actors_ax.clear()
+
+    # Retrieve channels from dicom_data
+    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+
+    # Determine whether to show all channels or only the one selected by the spinbox
+    if self.overlay_all_channels.isChecked():
+        channels_to_display = channels  # Show all channels
+    else:
+        selected_channel_idx = self.brachy_spinBox_01.value() - 1  # Get the index from the spinbox
+        channels_to_display = [channels[selected_channel_idx]]  # Show only the selected channel
+
+    # Get the point size from the spinbox and halve it
+    point_size = self.dw_ch_point_size.value() / 2
+
+    # Iterate through the channels to display
+    for current_ch in channels_to_display:
+        ch_points = current_ch.get('ChPos')
+
+        # Check if 'ChPos' exists and contains valid data
+        if ch_points is None or not isinstance(ch_points, np.ndarray) or ch_points.shape[1] < 3:
+            continue  # Skip invalid channels
+
+        # Extract channel points (X, Y, Z coordinates)
+        x = ch_points[:, 0] - self.Im_PatPosition[0, 0]  # X coordinate in mm
+        y = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (ch_points[:, 1] - self.Im_PatPosition[0, 1])  # Y coordinate
+        z = ch_points[:, 2] - self.Im_PatPosition[0, 2]  # Z coordinate in mm
+
+        # Create a polyline to represent the connected channel points
+        points = vtk.vtkPoints()
+        lines = vtk.vtkCellArray()
+
+        # Add points and create lines between consecutive points
+        for i in range(len(x)):
+            points.InsertNextPoint(x[i], y[i], 0.5)  # Insert each point into vtkPoints
+            if i > 0:
+                line = vtk.vtkLine()
+                line.GetPointIds().SetId(0, i - 1)  # Line from previous point to current point
+                line.GetPointIds().SetId(1, i)
+                lines.InsertNextCell(line)
+
+            # Create solid blue spheres for each point
+            sphere_source = vtk.vtkSphereSource()
+            sphere_source.SetCenter(x[i], y[i], 0.5)
+            sphere_source.SetRadius(point_size)  # Sphere size is half of the value from the spinbox
+            sphere_source.SetPhiResolution(20)
+            sphere_source.SetThetaResolution(20)
+
+            # Map the sphere to an actor
+            sphere_mapper = vtk.vtkPolyDataMapper()
+            sphere_mapper.SetInputConnection(sphere_source.GetOutputPort())
+
+            sphere_actor = vtk.vtkActor()
+            sphere_actor.SetMapper(sphere_mapper)
+
+            # Set the color to solid blue for the spheres
+            sphere_actor.GetProperty().SetColor(0.0, 0.0, 1.0)  # Solid blue spheres
+            sphere_actor.GetProperty().SetOpacity(0.7)  # Full opacity
+
+            # Add the actor for the sphere to the renderer
+            renderer.AddActor(sphere_actor)
+            self.channel_actors_ax.append(sphere_actor)
+
+        # Create the polyline
+        polyline = vtk.vtkPolyData()
+        polyline.SetPoints(points)
+        polyline.SetLines(lines)
+
+        # Map the polyline to an actor
+        polyline_mapper = vtk.vtkPolyDataMapper()
+        polyline_mapper.SetInputData(polyline)
+
+        polyline_actor = vtk.vtkActor()
+        polyline_actor.SetMapper(polyline_mapper)
+        polyline_actor.GetProperty().SetColor(0.0, 0.0, 1.0)  # Blue for the line
+        polyline_actor.GetProperty().SetLineWidth(2)  # Line width
+
+        # Add the polyline actor to the renderer
+        renderer.AddActor(polyline_actor)
+        self.channel_actors_ax.append(polyline_actor)
+
+    # Render the updated display with the channels
+    self.vtkWidgetAxial.GetRenderWindow().Render()
+
 
 def displaycoronal(self, Im = None):
     idx = self.layer_selection_box.currentIndex()
@@ -152,6 +344,12 @@ def displaycoronal(self, Im = None):
             self.circle_actors_co.clear()
             # self.vtkWidgetAxial.GetRenderWindow().Render() 
             disp_roi_coronal(self)
+        if i == 3 and  self.display_dw_overlay.isChecked():
+            # Check if the required fields exist in dicom_data
+                display_dwell_positions_co(self)
+        if i == 3 and  self.display_brachy_channel_overlay.isChecked():
+            # Check if the required fields exist in dicom_data
+                display_brachy_channel_overlay_co(self)
 
 
         if self.slice_thick[i] ==0:
@@ -304,6 +502,197 @@ def disp_roi_coronal(self):
             print(f'Skipping row {row} due to invalid data')
             continue  
     
+
+def display_dwell_positions_co(self):
+    """
+    Display the dwell positions on top of the DICOM images using VTK.
+    - If self.overlay_all_channels is selected, show all dwell positions from all channels.
+    - Otherwise, show dwell positions for the channel selected by self.brachy_spinBox_01.
+    - Uses the same point size as defined by self.dw_ch_point_size.
+    - Dwell positions with dwell_time == 0 are shown in red.
+    - Dwell positions with dwell_time > 0 are shown in dark green.
+    - Dwell positions within Ref_Z ± slice_thickness/2 are shown in light green.
+    """
+    renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+
+    # Remove any previous dwell actors
+    for actor in self.dwell_actors_co:
+        renderer.RemoveActor(actor)
+    self.dwell_actors_co.clear()
+
+    # Retrieve channels from dicom_data
+    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+
+    # Determine whether to show all channels or only the one selected by the spinbox
+    if self.overlay_all_channels.isChecked():
+        channels_to_display = channels  # Show all channels
+    else:
+        selected_channel_idx = self.brachy_spinBox_01.value() - 1  # Get the index from the spinbox
+        channels_to_display = [channels[selected_channel_idx]]  # Show only the selected channel
+
+    # Get the point size from the spinbox
+    point_size = self.dw_ch_point_size.value() /1.5
+
+    # Get the current slice reference Z position and tolerance
+    Ref_z = self.current_coronal_slice_index[0] * self.pixel_spac[0, 1] #+ self.Im_Offset[1, 2]
+    z_tolerance = self.pixel_spac[0, 1] /2
+
+    # Iterate through the channels to display dwell positions
+    for current_ch in channels_to_display:
+        dwell_info = current_ch.get('DwellInfo')
+
+        if dwell_info is None or not isinstance(dwell_info, np.ndarray) or dwell_info.shape[1] < 7:
+            continue  # Skip invalid channels
+
+        # Extract dwell positions (X, Y, Z coordinates) and convert them to image space
+        dwell_times = dwell_info[:, 2]  # Assuming dwell time is in column 2
+        x = dwell_info[:, 3] - self.Im_PatPosition[0, 0]  # X coordinate in mm
+        z = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (dwell_info[:, 4] - self.Im_PatPosition[0, 1])  # Y coordinate
+        y = dwell_info[:, 5] - self.Im_PatPosition[0, 2]  # Z coordinate in mm
+
+        for i in range(len(x)):
+            # Convert physical coordinates (mm) to pixel coordinates
+            x_pixel = x[i]
+            y_pixel = y[i]
+            z_position = 0.5  # Set Z position slightly above the DICOM slice
+
+            # Determine the color based on dwell time and Z position
+            if dwell_times[i] == 0:
+                # Dwell time is 0, show in red
+                color = (1.0, 0.0, 0.0)  # Red
+            elif Ref_z - z_tolerance <= z[i] <= Ref_z + z_tolerance:
+                # Z position is within Ref_Z ± slice_thickness/2, show in light green
+                color = (0.6, 1.0, 0.6)  # Light green
+            else:
+                # Dwell time > 0 and Z position is outside the tolerance, show in dark green
+                color = (0.0, 0.5, 0.0)  # Dark green
+
+            # Create a sphere to represent the dwell position
+            sphere_source = vtk.vtkSphereSource()
+            sphere_source.SetCenter(x_pixel, y_pixel, z_position)
+            sphere_source.SetRadius(point_size)  # Use point size from the spinbox
+            sphere_source.SetPhiResolution(20)
+            sphere_source.SetThetaResolution(20)
+
+            # Map the sphere to an actor
+            sphere_mapper = vtk.vtkPolyDataMapper()
+            sphere_mapper.SetInputConnection(sphere_source.GetOutputPort())
+
+            sphere_actor = vtk.vtkActor()
+            sphere_actor.SetMapper(sphere_mapper)
+
+            # Set the color based on the logic above
+            sphere_actor.GetProperty().SetColor(*color)
+            sphere_actor.GetProperty().SetOpacity(0.8)  # Full opacity
+
+            # Add the actor for the sphere to the renderer
+            renderer.AddActor(sphere_actor)
+            self.dwell_actors_co.append(sphere_actor)
+
+    # Re-render to show the updated scene with dwell positions
+    self.vtkWidgetCoronal.GetRenderWindow().Render()
+
+
+def display_brachy_channel_overlay_co(self):
+    """
+    Display brachytherapy channels as connected blue lines with solid blue spheres at each channel point.
+    - If the checkbox self.overlay_all_channels is selected, display all channels.
+    - Otherwise, display only the channel indicated by self.brachy_spinBox_01.
+    """
+    renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+
+    # Remove any previous channel actors
+    for actor in self.channel_actors_co:
+        renderer.RemoveActor(actor)
+    self.channel_actors_co.clear()
+
+    # Retrieve channels from dicom_data
+    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+
+    # Determine whether to show all channels or only the one selected by the spinbox
+    if self.overlay_all_channels.isChecked():
+        channels_to_display = channels  # Show all channels
+    else:
+        selected_channel_idx = self.brachy_spinBox_01.value() - 1  # Get the index from the spinbox
+        channels_to_display = [channels[selected_channel_idx]]  # Show only the selected channel
+
+    # Get the point size from the spinbox and halve it
+    point_size = self.dw_ch_point_size.value() / 2
+
+    # Iterate through the channels to display
+    for current_ch in channels_to_display:
+        ch_points = current_ch.get('ChPos')
+
+        # Check if 'ChPos' exists and contains valid data
+        if ch_points is None or not isinstance(ch_points, np.ndarray) or ch_points.shape[1] < 3:
+            continue  # Skip invalid channels
+
+        # Extract channel points (X, Y, Z coordinates)
+        x = ch_points[:, 0] - self.Im_PatPosition[0, 0]  # X coordinate in mm
+        z = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (ch_points[:, 1] - self.Im_PatPosition[0, 1])  # Y coordinate
+        y = ch_points[:, 2] - self.Im_PatPosition[0, 2]  # Z coordinate in mm
+
+        # Create a polyline to represent the connected channel points
+        points = vtk.vtkPoints()
+        lines = vtk.vtkCellArray()
+
+        # Add points and create lines between consecutive points
+        for i in range(len(x)):
+            points.InsertNextPoint(x[i], y[i], 0.5)  # Insert each point into vtkPoints
+            if i > 0:
+                line = vtk.vtkLine()
+                line.GetPointIds().SetId(0, i - 1)  # Line from previous point to current point
+                line.GetPointIds().SetId(1, i)
+                lines.InsertNextCell(line)
+
+            # Create solid blue spheres for each point
+            sphere_source = vtk.vtkSphereSource()
+            sphere_source.SetCenter(x[i], y[i], 0.5)
+            sphere_source.SetRadius(point_size)  # Sphere size is half of the value from the spinbox
+            sphere_source.SetPhiResolution(20)
+            sphere_source.SetThetaResolution(20)
+
+            # Map the sphere to an actor
+            sphere_mapper = vtk.vtkPolyDataMapper()
+            sphere_mapper.SetInputConnection(sphere_source.GetOutputPort())
+
+            sphere_actor = vtk.vtkActor()
+            sphere_actor.SetMapper(sphere_mapper)
+
+            # Set the color to solid blue for the spheres
+            sphere_actor.GetProperty().SetColor(0.0, 0.0, 1.0)  # Solid blue spheres
+            sphere_actor.GetProperty().SetOpacity(0.7)  # Full opacity
+
+            # Add the actor for the sphere to the renderer
+            renderer.AddActor(sphere_actor)
+            self.channel_actors_co.append(sphere_actor)
+
+        # Create the polyline
+        polyline = vtk.vtkPolyData()
+        polyline.SetPoints(points)
+        polyline.SetLines(lines)
+
+        # Map the polyline to an actor
+        polyline_mapper = vtk.vtkPolyDataMapper()
+        polyline_mapper.SetInputData(polyline)
+
+        polyline_actor = vtk.vtkActor()
+        polyline_actor.SetMapper(polyline_mapper)
+        polyline_actor.GetProperty().SetColor(0.0, 0.0, 1.0)  # Blue for the line
+        polyline_actor.GetProperty().SetLineWidth(2)  # Line width
+
+        # Add the polyline actor to the renderer
+        renderer.AddActor(polyline_actor)
+        self.channel_actors_co.append(polyline_actor)
+
+    # Render the updated display with the channels
+    self.vtkWidgetCoronal.GetRenderWindow().Render()
+
+
+
+
+
+
 def displaysagittal(self,Im = None):
     idx = self.layer_selection_box.currentIndex()
     if self.display_data[idx].ndim==2:
@@ -318,7 +707,12 @@ def displaysagittal(self,Im = None):
             self.circle_actors_sa.clear()
             # self.vtkWidgetAxial.GetRenderWindow().Render() 
             disp_roi_sagittal(self)
-            
+        if i == 3 and  self.display_dw_overlay.isChecked():
+            # Check if the required fields exist in dicom_data
+                display_dwell_positions_sa(self)
+        if i == 3 and  self.display_brachy_channel_overlay.isChecked():
+            # Check if the required fields exist in dicom_data
+                display_brachy_channel_overlay_sa(self)    
         
         if self.slice_thick[i] ==0:
             continue
@@ -362,9 +756,9 @@ def displaysagittal(self,Im = None):
             imageProperty.SetOpacity(0)  
         #
     # Render the updated data
-    self.vtkWidgetAxial.GetRenderWindow().Render()
     self.vtkWidgetSagittal.GetRenderWindow().Render()
     self.vtkWidgetCoronal.GetRenderWindow().Render()
+    self.vtkWidgetAxial.GetRenderWindow().Render()
     
 
 def disp_roi_sagittal(self):
@@ -466,7 +860,188 @@ def disp_roi_sagittal(self):
             continue
 
 
+def display_dwell_positions_sa(self):
+    """
+    Display the dwell positions on top of the DICOM images using VTK.
+    - If self.overlay_all_channels is selected, show all dwell positions from all channels.
+    - Otherwise, show dwell positions for the channel selected by self.brachy_spinBox_01.
+    - Uses the same point size as defined by self.dw_ch_point_size.
+    - Dwell positions with dwell_time == 0 are shown in red.
+    - Dwell positions with dwell_time > 0 are shown in dark green.
+    - Dwell positions within Ref_Z ± slice_thickness/2 are shown in light green.
+    """
+    renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
+    # Remove any previous dwell actors
+    for actor in self.dwell_actors_sa:
+        renderer.RemoveActor(actor)
+    self.dwell_actors_sa.clear()
+
+    # Retrieve channels from dicom_data
+    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+
+    # Determine whether to show all channels or only the one selected by the spinbox
+    if self.overlay_all_channels.isChecked():
+        channels_to_display = channels  # Show all channels
+    else:
+        selected_channel_idx = self.brachy_spinBox_01.value() - 1  # Get the index from the spinbox
+        channels_to_display = [channels[selected_channel_idx]]  # Show only the selected channel
+
+    # Get the point size from the spinbox
+    point_size = self.dw_ch_point_size.value() /1.5
+
+    # Get the current slice reference Z position and tolerance
+    Ref_z = self.current_sagittal_slice_index[0] * self.pixel_spac[0, 0] #- self.Im_Offset[1, 2]
+    z_tolerance = self.pixel_spac[0, 0] /2
+    # Iterate through the channels to display dwell positions
+    for current_ch in channels_to_display:
+        dwell_info = current_ch.get('DwellInfo')
+
+        if dwell_info is None or not isinstance(dwell_info, np.ndarray) or dwell_info.shape[1] < 7:
+            continue  # Skip invalid channels
+
+        # Extract dwell positions (X, Y, Z coordinates) and convert them to image space
+        dwell_times = dwell_info[:, 2]  # dwell time is in column 2
+        z = dwell_info[:, 3] - self.Im_PatPosition[0, 0]                                                              # X coordinate in mm
+        x = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (dwell_info[:, 4] - self.Im_PatPosition[0, 1])  # Y coordinate
+        y = dwell_info[:, 5] - self.Im_PatPosition[0, 2]                                                              # Z coordinate in mm
+        for i in range(len(x)):
+            # Convert physical coordinates (mm) to pixel coordinates
+            x_pixel = x[i]
+            y_pixel = y[i]
+            z_position = 0.5  # Set Z position slightly above the DICOM slice
+
+            # Determine the color based on dwell time and Z position
+            if dwell_times[i] == 0:
+                # Dwell time is 0, show in red
+                color = (1.0, 0.0, 0.0)  # Red
+            elif Ref_z - z_tolerance <= z[i] <= Ref_z + z_tolerance:
+                # Z position is within Ref_Z ± slice_thickness/2, show in light green
+                color = (0.6, 1.0, 0.6)  # Light green
+            else:
+                # Dwell time > 0 and Z position is outside the tolerance, show in dark green
+                color = (0.0, 0.5, 0.0)  # Dark green
+
+            # Create a sphere to represent the dwell position
+            sphere_source = vtk.vtkSphereSource()
+            sphere_source.SetCenter(x_pixel, y_pixel, z_position)
+            sphere_source.SetRadius(point_size)  # Use point size from the spinbox
+            sphere_source.SetPhiResolution(20)
+            sphere_source.SetThetaResolution(20)
+
+            # Map the sphere to an actor
+            sphere_mapper = vtk.vtkPolyDataMapper()
+            sphere_mapper.SetInputConnection(sphere_source.GetOutputPort())
+
+            sphere_actor = vtk.vtkActor()
+            sphere_actor.SetMapper(sphere_mapper)
+
+            # Set the color based on the logic above
+            sphere_actor.GetProperty().SetColor(*color)
+            sphere_actor.GetProperty().SetOpacity(0.8)  # Full opacity
+
+            # Add the actor for the sphere to the renderer
+            renderer.AddActor(sphere_actor)
+            self.dwell_actors_sa.append(sphere_actor)
+
+    # Re-render to show the updated scene with dwell positions
+    self.vtkWidgetSagittal.GetRenderWindow().Render()
+
+
+def display_brachy_channel_overlay_sa(self):
+    """
+    Display brachytherapy channels as connected blue lines with solid blue spheres at each channel point.
+    - If the checkbox self.overlay_all_channels is selected, display all channels.
+    - Otherwise, display only the channel indicated by self.brachy_spinBox_01.
+    """
+    renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+
+    # Remove any previous channel actors
+    for actor in self.channel_actors_sa:
+        renderer.RemoveActor(actor)
+    self.channel_actors_sa.clear()
+
+    # Retrieve channels from dicom_data
+    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+
+    # Determine whether to show all channels or only the one selected by the spinbox
+    if self.overlay_all_channels.isChecked():
+        channels_to_display = channels  # Show all channels
+    else:
+        selected_channel_idx = self.brachy_spinBox_01.value() - 1  # Get the index from the spinbox
+        channels_to_display = [channels[selected_channel_idx]]  # Show only the selected channel
+
+    # Get the point size from the spinbox and halve it
+    point_size = self.dw_ch_point_size.value() / 2
+
+    # Iterate through the channels to display
+    for current_ch in channels_to_display:
+        ch_points = current_ch.get('ChPos')
+
+        # Check if 'ChPos' exists and contains valid data
+        if ch_points is None or not isinstance(ch_points, np.ndarray) or ch_points.shape[1] < 3:
+            continue  # Skip invalid channels
+
+        # Extract channel points (X, Y, Z coordinates)
+        z = ch_points[:, 0] - self.Im_PatPosition[0, 0]  # X coordinate in mm
+        x = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (ch_points[:, 1] - self.Im_PatPosition[0, 1])  # Y coordinate
+        y = ch_points[:, 2] - self.Im_PatPosition[0, 2]  # Z coordinate in mm
+
+        # Create a polyline to represent the connected channel points
+        points = vtk.vtkPoints()
+        lines = vtk.vtkCellArray()
+
+        # Add points and create lines between consecutive points
+        for i in range(len(x)):
+            points.InsertNextPoint(x[i], y[i], 0.5)  # Insert each point into vtkPoints
+            if i > 0:
+                line = vtk.vtkLine()
+                line.GetPointIds().SetId(0, i - 1)  # Line from previous point to current point
+                line.GetPointIds().SetId(1, i)
+                lines.InsertNextCell(line)
+
+            # Create solid blue spheres for each point
+            sphere_source = vtk.vtkSphereSource()
+            sphere_source.SetCenter(x[i], y[i], 0.5)
+            sphere_source.SetRadius(point_size)  # Sphere size is half of the value from the spinbox
+            sphere_source.SetPhiResolution(20)
+            sphere_source.SetThetaResolution(20)
+
+            # Map the sphere to an actor
+            sphere_mapper = vtk.vtkPolyDataMapper()
+            sphere_mapper.SetInputConnection(sphere_source.GetOutputPort())
+
+            sphere_actor = vtk.vtkActor()
+            sphere_actor.SetMapper(sphere_mapper)
+
+            # Set the color to solid blue for the spheres
+            sphere_actor.GetProperty().SetColor(0.0, 0.0, 1.0)  # Solid blue spheres
+            sphere_actor.GetProperty().SetOpacity(0.7)  # Full opacity
+
+            # Add the actor for the sphere to the renderer
+            renderer.AddActor(sphere_actor)
+            self.channel_actors_sa.append(sphere_actor)
+
+        # Create the polyline
+        polyline = vtk.vtkPolyData()
+        polyline.SetPoints(points)
+        polyline.SetLines(lines)
+
+        # Map the polyline to an actor
+        polyline_mapper = vtk.vtkPolyDataMapper()
+        polyline_mapper.SetInputData(polyline)
+
+        polyline_actor = vtk.vtkActor()
+        polyline_actor.SetMapper(polyline_mapper)
+        polyline_actor.GetProperty().SetColor(0.0, 0.0, 1.0)  # Blue for the line
+        polyline_actor.GetProperty().SetLineWidth(2)  # Line width
+
+        # Add the polyline actor to the renderer
+        renderer.AddActor(polyline_actor)
+        self.channel_actors_sa.append(polyline_actor)
+
+    # Render the updated display with the channels
+    self.vtkWidgetSagittal.GetRenderWindow().Render()
 
 
 def update_layer_view(self):
