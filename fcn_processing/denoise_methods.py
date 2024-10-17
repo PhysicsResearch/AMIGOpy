@@ -4,7 +4,7 @@ from scipy.signal import wiener
 from skimage.restoration import denoise_wavelet, denoise_tv_chambolle, rolling_ball, denoise_nl_means, denoise_bilateral
 from skimage.filters import prewitt
 import numpy as np
-from bm3d import bm3d
+#from bm3d import bm3d
 from PyQt5.QtWidgets import QApplication
 
 
@@ -724,45 +724,45 @@ def apply_prewitt_filter(self):
        
 def apply_bm3d_denoising(self):
     idx = self.layer_selection_box.currentIndex()
-    sigma_psd  = float(self.Proces_spinbox_01.value())     # Standard deviation of the noise
-    #
-    if self.Process_set_box3.currentText() == "2D":
-        direction = self.Process_set_box.currentText()
-        # Determine the axis for averaging
-        axis = {'Axial': 0, 'Sagittal': 2, 'Coronal': 1}[direction]
-        num_slices = self.display_data[idx].shape[axis]
+    # sigma_psd  = float(self.Proces_spinbox_01.value())     # Standard deviation of the noise
+    # #
+    # if self.Process_set_box3.currentText() == "2D":
+    #     direction = self.Process_set_box.currentText()
+    #     # Determine the axis for averaging
+    #     axis = {'Axial': 0, 'Sagittal': 2, 'Coronal': 1}[direction]
+    #     num_slices = self.display_data[idx].shape[axis]
 
-        self.progressBar.setValue(0)
-        QApplication.processEvents()
+    #     self.progressBar.setValue(0)
+    #     QApplication.processEvents()
 
-        for i in range(num_slices):
-            if axis == 0:
-                # Preprocess, denoise, and postprocess
-                image, min_val, ptp_val, original_dtype = preprocess_image(self.display_data[idx][i, :, :])
-                denoised = bm3d(image, sigma_psd)
-                self.display_data[idx][i, :, :] = postprocess_image(denoised, min_val, ptp_val, original_dtype)
-            elif axis == 1:
-                # Preprocess, denoise, and postprocess
-                image, min_val, ptp_val, original_dtype = preprocess_image(self.display_data[idx][:, i, :])
-                denoised = bm3d(image, sigma_psd)
-                self.display_data[idx][:, i, :] = postprocess_image(denoised, min_val, ptp_val, original_dtype)
-            elif axis == 2:
-                # Preprocess, denoise, and postprocess
-                image, min_val, ptp_val, original_dtype = preprocess_image(self.display_data[idx][:, :, i])
-                denoised = bm3d(image, sigma_psd)
-                self.display_data[idx][:, :, i] = postprocess_image(denoised, min_val, ptp_val, original_dtype)
+    #     for i in range(num_slices):
+    #         if axis == 0:
+    #             # Preprocess, denoise, and postprocess
+    #             image, min_val, ptp_val, original_dtype = preprocess_image(self.display_data[idx][i, :, :])
+    #             denoised = bm3d(image, sigma_psd)
+    #             self.display_data[idx][i, :, :] = postprocess_image(denoised, min_val, ptp_val, original_dtype)
+    #         elif axis == 1:
+    #             # Preprocess, denoise, and postprocess
+    #             image, min_val, ptp_val, original_dtype = preprocess_image(self.display_data[idx][:, i, :])
+    #             denoised = bm3d(image, sigma_psd)
+    #             self.display_data[idx][:, i, :] = postprocess_image(denoised, min_val, ptp_val, original_dtype)
+    #         elif axis == 2:
+    #             # Preprocess, denoise, and postprocess
+    #             image, min_val, ptp_val, original_dtype = preprocess_image(self.display_data[idx][:, :, i])
+    #             denoised = bm3d(image, sigma_psd)
+    #             self.display_data[idx][:, :, i] = postprocess_image(denoised, min_val, ptp_val, original_dtype)
             
-            # Update progress bar
-            if i % 20 == 0 or i == num_slices - 1:  # Update every 20 slices or on the last slice
-                progress_percentage = int((i + 1) / num_slices * 100)
-                self.progressBar.setValue(progress_percentage)
-                QApplication.processEvents()
+    #         # Update progress bar
+    #         if i % 20 == 0 or i == num_slices - 1:  # Update every 20 slices or on the last slice
+    #             progress_percentage = int((i + 1) / num_slices * 100)
+    #             self.progressBar.setValue(progress_percentage)
+    #             QApplication.processEvents()
                 
-    elif self.Process_set_box3.currentText() == "3D":
-        # Preprocess, denoise, and postprocess
-        image, min_val, ptp_val, original_dtype = preprocess_image(self.display_data[idx])
-        denoised = bm3d(image, sigma_psd, stage_arg=stage_arg, block=block, step=step, group_size=group_size, beta=beta)
-        self.display_data[idx] = postprocess_image(denoised, min_val, ptp_val, original_dtype)
+    # elif self.Process_set_box3.currentText() == "3D":
+    #     # Preprocess, denoise, and postprocess
+    #     image, min_val, ptp_val, original_dtype = preprocess_image(self.display_data[idx])
+    #     denoised = bm3d(image, sigma_psd, stage_arg=stage_arg, block=block, step=step, group_size=group_size, beta=beta)
+    #     self.display_data[idx] = postprocess_image(denoised, min_val, ptp_val, original_dtype)
 
 def preprocess_image(image):
     original_dtype = image.dtype

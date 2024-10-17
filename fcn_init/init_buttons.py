@@ -19,6 +19,7 @@ from fcn_DECT.DECT_table_disp import c_roi_getdata_HU_high_low
 from fcn_DECT.Ivalue_Zeff_fit import plot_I_value_points, plot_I_value_precalc, cal_plot_I_value_points
 from fcn_DECT.create_process_dect import creat_DECT_derived_maps, c_roi_scatter_plot, export_all_DECT_tables, save_parameters_to_csv, load_parameters_from_csv
 from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwell_channels
+from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
 
 def initialize_software_buttons(self):
     # IrIS add row dw table
@@ -165,17 +166,38 @@ def on_display_dw_overlay_clicked(self):
     Slot called when the display_dw_overlay checkbox is clicked.
     Checks if the plan exists and shows an error if not. Otherwise, displays dwell overlay.
     """
-    renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    renderer_ax = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    renderer_co = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    renderer_sa = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
     # Remove any previous dwell actors
-    for actor in self.dwell_actors:
-        renderer.RemoveActor(actor)
-    self.dwell_actors.clear()
+    for actor in self.dwell_actors_ax:
+        renderer_ax.RemoveActor(actor)
+    self.dwell_actors_ax.clear()
+    #
+    for actor in self.dwell_actors_co:
+        renderer_co.RemoveActor(actor)
+    self.dwell_actors_co.clear()
+    #
+    for actor in self.dwell_actors_sa:
+        renderer_sa.RemoveActor(actor)
+    self.dwell_actors_sa.clear()
     #
     # Remove any previous channelactors
-    for actor in self.channel_actors:
-        renderer.RemoveActor(actor)
-    self.channel_actors.clear()
+    for actor in self.channel_actors_ax:
+        renderer_ax.RemoveActor(actor)
+    self.channel_actors_ax.clear()
     #
+    for actor in self.channel_actors_co:
+        renderer_co.RemoveActor(actor)
+    self.channel_actors_co.clear()
+    #
+    for actor in self.channel_actors_sa:
+        renderer_sa.RemoveActor(actor)
+    self.channel_actors_sa.clear()
+    #    #
+    displayaxial(self)
+    displaysagittal(self)
+    displaycoronal(self)
     #
     # Check if the required fields exist in dicom_data
     try:
@@ -201,6 +223,7 @@ def on_display_dw_overlay_clicked(self):
         QtWidgets.QMessageBox.critical(self, "Invalid Plan", "The selected plan is invalid or empty.")
         self.display_dw_overlay.setChecked(False)  # Uncheck the checkbox if plan is invalid
         return
+
 
     
     

@@ -5,6 +5,7 @@ channels:
   - defaults
 dependencies:
   - alabaster=0.7.12=pyhd3eb1b0_0
+  - altgraph=0.17.3=py311haa95532_0
   - aom=3.6.0=hd77b12b_0
   - arrow=1.2.3=py311haa95532_1
   - astroid=2.14.2=py311haa95532_0
@@ -25,8 +26,8 @@ dependencies:
   - brotli-bin=1.0.9=h8ffe710_7
   - brotli-python=1.0.9=py311hd77b12b_7
   - bzip2=1.0.8=he774522_0
-  - ca-certificates=2024.7.2=haa95532_0
-  - certifi=2024.7.4=py311haa95532_0
+  - ca-certificates=2024.9.24=haa95532_0
+  - certifi=2024.8.30=py311haa95532_0
   - cffi=1.16.0=py311h2bbff1b_0
   - cfitsio=3.470=h0af3d06_7
   - chardet=4.0.0=py311haa95532_1003
@@ -144,6 +145,7 @@ dependencies:
   - parso=0.8.3=pyhd3eb1b0_0
   - pathspec=0.10.3=py311haa95532_0
   - pcre=8.45=hd77b12b_0
+  - pefile=2023.2.7=py311haa95532_0
   - pexpect=4.8.0=pyhd3eb1b0_3
   - pickleshare=0.7.5=pyhd3eb1b0_1003
   - pillow=10.0.1=py311h045eedc_0
@@ -162,6 +164,8 @@ dependencies:
   - pydocstyle=6.3.0=py311haa95532_0
   - pyflakes=3.0.1=py311haa95532_0
   - pygments=2.15.1=py311haa95532_1
+  - pyinstaller=5.13.2=py311h2bbff1b_0
+  - pyinstaller-hooks-contrib=2024.7=py311haa95532_0
   - pylint=2.16.2=py311haa95532_0
   - pylint-venv=2.3.0=py311haa95532_0
   - pyls-spyder=0.4.0=pyhd3eb1b0_0
@@ -264,5 +268,6 @@ dependencies:
       - matplotlib==3.8.0
       - mplcursors==0.5.3
       - pyparsing==3.1.1
+      - python-gdcm==3.0.24.1
       - vtk==9.2.6
 prefix: C:\Users\gabriel.paivafonseca\AppData\Local\anaconda3\envs\amigo
