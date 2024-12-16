@@ -11,15 +11,22 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QFileDialog, QTextEdit, QVBoxLayout, QFileDialog,
-    QWidget, QLineEdit, QLabel, QComboBox, QCheckBox, QTableWidget, QTableWidgetItem)
+    QWidget, QLineEdit, QLabel, QComboBox, QCheckBox, QTableWidget, QTableWidgetItem, QMessageBox)
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-
 # Convert images to RED Zeff SPR and I-value
 #
 #
 def creat_DECT_derived_maps(self):
     # Get HU_low
+    if not hasattr(self, 'series_info_dict') or not self.series_info_dict:
+        warning_box = QMessageBox()
+        warning_box.setIcon(QMessageBox.Warning)
+        warning_box.setWindowTitle("Warning")
+        warning_box.setText('Calibration not loaded or missing parameters')
+        warning_box.setStandardButtons(QMessageBox.Ok)
+        warning_box.exec_()
+        return
     selected_index_L = self.scatter_plot_im_01.currentIndex()
     series_label_L, patient_id_L, study_id_L, modality_L, item_index_L = self.series_info_dict[selected_index_L]      
     # Get HU_High
@@ -353,176 +360,188 @@ def export_tableSPR(self, folder=None):
     
     
 def c_roi_scatter_plot(self):
-    selected_index_im_01 = self.scatter_plot_im_01.currentIndex()
-    series_label_01, patient_id_01, study_id_01, modality_01, item_index_01 = self.series_info_dict[selected_index_im_01]
-    reference_image_01 = self.dicom_data[patient_id_01][study_id_01][modality_01][item_index_01]['3DMatrix']
-
-    selected_index_im_02 = self.scatter_plot_im_02.currentIndex()
-    series_label_02, patient_id_02, study_id_02, modality_02, item_index_02 = self.series_info_dict[selected_index_im_02]
-    reference_image_02 = self.dicom_data[patient_id_02][study_id_02][modality_02][item_index_02]['3DMatrix']
-
-    num_values = self.DECT_scatt_N.value()
-    point_size = self.DECT_sct_p_size.value()
-
-    x_data_all = []
-    y_data_all = []
-    colors = []
-    labels = []
-
-    export_data = []
+    try:
+        selected_index_im_01 = self.scatter_plot_im_01.currentIndex()
+        series_label_01, patient_id_01, study_id_01, modality_01, item_index_01 = self.series_info_dict[selected_index_im_01]
+        reference_image_01 = self.dicom_data[patient_id_01][study_id_01][modality_01][item_index_01]['3DMatrix']
     
+        selected_index_im_02 = self.scatter_plot_im_02.currentIndex()
+        series_label_02, patient_id_02, study_id_02, modality_02, item_index_02 = self.series_info_dict[selected_index_im_02]
+        reference_image_02 = self.dicom_data[patient_id_02][study_id_02][modality_02][item_index_02]['3DMatrix']
     
-    font_size = self.selected_font_size
-    background_color = self.selected_background
+        num_values = self.DECT_scatt_N.value()
+        point_size = self.DECT_sct_p_size.value()
     
-    # Determine text and label colors based on the background color
-    if background_color == 'Transparent':
-        text_color = 'white'
-        bg         = 'transparent'
-    elif background_color == 'White':
-        text_color = 'black'
-        bg         = 'white'
-    else:
-        text_color = 'black'  # Default to black for any other background color
+        x_data_all = []
+        y_data_all = []
+        colors = []
+        labels = []
     
-
-    for row in range(self.table_circ_roi.rowCount()):
-        try:
-            item_x = self.table_circ_roi.item(row, 0)
-            item_y = self.table_circ_roi.item(row, 1)
-            item_radius = self.table_circ_roi.item(row, 2)
-            sli_ini = self.table_circ_roi.item(row, 3)
-            sli_fin = self.table_circ_roi.item(row, 4)
-            item_r = self.table_circ_roi.item(row, 6)
-            item_g = self.table_circ_roi.item(row, 7)
-            item_b = self.table_circ_roi.item(row, 8)
-
-            if item_x is None or item_y is None or item_radius is None or sli_ini is None or sli_fin is None or item_r is None or item_g is None or item_b is None:
-                print(f'Skipping row {row} due to missing data')
+        export_data = []
+        
+        
+        font_size = self.selected_font_size
+        background_color = self.selected_background
+        
+        # Determine text and label colors based on the background color
+        if background_color == 'Transparent':
+            text_color = 'white'
+            bg         = 'transparent'
+        elif background_color == 'White':
+            text_color = 'black'
+            bg         = 'white'
+        else:
+            text_color = 'black'  # Default to black for any other background color
+        
+    
+        for row in range(self.table_circ_roi.rowCount()):
+            try:
+                item_x = self.table_circ_roi.item(row, 0)
+                item_y = self.table_circ_roi.item(row, 1)
+                item_radius = self.table_circ_roi.item(row, 2)
+                sli_ini = self.table_circ_roi.item(row, 3)
+                sli_fin = self.table_circ_roi.item(row, 4)
+                item_r = self.table_circ_roi.item(row, 6)
+                item_g = self.table_circ_roi.item(row, 7)
+                item_b = self.table_circ_roi.item(row, 8)
+    
+                if item_x is None or item_y is None or item_radius is None or sli_ini is None or sli_fin is None or item_r is None or item_g is None or item_b is None:
+                    print(f'Skipping row {row} due to missing data')
+                    continue
+    
+                center_x = float(item_x.text())
+                center_y = float(item_y.text())
+                radius = float(item_radius.text())
+                slice_ini = int(float(sli_ini.text()))
+                slice_fin = int(float(sli_fin.text()))
+                color = (float(item_r.text()), float(item_g.text()), float(item_b.text()))
+    
+                # Create a mask for the ROI
+                mask = np.zeros(reference_image_01.shape, dtype=bool)
+                for z in range(slice_ini, slice_fin + 1):
+                    y, x = np.ogrid[-center_y:reference_image_01.shape[1] - center_y, -center_x:reference_image_01.shape[2] - center_x]
+                    mask[z] = x*x + y*y <= radius*radius
+    
+                # Apply the mask to the reference images
+                masked_data_01 = reference_image_01[mask]
+                masked_data_02 = reference_image_02[mask]
+    
+                # Store selected number of values
+                if len(masked_data_01) >= num_values and len(masked_data_02) >= num_values:
+                    selected_values_01 = np.random.choice(masked_data_01, num_values, replace=False)
+                    selected_values_02 = np.random.choice(masked_data_02, num_values, replace=False)
+    
+                    x_data_all.append(selected_values_01)
+                    y_data_all.append(selected_values_02)
+                    colors.append(color)
+                    labels.append(f'ROI {row + 1}')
+    
+                    for x_val, y_val in zip(selected_values_01, selected_values_02):
+                        export_data.append([row + 1, x_val, y_val])
+                else:
+                    print(f'Not enough data points in the ROI for row {row}')
+    
+            except ValueError:
+                print(f'Skipping row {row} due to invalid data')
                 continue
-
-            center_x = float(item_x.text())
-            center_y = float(item_y.text())
-            radius = float(item_radius.text())
-            slice_ini = int(float(sli_ini.text()))
-            slice_fin = int(float(sli_fin.text()))
-            color = (float(item_r.text()), float(item_g.text()), float(item_b.text()))
-
-            # Create a mask for the ROI
-            mask = np.zeros(reference_image_01.shape, dtype=bool)
-            for z in range(slice_ini, slice_fin + 1):
-                y, x = np.ogrid[-center_y:reference_image_01.shape[1] - center_y, -center_x:reference_image_01.shape[2] - center_x]
-                mask[z] = x*x + y*y <= radius*radius
-
-            # Apply the mask to the reference images
-            masked_data_01 = reference_image_01[mask]
-            masked_data_02 = reference_image_02[mask]
-
-            # Store selected number of values
-            if len(masked_data_01) >= num_values and len(masked_data_02) >= num_values:
-                selected_values_01 = np.random.choice(masked_data_01, num_values, replace=False)
-                selected_values_02 = np.random.choice(masked_data_02, num_values, replace=False)
-
-                x_data_all.append(selected_values_01)
-                y_data_all.append(selected_values_02)
-                colors.append(color)
-                labels.append(f'ROI {row + 1}')
-
-                for x_val, y_val in zip(selected_values_01, selected_values_02):
-                    export_data.append([row + 1, x_val, y_val])
-            else:
-                print(f'Not enough data points in the ROI for row {row}')
-
-        except ValueError:
-            print(f'Skipping row {row} due to invalid data')
-            continue
-
-    if not hasattr(self, 'plot_DECT_scat_fig'):
-        self.plot_DECT_scat_fig = Figure()  # Create a figure for the first time
-
-    # Clear the plot if the checkbox is not checked
-    if not self.checkBox_newScplot.isChecked():
-        self.plot_DECT_scat_fig.clear()
-
-    ax = self.plot_DECT_scat_fig.add_subplot(111) if not self.checkBox_newScplot.isChecked() else self.plot_DECT_scat_fig.gca()
-
-    # Set plot background to transparent
-    ax.patch.set_alpha(0.0)
-    self.plot_DECT_scat_fig.patch.set_alpha(0.0)
-
-    # Customize text and axes properties
-    # Customize text and axes properties
-    ax.tick_params(colors=text_color, labelsize=font_size)  # Set text color and font size
-    ax.xaxis.label.set_color(text_color)
-    ax.yaxis.label.set_color(text_color)
-    ax.xaxis.label.set_fontsize(font_size)  # Set font size for x-axis label
-    ax.yaxis.label.set_fontsize(font_size)  # Set font size for y-axis label
-    ax.spines['bottom'].set_color(text_color)
-    ax.spines['top'].set_color(text_color)
-    ax.spines['left'].set_color(text_color)
-    ax.spines['right'].set_color(text_color)
-
-    # Plot the data as a scatter plot
-    scatter_plots = []
-    if self.selected_legend_on_off == "On":
-        for i in range(len(x_data_all)):
-            scatter = ax.scatter(x_data_all[i], y_data_all[i], label=labels[i], color=colors[i], s=point_size)
-            scatter_plots.append(scatter)
-        ax.legend(edgecolor=text_color, fontsize=self.selected_legend_font_size)
-    else:
-        for i in range(len(x_data_all)):
-            scatter = ax.scatter(x_data_all[i], y_data_all[i], color=colors[i], s=point_size)
-            scatter_plots.append(scatter)
-
-    # Create a canvas and toolbar
-    canvas = FigureCanvas(self.plot_DECT_scat_fig)
-    canvas.setStyleSheet(f"background-color:{bg};")
-    toolbar = NavigationToolbar(canvas, self)
-
-    # Plot the data as a scatter plot
-    if self.selected_legend_on_off == "On":
-        for i in range(len(x_data_all)):
-            ax.scatter(x_data_all[i], y_data_all[i], label=labels[i], color=colors[i], s=point_size)
-        ax.legend(edgecolor=text_color, fontsize=self.selected_legend_font_size)
-    else:
-        for i in range(len(x_data_all)):
-            ax.scatter(x_data_all[i], y_data_all[i], color=colors[i], s=point_size)
-
-
-    # Create a canvas and toolbar
-    canvas = FigureCanvas(self.plot_DECT_scat_fig)
-    canvas.setStyleSheet(f"background-color:{bg};")
-    toolbar = NavigationToolbar(canvas, self)
-
-    # Check if the container has a layout, set one if not
-    container = self.DECT_Scatt_Ax_View
-    if container.layout() is None:
-        layout = QVBoxLayout(container)
-        container.setLayout(layout)
-    else:
-        # Clear existing content in the container, if any
-        while container.layout().count():
-            child = container.layout().takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-                
-    # Add the canvas and toolbar to the container
-    container.layout().addWidget(toolbar)
-    container.layout().addWidget(canvas)
-    canvas.draw()
-
-
-    # Export data to CSV if checkbox is checked
-    if self.DECT_exp_scatt_data.isChecked():
-        options = QFileDialog.Options()
-        folder = QFileDialog.getExistingDirectory(self, "Select Folder", options=options)
-        if folder:
-            file_path = os.path.join(folder, "DECT_scatter_export.csv")
-            with open(file_path, mode='w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow(['ROI', 'Image1_Value', 'Image2_Value'])
-                writer.writerows(export_data)
-                
+    
+        if not hasattr(self, 'plot_DECT_scat_fig'):
+            self.plot_DECT_scat_fig = Figure()  # Create a figure for the first time
+    
+        # Clear the plot if the checkbox is not checked
+        if not self.checkBox_newScplot.isChecked():
+            self.plot_DECT_scat_fig.clear()
+    
+        ax = self.plot_DECT_scat_fig.add_subplot(111) if not self.checkBox_newScplot.isChecked() else self.plot_DECT_scat_fig.gca()
+    
+        # Set plot background to transparent
+        ax.patch.set_alpha(0.0)
+        self.plot_DECT_scat_fig.patch.set_alpha(0.0)
+    
+        # Customize text and axes properties
+        # Customize text and axes properties
+        ax.tick_params(colors=text_color, labelsize=font_size)  # Set text color and font size
+        ax.xaxis.label.set_color(text_color)
+        ax.yaxis.label.set_color(text_color)
+        ax.xaxis.label.set_fontsize(font_size)  # Set font size for x-axis label
+        ax.yaxis.label.set_fontsize(font_size)  # Set font size for y-axis label
+        ax.spines['bottom'].set_color(text_color)
+        ax.spines['top'].set_color(text_color)
+        ax.spines['left'].set_color(text_color)
+        ax.spines['right'].set_color(text_color)
+    
+        # Plot the data as a scatter plot
+        scatter_plots = []
+        if self.selected_legend_on_off == "On":
+            for i in range(len(x_data_all)):
+                scatter = ax.scatter(x_data_all[i], y_data_all[i], label=labels[i], color=colors[i], s=point_size)
+                scatter_plots.append(scatter)
+            ax.legend(edgecolor=text_color, fontsize=self.selected_legend_font_size)
+        else:
+            for i in range(len(x_data_all)):
+                scatter = ax.scatter(x_data_all[i], y_data_all[i], color=colors[i], s=point_size)
+                scatter_plots.append(scatter)
+    
+        # Create a canvas and toolbar
+        canvas = FigureCanvas(self.plot_DECT_scat_fig)
+        canvas.setStyleSheet(f"background-color:{bg};")
+        toolbar = NavigationToolbar(canvas, self)
+    
+        # Plot the data as a scatter plot
+        if self.selected_legend_on_off == "On":
+            for i in range(len(x_data_all)):
+                ax.scatter(x_data_all[i], y_data_all[i], label=labels[i], color=colors[i], s=point_size)
+            ax.legend(edgecolor=text_color, fontsize=self.selected_legend_font_size)
+        else:
+            for i in range(len(x_data_all)):
+                ax.scatter(x_data_all[i], y_data_all[i], color=colors[i], s=point_size)
+    
+    
+        # Create a canvas and toolbar
+        canvas = FigureCanvas(self.plot_DECT_scat_fig)
+        canvas.setStyleSheet(f"background-color:{bg};")
+        toolbar = NavigationToolbar(canvas, self)
+    
+        # Check if the container has a layout, set one if not
+        container = self.DECT_Scatt_Ax_View
+        if container.layout() is None:
+            layout = QVBoxLayout(container)
+            container.setLayout(layout)
+        else:
+            # Clear existing content in the container, if any
+            while container.layout().count():
+                child = container.layout().takeAt(0)
+                if child.widget():
+                    child.widget().deleteLater()
+                    
+        # Add the canvas and toolbar to the container
+        container.layout().addWidget(toolbar)
+        container.layout().addWidget(canvas)
+        canvas.draw()
+    
+    
+        # Export data to CSV if checkbox is checked
+        if self.DECT_exp_scatt_data.isChecked():
+            options = QFileDialog.Options()
+            folder = QFileDialog.getExistingDirectory(self, "Select Folder", options=options)
+            if folder:
+                file_path = os.path.join(folder, "DECT_scatter_export.csv")
+                with open(file_path, mode='w', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerow(['ROI', 'Image1_Value', 'Image2_Value'])
+                    writer.writerows(export_data)
+    except Exception as e:
+        # Catch any other unexpected errors and show them in a dialog
+        show_error_dialog(self, f"An error occurred: {str(e)}")  
+        
+        
+def show_error_dialog(self, message):
+    error_dialog = QMessageBox()
+    error_dialog.setIcon(QMessageBox.Critical)
+    error_dialog.setText("Error")
+    error_dialog.setInformativeText(message)
+    error_dialog.setWindowTitle("Error")
+    error_dialog.exec_()                    
                 
 def save_parameters_to_csv(self):
         options = QFileDialog.Options()
