@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.optimize import least_squares
-from PyQt5.QtWidgets import QVBoxLayout, QTableWidget, QTableWidgetItem
+from PyQt5.QtWidgets import QVBoxLayout, QTableWidget, QTableWidgetItem, QMessageBox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -339,8 +339,18 @@ def create_and_embed_plot_Zeff_plot_01(self):
     container.layout().addWidget(canvas)
     canvas.draw()
 
-    
+def show_error_dialog(self, message):
+    error_dialog = QMessageBox()
+    error_dialog.setIcon(QMessageBox.Critical)
+    error_dialog.setText("Error")
+    error_dialog.setInformativeText(message)
+    error_dialog.setWindowTitle("Error")
+    error_dialog.exec_()       
     
 def Zeff_fit_plot_fcn(self):
-    extract_data_and_fit(self)
-    create_and_embed_plot_Zeff_plot_01(self)
+    try:
+        extract_data_and_fit(self)
+        create_and_embed_plot_Zeff_plot_01(self)
+    except Exception as e:
+        # Catch any other unexpected errors and show them in a dialog
+        show_error_dialog(self, f"An error occurred: {str(e)}")   

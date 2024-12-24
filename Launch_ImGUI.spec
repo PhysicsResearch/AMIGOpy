@@ -3,14 +3,18 @@
 
 block_cipher = None
 
+datas = [
+    ('C:/AMIGOpy/icons/ruler.png', 'icons'),  
+	('C:/AMIGOpy/icons/dcm_insp.png', 'icons')
+]
 
 a = Analysis(
     ['Launch_ImGUI.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=datas,
     hiddenimports=[],
-    hookspath=['c:/AMIGOpy/hooks/'],
+    hookspath=['./hooks'],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
@@ -31,7 +35,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

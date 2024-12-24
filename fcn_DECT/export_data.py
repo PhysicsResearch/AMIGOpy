@@ -33,10 +33,10 @@ def export_matinfotable_to_csv(self):
     header = [self.MatInfoTable.horizontalHeaderItem(i).text() for i in range(column_count)]
 
     # Define the columns to be kept as is
-    keep_as_is = ["Den", "RED", "Zeff", "I", "SPR", "HUlow", "HUhigh"]
+    keep_as_is = ["Den", "RED", "Zeff", "Iv", "SPR", "HUlow", "HUhigh"]
 
     # Construct the header row as specified
-    header_row = "# Material Name, Atomic Number, Mass Fraction, Den, RED, Zeff, I, SPR, HUlow, HUhigh"
+    header_row = "# Material Name, Atomic Number, Mass Fraction, Den, RED, Zeff, Iv, SPR, HUlow, HUhigh"
     data.append(header_row)
 
     # Get the table data

@@ -1,4 +1,5 @@
 import sys
+import os
 import qdarkstyle
 from PyQt5.QtWidgets import QApplication, QMainWindow, QToolBar
 from ImGUI import Ui_AMIGOpy  # Assuming this is the name of your main window class in ImGUI.py
@@ -20,10 +21,12 @@ from fcn_init.init_tables             import initialize_software_tables
 from fcn_init.init_buttons            import initialize_software_buttons
 from fcn_init.init_load_files         import load_Source_cal_csv_file
 from fcn_init.init_list_menus         import populate_operation_list
+from fcn_load.load_dcm                import load_all_dcm
+import vtk
 
 
 class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
-    def __init__(self):
+    def __init__(self,folder_path=None):
         super(MyApp, self).__init__()
         #
         # Set up the user interface from Designer.
@@ -67,7 +70,12 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.transTab['DECT']    = [1,0,0,0]
         self.layerTab['Plan']    = 0
         self.transTab['Plan']    = [1,0,0,0]
-        menu_bar_icon_actions(self)
+        self.layerTab['CSV Files']    = 0
+        self.transTab['CSV Files']    = [1,0,0,0]
+        #
+        # Set the path relative to the executable's location
+        base_path = os.path.dirname(os.path.abspath(__file__))     # Location of the script or the executable
+        menu_bar_icon_actions(self,base_path)
         #
         # create vtk comp axes -buttom
         self.but_create_comp_axes.clicked.connect(lambda: create_vtk_elements_comp(self))
@@ -111,6 +119,12 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.imageActorAxComp   = {}
         #
         self.DataTreeView.clicked.connect(lambda index: on_DataTreeView_clicked(self, index))
+        #
+        vtk.vtkObject.GlobalWarningDisplayOff()
+        # if folder_path is not None:
+        #     print(folder_path)
+        #     load_all_dcm(self,folder_path, progress_callback=None, update_label=None)
+
 
     def organize_dcm_folder(self):
         self.label.setText("Reading folders")
@@ -183,7 +197,13 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MyApp()
+    folder_path = None
+    if len(sys.argv) > 1:
+        folder_path = sys.argv[1]  # Capture folder path from the command-line arguments
+    window = MyApp(folder_path)
     app.setStyleSheet(qdarkstyle.load_stylesheet())
     window.show()
+    if folder_path is not None:
+        print(folder_path)
+        load_all_dcm(window,folder_path, progress_callback=None, update_label=None)
     sys.exit(app.exec_())

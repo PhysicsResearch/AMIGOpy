@@ -11,7 +11,7 @@ def plot_I_value_points(self):
     plt.close('all')
     # Find column indexes for 'Zeff' and 'I'
     zeff_column_index = find_column_index(self,"Zeff")
-    i_column_index = find_column_index(self,"I")
+    i_column_index = find_column_index(self,"Iv")
 
     # Extract Zeff and I values from the table
     zeff_values = []
@@ -74,12 +74,19 @@ def plot_I_value_points(self):
     self.Ivalue_figure.layout().addWidget(toolbar)
     self.Ivalue_figure.layout().addWidget(self.canvas_I_value)
     self.canvas_I_value.draw()
-    
+
+def show_error_dialog(self, message):
+    error_dialog = QMessageBox()
+    error_dialog.setIcon(QMessageBox.Critical)
+    error_dialog.setText("Error")
+    error_dialog.setInformativeText(message)
+    error_dialog.setWindowTitle("Error")
+    error_dialog.exec_()
     
 def cal_plot_I_value_points(self):     
     # Find column indexes for 'Zeff' and 'I'
     zeff_column_index = find_column_index(self,"Zeff")
-    i_column_index    = find_column_index(self,"I")
+    i_column_index    = find_column_index(self,"Iv")
     # Extract Zeff and I values from the table
     zeff_values = []
     i_values = []
@@ -87,9 +94,23 @@ def cal_plot_I_value_points(self):
         zeff_item = self.MatInfoTable.item(row, zeff_column_index)
         i_item    = self.MatInfoTable.item(row, i_column_index)
         if zeff_item is not None and i_item is not None:
-            zeff_values.append(float(zeff_item.text()))
-            i_val = np.log(float(i_item.text()))
-            i_values.append(i_val)
+            try:
+                zeff_values.append(float(zeff_item.text()))
+                i_val = np.log(float(i_item.text()))
+                i_values.append(i_val)
+            except ValueError:
+                # Handle conversion error
+                show_error_dialog(self, "Error: Invalid numerical values in the table. Please ensure all 'Zeff' and 'I' values are valid numbers.")
+                return
+    # Check if zeff_values and i_values are not empty and have the same length
+    if not zeff_values or not i_values:
+        show_error_dialog(self,"Error: 'Zeff' or 'I' values are missing. Please ensure the table is correctly populated.")
+        return
+
+    if len(zeff_values) != len(i_values):
+        show_error_dialog(self,"Error: 'Zeff' and 'I' values do not have the same length. Please check the table.")
+        return
+
     # Get number of fits and fit limits
     n_fits, fit_limits = get_fit_regions(self)
     # Ensure fit_limits has the correct number of entries
@@ -224,22 +245,26 @@ def get_fit_regions(self):
     return n_fits, fit_limits                   
     
     
-def plot_I_value_precalc(self):  
-    # Retrieve and split the values from QLineEdit fields
-    a_values = [float(a) for a in self.I_value_a_coeff_calc.text().split()]
-    b_values = [float(b) for b in self.I_value_b_coeff_calc.text().split()]
-    min_values = [float(min_val) for min_val in self.I_value_z_lw_values.text().split()]
-    max_values = [float(max_val) for max_val in self.I_value_z_up_values.text().split()]
-    # Check if all lists have the same length
-    if not (len(a_values) == len(b_values) == len(min_values) == len(max_values)):
-        print("Error: Mismatch in the number of entries in the fields.")
-        return
-    # Plot each line segment
-    for a, b, min_val, max_val in zip(a_values, b_values, min_values, max_values):
-        x = np.linspace(min_val, max_val, 100)
-        y = a * x + b
-        self.ax_I_value.plot(x, y, color='red', label=f'y = {a:.2f}x + {b:.2f}')
-
-    # Update the legend and redraw the canvas
-    self.ax_I_value.legend()
-    self.canvas_I_value.draw_idle()
+def plot_I_value_precalc(self):
+    try: 
+        # Retrieve and split the values from QLineEdit fields
+        a_values = [float(a) for a in self.I_value_a_coeff_calc.text().split()]
+        b_values = [float(b) for b in self.I_value_b_coeff_calc.text().split()]
+        min_values = [float(min_val) for min_val in self.I_value_z_lw_values.text().split()]
+        max_values = [float(max_val) for max_val in self.I_value_z_up_values.text().split()]
+        # Check if all lists have the same length
+        if not (len(a_values) == len(b_values) == len(min_values) == len(max_values)):
+            print("Error: Mismatch in the number of entries in the fields.")
+            return
+        # Plot each line segment
+        for a, b, min_val, max_val in zip(a_values, b_values, min_values, max_values):
+            x = np.linspace(min_val, max_val, 100)
+            y = a * x + b
+            self.ax_I_value.plot(x, y, color='red', label=f'y = {a:.2f}x + {b:.2f}')
+    
+        # Update the legend and redraw the canvas
+        self.ax_I_value.legend()
+        self.canvas_I_value.draw_idle()
+    except Exception as e:
+        # Catch any other unexpected errors and show them in a dialog
+        show_error_dialog(self,f"An error occurred: {str(e)}")
