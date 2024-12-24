@@ -31,7 +31,7 @@ def create_dataframe(self):
         return None
     #
     data = []
-    additional_tags = ['Den', 'RED', 'Zeff', 'I', 'SPR','HUlow','HUhigh']
+    additional_tags = ['Den', 'RED', 'Zeff','Iv', 'SPR','HUlow','HUhigh']
     all_columns = set(additional_tags)
     
     lb=0

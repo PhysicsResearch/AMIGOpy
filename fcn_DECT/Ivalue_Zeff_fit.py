@@ -11,7 +11,7 @@ def plot_I_value_points(self):
     plt.close('all')
     # Find column indexes for 'Zeff' and 'I'
     zeff_column_index = find_column_index(self,"Zeff")
-    i_column_index = find_column_index(self,"I")
+    i_column_index = find_column_index(self,"Iv")
 
     # Extract Zeff and I values from the table
     zeff_values = []
@@ -86,7 +86,7 @@ def show_error_dialog(self, message):
 def cal_plot_I_value_points(self):     
     # Find column indexes for 'Zeff' and 'I'
     zeff_column_index = find_column_index(self,"Zeff")
-    i_column_index    = find_column_index(self,"I")
+    i_column_index    = find_column_index(self,"Iv")
     # Extract Zeff and I values from the table
     zeff_values = []
     i_values = []

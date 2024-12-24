@@ -56,7 +56,7 @@ def reset_matTable(self):
     self.MatInfoTable.setColumnCount(11)  # Set the number of columns to 11
     
     # Define the column headers
-    headers = ['Name', 'H', 'C', 'O', 'Den.', 'RED', 'Zeff', 'I', 'SPR', 'HUlow','HUhigh']
+    headers = ['Name', 'H', 'C', 'O', 'Den.', 'RED', 'Zeff', 'Iv', 'SPR', 'HUlow','HUhigh']
     self.MatInfoTable.setHorizontalHeaderLabels(headers)
     
     # Add "New Row" to the Name column of all rows

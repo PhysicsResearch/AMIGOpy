@@ -122,11 +122,11 @@ def calculate_mat_par(self):
             Iv   = df_I[selected_columns].sum(axis=1)/df[selected_columns].sum(axis=1)
             Iv   = np.exp(Iv)
             Iv   = Iv.round(2)
-            Iv   = Iv.to_frame(name='I')
+            Iv   = Iv.to_frame(name='Iv')
         else:
             # If the checkBox_calRED is not checked, take the RED values from the 'RED' column in df
-            Iv = df[['I']].copy()
-            Iv['I'] = pd.to_numeric(Iv['I'], errors='coerce')  # Convert 'RED' column to float or appropriate dtype
+            Iv = df[['Iv']].copy()
+            Iv['Iv'] = pd.to_numeric(Iv['Iv'], errors='coerce')  # Convert 'RED' column to float or appropriate dtype
         # #
         # Check the state of the checkBox_calRED
         if self.checkBox_calRED.isChecked():
@@ -155,14 +155,14 @@ def calculate_mat_par(self):
         Iv_transformed = Iv.applymap(lambda x: 12.16 - np.log(x))
         Iv_transformed = Iv_transformed / 7.838
         # Ensure both RED and Iv_transformed have the same shape
-        SPR = RED.multiply(Iv_transformed['I'], axis=0)  # Use 'I' column from Iv_transformed to multiply with RED
+        SPR = RED.multiply(Iv_transformed['Iv'], axis=0)  # Use 'I' column from Iv_transformed to multiply with RED
         SPR = SPR.rename(columns={'RED': 'SPR'})
         SPR['SPR'] = SPR['SPR'].round(4)
         #
         # Assuming 'Zeff' and 'RED' columns exist 
         zeff_column_index = column_headers.index('Zeff')
         red_column_index  = column_headers.index('RED')
-        i_column_index    = column_headers.index('I')
+        i_column_index    = column_headers.index('Iv')
         spr_column_index  = column_headers.index('SPR')
         
     
