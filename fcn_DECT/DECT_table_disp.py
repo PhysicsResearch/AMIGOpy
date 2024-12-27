@@ -73,7 +73,7 @@ def remove_coll2table(self):
  # If the text is a digit, convert it to corresponding symbol
  if text.isdigit():
      atomic_number = int(text)
-     text = self.ATOMIC_NUMBER_TO_SYMBOL.get(atomic_number, text)
+     text = ATOMIC_NUMBER_TO_SYMBOL.get(atomic_number, text)
      if not atomic_number:  # If no atomic numbers found for the symbol
         QMessageBox.critical(self, 'Error', 'Invalid element symbol!')
         return
