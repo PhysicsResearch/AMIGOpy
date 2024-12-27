@@ -13,10 +13,69 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 def openCSVFile_exp(self):
         options = QFileDialog.Options()
-        fileName, _ = QFileDialog.getOpenFileName(self, "Open CSV File", "", "CSV Files (*.csv);;All Files (*)", options=options)
+        fileName, _ = QFileDialog.getOpenFileName(self, "Open CSV and VXP File", "", "CSV Files (*.csv *.vxp);;All Files (*)", options=options)
         if fileName:
-            previewCSV(self,fileName)
-            processCSV(self,fileName)
+            if fileName.lower().endswith('.vxp'):
+                previewVXP(self, fileName)
+                processVXP(self, fileName)
+            else:
+                previewCSV(self,fileName)
+                processCSV(self,fileName)
+
+def previewVXP(self, filePath):
+    try:
+        with open(filePath, 'r') as file:
+            # Read the next 100 lines and add line numbers
+            lines = []
+            for i in range(1, 101):
+                line = file.readline()
+                if '[Data]' in line:
+                    self.CSVLineSkip.setValue(i)  # Set the line number containing data
+                if 'Data_layout' in line:
+                    self.CSVLinHeader.setValue(i)  # Set the line number containing header
+                if not line:
+                    break
+                lines.append(f"{i}: {line}")
+            
+            preview = ''.join(lines)
+        self.CSVViewText.setPlainText(preview)
+    except Exception as e:
+        self.CSVViewText.setPlainText(f'Error reading file: {e}')
+
+def processVXP(self, filePath):
+    separator   = self.csv_sep_list.currentText()
+    skip_lines  = int(self.CSVLineSkip.value())
+    header_line = int(self.CSVLinHeader.value())-1
+    # Determine the header parameter for pandas read_csv 
+    if header_line >= 0:
+        # Read the header line separately
+        with open(filePath, 'r') as file:
+            for i, line in enumerate(file):
+                if i == header_line: 
+                    header_param = line.strip().split('=')[1].split(separator)
+                    break
+    else:
+        header_param = None
+
+    # Load the CSV file into a DataFrame
+    try:
+        dataframe = pd.read_csv(filePath, sep=separator, skiprows=skip_lines, header=None)
+        dataframe.columns = header_param
+        # 
+        # If no header, set default column names
+        if header_line == -1:
+            dataframe.columns = [f'C{i+1}' for i in range(dataframe.shape[1])]
+        
+        # Update the combo boxes for x and y axis selection
+        self.CSV_X_plot.clear()
+        self.CSV_Y_plot.clear()
+        self.CSV_X_plot.addItems(dataframe.columns)
+        self.CSV_Y_plot.addItems(dataframe.columns)
+        # Display the data in the QTableWidget
+        loadTable(self,dataframe, header_line)
+    except pd.errors.ParserError as e:
+        print(f"Error parsing CSV file: {e}")
+        # Handle the error, e.g., by logging or showing a message to the user
 
 def previewCSV(self, filePath):
     try:
@@ -42,20 +101,25 @@ def processCSV(self, filePath):
     header_param = header_line if header_line >= 0 else None
     
     # Load the CSV file into a DataFrame
-    dataframe = pd.read_csv(filePath, sep=separator, skiprows=skip_lines, header=header_param)
+    try:
+        dataframe = pd.read_csv(filePath, sep=separator, skiprows=skip_lines, header=header_param)
+        # 
+        # If no header, set default column names
+        if header_line == -1:
+            dataframe.columns = [f'C{i+1}' for i in range(dataframe.shape[1])]
+        
+        # Update the combo boxes for x and y axis selection
+        self.CSV_X_plot.clear()
+        self.CSV_Y_plot.clear()
+        self.CSV_X_plot.addItems(dataframe.columns)
+        self.CSV_Y_plot.addItems(dataframe.columns)
+        # Display the data in the QTableWidget
+        loadTable(self,dataframe, header_line)
+    except pd.errors.ParserError as e:
+        print(f"Error parsing CSV file: {e}")
+        # Handle the error, e.g., by logging or showing a message to the user
     
-    # If no header, set default column names
-    if header_line == -1:
-        dataframe.columns = [f'C{i+1}' for i in range(dataframe.shape[1])]
-    
-    # Update the combo boxes for x and y axis selection
-    self.CSV_X_plot.clear()
-    self.CSV_Y_plot.clear()
-    self.CSV_X_plot.addItems(dataframe.columns)
-    self.CSV_Y_plot.addItems(dataframe.columns)
-    
-    # Display the data in the QTableWidget
-    loadTable(self,dataframe, header_line)
+
     
 def loadTable(self, dataframe, header_line):
     # Clear the table before populating it
@@ -82,15 +146,15 @@ def plotCSV_ViewData(self):
         return  # Ensure columns are selected
 
     # Get column indices based on selected column names
-    x_index = self.csvTable.horizontalHeaderItem(self.CSV_X_plot.currentIndex()).text()
-    y_index = self.csvTable.horizontalHeaderItem(self.CSV_Y_plot.currentIndex()).text()
+    x_index = getColumnIndexByName(self, x_col)
+    y_index = getColumnIndexByName(self, y_col)
 
     # Extract data from the table widget
     x_data = []
     y_data = []
     for row in range(self.csvTable.rowCount()):
-        x_item = self.csvTable.item(row, self.CSV_X_plot.currentIndex())
-        y_item = self.csvTable.item(row, self.CSV_Y_plot.currentIndex())
+        x_item = self.csvTable.item(row, x_index)
+        y_item = self.csvTable.item(row, y_index)
         if x_item and y_item:
             x_data.append(float(x_item.text()))
             y_data.append(float(y_item.text()))
@@ -134,7 +198,7 @@ def plotCSV_ViewData(self):
         # Clear existing content in the container, if any
         while container.layout().count():
             child = container.layout().takeAt(0)
-            if child.widget():
+            if child.widget() and not isinstance(child.widget(), NavigationToolbar):
                 child.widget().deleteLater()
 
     # Add the canvas and toolbar to the container
@@ -152,17 +216,17 @@ def CSV_apply_oper(self):
         return  # Ensure columns are selected
 
     # Get column indices based on selected column names
-    x_index = getColumnIndexByName(self,x_col)
-    y_index = getColumnIndexByName(self,y_col)
+    x_index = getColumnIndexByName(self, x_col)
+    y_index = getColumnIndexByName(self, y_col)
 
     if operation == "Swap":
-        swapColumns(self,x_index, y_index)
+        swapColumns(self, x_index, y_index)
     elif operation == "Copy":
-        copyColumn(self,x_index, y_index)
+        copyColumn(self, x_index, y_index)
     elif operation == "Add Column":
         addColumn(self)
     else:
-        applyOperation(self,x_index, operation, value)
+        applyOperation(self, x_index, operation, value)
 
 def getColumnIndexByName(self, column_name):
     for i in range(self.csvTable.columnCount()):
@@ -179,6 +243,12 @@ def swapColumns(self, x_index, y_index):
             y_value = y_item.text()
             self.csvTable.setItem(row, x_index, QTableWidgetItem(y_value))
             self.csvTable.setItem(row, y_index, QTableWidgetItem(x_value))
+    # Swap the column headers
+    x_header = self.csvTable.horizontalHeaderItem(x_index).text()
+    y_header = self.csvTable.horizontalHeaderItem(y_index).text()
+    self.csvTable.horizontalHeaderItem(x_index).setText(y_header)
+    self.csvTable.horizontalHeaderItem(y_index).setText(x_header)
+
 
 def copyColumn(self, x_index, y_index):
     for row in range(self.csvTable.rowCount()):

@@ -63,7 +63,7 @@ def reset_matTable(self):
     for row in range(self.MatInfoTable.rowCount()):
         newItem = QTableWidgetItem("New Row")
         self.MatInfoTable.setItem(row, 0, newItem)
-    self.update_mat_table_style()  # Update the table style after removing the column        
+    update_mat_table_style(self)  # Update the table style after removing the column        
     
 
 def remove_coll2table(self):

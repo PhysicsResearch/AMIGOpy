@@ -3,14 +3,22 @@
 
 block_cipher = None
 
+# Force the working directory for PyInstaller
+import os
+os.chdir("C:/AMIGOpy")  # Change working directory to prevent Z: usage
+
 datas = [
-    ('C:/AMIGOpy/icons/ruler.png', 'icons'),  
-	('C:/AMIGOpy/icons/dcm_insp.png', 'icons')
+    ('Z:/AMIGOpy/icons/ruler.png', 'icons'),  
+	('Z:/AMIGOpy/icons/dcm_insp.png', 'icons')
 ]
 
+# Specify all paths explicitly
+source_script = 'Z:/AMIGOpy/Launch_ImGUI.py'
+build_output_dir = 'C:/AMIGOpy'
+
 a = Analysis(
-    ['Launch_ImGUI.py'],
-    pathex=[],
+    ['Z:/AMIGOpy/Launch_ImGUI.py'],
+    pathex=['Z:/AMIGOpy'],
     binaries=[],
     datas=datas,
     hiddenimports=[],
@@ -51,4 +59,8 @@ coll = COLLECT(
     upx=True,
     upx_exclude=[],
     name='Launch_ImGUI',
+	# Specify the output folder for the build
+    distpath=os.path.join(build_output_dir, 'dist'),  # Explicit distpath
+    workpath=os.path.join(build_output_dir, 'build'),  # Explicit workpath
+    tempdir=os.path.join(build_output_dir, 'temp')  # Explicit tempdir
 )
