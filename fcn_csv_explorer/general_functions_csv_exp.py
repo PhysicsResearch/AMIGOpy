@@ -61,7 +61,19 @@ def processVXP(self, filePath):
     try:
         dataframe = pd.read_csv(filePath, sep=separator, skiprows=skip_lines, header=None)
         dataframe.columns = header_param
-        # 
+        
+        # Ensure 'timestamp' is the first column
+        if 'timestamp' in dataframe.columns:
+            cols = dataframe.columns.tolist()
+            cols.insert(0, cols.pop(cols.index('timestamp')))
+            dataframe = dataframe[cols]
+        
+        # Ensure 'amplitude' is the second column
+        if 'amplitude' in dataframe.columns:
+            cols = dataframe.columns.tolist()
+            cols.insert(1, cols.pop(cols.index('amplitude')))
+            dataframe = dataframe[cols]
+
         # If no header, set default column names
         if header_line == -1:
             dataframe.columns = [f'C{i+1}' for i in range(dataframe.shape[1])]
@@ -72,7 +84,7 @@ def processVXP(self, filePath):
         self.CSV_X_plot.addItems(dataframe.columns)
         self.CSV_Y_plot.addItems(dataframe.columns)
         # Display the data in the QTableWidget
-        loadTable(self,dataframe, header_line)
+        loadTable(self, dataframe, header_line)
     except pd.errors.ParserError as e:
         print(f"Error parsing CSV file: {e}")
         # Handle the error, e.g., by logging or showing a message to the user
