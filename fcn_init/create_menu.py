@@ -5,6 +5,7 @@ from fcn_display.win_level import window_auto, window_custom, window_stissue, wi
 from fcn_display.colormap_set import set_color_map_gray, set_color_map_bone, set_color_map_hot, set_color_map_coolwarm, set_color_map_cold, set_color_map_jet, set_color_map_viridis, set_color_map_rainbow
 from fcn_export.export_fcn import export_np_array, export_dw_np, export_dcm_np_array
 from fcn_processing.split_dcm_series import shift_and_split_3D_matrix
+from fcn_3Dprint.split_gcode_file import  split_gcode
 
 def initializeMenuBar(self):
     # Create a menu bar
@@ -208,8 +209,30 @@ def initializeMenuBar(self):
         action.triggered.connect(lambda checked, s=size: set_legend_font_size(self,s))
         lg_fontSizeMenu.addAction(action)
         lg_fontSizeGroup.addAction(action)
+
+
+
+    # 3D print menu 
+    # intended for scripts supporting 3D printing
+    #
+    styleMenu = self.menuBar().addMenu("3DPrint")
+    # Gcode submenu
+    GCODEMenu = styleMenu.addMenu("GCODE")
+    GCODEGroup = QActionGroup(self)
+    # Add items 
+    items = ["Split","2STL"]
+    for item in items:
+        action = QAction(item, self)
+        # Connect the Folder action to the load_dcm function
+        if item == "Split":
+            action.triggered.connect(lambda: split_gcode(self))
+        # elif item == "Frames2Dw":
+        #     action.triggered.connect(lambda: export_dw_np(self))
+            
+        GCODEMenu.addAction(action)
     
-    
+
+
         
 def set_font_size(self, size):
     self.selected_font_size = int(size)

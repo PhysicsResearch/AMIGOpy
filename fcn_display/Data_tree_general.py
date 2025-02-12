@@ -32,6 +32,12 @@ def on_DataTreeView_clicked(self,index):
     #
     if hierarchy[0] == "DICOM":
         self.DataType = "DICOM"  
+        # clear metadata search field
+        # Temporarily block signals so this won't fire textChanged again
+        self.metadata_search.blockSignals(True)
+        self.metadata_search.setText("")
+        # Unblock signals
+        self.metadata_search.blockSignals(False)
         if len(hierarchy) == 5:
             self.series_index = hierarchy_indices[4].row()
             # need to remove part of the tag otherwise it does not match with the key:
@@ -45,9 +51,20 @@ def on_DataTreeView_clicked(self,index):
                 self.studyID_plan      = hierarchy[2].replace("StudyID: ", "")
                 self.modality_plan     = hierarchy[3].replace("Modality: ", "")
                 self.series_index_plan = self.series_index
-                # update_metadata_table(self,self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata'])
+                self.modality_metadata = self.modality_plan
                 update_meta_view_table_dicom(self,self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['DCM_Info'])
                 update_plan_tables(self)
+                
+                return
+            if self.modality == 'RTSTRUCT':
+                # keep track of the last selected plan ... if user chose and image or dose this will not change
+                self.patientID_plan    = hierarchy[1].replace("PatientID: ", "")
+                self.studyID_plan      = hierarchy[2].replace("StudyID: ", "")
+                self.modality_study     = hierarchy[3].replace("Modality: ", "")
+                self.series_index_plan = self.series_index
+                # 
+                self.modality_metadata = self.modality_study
+                update_meta_view_table_dicom(self,self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_study][self.series_index_plan]['metadata']['DCM_Info'])
                 
                 return
             #print(self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['AcquisitionNumber'])
@@ -90,9 +107,9 @@ def on_DataTreeView_clicked(self,index):
                 self.current_coronal_slice_index[idx]  = round(self.display_data[idx].shape[2]/2)
                 #
     
-                # update_metadata_table(self,self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata'])
+                # update_metadata_table
                 update_meta_view_table_dicom(self,self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'])
-        
+                self.modality_metadata = self.modality
                 # display info
                 display_dicom_info(self)
                 # Accessing the values

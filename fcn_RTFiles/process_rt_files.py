@@ -1,9 +1,105 @@
 import numpy as np
+import copy
+
+def process_rt_struct(rtstruct,structured_data):
+    # Extract identifiers for navigation.
+    patient_id   = rtstruct['patient_id']
+    study_id     = rtstruct['study_id']
+    modality     = rtstruct['modality']
+    series_index = rtstruct['series_index']
+    
+    try:
+        series_data = structured_data[patient_id][study_id][modality][series_index]
+    except KeyError:
+        print("Error: The specified series could not be found. Please check rtstruct identifiers.")
+        return
+    
+    metadata = series_data.get('metadata')
+    if metadata is None:
+        print("Error: No metadata found in the series data.")
+        return
+    
+    # Retrieve the two sequences.
+    rt_roi_obs_seq  = metadata.get('RTROIObservationsSequence')
+    roi_contour_seq = metadata.get('ROIContourSequence')
+    
+    if rt_roi_obs_seq is None:
+        print("Error: RTROIObservationsSequence not found in metadata.")
+        return
+    if roi_contour_seq is None:
+        print("Error: ROIContourSequence not found in metadata.")
+        return
+
+    # Ensure a 'structures' dictionary exists.
+    structures = series_data.setdefault('structures', {})
+    # Clear any existing structures (optional)
+    # structures.clear()
+    
+    # This list will hold ROIObservationLabel for each included observation.
+    structures_names = []
+    #
+    for idx, obs_item in enumerate(rt_roi_obs_seq):
+        key = f"Item_{idx+1}"
+        if hasattr(obs_item, 'RTROIInterpretedType') and obs_item.RTROIInterpretedType == 'BRACHY_CHANNEL':
+            continue
+
+        copied_obs = copy.deepcopy(obs_item)
+        structures[key] = copied_obs
+
+        if hasattr(obs_item, 'ROIObservationLabel'):
+            structures_names.append(obs_item.ROIObservationLabel)
+        else:
+            structures_names.append(key)
+
+        try:
+            ref_roi_number = obs_item.ReferencedROINumber
+        except AttributeError:
+            print(f"{key} does not have a ReferencedROINumber; skipping ROIContour matching for this item.")
+            continue
+
+        match_found = False
+        if hasattr(roi_contour_seq, 'keys'):
+            for ckey, contour_item in roi_contour_seq.items():
+                try:
+                    contour_ref_roi_number = contour_item.ReferencedROINumber
+                except AttributeError:
+                    continue
+                if contour_ref_roi_number == ref_roi_number:
+                    if hasattr(contour_item, 'ContourSequence'):
+                        copied_contour_seq = copy.deepcopy(contour_item.ContourSequence)
+                        structures[key].ContourSequence = copied_contour_seq
+                    else:
+                        print(f"Matching ROIContourSequence for ReferencedROINumber {ref_roi_number} has no ContourSequence.")
+                    match_found = True
+                    break
+        else:
+            for contour_item in roi_contour_seq:
+                try:
+                    contour_ref_roi_number = contour_item.ReferencedROINumber
+                except AttributeError:
+                    continue
+                if contour_ref_roi_number == ref_roi_number:
+                    if hasattr(contour_item, 'ContourSequence'):
+                        copied_contour_seq = copy.deepcopy(contour_item.ContourSequence)
+                        structures[key].ContourSequence = copied_contour_seq
+                    else:
+                        print(f"Matching ROIContourSequence for ReferencedROINumber {ref_roi_number} has no ContourSequence.")
+                    match_found = True
+                    break
+        if not match_found:
+            print(f"No matching ROIContourSequence found for {key} with ReferencedROINumber {ref_roi_number}.")
+
+    # Update the series_data with the new structures field.
+    structured_data[patient_id][study_id][modality][series_index]['structures']       = structures
+    structured_data[patient_id][study_id][modality][series_index]['structures_names'] = structures_names
+
+
 
 def process_rt_plans(plan,ref_str,structured_data):
     # 
     if structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['BrachyTreatmentType'] != 'N/A':
         read_brachy_plan(plan,ref_str,structured_data)
+        
 
 def read_brachy_plan(plan,ref_str,structured_data):
     app_sequence = structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['ApplicationSetupSequence']

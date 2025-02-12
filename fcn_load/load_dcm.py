@@ -4,7 +4,7 @@ import pydicom
 import math
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from fcn_display.Data_tree_general import _get_or_create_parent_item
-from fcn_RTFiles.process_rt_files  import process_rt_plans
+from fcn_RTFiles.process_rt_files  import process_rt_plans, process_rt_struct
 
 # Import the function that retrieves a detailed description of DICOM data.
 from fcn_load.sort_dcm import get_data_description
@@ -125,6 +125,8 @@ def load_images(detailed_files_info, progress_callback=None, total_steps=None):
                         'SOPInstanceUID': getattr(dicom_file, "SOPInstanceUID", ''),
                         'ReferencedFrameOfReferenceSequence': getattr(dicom_file, "ReferencedFrameOfReferenceSequence", ''),
                         'ROIContourSequence': getattr(dicom_file,"ROIContourSequence",''),
+                        'RTROIObservationsSequence': getattr(dicom_file,"RTROIObservationsSequence",''),
+                        'StructureSetROISequence': getattr(dicom_file,"StructureSetROISequence",''),
                         'DCM_Info': dicom_file
                     },
                     'images': {},
@@ -264,6 +266,9 @@ def load_images(detailed_files_info, progress_callback=None, total_steps=None):
         
         # 
         # Now, search in rtstruct_files for a matching SOPInstanceUID
+        # 
+        # this is required to get the correct RTSTRUCT file for the current RTPLAN Varian stores catether delineation in a RTSTRUCT file while
+        # dwell positions and times are stored in the RTPLAN file
         matching_rtstruct = None
         for rtstruct in rtstruct_files:
             if rtstruct['SOPInstanceUID'] == ref_struct_UID:
@@ -273,7 +278,12 @@ def load_images(detailed_files_info, progress_callback=None, total_steps=None):
         
         # call a function to process plan data ... which is different depeding on TPS and treatment type.    
         process_rt_plans(plan,matching_rtstruct,structured_data)    
-            
+    #
+    for rtstruct in rtstruct_files:
+        process_rt_struct(rtstruct,structured_data)
+  
+    
+
     return structured_data, non_im_files 
  
 
