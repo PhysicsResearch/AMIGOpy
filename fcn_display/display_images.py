@@ -20,9 +20,9 @@ def displayaxial(self, Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_ax(self)
-        if i == 1:
+        #if i == 1:
             # Check if the required fields exist in dicom_data
-                disp_structure_overlay_axial(self)
+              #  disp_structure_overlay_axial(self)
 
   
         if self.slice_thick[i] ==0:

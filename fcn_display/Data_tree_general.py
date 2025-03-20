@@ -200,7 +200,7 @@ def on_DataTreeView_clicked(self,index):
                 displaysagittal(self)
                 displaycoronal(self)
                 #    
-                # set_vtk_histogran_fig(self)
+                set_vtk_histogran_fig(self)
             elif currentTabText == "Compare":
                 #
                 # Current view
