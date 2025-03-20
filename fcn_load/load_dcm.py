@@ -2,14 +2,13 @@
 import numpy as np
 import pydicom
 import math
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from fcn_display.Data_tree_general import _get_or_create_parent_item
+from fcn_load.populate_dcm_list import populate_DICOM_tree
 from fcn_RTFiles.process_rt_files  import process_rt_plans, process_rt_struct
 
 # Import the function that retrieves a detailed description of DICOM data.
 from fcn_load.sort_dcm import get_data_description
 
-def load_images(detailed_files_info, progress_callback=None, total_steps=None):
+def load_images(self,detailed_files_info, progress_callback=None, total_steps=None):
     """
     Load DICOM images and organize them hierarchically based on their DICOM headers.
     
@@ -280,7 +279,7 @@ def load_images(detailed_files_info, progress_callback=None, total_steps=None):
         process_rt_plans(plan,matching_rtstruct,structured_data)    
     #
     for rtstruct in rtstruct_files:
-        process_rt_struct(rtstruct,structured_data)
+        process_rt_struct(self, rtstruct,structured_data)
   
     
 
@@ -311,77 +310,14 @@ def load_all_dcm(self,folder_path=None, progress_callback=None, update_label=Non
     if update_label:
         update_label.setText(f"Loading {total_steps} files")
         
-    self.dicom_data, non_im_files = load_images(detailed_files_info, self.progressBar.setValue, total_steps)
+    self.dicom_data, non_im_files = load_images(self,detailed_files_info, self.progressBar.setValue, total_steps)
     populate_DICOM_tree(self)
     
     for index, file_info in enumerate(non_im_files):
         print(f"{file_info['FilePath']} {file_info['Modality']}")
     #return dicom_data
 
-# 
-def populate_DICOM_tree(self):
-    #self.dicom_data=load_all_dcm(folder_path=None, progress_callback=self.update_progress,update_label=self.label);
-    # Create the data model for the tree view
-    # Create the data model for the tree view if it doesn't exist
-    if not hasattr(self, 'model') or self.model is None:
-        self.model = QStandardItemModel()
-        self.DataTreeView.setModel(self.model)
-        self.model.setHorizontalHeaderLabels(['Data'])
 
-    # Check for existing 'DICOM' parent item
-    dicom_parent_item = _get_or_create_parent_item(self,'DICOM')
-    #
-    # Clear the clist of series menus for DECT
-    self.DECT_list_01.clear()
-    self.DECT_list_02.clear()
-    self.scatter_plot_im_01.clear()
-    self.scatter_plot_im_02.clear()
-    # Dictionary to store series_label and related information
-    self.series_info_dict = {}
-    
-    # Index for comboBox items
-    combo_index = 0
-    # Clear all children of the 'DICOM' parent item
-    dicom_parent_item.removeRows(0, dicom_parent_item.rowCount())
-    #
-    # Populate tree view with DICOM data
-    for patient_id, patient_data in self.dicom_data.items():
-        patient_item = QStandardItem(f"PatientID: {patient_id}")
-        dicom_parent_item.appendRow(patient_item)
-        for study_id, study_data in patient_data.items():
-            study_item = QStandardItem(f"StudyID: {study_id}")
-            patient_item.appendRow(study_item)
-            for modality, modality_data in study_data.items():
-                modality_item = QStandardItem(f"Modality: {modality}")
-                study_item.appendRow(modality_item)
-                for item_index, series_data in enumerate(modality_data):  # Iterating over the list
-                    if   modality == 'RTPLAN':
-                        Plan_label = series_data['metadata']['RTPlanLabel']
-                        series_label = f"{Plan_label}_Series: {series_data['SeriesNumber']}"
-                        #
-                    elif modality == 'RTSTRUCT':
-                        Struct_label = series_data['metadata']['StructureSetLabel']
-                        series_label = f"{Struct_label}_Series: {series_data['SeriesNumber']}"
-                    elif modality == 'RTDOSE':
-                        Dose_label = series_data['metadata']['SeriesDescription']
-                        series_label = f"{Dose_label}_Series: {series_data['SeriesNumber']}"
-                    else:
-                        LUT = series_data['metadata']
-                        Acq_number = series_data['metadata']['AcquisitionNumber']
-                        series_label = f"Acq_{Acq_number}_Series: {series_data['SeriesNumber']}"
-                        if LUT['LUTLabel'] != 'N/A':
-                            series_label += f" {LUT['LUTLabel']} {LUT['LUTExplanation']}"
-                    series_item = QStandardItem(series_label)
-                    modality_item.appendRow(series_item)
-                    # Add to comboBox
-                    self.DECT_list_01.addItem(series_label)
-                    self.DECT_list_02.addItem(series_label)
-                    self.scatter_plot_im_01.addItem(series_label)
-                    self.scatter_plot_im_02.addItem(series_label)
-                    # Store information in the dictionary
-                    self.series_info_dict[combo_index] = (series_label, patient_id, study_id, modality, item_index)
-                    combo_index += 1
-    
 
 if __name__ == "__main__":
     dicom_data = load_all_dcm()

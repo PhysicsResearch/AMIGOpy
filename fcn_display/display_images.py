@@ -20,6 +20,9 @@ def displayaxial(self, Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_ax(self)
+        if i == 1:
+            # Check if the required fields exist in dicom_data
+                disp_structure_overlay_axial(self)
 
   
         if self.slice_thick[i] ==0:
@@ -72,6 +75,60 @@ def displayaxial(self, Im = None):
         self.vtkWidgetAxial.GetRenderWindow().Render()
         self.vtkWidgetSagittal.GetRenderWindow().Render()
         self.vtkWidgetCoronal.GetRenderWindow().Render()
+
+def disp_structure_overlay_axial(self):
+    renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    if hasattr(self, "structure_actors_ax"):
+        for actor in self.structure_actors_ax:
+            renderer.RemoveActor(actor)
+    self.structure_actors_ax = []
+
+    idx = self.layer_selection_box.currentIndex()
+    slice_index = self.current_axial_slice_index[idx]
+
+    for i in range(self.STRUCTlist.count()):
+        widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
+        if widget.checkbox.isChecked():
+            structure_key = getattr(widget, 'structure_key', None)
+            if structure_key is None:
+                continue
+
+            actors_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][structure_key]['VTKActors2D']['axial']
+            actor = actors_dict.get(slice_index)
+            if actor is None:
+                continue
+
+            actor_copy = vtk.vtkActor()
+            actor_copy.ShallowCopy(actor)
+            actor_copy.GetProperty().SetColor(widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1,1,1))
+            actor_copy.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
+            actor_copy.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+            renderer.AddActor(actor_copy)
+            self.structure_actors_ax.append(actor_copy)
+
+    self.vtkWidgetAxial.GetRenderWindow().Render()
+
+def fill_polydata(polydata):
+    """
+    Attempt to turn a closed line-based contour into a filled polygon
+    by triangulating it. If it fails, it just returns the original polydata.
+    """
+    # Make sure we have lines or polys that are closeable
+    if not polydata or polydata.GetNumberOfPoints() < 3:
+        return polydata
+
+    # Try triangulating
+    triangulator = vtk.vtkContourTriangulator()
+    triangulator.SetInputData(polydata)
+    triangulator.Update()
+    filled_output = triangulator.GetOutput()
+
+    # If triangulation created some polygons, we can use it
+    if filled_output.GetNumberOfCells() > 0:
+        return filled_output
+
+    # fallback if no polygons were created
+    return polydata
 
 def disp_roi_axial(self):
     for row in range(self.table_circ_roi.rowCount()):
@@ -351,7 +408,6 @@ def displaycoronal(self, Im = None):
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_co(self)
 
-
         if self.slice_thick[i] ==0:
             continue   
         
@@ -403,7 +459,9 @@ def displaycoronal(self, Im = None):
     self.vtkWidgetCoronal.GetRenderWindow().Render()
     self.vtkWidgetAxial.GetRenderWindow().Render()
     self.vtkWidgetSagittal.GetRenderWindow().Render()
-        
+
+
+
 def disp_roi_coronal(self):
     for row in range(self.table_circ_roi.rowCount()):
         try:

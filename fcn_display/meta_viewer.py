@@ -1,6 +1,7 @@
 import pydicom
 from pydicom.dataset import Dataset
 from pydicom.sequence import Sequence
+from pydicom.multival import MultiValue
 
 from PyQt5.QtWidgets import (
     QApplication,
@@ -18,23 +19,39 @@ from PyQt5.QtWidgets import (
 # ------------------------------------------------------------
 # 1) Helper function to convert scalar values into short strings
 # ------------------------------------------------------------
+
 def _process_scalar(value):
     """
     Convert a scalar (non-sequence) value to a readable string.
-    Adjust as needed for long strings, arrays, etc.
+    - For pydicom.multival.MultiValue, lists, tuples, sets:
+      show only the first 20 items, then '... (showing X total)' if more than 20.
+    - For strings, show up to 100 chars, then summary if longer.
+    - For int/float, return the string version.
+    - For other types, return 'Type: <typename>'.
     """
-    if isinstance(value, (list, tuple, set)):
-        if len(value) <= 10:
+    # Handle multi-value or common Python collections
+    if isinstance(value, MultiValue) or isinstance(value, (list, tuple, set)):
+        length = len(value)
+        if length == 0:
+            return ""
+        elif length <= 20:
             return ', '.join(str(v) for v in value)
         else:
-            return f"Length: {len(value)}, Type: {type(value).__name__}"
+            truncated_values = ', '.join(str(v) for v in value[:20])
+            return f"{truncated_values}, ... (showing {length} total)"
+    
+    # Handle strings
     elif isinstance(value, str):
         if len(value) < 100:
             return value
         else:
             return f"Length: {len(value)}, Type: str"
+    
+    # Handle simple numeric types
     elif isinstance(value, (int, float)):
         return str(value)
+    
+    # Handle all other types
     else:
         return f"Type: {type(value).__name__}"
 

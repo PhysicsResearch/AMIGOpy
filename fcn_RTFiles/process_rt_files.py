@@ -1,28 +1,126 @@
 import numpy as np
 import copy
+from skimage.draw import polygon
+from skimage.measure import find_contours
+from fcn_load.populate_dcm_list import populate_DICOM_tree
 
-def process_rt_struct(rtstruct,structured_data):
+
+from PyQt5.QtWidgets import (
+    QWidget, QCheckBox, QLabel, QPushButton, QHBoxLayout,
+    QVBoxLayout, QColorDialog, QDoubleSpinBox, QListWidgetItem,
+)
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import Qt
+
+
+
+class ColorCheckItem(QWidget):
+    """
+    A custom widget that displays:
+      - A checkbox (to toggle the structure on/off),
+      - A label (for the structure name),
+      - A color-selection button,
+      - A 'Line Width' spinbox,
+      - A 'Transparency' spinbox,
+      - A 'Fill' checkbox (to indicate whether to display a filled polygon).
+    """
+
+    def __init__(self, text, parent=None):
+        super().__init__(parent)
+        self.selectedColor = None
+
+        # 1) Master checkbox to enable/disable the structure
+        self.checkbox = QCheckBox()
+        # 2) Label for the structure name
+        self.label = QLabel(text)
+
+        # 3) Button to pick color
+        self.color_button = QPushButton("Select Color")
+        self.color_button.setMaximumWidth(100)
+        self.color_button.clicked.connect(self.openColorDialog)
+
+        # 4) Spinbox for line width
+        self.line_width_spinbox = QDoubleSpinBox()
+        self.line_width_spinbox.setRange(0.1, 50.0)
+        self.line_width_spinbox.setValue(2.0)
+        self.line_width_spinbox.setSingleStep(0.5)
+        self.line_width_spinbox.setDecimals(1)
+
+        # 5) Spinbox for transparency (0=opaque, 1=fully transparent)
+        self.transparency_spinbox = QDoubleSpinBox()
+        self.transparency_spinbox.setRange(0.0, 1.0)
+        self.transparency_spinbox.setValue(0.5)
+        self.transparency_spinbox.setSingleStep(0.1)
+        self.transparency_spinbox.setDecimals(2)
+
+        # 6) Checkbox to indicate whether to fill the contour
+        self.fill_checkbox = QCheckBox("Fill")
+        self.fill_checkbox.setChecked(False)  # default: wireframe
+
+        # Lay out horizontally
+        layout = QHBoxLayout()
+        layout.addWidget(self.checkbox)
+        layout.addWidget(self.label)
+        layout.addWidget(self.color_button)
+        layout.addWidget(QLabel("LineW:"))
+        layout.addWidget(self.line_width_spinbox)
+        layout.addWidget(QLabel("Transp:"))
+        layout.addWidget(self.transparency_spinbox)
+        layout.addWidget(self.fill_checkbox)
+
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+    def openColorDialog(self):
+        color = QColorDialog.getColor(
+            initial=self.selectedColor or QColor(Qt.white),
+            parent=self
+        )
+        if color.isValid():
+            self.selectedColor = color
+            self.color_button.setStyleSheet(f"background-color: {color.name()};")
+
+
+def update_structure_list_widget(self, structure_names, structure_keys):
+    """
+    Update self.STRUCTlist (a QListWidget) with custom items that display the structure name,
+    a checkbox, and a color-selection button. The corresponding structure key is stored in the custom widget.
+    """
+    self.STRUCTlist.clear()
+    for name, key in zip(structure_names, structure_keys):
+        list_item = QListWidgetItem(self.STRUCTlist)
+        custom_item = ColorCheckItem(name)
+        custom_item.structure_key = key  # Save the key for later lookup
+        list_item.setSizeHint(custom_item.sizeHint())
+        self.STRUCTlist.addItem(list_item)
+        self.STRUCTlist.setItemWidget(list_item, custom_item)
+
+def process_rt_struct(self, rtstruct, structured_data):
+    """
+    Process the RTStruct and update the structures and list widget.
+    """
     # Extract identifiers for navigation.
     patient_id   = rtstruct['patient_id']
     study_id     = rtstruct['study_id']
     modality     = rtstruct['modality']
     series_index = rtstruct['series_index']
-    
+
     try:
         series_data = structured_data[patient_id][study_id][modality][series_index]
     except KeyError:
         print("Error: The specified series could not be found. Please check rtstruct identifiers.")
         return
-    
+
     metadata = series_data.get('metadata')
     if metadata is None:
         print("Error: No metadata found in the series data.")
         return
-    
+
     # Retrieve the two sequences.
     rt_roi_obs_seq  = metadata.get('RTROIObservationsSequence')
     roi_contour_seq = metadata.get('ROIContourSequence')
-    
+    structure_set_roi_seq = metadata.get('StructureSetROISequence')  # New sequence for ROI names
+
     if rt_roi_obs_seq is None:
         print("Error: RTROIObservationsSequence not found in metadata.")
         return
@@ -32,12 +130,11 @@ def process_rt_struct(rtstruct,structured_data):
 
     # Ensure a 'structures' dictionary exists.
     structures = series_data.setdefault('structures', {})
-    # Clear any existing structures (optional)
-    # structures.clear()
-    
+
     # This list will hold ROIObservationLabel for each included observation.
     structures_names = []
-    #
+    structures_keys  = []
+
     for idx, obs_item in enumerate(rt_roi_obs_seq):
         key = f"Item_{idx+1}"
         if hasattr(obs_item, 'RTROIInterpretedType') and obs_item.RTROIInterpretedType == 'BRACHY_CHANNEL':
@@ -46,17 +143,38 @@ def process_rt_struct(rtstruct,structured_data):
         copied_obs = copy.deepcopy(obs_item)
         structures[key] = copied_obs
 
-        if hasattr(obs_item, 'ROIObservationLabel'):
-            structures_names.append(obs_item.ROIObservationLabel)
-        else:
-            structures_names.append(key)
-
         try:
             ref_roi_number = obs_item.ReferencedROINumber
         except AttributeError:
             print(f"{key} does not have a ReferencedROINumber; skipping ROIContour matching for this item.")
             continue
 
+        # Determine the structure name.
+        roi_name = None
+        if hasattr(obs_item, 'ROIObservationLabel'):
+            roi_name = obs_item.ROIObservationLabel
+        elif structure_set_roi_seq is not None:
+            # Search the StructureSetROISequence for a matching ROINumber.
+            if hasattr(structure_set_roi_seq, 'keys'):
+                for roi_key, roi_item in structure_set_roi_seq.items():
+                    try:
+                        if roi_item.ROINumber == ref_roi_number:
+                            roi_name = roi_item.ROIName
+                            break
+                    except AttributeError:
+                        continue
+            else:
+                for roi_item in structure_set_roi_seq:
+                    try:
+                        if roi_item.ROINumber == ref_roi_number:
+                            roi_name = roi_item.ROIName
+                            break
+                    except AttributeError:
+                        continue
+        if roi_name is None:
+            roi_name = key
+
+        structures_names.append(roi_name)
         match_found = False
         if hasattr(roi_contour_seq, 'keys'):
             for ckey, contour_item in roi_contour_seq.items():
@@ -67,7 +185,7 @@ def process_rt_struct(rtstruct,structured_data):
                 if contour_ref_roi_number == ref_roi_number:
                     if hasattr(contour_item, 'ContourSequence'):
                         copied_contour_seq = copy.deepcopy(contour_item.ContourSequence)
-                        structures[key].ContourSequence = copied_contour_seq
+                        structures[key].ContourSequence        = copied_contour_seq
                     else:
                         print(f"Matching ROIContourSequence for ReferencedROINumber {ref_roi_number} has no ContourSequence.")
                     match_found = True
@@ -80,8 +198,9 @@ def process_rt_struct(rtstruct,structured_data):
                     continue
                 if contour_ref_roi_number == ref_roi_number:
                     if hasattr(contour_item, 'ContourSequence'):
-                        copied_contour_seq = copy.deepcopy(contour_item.ContourSequence)
-                        structures[key].ContourSequence = copied_contour_seq
+                        copied_contour_seq               = copy.deepcopy(contour_item.ContourSequence)
+                        structures[key].ContourSequence  = copied_contour_seq
+                        structures_keys.append(key)
                     else:
                         print(f"Matching ROIContourSequence for ReferencedROINumber {ref_roi_number} has no ContourSequence.")
                     match_found = True
@@ -89,9 +208,10 @@ def process_rt_struct(rtstruct,structured_data):
         if not match_found:
             print(f"No matching ROIContourSequence found for {key} with ReferencedROINumber {ref_roi_number}.")
 
-    # Update the series_data with the new structures field.
-    structured_data[patient_id][study_id][modality][series_index]['structures']       = structures
-    structured_data[patient_id][study_id][modality][series_index]['structures_names'] = structures_names
+    # Update the structured_data with new fields.
+    structured_data[patient_id][study_id][modality][series_index]['structures']        = structures
+    structured_data[patient_id][study_id][modality][series_index]['structures_names']  = structures_names
+    structured_data[patient_id][study_id][modality][series_index]['structures_keys']   = structures_keys
 
 
 

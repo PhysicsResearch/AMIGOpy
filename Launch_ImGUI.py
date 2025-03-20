@@ -25,6 +25,7 @@ from fcn_load.load_dcm                import load_all_dcm
 import vtk
 
 
+
 class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
     def __init__(self,folder_path=None):
         super(MyApp, self).__init__()
@@ -54,7 +55,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         set_fcn_tabModules_changed(self)
         
         # populate the list of image processign operations
-        populate_operation_list(self);
+        populate_operation_list(self)
 
         #
         self.layerTab = {}

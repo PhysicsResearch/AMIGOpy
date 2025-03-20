@@ -27,7 +27,9 @@ def adjust_data_type_input(self,idx):
         self.dataImporterAxial[idx].SetDataScalarTypeToDouble()
         self.dataImporterSagittal[idx].SetDataScalarTypeToDouble()
         self.dataImporterCoronal[idx].SetDataScalarTypeToDouble()
-    # Add more conditions for other data types if needed
+    elif data_type == np.bool_:
+        # bool will be treated as unsigned char (0/1)
+        scalar_type_method = "SetDataScalarTypeToUnsignedChar"
     else:
         raise ValueError(f"Unsupported data type: {data_type}")
     # #     

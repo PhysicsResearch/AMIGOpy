@@ -11,6 +11,7 @@ from fcn_init.vtk_hist import set_vtk_histogran_fig
 from fcn_display.colormap_set import set_color_map
 from fcn_display.win_level import set_window
 from fcn_display.disp_plan_data import update_plan_tables
+from fcn_RTFiles.process_rt_files import update_structure_list_widget
 
 def on_DataTreeView_clicked(self,index):
     model = self.DataTreeView.model()
@@ -38,7 +39,7 @@ def on_DataTreeView_clicked(self,index):
         self.metadata_search.setText("")
         # Unblock signals
         self.metadata_search.blockSignals(False)
-        if len(hierarchy) == 5:
+        if len(hierarchy) >= 5:
             self.series_index = hierarchy_indices[4].row()
             # need to remove part of the tag otherwise it does not match with the key:
             self.patientID = hierarchy[1].replace("PatientID: ", "")
@@ -57,15 +58,27 @@ def on_DataTreeView_clicked(self,index):
                 
                 return
             if self.modality == 'RTSTRUCT':
-                # keep track of the last selected plan ... if user chose and image or dose this will not change
-                self.patientID_plan    = hierarchy[1].replace("PatientID: ", "")
-                self.studyID_plan      = hierarchy[2].replace("StudyID: ", "")
-                self.modality_study     = hierarchy[3].replace("Modality: ", "")
-                self.series_index_plan = self.series_index
+                # keep track of the last selected struct file ... if user chose and image or dose this will not change
+                self.patientID_struct     = hierarchy[1].replace("PatientID: ", "")
+                self.studyID_struct       = hierarchy[2].replace("StudyID: ", "")
+                self.modality_struct      = hierarchy[3].replace("Modality: ", "")
+                self.series_index_struct  = self.series_index
                 # 
-                self.modality_metadata = self.modality_study
-                update_meta_view_table_dicom(self,self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_study][self.series_index_plan]['metadata']['DCM_Info'])
+                self.modality_metadata = self.modality_struct
+                update_meta_view_table_dicom(self,self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info'])
+                update_structure_list_widget(self,
+                                             self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'],
+                                             self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys']
+                                            )
+                # find reference series
+                Ref = None
+                if 'ReferencedFrameOfReferenceSequence' in self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']:
+                    if 'RTReferencedStudySequence' in self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']['ReferencedFrameOfReferenceSequence'][0]:
+                        if 'RTReferencedSeriesSequence' in self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']['ReferencedFrameOfReferenceSequence'][0]['RTReferencedStudySequence'][0]:
+                            Ref = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']['ReferencedFrameOfReferenceSequence'][0]['RTReferencedStudySequence'][0]['RTReferencedSeriesSequence'][0].get('SeriesInstanceUID')
                 
+                if Ref is not None:
+                    ref_series = find_matching_series(self, Ref)
                 return
             #print(self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['AcquisitionNumber'])
             # Assign data and display init image
@@ -96,10 +109,24 @@ def on_DataTreeView_clicked(self,index):
             #
             # check the current module
             if currentTabText == "View":
+                
+                if len(hierarchy) >= 6 and hierarchy[5] == "Structures": 
+                    # structures withing a SERIES
+                    update_structure_list_widget(self,
+                                self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'],
+                                self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys']
+                            )
+
+
                 # list series from the same acquisition and populate a table so the user can pick what to display
                 populate_CT4D_table(self)
                 #
-                self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                if len(hierarchy) == 5: # Series
+                    self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                if len(hierarchy) == 7: # binary mask contour
+                    s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
+                    self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+
                 adjust_data_type_input(self,idx)
                 #
                 self.current_axial_slice_index[idx]    = round(self.display_data[idx].shape[0]/2)
@@ -173,7 +200,7 @@ def on_DataTreeView_clicked(self,index):
                 displaysagittal(self)
                 displaycoronal(self)
                 #    
-                set_vtk_histogran_fig(self)
+                # set_vtk_histogran_fig(self)
             elif currentTabText == "Compare":
                 #
                 # Current view
@@ -416,22 +443,7 @@ def on_DataTreeView_clicked(self,index):
 
 
       
-def _get_or_create_parent_item(self, label):
-    # Check if model is None
-    if self.model is None:
-        print("Error: Model is not initialized.")
-        return None
-
-    # Iterate through existing items to find if the parent item already exists
-    for i in range(self.model.rowCount()):
-        item = self.model.item(i)
-        if item and item.text() == label:
-            return item
-
-    # Create a new parent item if it doesn't exist
-    new_item = QStandardItem(label)
-    self.model.appendRow(new_item)
-    return new_item        
+    
 
 def display_dicom_info(self):
     PatientName = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('PatientName','')
@@ -675,3 +687,43 @@ def update_sagittal_image(self,  Im = None):
             imageProperty.SetOpacity(0)
             self.dataImporterSagittal[i].Modified() 
         #    
+def find_matching_series(self, Ref):
+    """Search through all studies, modalities, and series for the given SeriesInstanceUID (Ref). 
+       Returns a list of all matches found.
+    """
+    matches = []
+
+    # Make sure this patientID is in dicom_data
+    if self.patientID not in self.dicom_data:
+        print(f"No data found for patientID={self.patientID}")
+        return matches
+
+    # Loop over all studies for this patient
+    for studyID, study_data in self.dicom_data[self.patientID].items():
+        # Loop over all modalities in each study
+        for modality, modality_data in study_data.items():
+            # If the next level is a list, iterate accordingly
+            if isinstance(modality_data, list):
+                for series_index, series_data in enumerate(modality_data):
+                    # Extract the UID, compare to Ref
+                    metadata = series_data.get('metadata', {})
+                    dcm_info = metadata.get('DCM_Info', {})
+                    series_uid = dcm_info.get('SeriesInstanceUID')
+
+                    if series_uid == Ref:
+                        Acq_number   = metadata.get('AcquisitionNumber')
+                        matches={
+                            'studyID'      : studyID,
+                            'modality'     : modality,
+                            'series_index' : series_index,
+                            'series_label' : f"Acq_{Acq_number}_Series: {series_data.get('SeriesNumber')}"
+                        }
+                        self.StructRefSeries.setText(f"Acq_{Acq_number}_Series: {series_data.get('SeriesNumber')}")
+                        break
+            else:
+                # Unexpected structure; handle or ignore
+                print(f"Unexpected structure at modality '{modality}' in study '{studyID}'. "
+                      f"Expected dict or list, got {type(modality_data)}.")
+                continue
+
+    return matches
