@@ -10,6 +10,11 @@ def create_contour_masks(self):
     data_dict = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]
     target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
 
+    volume_3d = target_series_dict.get('3DMatrix', None)
+    if volume_3d is None:
+        print("No 3DMatrix found for this series.")
+        return
+    
     # Check if structures already exist clearly:
     existing_structures = target_series_dict.get('structures', {})
     existing_structure_count = len(existing_structures)
@@ -39,10 +44,7 @@ def create_contour_masks(self):
         target_series_dict['structures_names'] = []
         current_structure_index = 1
 
-    volume_3d = target_series_dict.get('3DMatrix', None)
-    if volume_3d is None:
-        print("No 3DMatrix found for this series.")
-        return
+
 
     mask_shape = volume_3d.shape
     z_spacing = self.slice_thick[0]
@@ -88,21 +90,19 @@ def create_contour_masks(self):
 
         vtk_actors_2d = {'axial': {}, 'sagittal': {}, 'coronal': {}}
 
-        # Axial contours clearly generated and displayed:
-        for z_idx in range(mask_shape[0]):
+        for z_idx in range(mask_shape[0]):  # Iterate over all axial slices
             slice_2d = mask_3d[z_idx, :, :]
+            
             contours = extract_contours_from_binary_slice(slice_2d)
+            if not contours:
+                continue  # Skip empty slices
 
-            print(f"Slice {z_idx}: {len(contours)} contours found for structure {new_s_key}")
+            vtk_poly = contours_to_vtk_polydata(contours, (y_spacing, x_spacing))
+            actor = create_actor_2d(vtk_poly)
 
-            if contours:
-                vtk_poly = contours_to_vtk_polydata(contours)
-                actor = create_actor_2d(vtk_poly)
+            # Store the actor with the correct index
+            vtk_actors_2d['axial'][z_idx] = actor  # Ensure index matches later retrieval
 
-                renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
-                renderer.AddActor(actor)
-
-                self.structure_actors_ax.append(actor)
 
         target_series_dict['structures'][new_s_key]['VTKActors2D'] = vtk_actors_2d
 
@@ -171,9 +171,10 @@ def extract_contours_from_binary_slice(slice_2d, level=0.5):
     contours = find_contours(slice_2d, level=level)
     return contours
 
-def contours_to_vtk_polydata(contours):
+def contours_to_vtk_polydata(contours, pixel_spacing):
     """
     Convert list of numpy contours to vtkPolyData for VTK visualization.
+    Applies pixel spacing and image origin for correct alignment.
     """
     points = vtk.vtkPoints()
     lines = vtk.vtkCellArray()
@@ -186,8 +187,11 @@ def contours_to_vtk_polydata(contours):
         line.GetPointIds().SetNumberOfIds(num_points)
 
         for idx, (row, col) in enumerate(contour):
-            # Insert points (note: x corresponds to column, y corresponds to row)
-            points.InsertNextPoint(col, row, 0)
+            # Apply pixel spacing and origin shift
+            x = col * pixel_spacing[1] 
+            y = row * pixel_spacing[0] 
+
+            points.InsertNextPoint(x, y, 0)  # Keep z = 0 for 2D display
             line.GetPointIds().SetId(idx, point_id)
             point_id += 1
 

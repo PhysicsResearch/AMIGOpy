@@ -6,6 +6,8 @@ def displayaxial(self, Im = None):
     idx = self.layer_selection_box.currentIndex()
     #
     for i in range(len(self.dataImporterAxial)):
+        if self.slice_thick[i] ==0:
+            continue
         # Add or update circular ROIs in the 4th layer
         if i == 3 and self.checkBox_circ_roi_data_2.isChecked():
                 renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
@@ -20,13 +22,13 @@ def displayaxial(self, Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_ax(self)
-        #if i == 1:
+        if i == 0:
             # Check if the required fields exist in dicom_data
-              #  disp_structure_overlay_axial(self)
+                # First, clear previous overlays explicitly
+                disp_structure_overlay_axial(self)
 
   
-        if self.slice_thick[i] ==0:
-            continue
+        
         
         
         Offset_vox = (self.Im_PatPosition[idx,2]-self.Im_PatPosition[i,2])/self.slice_thick[i]
@@ -78,13 +80,22 @@ def displayaxial(self, Im = None):
 
 def disp_structure_overlay_axial(self):
     renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+
+    # Clear previous actors explicitly
     if hasattr(self, "structure_actors_ax"):
         for actor in self.structure_actors_ax:
             renderer.RemoveActor(actor)
     self.structure_actors_ax = []
 
-    idx = self.layer_selection_box.currentIndex()
-    slice_index = self.current_axial_slice_index[idx]
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    if 'structures' not in target_series_dict or not target_series_dict['structures']:
+        print("No structures found.")
+        return
+
+    slice_index = self.current_axial_slice_index[0]  # Base reference slice
+    print(f"Displaying actors for axial slice: {slice_index}")
+
+    structures_dict = target_series_dict['structures']
 
     for i in range(self.STRUCTlist.count()):
         widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
@@ -93,20 +104,31 @@ def disp_structure_overlay_axial(self):
             if structure_key is None:
                 continue
 
-            actors_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][structure_key]['VTKActors2D']['axial']
-            actor = actors_dict.get(slice_index)
-            if actor is None:
+            structure_data = structures_dict.get(structure_key, {})
+            actors_dict = structure_data.get('VTKActors2D', {}).get('axial', {})
+
+            if slice_index not in actors_dict:
+                print(f"No actor stored for slice {slice_index} in structure {structure_key}. Available slices: {list(actors_dict.keys())}")
                 continue
+            
+            actor = actors_dict.get(slice_index)
 
             actor_copy = vtk.vtkActor()
             actor_copy.ShallowCopy(actor)
-            actor_copy.GetProperty().SetColor(widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1,1,1))
+            actor_copy.GetProperty().SetColor(widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1, 1, 1))
             actor_copy.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
             actor_copy.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+
+            # 🔹 Fix Position: Align with Image using Im_Offset
+            actor_copy.SetPosition(0, 
+                                   0, 
+                                   2000)  # Move contour on top layer
+
             renderer.AddActor(actor_copy)
             self.structure_actors_ax.append(actor_copy)
 
     self.vtkWidgetAxial.GetRenderWindow().Render()
+
 
 def fill_polydata(polydata):
     """
