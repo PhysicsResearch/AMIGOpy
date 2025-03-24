@@ -79,6 +79,9 @@ def on_DataTreeView_clicked(self,index):
                 
                 if Ref is not None:
                     ref_series = find_matching_series(self, Ref)
+
+                # Select the struct tab
+                self.tabView01.setCurrentIndex(3)
                 return
             #print(self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['AcquisitionNumber'])
             # Assign data and display init image

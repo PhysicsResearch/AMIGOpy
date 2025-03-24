@@ -54,8 +54,8 @@ class ColorCheckItem(QWidget):
         self.transparency_spinbox.setDecimals(2)
 
         # 6) Checkbox to indicate whether to fill the contour
-        self.fill_checkbox = QCheckBox("Fill")
-        self.fill_checkbox.setChecked(False)  # default: wireframe
+        # self.fill_checkbox = QCheckBox("Fill")
+        # self.fill_checkbox.setChecked(False)  # default: wireframe
 
         # Lay out horizontally
         layout = QHBoxLayout()
@@ -66,7 +66,7 @@ class ColorCheckItem(QWidget):
         layout.addWidget(self.line_width_spinbox)
         layout.addWidget(QLabel("Transp:"))
         layout.addWidget(self.transparency_spinbox)
-        layout.addWidget(self.fill_checkbox)
+        # layout.addWidget(self.fill_checkbox)
 
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)

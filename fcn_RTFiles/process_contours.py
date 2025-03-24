@@ -4,7 +4,8 @@ from skimage.draw import polygon
 from skimage.measure import find_contours
 from fcn_load.populate_dcm_list import populate_DICOM_tree
 from PyQt5.QtWidgets import QMessageBox
-
+from scipy.ndimage import gaussian_filter1d
+from scipy.signal import savgol_filter
 
 def create_contour_masks(self):
     data_dict = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]
@@ -12,13 +13,20 @@ def create_contour_masks(self):
 
     volume_3d = target_series_dict.get('3DMatrix', None)
     if volume_3d is None:
-        print("No 3DMatrix found for this series.")
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Warning)
+        msg_box.setWindowTitle("Select a image series")
+        msg_box.setText("Did you select the correct image series ? No image data found")
+        msg_box.exec()
         return
     
     # Check if structures already exist clearly:
     existing_structures = target_series_dict.get('structures', {})
     existing_structure_count = len(existing_structures)
 
+    # Progress bar - not accurate but gives a sense of progress
+    self.progressBar.setValue(5)
+    
     if existing_structures:
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Question)
@@ -60,6 +68,9 @@ def create_contour_masks(self):
 
     struc_names = target_series_dict['structures_names']
     struc_keys  = target_series_dict['structures_keys']
+
+    #
+    self.progressBar.setValue(10)
 
     for idx, s_key in enumerate(structures_keys):
         structure = structures_dict.get(s_key)        
@@ -103,6 +114,21 @@ def create_contour_masks(self):
             # Store the actor with the correct index
             vtk_actors_2d['axial'][z_idx] = actor  # Ensure index matches later retrieval
 
+        # **Sagittal slices**
+        for x_idx in range(mask_shape[2]):  
+            slice_2d = mask_3d[:, :, x_idx]
+            contours = extract_contours_from_binary_slice(slice_2d)
+            if contours:
+                vtk_poly = contours_to_vtk_polydata(contours, (z_spacing, y_spacing))
+                vtk_actors_2d['sagittal'][x_idx] = create_actor_2d(vtk_poly)
+
+        # **Coronal slices**
+        for y_idx in range(mask_shape[1]):  
+            slice_2d = mask_3d[:, y_idx, :]
+            contours = extract_contours_from_binary_slice(slice_2d)
+            if contours:
+                vtk_poly = contours_to_vtk_polydata(contours, (z_spacing, x_spacing))
+                vtk_actors_2d['coronal'][y_idx] = create_actor_2d(vtk_poly)
 
         target_series_dict['structures'][new_s_key]['VTKActors2D'] = vtk_actors_2d
 
@@ -167,9 +193,58 @@ def create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, or
 
 
 
-def extract_contours_from_binary_slice(slice_2d, level=0.5):
+def extract_contours_from_binary_slice(slice_2d, level=0.4, smooth=True, method="gaussian"):
+    """
+    Extracts and optionally smooths contours from a binary slice.
+
+    Parameters:
+        slice_2d (ndarray): Binary mask slice
+        level (float): Contour extraction threshold
+        smooth (bool): Whether to apply smoothing
+        method (str): Smoothing method ("savgol" or "gaussian")
+
+    Returns:
+        list of np.array: Extracted (and optionally smoothed) contours
+    """
     contours = find_contours(slice_2d, level=level)
+    
+    if smooth:
+        contours = smooth_contours(contours, method=method)
+
     return contours
+
+def smooth_contours(contours, method="savgol", window_length=5, polyorder=2, sigma=1.0):
+    """
+    Smooths extracted contours using either a Savitzky-Golay filter or Gaussian smoothing.
+
+    Parameters:
+        contours (list of np.array): List of contours (each contour is Nx2)
+        method (str): "savgol" (Savitzky-Golay) or "gaussian" (Gaussian filter)
+        window_length (int): Window size for Savitzky-Golay filter
+        polyorder (int): Polynomial order for Savitzky-Golay filter
+        sigma (float): Standard deviation for Gaussian smoothing
+
+    Returns:
+        list of np.array: Smoothed contours
+    """
+    smoothed_contours = []
+    
+    for contour in contours:
+        x, y = contour[:, 0], contour[:, 1]  # Separate x and y coordinates
+        
+        if method == "savgol":
+            x_smooth = savgol_filter(x, window_length=window_length, polyorder=polyorder, mode='nearest')
+            y_smooth = savgol_filter(y, window_length=window_length, polyorder=polyorder, mode='nearest')
+        elif method == "gaussian":
+            x_smooth = gaussian_filter1d(x, sigma=sigma)
+            y_smooth = gaussian_filter1d(y, sigma=sigma)
+        else:
+            x_smooth, y_smooth = x, y  # No smoothing
+        
+        smoothed_contours.append(np.column_stack((x_smooth, y_smooth)))
+    
+    return smoothed_contours
+
 
 def contours_to_vtk_polydata(contours, pixel_spacing):
     """

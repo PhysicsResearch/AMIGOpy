@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>2007</width>
-    <height>1154</height>
+    <width>2011</width>
+    <height>1163</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -383,7 +383,7 @@
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QTabWidget" name="tabWidget_2">
+         <widget class="QTabWidget" name="tabView01">
           <property name="font">
            <font>
             <pointsize>10</pointsize>

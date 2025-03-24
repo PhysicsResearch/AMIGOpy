@@ -86,6 +86,8 @@ def populate_DICOM_tree(self):
                     # Store information in the dictionary
                     self.series_info_dict[combo_index] = (series_label, patient_id, study_id, modality, item_index)
                     combo_index += 1
+    # Expand all items in the tree view
+    self.DataTreeView.expandAll()
 
 def _get_or_create_parent_item(self, label):
     # Check if model is None
