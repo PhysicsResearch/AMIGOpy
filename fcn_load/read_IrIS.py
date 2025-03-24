@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import filedialog
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from fcn_display.Data_tree_general import _get_or_create_parent_item
+from fcn_load.populate_dcm_list import _get_or_create_parent_item
 from concurrent.futures import ProcessPoolExecutor
 from skimage.measure import block_reduce
 import time

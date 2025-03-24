@@ -20,13 +20,17 @@ from fcn_DECT.Ivalue_Zeff_fit import plot_I_value_points, plot_I_value_precalc, 
 from fcn_DECT.create_process_dect import creat_DECT_derived_maps, c_roi_scatter_plot, export_all_DECT_tables, save_parameters_to_csv, load_parameters_from_csv
 from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwell_channels
 from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
+from fcn_display.meta_viewer import on_metadata_search_text_changed
+from fcn_RTFiles.process_contours import create_contour_masks
 
 def initialize_software_buttons(self):
     # IrIS add row dw table
     self.add_dw_table.clicked.connect(lambda: add_row_dw_table(self))
     self.remove_dw_table.clicked.connect(lambda: remove_row_dw_table(self))
     
-    
+    #Metadata
+    self.metadata_search.textChanged.connect(lambda text: on_metadata_search_text_changed(self,text))
+
     # Image processing
     self.ImageUndo_operation.clicked.connect(lambda: image_processing_undo(self))
     self.ImageUndo_operation.setStyleSheet("background-color: green; color: white;")
@@ -127,6 +131,9 @@ def initialize_software_buttons(self):
     self.DECT_load_fit_par.clicked.connect(lambda: load_parameters_from_csv(self))
     self.DECT_load_fit_par.setStyleSheet("background-color: green; color: white;")
     
+    # Struct
+    self.CreateMask_Structures.clicked.connect(lambda: create_contour_masks(self))  # create mask
+    self.CreateMask_Structures.setStyleSheet("background-color: blue; color: white;")
     # Plan
     # Brachy 
     # spin

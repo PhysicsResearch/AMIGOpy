@@ -3,6 +3,12 @@ import numpy as np
 #
 
 def initialize_software_variables(self):
+    #
+    self.patientID         = None
+    self.studyID           = None
+    self.modality_metadata = None
+    self.series_index      = None
+    #
     self.CmapIDX     = np.zeros(4)
     self.LayerAlpha  = np.zeros(4)
     #
@@ -53,14 +59,17 @@ def initialize_software_variables(self):
     # [:,16] - Ac (Z)
     self.Dw_pos_info   = np.zeros((1,17))
     
-    # Dw pos brachy plans
-    self.dwell_actors_ax = []  # Initialize an empty list to store dwell actors
+    # Dw pos brachy plans 
+    self.dwell_actors_ax = []     # Initialize an empty list to store dwell actors
     self.dwell_actors_co = []
     self.dwell_actors_sa = []
-    # Ch pos brachy plans
-    self.channel_actors_ax = []  # Initialize an empty list to store dwell actors
+    # Ch pos brachy plans 
+    self.channel_actors_ax = []   # Initialize an empty list to store dwell actors
     self.channel_actors_co = []
     self.channel_actors_sa = []
+
+    # Display struct contoru
+    self.structure_actors_ax = [] # Initialize an empty list
 
     # Circle ROI -----------------------------------------------------------------------------------
     # Initialize a list to store circle actors if it doesn't exist

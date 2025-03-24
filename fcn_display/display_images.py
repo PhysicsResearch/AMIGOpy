@@ -6,6 +6,7 @@ def displayaxial(self, Im = None):
     idx = self.layer_selection_box.currentIndex()
     #
     for i in range(len(self.dataImporterAxial)):
+
         # Add or update circular ROIs in the 4th layer
         if i == 3 and self.checkBox_circ_roi_data_2.isChecked():
                 renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
@@ -20,6 +21,10 @@ def displayaxial(self, Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_ax(self)
+        if i == 3:
+            # Check if the required fields exist in dicom_data
+                # First, clear previous overlays explicitly
+                disp_structure_overlay_axial(self)
 
   
         if self.slice_thick[i] ==0:
@@ -72,6 +77,64 @@ def displayaxial(self, Im = None):
         self.vtkWidgetAxial.GetRenderWindow().Render()
         self.vtkWidgetSagittal.GetRenderWindow().Render()
         self.vtkWidgetCoronal.GetRenderWindow().Render()
+
+def disp_structure_overlay_axial(self):
+    renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+
+    # Clear previous actors explicitly
+    if hasattr(self, "structure_actors_ax"):
+        for actor in self.structure_actors_ax:
+            renderer.RemoveActor(actor)
+    self.structure_actors_ax = []
+
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    if 'structures' not in target_series_dict or not target_series_dict['structures']:
+        # print("No structures found.")
+        return
+
+    slice_index = self.current_axial_slice_index[0]  # Base reference slice
+    # print(f"Displaying actors for axial slice: {slice_index}")
+
+    structures_dict = target_series_dict['structures']
+
+    for i in range(self.STRUCTlist.count()):
+        widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
+        if widget.checkbox.isChecked():
+            structure_key = getattr(widget, 'structure_key', None)
+            if structure_key is None:
+                continue
+
+            structure_data = structures_dict.get(structure_key, {})
+            actors_dict = structure_data.get('VTKActors2D', {}).get('axial', {})
+
+            if slice_index not in actors_dict:
+                # print(f"No actor stored for slice {slice_index} in structure {structure_key}. Available slices: {list(actors_dict.keys())}")
+                continue
+            
+            actor = actors_dict.get(slice_index)
+
+            actor_copy = vtk.vtkActor()
+            actor_copy.ShallowCopy(actor)
+            actor_copy.GetProperty().SetColor(widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1, 1, 1))
+            actor_copy.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
+            actor_copy.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+
+            # ✅ Check fill option and apply the correct representation
+            # if widget.fill_checkbox.isChecked():
+            #     actor_copy.GetProperty().SetRepresentationToSurface()  # Solid Fill
+            # else:
+            actor_copy.GetProperty().SetRepresentationToWireframe()  # Wireframe only
+
+            # 🔹 Fix Position: Align with Image using Im_Offset
+            actor_copy.SetPosition(self.Im_Offset[0, 0], 
+                                   self.Im_Offset[0, 1], 
+                                   2000)  # Move contour on top layer
+
+            renderer.AddActor(actor_copy)
+            self.structure_actors_ax.append(actor_copy)
+
+    self.vtkWidgetAxial.GetRenderWindow().Render()
+
 
 def disp_roi_axial(self):
     for row in range(self.table_circ_roi.rowCount()):
@@ -350,7 +413,8 @@ def displaycoronal(self, Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_co(self)
-
+        if i == 3:
+                disp_structure_overlay_coronal(self)
 
         if self.slice_thick[i] ==0:
             continue   
@@ -403,7 +467,67 @@ def displaycoronal(self, Im = None):
     self.vtkWidgetCoronal.GetRenderWindow().Render()
     self.vtkWidgetAxial.GetRenderWindow().Render()
     self.vtkWidgetSagittal.GetRenderWindow().Render()
-        
+
+def disp_structure_overlay_coronal(self):
+    """
+    Displays structure contours in the coronal view.
+    """
+    renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+
+    # Clear previous coronal actors
+    if hasattr(self, "structure_actors_co"):
+        for actor in self.structure_actors_co:
+            renderer.RemoveActor(actor)
+    self.structure_actors_co = []
+
+    # Retrieve structure dictionary
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    if 'structures' not in target_series_dict or not target_series_dict['structures']:
+        return  # No structures to display
+
+    slice_index = self.current_coronal_slice_index[0]  # Reference slice for coronal view
+
+    structures_dict = target_series_dict['structures']
+
+    for i in range(self.STRUCTlist.count()):
+        widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
+        if widget.checkbox.isChecked():
+            structure_key = getattr(widget, 'structure_key', None)
+            if structure_key is None:
+                continue
+
+            structure_data = structures_dict.get(structure_key, {})
+            actors_dict = structure_data.get('VTKActors2D', {}).get('coronal', {})
+
+            if slice_index not in actors_dict:
+                continue  # Skip if no contour for this slice
+
+            actor = actors_dict.get(slice_index)
+
+            # Clone the actor to modify properties
+            actor_copy = vtk.vtkActor()
+            actor_copy.ShallowCopy(actor)
+            actor_copy.GetProperty().SetColor(widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1, 1, 1))
+            actor_copy.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
+            actor_copy.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+
+            # # Set fill representation if enabled
+            # if widget.fill_checkbox.isChecked():
+            #     actor_copy.GetProperty().SetRepresentationToSurface()  # Filled
+            # else:
+            actor_copy.GetProperty().SetRepresentationToWireframe()  # Wireframe
+
+            # Align with image using Im_Offset
+            actor_copy.SetPosition(self.Im_Offset[0, 0],
+                                   self.Im_Offset[0, 2],
+                                   2000)  # Ensure contour is above the image
+
+            renderer.AddActor(actor_copy)
+            self.structure_actors_co.append(actor_copy)
+
+    # Render the updated coronal view
+    self.vtkWidgetCoronal.GetRenderWindow().Render()
+
 def disp_roi_coronal(self):
     for row in range(self.table_circ_roi.rowCount()):
         try:
@@ -713,7 +837,9 @@ def displaysagittal(self,Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_sa(self)    
-        
+        if i == 3:
+            disp_structure_overlay_sagittal(self)
+
         if self.slice_thick[i] ==0:
             continue
         
@@ -760,6 +886,66 @@ def displaysagittal(self,Im = None):
     self.vtkWidgetCoronal.GetRenderWindow().Render()
     self.vtkWidgetAxial.GetRenderWindow().Render()
     
+
+def disp_structure_overlay_sagittal(self):
+    """
+    Displays structure contours in the sagittal view.
+    """
+    renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+
+    # Clear previous sagittal actors
+    if hasattr(self, "structure_actors_sa"):
+        for actor in self.structure_actors_sa:
+            renderer.RemoveActor(actor)
+    self.structure_actors_sa = []
+
+    # Retrieve structure dictionary
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    if 'structures' not in target_series_dict or not target_series_dict['structures']:
+        return  # No structures to display
+
+    slice_index = self.current_sagittal_slice_index[0]  # Reference slice for sagittal view
+
+    structures_dict = target_series_dict['structures']
+
+    for i in range(self.STRUCTlist.count()):
+        widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
+        if widget.checkbox.isChecked():
+            structure_key = getattr(widget, 'structure_key', None)
+            if structure_key is None:
+                continue
+
+            structure_data = structures_dict.get(structure_key, {})
+            actors_dict = structure_data.get('VTKActors2D', {}).get('sagittal', {})
+
+            if slice_index not in actors_dict:
+                continue  # Skip if no contour for this slice
+
+            actor = actors_dict.get(slice_index)
+
+            # Clone the actor to modify properties
+            actor_copy = vtk.vtkActor()
+            actor_copy.ShallowCopy(actor)
+            actor_copy.GetProperty().SetColor(widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1, 1, 1))
+            actor_copy.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
+            actor_copy.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+
+            # # Set fill representation if enabled
+            # if widget.fill_checkbox.isChecked():
+            #     actor_copy.GetProperty().SetRepresentationToSurface()  # Filled
+            # else:
+            actor_copy.GetProperty().SetRepresentationToWireframe()  # Wireframe
+
+            # Align with image using Im_Offset
+            actor_copy.SetPosition(self.Im_Offset[0, 1],  # X-coordinate
+                                   self.Im_Offset[0, 2],  # Y-coordinate
+                                   2000)  # Move contour to ensure it's above the image
+
+            renderer.AddActor(actor_copy)
+            self.structure_actors_sa.append(actor_copy)
+
+    # Render the updated sagittal view
+    self.vtkWidgetSagittal.GetRenderWindow().Render()
 
 def disp_roi_sagittal(self):
     for row in range(self.table_circ_roi.rowCount()):

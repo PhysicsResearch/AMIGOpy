@@ -1,4 +1,4 @@
-from fcn_load.load_dcm import populate_DICOM_tree
+from fcn_load.populate_dcm_list import populate_DICOM_tree
 from fcn_DECT.spr_calc_plot import calculate_beta
 import copy
 import pydicom

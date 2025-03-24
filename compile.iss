@@ -18,12 +18,13 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={autopf}\{#MyAppName}
+;DefaultDirName={autopf}\{#MyAppName}
+DefaultDirName=C:\AMIGOpy ; Install location
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ChangesAssociations=yes
 DisableProgramGroupPage=yes
-LicenseFile=C:\AMIGOpy\LINCENSE.txt
+LicenseFile=Z:\AMIGOpy\LINCENSE.txt
 OutputBaseFilename=mysetup
 Compression=lzma
 SolidCompression=yes
@@ -38,7 +39,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "C:\AMIGOpy\dist\Launch_ImGUI\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\AMIGOpy\dist\Launch_ImGUI\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\AMIGOpy\AMBpy.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Z:\AMIGOpy\AMBpy.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocExt}\OpenWithProgids"; ValueType: string; ValueName: "{#MyAppAssocKey}"; ValueData: ""; Flags: uninsdeletevalue
