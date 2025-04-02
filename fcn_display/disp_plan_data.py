@@ -43,13 +43,15 @@ def update_disp_brachy_plan(self):
     #
     clear_brachy_table(self)
     setup_brachy_table_headers(self)
-    selected_dw_ch = self.brachy_combobox_02.currentText()
+    selected_dw_ch = self.brachy_combobox_01.currentText()
+    print(f"Selected dwell channel: {selected_dw_ch}")
     if selected_dw_ch == "Dwells": 
         populate_brachy_table(self, current_ch.get('DwellInfo'))
     else:
         populate_brachy_table(self, current_ch.get('ChPos'))
     #
     apply_alternating_row_colors(self)
+    #
     #
     plot_brachy_dwell_channels(self)
     calculate_total_time(self)
@@ -111,7 +113,7 @@ def clear_brachy_table(self):
     """
     Clears all existing rows and columns from the brachy_table_01.
     """
-    self.brachy_table_01.clear()   # Clears the table content but retains headers
+    self.brachy_table_01.clear()           # Clears the table content but retains headers
     self.brachy_table_01.setRowCount(0)    # Removes all rows
     self.brachy_table_01.setColumnCount(0) # Removes all columns
     #
@@ -123,7 +125,7 @@ def setup_brachy_table_headers(self):
     """
     Sets up the column headers for brachy_table_01.
     """
-    selected_dw_ch = self.brachy_combobox_02.currentText()
+    selected_dw_ch = self.brachy_combobox_01.currentText()
     if selected_dw_ch == "Dwells": 
         headers = ["IDX", "Rel. Pos (mm)", "Time (s)", "X (mm)", "Y (mm)", "Z(mm)", "Ux", "Uy", "Uz"]
     else:

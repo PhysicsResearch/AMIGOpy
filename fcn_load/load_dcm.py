@@ -1,6 +1,7 @@
 # Importing necessary libraries
 import numpy as np
 import pydicom
+from pydicom.tag import Tag
 import math
 from fcn_load.populate_dcm_list import populate_DICOM_tree
 from fcn_RTFiles.process_rt_files  import process_rt_plans, process_rt_struct
@@ -49,7 +50,10 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
             image = dicom_file.pixel_array
             #
             #
-            instance_number           = int(getattr(dicom_file, "InstanceNumber", 0))
+            instance_number = getattr(dicom_file, "InstanceNumber", 0)
+            if instance_number is None:
+                instance_number = 0
+            instance_number = int(instance_number)
             image_position_patient    = getattr(dicom_file, "ImagePositionPatient", [0,0,0])
               
             # slice thickness it not always available specially for RTDose so this needs to be considered 
@@ -93,32 +97,37 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                     'SliceImageComments':{},
                 }
             elif modality == 'RTPLAN':
+                # Define the private creator tag explicitly - Used in ONCENTRA so it is not always available
+                private_creator_tag = Tag(0x300b, 0x0010) # NuCLETRON if created using ONCENTRA/ACE
+                private_channels    = Tag(0x300f, 0x1000) # Cathether position if created using ONCENTRA/ACE
                 existing_series_data = {
                     'SeriesNumber': series_number,
                     'metadata': {
                         'Modality': modality,
-                        'Manufacuter': getattr(dicom_file, "Manufacturer", "N/A"),
+                        'Manufacturer': getattr(dicom_file, "Manufacturer", "N/A"),
                         'BrachyTreatmentType': getattr(dicom_file, "BrachyTreatmentType", "N/A"),
-                        'LUTLabel': "N/A",                                                      # just to create the filed as this is checked later
-                        'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),   # just to create the filed as this is checked later
+                        'LUTLabel': "N/A",                                                      # just to create the field as this is checked later
+                        'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),   # just to create the field as this is checked later
                         'RTPlanLabel': getattr(dicom_file, "RTPlanLabel", ''),
                         'StudyDescription': getattr(dicom_file, "StudyDescription", ''),
-                        'ReferencedStructureSetSequence': getattr(dicom_file, "ReferencedStructureSetSequence", ''),
-                        'ApplicationSetupSequence': getattr(dicom_file, "ApplicationSetupSequence", ''),
-                        'SourceSequence': getattr(dicom_file, "SourceSequence", ''),
+                        'ReferencedStructureSetSequence': getattr(dicom_file, "ReferencedStructureSetSequence", []),
+                        'ApplicationSetupSequence': getattr(dicom_file, "ApplicationSetupSequence", []),
+                        'SourceSequence': getattr(dicom_file, "SourceSequence", []),
+                        'PrivateCreator': dicom_file.get(Tag(0x300b, 0x0010), '').value if Tag(0x300b, 0x0010) in dicom_file else '',
+                        'CatOnc': getattr(dicom_file, 'get', lambda *args: [])(Tag(0x300f, 0x1000), []),
                         'DCM_Info': dicom_file
                     },
                     'images': {},
                     'ImagePositionPatients': [],
-                    'SliceImageComments':{},
+                    'SliceImageComments': {},
                 }
             elif modality == 'RTSTRUCT':
                 existing_series_data = {
                     'SeriesNumber': series_number,
                     'metadata': {
                         'Modality': modality,
-                        'LUTLabel': "N/A",                                                      # just to create the filed as this is checked later
-                        'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),   # just to create the filed as this is checked later
+                        'LUTLabel': "N/A",                                                      # just to create the field as this is checked later
+                        'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),   # just to create the field as this is checked later
                         'StudyDescription': getattr(dicom_file, "StudyDescription", ''),
                         'StructureSetLabel': getattr(dicom_file, "StructureSetLabel", ''),
                         'SOPInstanceUID': getattr(dicom_file, "SOPInstanceUID", ''),
@@ -264,16 +273,22 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
             ref_struct_UID = "N/A"
         
         # 
+        matching_rtstruct = None
         # Now, search in rtstruct_files for a matching SOPInstanceUID
-        # 
         # this is required to get the correct RTSTRUCT file for the current RTPLAN Varian stores catether delineation in a RTSTRUCT file while
         # dwell positions and times are stored in the RTPLAN file
-        matching_rtstruct = None
-        for rtstruct in rtstruct_files:
-            if rtstruct['SOPInstanceUID'] == ref_struct_UID:
-                matching_rtstruct = rtstruct
-                break  # Stop the search once a match is found
-        
+
+        # Oncentra sotres the catether delineation in the RTPLAN file
+        PrivateCreator = structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['PrivateCreator']
+
+        if PrivateCreator != 'NUCLETRON':
+            for rtstruct in rtstruct_files:
+                if rtstruct['SOPInstanceUID'] == ref_struct_UID:
+                    matching_rtstruct = rtstruct
+                    break  # Stop the search once a match is found
+        else:
+            # ONCENTRA uses this tag 'Private_300f_1000'
+            matching_rtstruct = 'NUCLETRON'
         
         # call a function to process plan data ... which is different depeding on TPS and treatment type.    
         process_rt_plans(plan,matching_rtstruct,structured_data)    
