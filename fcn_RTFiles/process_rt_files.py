@@ -232,9 +232,38 @@ def read_brachy_plan(plan,ref_str,structured_data):
     else:
         channels = 'N/A'
     #
-    # struct set reference to get channels geometry (Varian)
-    stru_info       = structured_data[ref_str['patient_id']][ref_str['study_id']][ref_str['modality']][ref_str['series_index']]['metadata']['ROIContourSequence']
+    print(ref_str)
+    if ref_str != 'NUCLETRON' and ref_str != None:
+        # struct set reference to get channels geometry (Varian)
+        stru_info       = structured_data[ref_str['patient_id']][ref_str['study_id']][ref_str['modality']][ref_str['series_index']]['metadata']['ROIContourSequence']
+    else:
+        # Get the reference contours (Nucletron) for each channel
+        brachy_channel_points = []
+        if ref_str == 'NUCLETRON':
+            cat_onc_element = structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['CatOnc']
+            first_item = cat_onc_element.value[0]
+
+            roi_contour_sequence = getattr(first_item, 'ROIContourSequence', [])
+            rt_roi_obs_sequence = getattr(first_item, 'RTROIObservationsSequence', [])
+
+            if roi_contour_sequence and rt_roi_obs_sequence:
+                for roi_contour, rt_roi_obs in zip(roi_contour_sequence, rt_roi_obs_sequence):
+                    interpreted_type = getattr(rt_roi_obs, 'RTROIInterpretedType', '')
+                    if interpreted_type == 'BRACHY_CHANNEL':
+                        contour_sequence = getattr(roi_contour, 'ContourSequence', [])
+                        if contour_sequence:
+                            contour_data = contour_sequence[0].ContourData
+                            points_array = np.array(contour_data, dtype=np.float32)
+                            if len(points_array) % 3 == 0:
+                                points_matrix = points_array.reshape((-1, 3))
+                                brachy_channel_points.append(points_matrix)
+                            else:
+                                brachy_channel_points.append(np.empty((0, 3), dtype=np.float32))
+            else:
+                print("ROIContourSequence or RTROIObservationsSequence missing or empty.")
     #
+    #
+    # Initialize a list to hold channel information - Dwell and Catheter
     channel_info    = []
     #
     for chan_idx, channel_item in enumerate(channels):        
@@ -278,19 +307,32 @@ def read_brachy_plan(plan,ref_str,structured_data):
         
         ref_ROI = channel_item.get('ReferencedROINumber', '')
         # search struct file (Varian to find channels)
-        for idx, item in enumerate(stru_info):
-            ROI_N = item.get('ReferencedROINumber')
-            if ref_ROI == ROI_N:
-                ContourSequence = item.get('ContourSequence', [])
-                CS              = ContourSequence[0]
-                Points          = CS.get('ContourData',[])
-                if Points:
-                    # Convert Points to a NumPy array of type float32
-                    points_array = np.array(Points, dtype=np.float32)
-                    # Check if the length of Points is a multiple of 3
-                    if len(points_array) % 3 == 0:
-                        points_matrix = points_array.reshape((-1, 3))    
-        
+        points_matrix = np.empty((0, 3), dtype=np.float32)
+        # Varian
+        if ref_str != 'NUCLETRON' and ref_str != None:
+            for idx, item in enumerate(stru_info):
+                ROI_N = item.get('ReferencedROINumber')
+                if ref_ROI == ROI_N:
+                    ContourSequence = item.get('ContourSequence', [])
+                    CS              = ContourSequence[0]
+                    Points          = CS.get('ContourData',[])
+                    if Points:
+                        # Convert Points to a NumPy array of type float32
+                        points_array = np.array(Points, dtype=np.float32)
+                        # Check if the length of Points is a multiple of 3
+                        if len(points_array) % 3 == 0:
+                            points_matrix = points_array.reshape((-1, 3)) 
+        #Nucletron
+        elif ref_str == 'NUCLETRON':
+            if chan_idx < len(brachy_channel_points):
+                points_matrix = brachy_channel_points[chan_idx]
+            else:
+                print(f"Warning: No BRACHY_CHANNEL match for chan_idx {chan_idx}")
+                points_matrix = np.empty((0, 3), dtype=np.float32)
+
+                if not found_channel:
+                    print(f"No BRACHY_CHANNEL found matching chan_idx={chan_idx}. Using empty points_matrix.")
+
         info = {
             'ChannelNumber':             channel_item.get('ChannelNumber', 'N/A'),
             'ReferencedROINumber':       channel_item.get('ReferencedROINumber', 'N/A'),

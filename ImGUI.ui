@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>2011</width>
-    <height>1163</height>
+    <width>2015</width>
+    <height>1172</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -503,9 +503,9 @@
                  </spacer>
                 </item>
                 <item row="2" column="5">
-                 <widget class="QPushButton" name="pushButton_4">
+                 <widget class="QPushButton" name="brachy_export_dw_channels_csv">
                   <property name="text">
-                   <string>PushButton</string>
+                   <string>Export</string>
                   </property>
                  </widget>
                 </item>
@@ -865,6 +865,9 @@
            <layout class="QGridLayout" name="gridLayout_9">
             <item row="1" column="0">
              <widget class="QLineEdit" name="lineEdit_64">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="font">
                <font>
                 <pointsize>10</pointsize>
