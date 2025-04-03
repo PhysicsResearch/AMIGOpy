@@ -232,7 +232,8 @@ def read_brachy_plan(plan,ref_str,structured_data):
     else:
         channels = 'N/A'
     #
-    if ref_str != 'NUCLETRON':
+    print(ref_str)
+    if ref_str != 'NUCLETRON' and ref_str != None:
         # struct set reference to get channels geometry (Varian)
         stru_info       = structured_data[ref_str['patient_id']][ref_str['study_id']][ref_str['modality']][ref_str['series_index']]['metadata']['ROIContourSequence']
     else:
@@ -308,7 +309,7 @@ def read_brachy_plan(plan,ref_str,structured_data):
         # search struct file (Varian to find channels)
         points_matrix = np.empty((0, 3), dtype=np.float32)
         # Varian
-        if ref_str != 'NUCLETRON':
+        if ref_str != 'NUCLETRON' and ref_str != None:
             for idx, item in enumerate(stru_info):
                 ROI_N = item.get('ReferencedROINumber')
                 if ref_ROI == ROI_N:

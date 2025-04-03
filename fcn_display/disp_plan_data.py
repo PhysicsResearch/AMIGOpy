@@ -1,6 +1,7 @@
 import numpy as np
+import csv
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QTableWidgetItem
+from PyQt5.QtWidgets import QFileDialog, QTableWidgetItem, QMessageBox
 from PyQt5.QtGui import QColor
 import sys
 from PyQt5.QtWidgets import (
@@ -37,22 +38,36 @@ def update_plan_tables(self):
         print("'Plan_Brachy_Channels' does NOT exist.")
 
 def update_disp_brachy_plan(self):
-    channels   = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
-    current_ch = channels[self.brachy_spinBox_01.value()-1]
-    #
-    #
+    # Check if plan-related attributes exist
+    required_attrs = ['patientID_plan', 'studyID_plan', 'modality_plan', 'series_index_plan']
+    if not all(hasattr(self, attr) for attr in required_attrs):
+        QMessageBox.warning(self, "Warning", "No plan loaded.")
+        return
+
+    try:
+        channels = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
+    except (KeyError, IndexError):
+        QMessageBox.warning(self, "Warning", "Plan data is missing or corrupted.")
+        return
+
+    try:
+        current_ch = channels[self.brachy_spinBox_01.value() - 1]
+    except IndexError:
+        QMessageBox.warning(self, "Warning", "Invalid channel selected.")
+        return
+
+    # Clear and set up table
     clear_brachy_table(self)
     setup_brachy_table_headers(self)
+
     selected_dw_ch = self.brachy_combobox_01.currentText()
-    print(f"Selected dwell channel: {selected_dw_ch}")
+
     if selected_dw_ch == "Dwells": 
         populate_brachy_table(self, current_ch.get('DwellInfo'))
     else:
         populate_brachy_table(self, current_ch.get('ChPos'))
-    #
+
     apply_alternating_row_colors(self)
-    #
-    #
     plot_brachy_dwell_channels(self)
     calculate_total_time(self)
     
@@ -467,3 +482,59 @@ def plot_brachy_bar_channels(self):
 
     # Draw the updated plot
     self.plot_bar_canvas.draw()
+
+
+def export_all_brachy_channels_to_csv(self):
+    # Check if plan is loaded
+    required_attrs = ['patientID_plan', 'studyID_plan', 'modality_plan', 'series_index_plan']
+    if not all(hasattr(self, attr) for attr in required_attrs):
+        QMessageBox.warning(self, "Warning", "No plan loaded.")
+        return
+
+    try:
+        channels = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
+    except (KeyError, IndexError):
+        QMessageBox.warning(self, "Warning", "Plan data is missing or corrupted.")
+        return
+
+    # Ask user where to save the file
+    file_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv)")
+    if not file_path:
+        return  # User cancelled
+
+    try:
+        with open(file_path, mode='w', newline='') as csv_file:
+            writer = csv.writer(csv_file)
+
+            # --- Write DwellInfo block ---
+            writer.writerow(["=== Dwell Positions per Channel ==="])
+            writer.writerow([
+                "ChannelNumber", "DwellIndex", "RelativePosition", "TimeWeight",
+                "X", "Y", "Z", "OrientationX", "OrientationY", "OrientationZ"
+            ])
+
+            for ch in channels:
+                channel_num = ch.get('ChannelNumber', 'N/A')
+                dwell_info = ch.get('DwellInfo', None)
+
+                if dwell_info is not None and dwell_info.shape[0] > 0:
+                    for row in dwell_info:
+                        writer.writerow([channel_num] + row.tolist())
+
+            writer.writerow([])  # Empty row for separation
+
+            # --- Write ChPos block ---
+            writer.writerow(["=== Channel Geometry (ChPos) ==="])
+            writer.writerow(["ChannelNumber", "X", "Y", "Z"])
+
+            for ch in channels:
+                channel_num = ch.get('ChannelNumber', 'N/A')
+                ch_pos = ch.get('ChPos', None)
+
+                if ch_pos is not None and ch_pos.shape[0] > 0:
+                    for point in ch_pos:
+                        writer.writerow([channel_num] + point.tolist())
+
+        QMessageBox.information(self, "Export Complete", f"Data exported successfully to:\n{file_path}")
+    except Exception as e:
+        QMessageBox.critical(self, "Export Error", f"An error occurred:\n{str(e)}")

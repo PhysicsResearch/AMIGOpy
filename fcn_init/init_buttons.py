@@ -18,7 +18,7 @@ from fcn_DECT.spr_calc_plot import SPR_copy_ref_columns, SPR_fit_plot_fcn
 from fcn_DECT.DECT_table_disp import c_roi_getdata_HU_high_low
 from fcn_DECT.Ivalue_Zeff_fit import plot_I_value_points, plot_I_value_precalc, cal_plot_I_value_points
 from fcn_DECT.create_process_dect import creat_DECT_derived_maps, c_roi_scatter_plot, export_all_DECT_tables, save_parameters_to_csv, load_parameters_from_csv
-from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwell_channels
+from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwell_channels, export_all_brachy_channels_to_csv
 from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
 from fcn_display.meta_viewer import on_metadata_search_text_changed
 from fcn_RTFiles.process_contours import create_contour_masks
@@ -134,8 +134,12 @@ def initialize_software_buttons(self):
     # Struct
     self.CreateMask_Structures.clicked.connect(lambda: create_contour_masks(self))  # create mask
     self.CreateMask_Structures.setStyleSheet("background-color: blue; color: white;")
+
+    # -----------------------------------------
     # Plan
+    # ------------------------------------------
     # Brachy 
+    #
     # spin
     self.brachy_spinBox_01.valueChanged.connect(lambda: update_disp_brachy_plan(self))
     self.brachy_spinBox_02.valueChanged.connect(lambda: sync_spinBox_01(self))
@@ -148,7 +152,9 @@ def initialize_software_buttons(self):
     # buttom    
     self.brachy_ch_plot.clicked.connect(lambda:  plot_brachy_dwell_channels(self))
     self.brachy_ch_plot.setStyleSheet("background-color: blue; color: white;")
-    
+    #
+    self.brachy_export_dw_channels_csv.setStyleSheet("background-color: blue; color: white;")
+    self.brachy_export_dw_channels_csv.clicked.connect(lambda: export_all_brachy_channels_to_csv(self))
     
     # Circle ROI -----------------------------------------------------------------------------------
     # display (or not) ROI

@@ -99,6 +99,11 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
             elif modality == 'RTPLAN':
                 # Define the private creator tag explicitly - Used in ONCENTRA so it is not always available
                 private_creator_tag = Tag(0x300b, 0x0010) # NuCLETRON if created using ONCENTRA/ACE
+                # Different software versions can use different TAGs ... so far I found (300b,0010) and (300f,0010)
+                creator_value = dicom_file.get(Tag(0x300b, 0x0010), '').value if Tag(0x300b, 0x0010) in dicom_file else ''
+                if creator_value == '':
+                    creator_value = dicom_file.get(Tag(0x300f, 0x0010), '').value if Tag(0x300f, 0x0010) in dicom_file else ''
+                    #
                 private_channels    = Tag(0x300f, 0x1000) # Cathether position if created using ONCENTRA/ACE
                 existing_series_data = {
                     'SeriesNumber': series_number,
@@ -113,7 +118,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         'ReferencedStructureSetSequence': getattr(dicom_file, "ReferencedStructureSetSequence", []),
                         'ApplicationSetupSequence': getattr(dicom_file, "ApplicationSetupSequence", []),
                         'SourceSequence': getattr(dicom_file, "SourceSequence", []),
-                        'PrivateCreator': dicom_file.get(Tag(0x300b, 0x0010), '').value if Tag(0x300b, 0x0010) in dicom_file else '',
+                        'PrivateCreator': creator_value,
                         'CatOnc': getattr(dicom_file, 'get', lambda *args: [])(Tag(0x300f, 0x1000), []),
                         'DCM_Info': dicom_file
                     },

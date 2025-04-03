@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets
 from fcn_processing.Im_process_list   import on_operation_selected
 from fcn_DECT.DECT_table_disp import on_DECT_list_selection_changed
+from fcn_display.disp_plan_data import update_disp_brachy_plan
 
 def populate_operation_list(self):
     # List of operations
@@ -68,6 +69,11 @@ def populate_operation_list(self):
     # Populate the QComboBox
     self.brachy_dw_ch_box_01.addItems(methods)
     self.brachy_dw_ch_box_02.addItems(methods)
+    # call back
+    self.brachy_dw_ch_box_01.currentIndexChanged.connect((lambda: update_disp_brachy_plan(self)))
+
+
+
     # Color
     methods = ["Black", "Blue", "Green", "Red", "White"]
     # Get the QComboBox by its name
