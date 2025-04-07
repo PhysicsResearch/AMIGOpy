@@ -5,6 +5,8 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QToolBar
 from ImGUI import Ui_AMIGOpy  # Assuming this is the name of your main window class in ImGUI.py
 from fcn_load.sort_dcm import get_data_description
 from fcn_load.org_fol_dcm import organize_files_into_folders
+from fcn_breathing_curves.functions_plot import init_BrCv_plot, plotViewData_BrCv_plot
+from fcn_breathing_curves.functions_edit import initXRange, init_BrCv_edit, plotViewData_BrCv_edit
 from fcn_display.mouse_move_slicechanges import change_sliceAxial, change_sliceSagittal, change_sliceCoronal
 from fcn_display.Data_tree_general import on_DataTreeView_clicked
 from fcn_init.create_menu import initializeMenuBar
@@ -73,6 +75,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.transTab['Plan']    = [1,0,0,0]
         self.layerTab['CSV Files']    = 0
         self.transTab['CSV Files']    = [1,0,0,0]
+        self.layerTab['Breathing curves'] = 0
+        self.transTab['Breathing curves'] = [1,0,0,0]
         #
         # Set the path relative to the executable's location
         base_path = os.path.dirname(os.path.abspath(__file__))     # Location of the script or the executable
@@ -91,6 +95,15 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         # information about dwell positions and dwell times
         self.IrIS_Eval = {}
         #
+        
+        self.BrCvTab_index = 0
+        self.tabWidget_BrCv.currentChanged.connect(lambda: init_BrCv_plot(self))
+        self.plotXAxis_BrCv.currentTextChanged.connect(lambda: plotViewData_BrCv_plot(self))
+
+        self.tabWidget_BrCv.currentChanged.connect(lambda: init_BrCv_edit(self))
+        self.editXMinSlider_BrCv.valueChanged.connect(lambda: plotViewData_BrCv_edit(self))
+        self.editXMaxSlider_BrCv.valueChanged.connect(lambda: plotViewData_BrCv_edit(self))
+        self.editXAxis_BrCv.currentTextChanged.connect(lambda: initXRange(self))
         #
         self.LeftButtonAxialDown     = False
         self.LeftButtonSagittalDown  = False

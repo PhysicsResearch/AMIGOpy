@@ -22,6 +22,9 @@ from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwe
 from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
 from fcn_display.meta_viewer import on_metadata_search_text_changed
 from fcn_RTFiles.process_contours import create_contour_masks
+from fcn_breathing_curves.functions_import import openCSVFile_BrCv, setParams, createCurve
+from fcn_breathing_curves.functions_plot import calcStats, plotViewData_BrCv_plot, exportPlot
+from fcn_breathing_curves.functions_edit import applyOperations, undoOperations, exportData, plotViewData_BrCv_edit, cropRange_BrCv_edit, exportGCODE#, cropCurve_BrCv_edit
 
 def initialize_software_buttons(self):
     # IrIS add row dw table
@@ -35,6 +38,32 @@ def initialize_software_buttons(self):
     self.ImageUndo_operation.clicked.connect(lambda: image_processing_undo(self))
     self.ImageUndo_operation.setStyleSheet("background-color: green; color: white;")
     #
+
+    # Breathing curves explore
+    #self.loadCSVView_BrCv.clicked.connect(lambda: openCSVFile_BrCv(self))
+    #self.loadCSVView_BrCv.setStyleSheet("background-color: green; color: white;")
+#    self.setParamsCreateCv.clicked.connect(lambda: setParams(self))
+#    self.createCv.clicked.connect(lambda: createCurve(self))
+#    self.createCv.setStyleSheet("background-color: green; color: white;")
+#    self.calcStats_BrCv.clicked.connect(lambda: calcStats(self))
+#    self.calcStats_BrCv.setStyleSheet("background-color: green; color: white;")
+#    self.plotView_BrCv.clicked.connect(lambda: plotViewData_BrCv_plot(self))
+#    self.plotView_BrCv.setStyleSheet("background-color: green; color: white;")
+    # self.plotExport_BrCv.clicked.connect(lambda: exportPlot(self))
+    # self.plotExport_BrCv.setStyleSheet("background-color: blue; color: white")
+    # self.applyOper_BrCv.clicked.connect(lambda: applyOperations(self))
+    # self.applyOper_BrCv.setStyleSheet("background-color: green; color: white")
+    # self.undoOperations_BrCv.clicked.connect(lambda: undoOperations(self))
+    # self.undoOperations_BrCv.setStyleSheet("background-color: green; color: white")
+    # self.exportData_BrCv.clicked.connect(lambda: exportData(self))
+    # self.exportData_BrCv.setStyleSheet("background-color: blue; color: white")
+    # self.exportGCODE_BrCv.clicked.connect(lambda: exportGCODE(self))
+    # self.exportGCODE_BrCv.setStyleSheet("background-color: blue; color: white")
+    # self.cropRangeEdit_BrCv.clicked.connect(lambda: cropRange_BrCv_edit(self))
+    # self.cropRangeEdit_BrCv.setStyleSheet("background-color: blue; color:white")
+
+
+
     # Connect the button's clicked signal to the slot function - run im processing operations
     self.run_im_process.clicked.connect(lambda: run_image_processing(self))
     self.run_im_process.setStyleSheet("background-color: blue; color: white;")

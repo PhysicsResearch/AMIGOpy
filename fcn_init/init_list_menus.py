@@ -28,6 +28,24 @@ def populate_operation_list(self):
     # Populate the QComboBox
     self.operation_list_csv .addItems(operations_csv)
     
+
+    # Breathing curves
+    Separators = [",", ";", "\\t", " ", "|"]
+    self.csv_sep_list_BrCv = self.findChild(QtWidgets.QComboBox, 'selDelimCSV_BrCv')
+    self.csv_sep_list_BrCv.addItems(Separators)
+    
+    time_units = ["ms", "s"]
+    self.time_units_list_BrCv = self.findChild(QtWidgets.QComboBox, 'timeUnitCSV_BrCv')
+    self.time_units_list_BrCv.addItems(time_units)
+    
+    cv_types = ["Cosine^2", "Cosine^4", "Cosine^6"]
+    self.cv_type_list_BrCv = self.findChild(QtWidgets.QComboBox, 'cvType')
+    self.cv_type_list_BrCv.addItems(cv_types)
+    
+    self.editXAxis_list_BrCv = self.findChild(QtWidgets.QComboBox, 'editXAxis_BrCv')
+    self.editXAxis_list_BrCv.addItems(["timestamp", "time"])
+
+
     # DECT MatInfo
     self.DECT_list_01.currentIndexChanged.connect(lambda index: on_DECT_list_selection_changed(self, index))
     #self.DECT_list_02.currentIndexChanged.connect(on_comboBox_selection_changed)
