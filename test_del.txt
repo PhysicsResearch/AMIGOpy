@@ -1,0 +1,1 @@
+test_commit_deletion
