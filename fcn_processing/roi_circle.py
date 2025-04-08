@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QFileDialog
 from PyQt5.QtGui import QColor
 import pandas as pd
+import os
 import numpy as np
 from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
 import vtk
@@ -149,25 +150,56 @@ def export_roi_circ_values_to_csv(self):
 
     if folder:
         # Prepare data for CSV
-        data = []
-        for row in range(self.table_roi_c_values.rowCount()):
-            row_data = []
-            for column in range(self.table_roi_c_values.columnCount()):
-                item = self.table_roi_c_values.item(row, column)
-                if item is not None:
-                    row_data.append(item.text())
-                else:
-                    row_data.append('')
-            data.append(row_data)
+        if self.table_roi_c_values.columnCount() == 4:
+            data = []
+            for row in range(self.table_roi_c_values.rowCount()):
+                row_data = []
+                for column in range(self.table_roi_c_values.columnCount()):
+                    item = self.table_roi_c_values.item(row, column)
+                    if item is not None:
+                        row_data.append(item.text())
+                    else:
+                        row_data.append('')
+                data.append(row_data)
+    
+            # Convert data to a DataFrame
+            df = pd.DataFrame(data)
+    
+            # Define the file path
+            file_path = f"{folder}/roi_circles_values.csv"
+    
+            # Save DataFrame to CSV
+            df.to_csv(file_path, index=False, header=False)
+        else:
+            data = {"Mean": {}, "STD": {}}
+            for i in range(self.table_roi_c_values.columnCount() // 4):
+                series_id = self.table_roi_c_values.item(0, i*4).text()
+                data["Mean"][series_id] = []
+                data["STD"][series_id] = []
+                for row in range(self.table_roi_c_values.rowCount()):
+                    item = self.table_roi_c_values.item(row, i*4+1)
+                    if item is not None:
+                        data["Mean"][series_id].append(item.text())
+                    else:
+                        data["Mean"][series_id].append('')
+                    item = self.table_roi_c_values.item(row, i*4+2)
+                    if item is not None:
+                        data["STD"][series_id].append(item.text())
+                    else:
+                        data["STD"][series_id].append('')
+                        
+            write_mode = "w"
+            for k in data.keys():
+                # Convert data to a DataFrame
+                df = pd.DataFrame(data[k])
+                
+                # Define the file path
+                file_path = f"{folder}/roi_circles_values.xlsx"
+                with pd.ExcelWriter(file_path, mode=write_mode) as writer:  
+                    df.to_excel(writer, sheet_name=k, index=False)
+                write_mode = "a"
 
-        # Convert data to a DataFrame
-        df = pd.DataFrame(data)
 
-        # Define the file path
-        file_path = f"{folder}/roi_circles_values.csv"
-
-        # Save DataFrame to CSV
-        df.to_csv(file_path, index=False, header=False)
 
         print(f"Table exported to {file_path}")
         
@@ -212,13 +244,20 @@ def c_roi_getdata(self):
     series_number = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['SeriesNumber']
 
     # Clear the table before populating
-    self.table_roi_c_values.setRowCount(0)
-    self.table_roi_c_values.setColumnCount(4)  # Columns for Mean, STD, Voxels, and ROI Index
+    self.table_roi_c_values.setRowCount(self.table_circ_roi.rowCount())
+    self.table_roi_c_values.setColumnCount(4 * len(series_list))  # Columns for Mean, STD, Voxels, and ROI Index
 
-    self.table_roi_c_values.setHorizontalHeaderLabels(["Series Number", "Mean", "STD", "N"])
+    if len(series_list) == 1:
+        self.table_roi_c_values.setHorizontalHeaderLabels(["Series Number", "Mean", "STD", "N"])
+    else:
+        horizontalLabels = []
+        for series_data in series_list:
+            i = series_data['SeriesNumber']
+            horizontalLabels.extend([f"Series Number_{i}", f"Mean_{i}", f"STD_{i}", f"N_{i}"])
+        self.table_roi_c_values.setHorizontalHeaderLabels(horizontalLabels)
     
     
-    for series_data in series_list:
+    for i, series_data in enumerate(series_list):
         reference_image = series_data['3DMatrix']
         series_number = series_data['SeriesNumber']
         
@@ -233,7 +272,7 @@ def c_roi_getdata(self):
                 if item_x is None or item_y is None or item_radius is None or sli_ini is None or sli_fin is None:
                     print(f'Skipping row {row} due to missing data')
                     continue
-    
+
                 center_x = float(item_x.text())
                 center_y = float(item_y.text())
                 radius = float(item_radius.text())
@@ -255,12 +294,10 @@ def c_roi_getdata(self):
                 num_voxels = masked_data.size
     
                 # Populate the statistics table
-                row_position = self.table_roi_c_values.rowCount()
-                self.table_roi_c_values.insertRow(row_position)
-                self.table_roi_c_values.setItem(row_position, 0, QTableWidgetItem(str(series_number)))
-                self.table_roi_c_values.setItem(row_position, 1, QTableWidgetItem(f"{mean_value:.4f}"))
-                self.table_roi_c_values.setItem(row_position, 2, QTableWidgetItem(f"{std_value:.4f}"))
-                self.table_roi_c_values.setItem(row_position, 3, QTableWidgetItem(str(num_voxels)))
+                self.table_roi_c_values.setItem(row, i*4+0, QTableWidgetItem(str(series_number)))
+                self.table_roi_c_values.setItem(row, i*4+1, QTableWidgetItem(f"{mean_value:.4f}"))
+                self.table_roi_c_values.setItem(row, i*4+2, QTableWidgetItem(f"{std_value:.4f}"))
+                self.table_roi_c_values.setItem(row, i*4+3, QTableWidgetItem(str(num_voxels)))
     
     
             except ValueError:
