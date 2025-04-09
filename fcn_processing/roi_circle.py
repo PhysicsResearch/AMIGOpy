@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QFileDialog
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QFileDialog, QMessageBox
 from PyQt5.QtGui import QColor
 import pandas as pd
 import os
@@ -173,7 +173,10 @@ def export_roi_circ_values_to_csv(self):
         else:
             data = {"Mean": {}, "STD": {}}
             for i in range(self.table_roi_c_values.columnCount() // 4):
-                series_id = self.table_roi_c_values.item(0, i*4).text()
+                if not self.holdOnROI.isChecked():
+                    series_id = self.table_roi_c_values.item(0, i*4).text()
+                else:
+                    series_id = i
                 data["Mean"][series_id] = []
                 data["STD"][series_id] = []
                 for row in range(self.table_roi_c_values.rowCount()):
@@ -238,6 +241,9 @@ def c_roi_getdata(self):
     else:
         series_list = [self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]]
 
+    if self.checkBox_circ_roi_data_01.isChecked() and self.holdOnROI.isChecked():
+        QMessageBox.warning(None, "Warning", "The 'All image series' and 'Hold on' options cannot be used at the same time")
+        return
     
     # Assuming the reference image is a 3D NumPy array
     reference_image = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
@@ -245,14 +251,22 @@ def c_roi_getdata(self):
 
     # Clear the table before populating
     self.table_roi_c_values.setRowCount(self.table_circ_roi.rowCount())
-    self.table_roi_c_values.setColumnCount(4 * len(series_list))  # Columns for Mean, STD, Voxels, and ROI Index
-
-    if len(series_list) == 1:
-        self.table_roi_c_values.setHorizontalHeaderLabels(["Series Number", "Mean", "STD", "N"])
+    if not self.holdOnROI.isChecked():
+        self.table_roi_c_values.setColumnCount(4 * len(series_list))  # Columns for Mean, STD, Voxels, and ROI Index
     else:
+        self.table_roi_c_values.setColumnCount(self.table_roi_c_values.columnCount() + 4)  # Columns for Mean, STD, Voxels, and ROI Index
+
+    if len(series_list) == 1 and not self.holdOnROI.isChecked():
+        self.table_roi_c_values.setHorizontalHeaderLabels(["Series Number", "Mean", "STD", "N"])
+    elif len(series_list) > 1:
         horizontalLabels = []
         for series_data in series_list:
             i = series_data['SeriesNumber']
+            horizontalLabels.extend([f"Series Number_{i}", f"Mean_{i}", f"STD_{i}", f"N_{i}"])
+        self.table_roi_c_values.setHorizontalHeaderLabels(horizontalLabels)
+    if len(series_list) == 1 and self.holdOnROI.isChecked():
+        horizontalLabels = []
+        for i in range(self.table_roi_c_values.columnCount() // 4):
             horizontalLabels.extend([f"Series Number_{i}", f"Mean_{i}", f"STD_{i}", f"N_{i}"])
         self.table_roi_c_values.setHorizontalHeaderLabels(horizontalLabels)
     
@@ -294,10 +308,16 @@ def c_roi_getdata(self):
                 num_voxels = masked_data.size
     
                 # Populate the statistics table
-                self.table_roi_c_values.setItem(row, i*4+0, QTableWidgetItem(str(series_number)))
-                self.table_roi_c_values.setItem(row, i*4+1, QTableWidgetItem(f"{mean_value:.4f}"))
-                self.table_roi_c_values.setItem(row, i*4+2, QTableWidgetItem(f"{std_value:.4f}"))
-                self.table_roi_c_values.setItem(row, i*4+3, QTableWidgetItem(str(num_voxels)))
+                if not self.holdOnROI.isChecked():
+                    self.table_roi_c_values.setItem(row, i*4+0, QTableWidgetItem(str(series_number)))
+                    self.table_roi_c_values.setItem(row, i*4+1, QTableWidgetItem(f"{mean_value:.4f}"))
+                    self.table_roi_c_values.setItem(row, i*4+2, QTableWidgetItem(f"{std_value:.4f}"))
+                    self.table_roi_c_values.setItem(row, i*4+3, QTableWidgetItem(str(num_voxels)))
+                else:
+                    self.table_roi_c_values.setItem(row, self.table_roi_c_values.columnCount()-4, QTableWidgetItem(str(series_number)))
+                    self.table_roi_c_values.setItem(row, self.table_roi_c_values.columnCount()-3, QTableWidgetItem(f"{mean_value:.4f}"))
+                    self.table_roi_c_values.setItem(row, self.table_roi_c_values.columnCount()-2, QTableWidgetItem(f"{std_value:.4f}"))
+                    self.table_roi_c_values.setItem(row, self.table_roi_c_values.columnCount()-1, QTableWidgetItem(str(num_voxels)))
     
     
             except ValueError:
