@@ -472,10 +472,6 @@ def plot_brachy_bar_channels(self):
         # Plot the bar chart
         ax.bar(bar_labels, bar_values, color='blue')
         
-        # Optionally, add value labels on top of the bars
-        for i, v in enumerate(bar_values):
-            ax.text(i, v + (v * 0.02), f'{v:.2f}', ha='center', fontsize=font_size, color='black' if background_color.lower() == 'white' else 'white')
-
     else:
         print(f"Selected channel {selected_channel} is out of range.")
         return

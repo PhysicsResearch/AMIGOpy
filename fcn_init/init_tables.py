@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QHeaderView
 from fcn_processing.roi_circle import on_roitable_item_changed
+from PyQt5.QtWidgets import QHeaderView, QAbstractItemView
 
 
 def initialize_software_tables(self):
@@ -62,3 +63,10 @@ def initialize_software_tables(self):
     self.tableSPR.setRowCount(0)
     #
     self.tableSPR.setHorizontalHeaderLabels(column_names)
+
+
+   # Adjust alphabeta table
+    self.ab_table.setColumnCount(2)
+    self.ab_table.setHorizontalHeaderLabels(["Structure Name", "α/β"])
+    self.ab_table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # Make it read-only
+    self.ab_table.resizeColumnsToContents() 

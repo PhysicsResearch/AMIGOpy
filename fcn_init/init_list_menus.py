@@ -88,8 +88,20 @@ def populate_operation_list(self):
     self.brachy_dw_ch_box_01.addItems(methods)
     self.brachy_dw_ch_box_02.addItems(methods)
     # call back
-    self.brachy_dw_ch_box_01.currentIndexChanged.connect((lambda: update_disp_brachy_plan(self)))
+    def sync_box_1_to_2(index):
+        self.brachy_dw_ch_box_02.blockSignals(True)
+        self.brachy_dw_ch_box_02.setCurrentIndex(index)
+        self.brachy_dw_ch_box_02.blockSignals(False)
+        update_disp_brachy_plan(self)
 
+    def sync_box_2_to_1(index):
+        self.brachy_dw_ch_box_01.blockSignals(True)
+        self.brachy_dw_ch_box_01.setCurrentIndex(index)
+        self.brachy_dw_ch_box_01.blockSignals(False)
+        update_disp_brachy_plan(self)
+
+    self.brachy_dw_ch_box_01.currentIndexChanged.connect(sync_box_1_to_2)
+    self.brachy_dw_ch_box_02.currentIndexChanged.connect(sync_box_2_to_1)
 
 
     # Color
@@ -108,6 +120,9 @@ def populate_operation_list(self):
     self.brachy_p1_sel_col.setCurrentText("Blue")    # Third combo box starts with "Red"
     
     
+    #Eqd2
+    self.dose_list.addItems(['None'])
+    self.eqd2_struct_list.addItems(['None'])
     
     
     
