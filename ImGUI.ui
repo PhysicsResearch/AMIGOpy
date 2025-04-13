@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>2015</width>
+    <width>1834</width>
     <height>1172</height>
    </rect>
   </property>
@@ -3361,23 +3361,15 @@
                   <property name="enabled">
                    <bool>false</bool>
                   </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>Dose Rate Constant </string>
                   </property>
                  </widget>
-                </item>
-                <item row="3" column="4">
-                 <spacer name="horizontalSpacer_43">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
                 </item>
                 <item row="1" column="1">
                  <spacer name="horizontalSpacer_48">
@@ -3429,9 +3421,9 @@
                  </widget>
                 </item>
                 <item row="3" column="0">
-                 <widget class="QPushButton" name="brachy_create_new_source">
+                 <widget class="QPushButton" name="brachy_save_tg43_source">
                   <property name="text">
-                   <string>Create New Source</string>
+                   <string>Save</string>
                   </property>
                  </widget>
                 </item>
@@ -3456,7 +3448,13 @@
                  </spacer>
                 </item>
                 <item row="2" column="4">
-                 <widget class="QLineEdit" name="Brachy_dose_rate_cte_value"/>
+                 <widget class="QLineEdit" name="Brachy_dose_rate_cte_value">
+                  <property name="font">
+                   <font>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                 </widget>
                 </item>
                 <item row="1" column="0">
                  <spacer name="horizontalSpacer_44">
@@ -3481,15 +3479,15 @@
                     <string>Radial Dose</string>
                    </attribute>
                    <layout class="QGridLayout" name="gridLayout_52">
-                    <item row="1" column="0">
-                     <widget class="QPushButton" name="Brachy_Radial_create">
+                    <item row="5" column="0">
+                     <widget class="QPushButton" name="Brachy_Radial_load">
                       <property name="text">
-                       <string>Create</string>
+                       <string>Load</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="3">
-                     <spacer name="horizontalSpacer_53">
+                    <item row="5" column="4">
+                     <spacer name="horizontalSpacer_67">
                       <property name="orientation">
                        <enum>Qt::Horizontal</enum>
                       </property>
@@ -3501,7 +3499,35 @@
                       </property>
                      </spacer>
                     </item>
-                    <item row="1" column="1">
+                    <item row="3" column="3" colspan="12">
+                     <widget class="QLineEdit" name="Brachy_rad_eq">
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                      <property name="font">
+                       <font>
+                        <pointsize>10</pointsize>
+                       </font>
+                      </property>
+                      <property name="text">
+                       <string>gL = A0 + A1*r + A2*r^2 + A3*r^3 + A4*r^4 + A5*r^5 (only withing the fit range)   </string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="13">
+                     <spacer name="horizontalSpacer_71">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="5" column="1">
                      <spacer name="horizontalSpacer_52">
                       <property name="orientation">
                        <enum>Qt::Horizontal</enum>
@@ -3514,7 +3540,62 @@
                       </property>
                      </spacer>
                     </item>
-                    <item row="1" column="2">
+                    <item row="5" column="11">
+                     <spacer name="horizontalSpacer_72">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="5" column="9">
+                     <spacer name="horizontalSpacer_75">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="1" column="3" rowspan="2" colspan="12">
+                     <widget class="QWidget" name="Brachy_radial_axes" native="true"/>
+                    </item>
+                    <item row="5" column="5">
+                     <spacer name="horizontalSpacer_68">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="5" column="3">
+                     <spacer name="horizontalSpacer_53">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="5" column="2">
                      <spacer name="horizontalSpacer_54">
                       <property name="orientation">
                        <enum>Qt::Horizontal</enum>
@@ -3527,11 +3608,242 @@
                       </property>
                      </spacer>
                     </item>
-                    <item row="0" column="0" colspan="2">
+                    <item row="5" column="6">
+                     <spacer name="horizontalSpacer_73">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="5" column="7">
+                     <spacer name="horizontalSpacer_74">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="5" column="14">
+                     <spacer name="horizontalSpacer_61">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="1" column="0" rowspan="4" colspan="3">
                      <widget class="QTableWidget" name="Brachy_Radial_table"/>
                     </item>
-                    <item row="0" column="2" colspan="2">
-                     <widget class="QWidget" name="Brachy_radial_axes" native="true"/>
+                    <item row="5" column="12">
+                     <spacer name="horizontalSpacer_70">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="5" column="10">
+                     <spacer name="horizontalSpacer_69">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="5" column="8">
+                     <spacer name="horizontalSpacer_76">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="4" column="3">
+                     <widget class="QLineEdit" name="Brachy_rad_A0L">
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                      <property name="font">
+                       <font>
+                        <pointsize>10</pointsize>
+                       </font>
+                      </property>
+                      <property name="layoutDirection">
+                       <enum>Qt::LeftToRight</enum>
+                      </property>
+                      <property name="text">
+                       <string>A0</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="4">
+                     <widget class="QLineEdit" name="Brachy_rad_A0"/>
+                    </item>
+                    <item row="4" column="5">
+                     <widget class="QLineEdit" name="Brachy_rad_A1L">
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                      <property name="font">
+                       <font>
+                        <pointsize>10</pointsize>
+                       </font>
+                      </property>
+                      <property name="layoutDirection">
+                       <enum>Qt::LeftToRight</enum>
+                      </property>
+                      <property name="text">
+                       <string>A1</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="6">
+                     <widget class="QLineEdit" name="Brachy_rad_A1"/>
+                    </item>
+                    <item row="4" column="7">
+                     <widget class="QLineEdit" name="Brachy_rad_A2L">
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                      <property name="font">
+                       <font>
+                        <pointsize>10</pointsize>
+                       </font>
+                      </property>
+                      <property name="layoutDirection">
+                       <enum>Qt::LeftToRight</enum>
+                      </property>
+                      <property name="text">
+                       <string>A2</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="0" colspan="15">
+                     <widget class="QLineEdit" name="brachy_radial_1stline">
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                      <property name="font">
+                       <font>
+                        <pointsize>10</pointsize>
+                       </font>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="8">
+                     <widget class="QLineEdit" name="Brachy_rad_A2"/>
+                    </item>
+                    <item row="4" column="9">
+                     <widget class="QLineEdit" name="Brachy_rad_A3L">
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                      <property name="font">
+                       <font>
+                        <pointsize>10</pointsize>
+                       </font>
+                      </property>
+                      <property name="layoutDirection">
+                       <enum>Qt::LeftToRight</enum>
+                      </property>
+                      <property name="text">
+                       <string>A3</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="10">
+                     <widget class="QLineEdit" name="Brachy_rad_A3"/>
+                    </item>
+                    <item row="4" column="11">
+                     <widget class="QLineEdit" name="Brachy_rad_A4L">
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                      <property name="font">
+                       <font>
+                        <pointsize>10</pointsize>
+                       </font>
+                      </property>
+                      <property name="layoutDirection">
+                       <enum>Qt::LeftToRight</enum>
+                      </property>
+                      <property name="text">
+                       <string>A4</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="12">
+                     <widget class="QLineEdit" name="Brachy_rad_A4"/>
+                    </item>
+                    <item row="4" column="13">
+                     <widget class="QLineEdit" name="Brachy_rad_A5L">
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                      <property name="font">
+                       <font>
+                        <pointsize>10</pointsize>
+                       </font>
+                      </property>
+                      <property name="layoutDirection">
+                       <enum>Qt::LeftToRight</enum>
+                      </property>
+                      <property name="text">
+                       <string>A5</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="14">
+                     <widget class="QLineEdit" name="Brachy_rad_A5"/>
                     </item>
                    </layout>
                   </widget>
@@ -3833,6 +4145,30 @@
                     </item>
                    </layout>
                   </widget>
+                 </widget>
+                </item>
+                <item row="3" column="3">
+                 <widget class="QLineEdit" name="Brachy_rad_leng_label">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Source Length</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="4">
+                 <widget class="QLineEdit" name="Brachy_rad_leng">
+                  <property name="font">
+                   <font>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
                  </widget>
                 </item>
                </layout>

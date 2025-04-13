@@ -15,7 +15,6 @@ from fcn_init.transp_slider_spin_set  import set_transp_slider_fcn
 from fcn_init.set_menu_bar_icons      import menu_bar_icon_actions
 from fcn_init.vtk_IrIS_eval_axes      import setup_vtk_IrISEval
 from fcn_display.display_images       import update_layer_view
-from fcn_init.vtk_comparison_axes     import create_vtk_elements_comp
 from fcn_init.ModulesTab_change       import set_fcn_tabModules_changed
 from fcn_init.IrIS_cal_init           import init_cal_markers_IrIS
 from fcn_init.init_variables          import initialize_software_variables
@@ -82,8 +81,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         base_path = os.path.dirname(os.path.abspath(__file__))     # Location of the script or the executable
         menu_bar_icon_actions(self,base_path)
         #
-        # create vtk comp axes -buttom
-        self.but_create_comp_axes.clicked.connect(lambda: create_vtk_elements_comp(self))
+
         # This section initialize variables related to images dimentions, currentl displaying set
         # slice index ... It is important so different element of the GUI can have access to them 
         #

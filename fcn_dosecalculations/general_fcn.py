@@ -8,7 +8,7 @@ import fcn_load.load_dcm
 from PyQt5.QtWidgets import QMessageBox
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
-import SimpleITK as sitk
+#import SimpleITK as sitk
 from scipy.interpolate import RegularGridInterpolator
 
 def look_for_dose_data():
@@ -33,20 +33,20 @@ def scale_dose_to_CT(self,dose):
     print(f"Dose Spacing: {dose_spacing}")
     print(f"CT Spacing: {ct_spacing}")
     #Creating dose simpleITK image 
-    dose_image = sitk.GetImageFromArray(dose_matrix[:,::-1,:])#Ask Gabriel?
-    dose_image.SetSpacing(dose_spacing)
-    dose_image.SetOrigin(dose_origin)
+    # dose_image = sitk.GetImageFromArray(dose_matrix[:,::-1,:])#Ask Gabriel?
+    # dose_image.SetSpacing(dose_spacing)
+    # dose_image.SetOrigin(dose_origin)
 
-    ct_image=sitk.GetImageFromArray(ct_matrix[:,::-1,:])#Ask Gabriel?
-    ct_image.SetSpacing(ct_spacing)
-    ct_image.SetOrigin(ct_origin)
-
-
-    # resampled_image = resampler.Execute(dose_image)
-    resampled_image = sitk.Resample(dose_image, ct_image)
-    #get back dose array
-    dose_array_resampled = sitk.GetArrayFromImage(resampled_image)
+    # ct_image=sitk.GetImageFromArray(ct_matrix[:,::-1,:])#Ask Gabriel?
+    # ct_image.SetSpacing(ct_spacing)
+    # ct_image.SetOrigin(ct_origin)
 
 
-    return dose_array_resampled[:,::-1,:]
+    # # resampled_image = resampler.Execute(dose_image)
+    # resampled_image = sitk.Resample(dose_image, ct_image)
+    # #get back dose array
+    # dose_array_resampled = sitk.GetArrayFromImage(resampled_image)
+
+
+    # return dose_array_resampled[:,::-1,:]
 

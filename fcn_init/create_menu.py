@@ -159,7 +159,11 @@ def initializeMenuBar(self):
     self.selected_legend_font_size = 14
     self.selected_legend_on_off = "On"
     self.selected_background = "Transparent"
-    
+    self.selected_line_width = 2.0
+    self.selected_line_color = "Red" 
+    self.selected_point_size = 8
+    self.selected_point_color = "Blue"
+
     styleMenu = self.menuBar().addMenu("Figures")
 
     # Font Size submenu
@@ -201,7 +205,7 @@ def initializeMenuBar(self):
     # Font Size LEgend submenu
     lg_fontSizeMenu = styleMenu.addMenu("Font Size Legend")
     lg_fontSizeGroup = QActionGroup(self)
-    # fontSizes = [8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40]
+    fontSizes = [8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40]
     for size in fontSizes:
         action = QAction(str(size), self, checkable=True)
         if size == self.selected_font_size:
@@ -210,7 +214,55 @@ def initializeMenuBar(self):
         lg_fontSizeMenu.addAction(action)
         lg_fontSizeGroup.addAction(action)
 
+    # Line Width submenu
+    lg_lineWidthMenu = styleMenu.addMenu("Line Width")
+    lg_lineWidth     = QActionGroup(self)
+    lineWidth        = [0.5, 1, 2, 3, 4, 5, 6]
+    for size in lineWidth :
+        action = QAction(str(size), self, checkable=True)
+        if size == self.selected_line_width:
+            action.setChecked(True)
+        action.triggered.connect(lambda checked, s=size: set_line_width(self,s))
+        lg_lineWidthMenu.addAction(action)
+        lg_lineWidth.addAction(action)
 
+    # Line Color submenu
+    lg_lineColorMenu = styleMenu.addMenu("Line Color")
+    lg_lineColor     = QActionGroup(self)
+    lineColors       = ["blue","black","green","red","white"]
+    for color in lineColors :
+        action = QAction(str(color), self, checkable=True)
+        if color == self.selected_line_color:
+            action.setChecked(True)
+        action.triggered.connect(lambda checked, s=color: set_line_color(self,s))
+        lg_lineColorMenu.addAction(action)
+        lg_lineColor.addAction(action)
+
+
+
+    # Point size submenu
+    lg_psizetMenu = styleMenu.addMenu("Point size")
+    lg_psize     = QActionGroup(self)
+    psize        = [2, 4, 6, 8, 10, 15, 20]
+    for size in psize :
+        action = QAction(str(size), self, checkable=True)
+        if size == self.selected_point_size:
+            action.setChecked(True)
+        action.triggered.connect(lambda checked, s=size: set_psize(self,s))
+        lg_psizetMenu.addAction(action)
+        lg_psize.addAction(action)
+
+    # Point Color submenu
+    lg_pColorMenu = styleMenu.addMenu("Point Color")
+    lg_pColor     = QActionGroup(self)
+    lineColors       = ["blue","black","green","red","white"]
+    for color in lineColors :
+        action = QAction(str(color), self, checkable=True)
+        if color == self.selected_point_color:
+            action.setChecked(True)
+        action.triggered.connect(lambda checked, s=color: set_point_color(self,s))
+        lg_pColorMenu.addAction(action)
+        lg_pColor.addAction(action)
 
     # 3D print menu 
     # intended for scripts supporting 3D printing
@@ -245,3 +297,18 @@ def set_background(self, background):
     
 def set_legend_on_off(self, legend):
     self.selected_legend_on_off = legend
+
+def set_line_width(self, size):
+    self.selected_line_width = float(size)
+
+def set_line_color(self, color):
+    self.selected_line_color = color
+
+def set_psize(self, size):
+    self.selected_point_size = int(size)
+
+def set_p_color(self, color):
+    self.selected_point_color = color
+
+def set_point_color(self, color):
+    self.selected_point_color = color

@@ -1,6 +1,7 @@
 import vtk
 from PyQt5.QtWidgets import QApplication, QPushButton, QWidget, QVBoxLayout
 from PyQt5 import QtWidgets  # Import the correct module for QMessageBox
+from fcn_init.vtk_comparison_axes     import create_vtk_elements_comp
 from fcn_IrIS.FindDwell_IrIS import add_row_dw_table, remove_row_dw_table
 from fcn_processing.Im_process_list import image_processing_undo, run_image_processing
 from fcn_processing.split_dcm_series import shift_and_split_3D_matrix
@@ -19,12 +20,14 @@ from fcn_DECT.DECT_table_disp import c_roi_getdata_HU_high_low
 from fcn_DECT.Ivalue_Zeff_fit import plot_I_value_points, plot_I_value_precalc, cal_plot_I_value_points
 from fcn_DECT.create_process_dect import creat_DECT_derived_maps, c_roi_scatter_plot, export_all_DECT_tables, save_parameters_to_csv, load_parameters_from_csv
 from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwell_channels, export_all_brachy_channels_to_csv
+from fcn_brachy_sources.process_brachy_database import on_brachy_load_sources, on_brachy_source_selection, select_Radial_file2load, plot_brachy_radial_fit
 from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
 from fcn_display.meta_viewer import on_metadata_search_text_changed
 from fcn_RTFiles.process_contours import create_contour_masks
 from fcn_breathing_curves.functions_import import openCSVFile_BrCv, setParams, createCurve
 from fcn_breathing_curves.functions_plot import calcStats, plotViewData_BrCv_plot, exportPlot
 from fcn_breathing_curves.functions_edit import applyOperations, undoOperations, exportData, plotViewData_BrCv_edit, cropRange_BrCv_edit, exportGCODE#, cropCurve_BrCv_edit
+from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, update_doses_list, update_structure_list, eqd2_calc
 
 def initialize_software_buttons(self):
     # IrIS add row dw table
@@ -84,7 +87,10 @@ def initialize_software_buttons(self):
     self.exp_csv_2_gcode.clicked.connect(lambda: exp_csv2_gcode(self))
     self.exp_csv_2_gcode.setStyleSheet("background-color: blue; color: white;")
     
-    
+    #  create vtk comp axes -buttom
+    self.but_create_comp_axes.clicked.connect(lambda: create_vtk_elements_comp(self))
+    self.but_create_comp_axes.setStyleSheet("background-color: blue; color: white;")
+
     # 4D Display
     self.Play4D_Buttom.toggled.connect(lambda: play_4D_sequence(self))
     self.Play4D_Buttom.setStyleSheet("background-color: blue; color: white;")
@@ -184,6 +190,24 @@ def initialize_software_buttons(self):
     #
     self.brachy_export_dw_channels_csv.setStyleSheet("background-color: blue; color: white;")
     self.brachy_export_dw_channels_csv.clicked.connect(lambda: export_all_brachy_channels_to_csv(self))
+    #
+    self.Brachy_load_sources.clicked.connect(lambda: on_brachy_load_sources(self))
+    self.brachy_source_list.currentIndexChanged.connect(lambda: on_brachy_source_selection(self))
+    #
+    # TG43 radial
+    self.Brachy_Radial_load.setStyleSheet("background-color: blue; color: white;")
+    self.Brachy_Radial_load.clicked.connect(lambda: select_Radial_file2load(self))
+    self.Brachy_Radial_table.itemChanged.connect(lambda: plot_brachy_radial_fit(self))
+
+
+    #EQD2
+    self.calc_eqd2.clicked.connect(lambda: generate_eqd2_dose(self))
+    self.add_to_ab_list.clicked.connect(lambda: add_ab(self))
+    self.delete_from_ab_list.clicked.connect(lambda: delete_ab(self))
+    self.eqd2_update_dose_list.clicked.connect(lambda: update_doses_list(self))
+    self.eqd2_update_structure_list.clicked.connect(lambda: update_structure_list(self))
+    self.calc_eqd2_2.clicked.connect(lambda: eqd2_calc(self))
+
     
     # Circle ROI -----------------------------------------------------------------------------------
     # display (or not) ROI
