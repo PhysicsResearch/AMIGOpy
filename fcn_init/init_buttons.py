@@ -20,7 +20,8 @@ from fcn_DECT.DECT_table_disp import c_roi_getdata_HU_high_low
 from fcn_DECT.Ivalue_Zeff_fit import plot_I_value_points, plot_I_value_precalc, cal_plot_I_value_points
 from fcn_DECT.create_process_dect import creat_DECT_derived_maps, c_roi_scatter_plot, export_all_DECT_tables, save_parameters_to_csv, load_parameters_from_csv
 from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwell_channels, export_all_brachy_channels_to_csv
-from fcn_brachy_sources.process_brachy_database import on_brachy_load_sources, on_brachy_source_selection, select_Radial_file2load, plot_brachy_radial_fit
+from fcn_brachy_sources.process_brachy_database import (on_brachy_load_sources, on_brachy_source_selection, select_Radial_file2load, plot_brachy_radial_fit, plot_brachy_ani,
+                                                        select_Anisotropy_file2load)
 from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
 from fcn_display.meta_viewer import on_metadata_search_text_changed
 from fcn_RTFiles.process_contours import create_contour_masks
@@ -198,6 +199,10 @@ def initialize_software_buttons(self):
     self.Brachy_Radial_load.setStyleSheet("background-color: blue; color: white;")
     self.Brachy_Radial_load.clicked.connect(lambda: select_Radial_file2load(self))
     self.Brachy_Radial_table.itemChanged.connect(lambda: plot_brachy_radial_fit(self))
+    self.Brach_plot_ani.setStyleSheet("background-color: blue; color: white;")
+    self.Brach_plot_ani.clicked.connect(lambda: plot_brachy_ani(self))
+    self.Brachy_load_ani.setStyleSheet("background-color: blue; color: white;")
+    self.Brachy_load_ani.clicked.connect(lambda: select_Anisotropy_file2load(self))
 
 
     #EQD2

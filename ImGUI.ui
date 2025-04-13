@@ -3852,7 +3852,49 @@
                     <string>Anisotropy</string>
                    </attribute>
                    <layout class="QGridLayout" name="gridLayout_53">
-                    <item row="3" column="6">
+                    <item row="4" column="7">
+                     <widget class="QComboBox" name="Brachy_ani_dist_list"/>
+                    </item>
+                    <item row="8" column="8">
+                     <spacer name="verticalSpacer_17">
+                      <property name="orientation">
+                       <enum>Qt::Vertical</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>20</width>
+                        <height>40</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="12" column="3">
+                     <spacer name="horizontalSpacer_56">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="1" column="8">
+                     <spacer name="verticalSpacer_13">
+                      <property name="orientation">
+                       <enum>Qt::Vertical</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>20</width>
+                        <height>40</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="3" column="8">
                      <spacer name="verticalSpacer_15">
                       <property name="orientation">
                        <enum>Qt::Vertical</enum>
@@ -3866,64 +3908,6 @@
                      </spacer>
                     </item>
                     <item row="4" column="6">
-                     <spacer name="verticalSpacer_16">
-                      <property name="orientation">
-                       <enum>Qt::Vertical</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>20</width>
-                        <height>40</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                    <item row="8" column="0">
-                     <spacer name="horizontalSpacer_55">
-                      <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>40</width>
-                        <height>20</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                    <item row="8" column="5">
-                     <spacer name="horizontalSpacer_57">
-                      <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>40</width>
-                        <height>20</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                    <item row="8" column="1">
-                     <spacer name="horizontalSpacer_56">
-                      <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>40</width>
-                        <height>20</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                    <item row="0" column="0" rowspan="4" colspan="6">
-                     <widget class="QTableWidget" name="Brachy_ani_table"/>
-                    </item>
-                    <item row="4" column="0" rowspan="4" colspan="6">
-                     <widget class="QWidget" name="Brachy_ani_axes" native="true"/>
-                    </item>
-                    <item row="9" column="1">
                      <widget class="QLineEdit" name="Brachy_ani_dist_label">
                       <property name="enabled">
                        <bool>false</bool>
@@ -3933,46 +3917,10 @@
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="6">
-                     <spacer name="verticalSpacer_13">
-                      <property name="orientation">
-                       <enum>Qt::Vertical</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>20</width>
-                        <height>40</height>
-                       </size>
-                      </property>
-                     </spacer>
+                    <item row="0" column="0" rowspan="4" colspan="8">
+                     <widget class="QTableWidget" name="Brachy_ani_table"/>
                     </item>
-                    <item row="8" column="3">
-                     <spacer name="horizontalSpacer_59">
-                      <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>40</width>
-                        <height>20</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                    <item row="2" column="6">
-                     <spacer name="verticalSpacer_14">
-                      <property name="orientation">
-                       <enum>Qt::Vertical</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>20</width>
-                        <height>40</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                    <item row="7" column="6">
+                    <item row="10" column="8">
                      <spacer name="verticalSpacer_18">
                       <property name="orientation">
                        <enum>Qt::Vertical</enum>
@@ -3985,8 +3933,8 @@
                       </property>
                      </spacer>
                     </item>
-                    <item row="8" column="4">
-                     <spacer name="horizontalSpacer_58">
+                    <item row="12" column="7">
+                     <spacer name="horizontalSpacer_57">
                       <property name="orientation">
                        <enum>Qt::Horizontal</enum>
                       </property>
@@ -3998,14 +3946,7 @@
                       </property>
                      </spacer>
                     </item>
-                    <item row="9" column="6">
-                     <widget class="QCheckBox" name="Brachy_ani_plot_hold">
-                      <property name="text">
-                       <string>Hold</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="0" column="6">
+                    <item row="0" column="8">
                      <spacer name="verticalSpacer_12">
                       <property name="orientation">
                        <enum>Qt::Vertical</enum>
@@ -4018,8 +3959,47 @@
                       </property>
                      </spacer>
                     </item>
-                    <item row="5" column="6">
-                     <spacer name="verticalSpacer_17">
+                    <item row="12" column="6">
+                     <spacer name="horizontalSpacer_58">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="12" column="0">
+                     <spacer name="horizontalSpacer_55">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="12" column="5">
+                     <spacer name="horizontalSpacer_59">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="2" column="8">
+                     <spacer name="verticalSpacer_14">
                       <property name="orientation">
                        <enum>Qt::Vertical</enum>
                       </property>
@@ -4031,14 +4011,20 @@
                       </property>
                      </spacer>
                     </item>
-                    <item row="9" column="0">
-                     <widget class="QPushButton" name="Brach_plot_ani">
-                      <property name="text">
-                       <string>Plot</string>
+                    <item row="6" column="8">
+                     <spacer name="verticalSpacer_16">
+                      <property name="orientation">
+                       <enum>Qt::Vertical</enum>
                       </property>
-                     </widget>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>20</width>
+                        <height>40</height>
+                       </size>
+                      </property>
+                     </spacer>
                     </item>
-                    <item row="8" column="2">
+                    <item row="12" column="4">
                      <spacer name="horizontalSpacer_60">
                       <property name="orientation">
                        <enum>Qt::Horizontal</enum>
@@ -4051,8 +4037,29 @@
                       </property>
                      </spacer>
                     </item>
-                    <item row="9" column="2">
-                     <widget class="QComboBox" name="Brachy_ani_dist_list"/>
+                    <item row="11" column="7">
+                     <widget class="QPushButton" name="Brachy_load_ani">
+                      <property name="text">
+                       <string>Load</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="7">
+                     <widget class="QPushButton" name="Brach_plot_ani">
+                      <property name="text">
+                       <string>Plot</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="6">
+                     <widget class="QCheckBox" name="Brachy_ani_plot_hold">
+                      <property name="text">
+                       <string>Hold</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="0" rowspan="8" colspan="6">
+                     <widget class="QWidget" name="Brachy_ani_axes" native="true"/>
                     </item>
                    </layout>
                   </widget>
