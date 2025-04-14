@@ -1,0 +1,2 @@
+Length_mm: 3.5
+Dose_rate_cte: 1.11
