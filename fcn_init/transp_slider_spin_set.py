@@ -46,6 +46,10 @@ def Layer_alpha_slider_set(self,layer):
             imageProperty = self.imageActorAxComp[i, layer].GetProperty()
             imageProperty.SetOpacity(self.LayerAlpha[layer])
             self.renAxComp[i].GetRenderWindow().Render()  
+    elif currentTabText == "Segmentation":
+        imageProperty = self.imageActorSeg[layer].GetProperty()
+        imageProperty.SetOpacity(self.LayerAlpha[layer])
+        self.renSeg.GetRenderWindow().Render()
 
     
 def Layer_0_alpha_spinbox_set(self):

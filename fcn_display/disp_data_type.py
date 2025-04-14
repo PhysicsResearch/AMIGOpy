@@ -73,3 +73,23 @@ def adjust_data_type_input_IrIS_eval(self,idx):
     else:
         raise ValueError(f"Unsupported data type: {data_type}")
     # #    
+    
+def adjust_data_type_seg_input(self,idx):
+    data_type =self.display_seg_data[idx].dtype
+    #
+    if data_type == np.int16:
+        self.dataImporterSeg[idx].SetDataScalarTypeToShort()
+    elif data_type == np.uint16:
+        self.dataImporterSeg[idx].SetDataScalarTypeToUnsignedShort()
+    elif data_type == np.float32:
+        self.dataImporterSeg[idx].SetDataScalarTypeToFloat()
+    elif data_type == np.int8:
+        self.dataImporterSeg[idx].SetDataScalarTypeToChar()
+    elif data_type == np.uint8:  # This would typically represent binary data
+        self.dataImporterSeg[idx].SetDataScalarTypeToUnsignedChar()
+    elif data_type == np.float64:
+        self.dataImporterSeg[idx].SetDataScalarTypeToDouble()
+    # Add more conditions for other data types if needed
+    else:
+        raise ValueError(f"Unsupported data type: {data_type}")
+    # #    

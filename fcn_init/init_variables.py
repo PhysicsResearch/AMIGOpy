@@ -17,7 +17,7 @@ def initialize_software_variables(self):
     self.current_axial_slice_index    = [-1,-1,-1,-1]
     self.current_sagittal_slice_index = [-1,-1,-1,-1]
     self.current_coronal_slice_index  = [-1,-1,-1,-1]
-    # self.current_seg_slice_index = [-1,-1,-1,-1]
+    self.current_seg_slice_index = [-1,-1,-1,-1]
     # comparison axes 12 
     self.current_AxComp_slice_index    = np.zeros((12,4))-1
     
@@ -26,7 +26,6 @@ def initialize_software_variables(self):
     self.Im_PatPosition   = np.zeros((4, 3))
     self.Im_Offset        = np.zeros((4, 3))
     self.display_data           = {}
-    # self.display_data_seg       = {}
     self.display_data_undo      = {}
     self.display_data_IrIS_eval = {}
     self.display_time_IrIS_eval = {}
@@ -39,6 +38,12 @@ def initialize_software_variables(self):
     self.Im_Offset_comp      = np.zeros((12,4, 3))
     self.display_comp_data   = {}
     self.left_but_pressed    = np.zeros(2)  
+    
+    self.slice_thick_seg      = np.zeros(4)
+    self.pixel_spac_seg       = np.zeros((4,2))
+    self.Im_PatPosition_seg   = np.zeros((4, 3))
+    self.Im_Offset_seg        = np.zeros((4, 3))
+    self.display_seg_data       = {}
     # IrIS ################################################################
     # this varibale will be resized depeding on the number of dwell positions
     # the number of colluns should remaing the same and was included here for documentation purposes.

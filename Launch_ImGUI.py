@@ -11,6 +11,7 @@ from fcn_display.mouse_move_slicechanges import change_sliceAxial, change_sliceS
 from fcn_display.Data_tree_general import on_DataTreeView_clicked
 from fcn_init.create_menu import initializeMenuBar
 from fcn_init.vtk_comp import setup_vtk_comp
+from fcn_init.vtk_comp_seg import setup_vtk_seg
 from fcn_init.transp_slider_spin_set  import set_transp_slider_fcn
 from fcn_init.set_menu_bar_icons      import menu_bar_icon_actions
 from fcn_init.vtk_IrIS_eval_axes      import setup_vtk_IrISEval
@@ -124,6 +125,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         # # Initialize VTK components
         setup_vtk_comp(self)
         setup_vtk_IrISEval(self)
+        setup_vtk_seg(self)
         # Calibration module IrIS
         init_cal_markers_IrIS(self)
         #
@@ -134,6 +136,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.windowLevelAxComp  = {}
         self.imageActorAxComp   = {}
         #
+        
         self.DataTreeView.clicked.connect(lambda index: on_DataTreeView_clicked(self, index))
         #
         vtk.vtkObject.GlobalWarningDisplayOff()
