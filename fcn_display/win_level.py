@@ -53,6 +53,13 @@ def set_window(self,Window,Level):
             self.windowLevelAxComp[Ax_idx,layer].SetWindow(Window)
             self.windowLevelAxComp[Ax_idx,layer].SetLevel(Level)
             self.textActorAxCom[Ax_idx,1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
+            
+    elif currentTabText == "Segmentation":
+            Window = self.windowLevelAxSeg[layer].GetWindow()
+            Level  = self.windowLevelAxSeg[layer].GetLevel()
+            self.textActorAxSeg[1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
+            
+            
 
 def window_lung(self):
     Window = 1500

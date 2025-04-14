@@ -44,6 +44,12 @@ def populate_operation_list(self):
     
     self.editXAxis_list_BrCv = self.findChild(QtWidgets.QComboBox, 'editXAxis_BrCv')
     self.editXAxis_list_BrCv.addItems(["timestamp", "time"])
+    
+    
+    # Segmentation
+    views = ["Axial", "Coronal", "Sagittal"]
+    self.views_list = self.findChild(QtWidgets.QComboBox, 'segSelectView')
+    self.views_list.addItems(views)
 
 
     # DECT MatInfo
