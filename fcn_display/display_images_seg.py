@@ -1,6 +1,24 @@
 
 def sliderSegView_change(self):
     disp_seg_image_slice(self)
+    
+    
+def update_seg_slider(self):
+    layer  = int(self.layer_selection_box.currentIndex())
+    ori = self.segSelectView.currentText()
+
+    if ori=="Axial":
+        self.segViewSlider.setMaximum(self.display_seg_data[layer].shape[0] - 1)
+        self.segViewSlider.setValue(int(self.display_seg_data[layer].shape[0]/2))  
+    elif ori=="Sagittal":
+        self.display_seg_data[layer].shape[2] - 1
+        self.segViewSlider.setMaximum(self.display_seg_data[layer].shape[2] - 1)
+        self.segViewSlider.setValue(int(self.display_seg_data[layer].shape[2]/2))  
+    elif ori=="Coronal":
+        self.segViewSlider.setMaximum(self.display_seg_data[layer].shape[1] - 1)
+        self.segViewSlider.setValue(int(self.display_seg_data[layer].shape[1]/2))  
+
+    disp_seg_image_slice(self)
 
 
 def disp_seg_image_slice(self):

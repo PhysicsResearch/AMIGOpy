@@ -268,9 +268,21 @@ def on_DataTreeView_clicked(self,index):
                     self.renAxComp[i].GetRenderWindow().Render() 
                 #
             if currentTabText == "Segmentation":
-                self.display_seg_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
-                adjust_data_type_seg_input(self,idx)
+                if len(hierarchy) >= 6 and hierarchy[5] == "Structures": 
+                    # structures withing a SERIES
+                    update_structure_list_widget(self,
+                                self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'],
+                                self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys']
+                            )
 
+                #
+                if len(hierarchy) == 5: # Series
+                    self.display_seg_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                if len(hierarchy) == 7: # binary mask contour
+                    s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
+                    self.display_seg_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+
+                adjust_data_type_seg_input(self,idx)
                 self.current_seg_slice_index[idx]   = int(self.display_seg_data[idx].shape[0]/2)
                 
                 # check the selected view

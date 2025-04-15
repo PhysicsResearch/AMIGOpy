@@ -16,6 +16,7 @@ from fcn_init.transp_slider_spin_set  import set_transp_slider_fcn
 from fcn_init.set_menu_bar_icons      import menu_bar_icon_actions
 from fcn_init.vtk_IrIS_eval_axes      import setup_vtk_IrISEval
 from fcn_display.display_images       import update_layer_view
+from fcn_display.display_images_seg   import update_seg_slider
 from fcn_init.ModulesTab_change       import set_fcn_tabModules_changed
 from fcn_init.IrIS_cal_init           import init_cal_markers_IrIS
 from fcn_init.init_variables          import initialize_software_variables
@@ -128,6 +129,10 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         setup_vtk_seg(self)
         # Calibration module IrIS
         init_cal_markers_IrIS(self)
+        
+        self.threshMinSlider.valueChanged.connect(self.on_threshslider_change)
+        self.threshMaxSlider.valueChanged.connect(self.on_threshslider_change)
+        self.segSelectView.currentTextChanged.connect(lambda: update_seg_slider(self))
         #
         # VTK C omparison module
         self.vtkWidgetsComp = []
@@ -210,6 +215,16 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         
     def update_progress(self, progress):
         self.progressBar.setValue(int(progress))
+        
+    def on_threshslider_change(self):
+        min_ = self.threshMinSlider.value()
+        max_ = self.threshMaxSlider.value()
+        
+        if min_ >= max_:
+            self.threshMinSlider.setValue(max_ - 1) 
+        
+        self.threshMinBox.setText(f"Min. HU threshold: {min_}")
+        self.threshMaxBox.setText(f"Max. HU threshold: {max_}")
 
    
       
