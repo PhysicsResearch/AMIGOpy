@@ -23,7 +23,7 @@ from fcn_init.init_variables          import initialize_software_variables
 from fcn_init.init_tables             import initialize_software_tables
 from fcn_init.init_buttons            import initialize_software_buttons
 from fcn_init.init_load_files         import load_Source_cal_csv_file
-from fcn_init.init_list_menus         import populate_operation_list
+from fcn_init.init_list_menus         import populate_list_menus
 from fcn_load.load_dcm                import load_all_dcm
 import vtk
 
@@ -58,29 +58,29 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         #
         set_fcn_tabModules_changed(self)
         
-        # populate the list of image processign operations
-        populate_operation_list(self)
+        # populate the list menus
+        populate_list_menus(self)
 
         #
         self.layerTab = {}
         self.transTab = {}
         #
-        self.layerTab['View']    = 0
-        self.transTab['View']    = [1,0,0,0]
-        self.layerTab['Compare'] = 0
-        self.transTab['Compare'] = [1,0,0,0]
-        self.layerTab['IrIS']    = 0
-        self.transTab['IrIS']    = [1,0,0,0]
-        self.layerTab['DECT']    = 0
-        self.transTab['DECT']    = [1,0,0,0]
-        self.layerTab['Plan']    = 0
-        self.transTab['Plan']    = [1,0,0,0]
-        self.layerTab['CSV Files']    = 0
-        self.transTab['CSV Files']    = [1,0,0,0]
-        self.layerTab['Breathing curves'] = 0
-        self.transTab['Breathing curves'] = [1,0,0,0]
-        self.layerTab['Segmentation'] = 0
-        self.transTab['Segmentation'] = [1,0,0,0]
+        self.layerTab['View']               = 0
+        self.transTab['View']               = [1,0,0,0]
+        self.layerTab['Compare']            = 0
+        self.transTab['Compare']            = [1,0,0,0]
+        self.layerTab['IrIS']               = 0
+        self.transTab['IrIS']               = [1,0,0,0]
+        self.layerTab['DECT']               = 0
+        self.transTab['DECT']               = [1,0,0,0]
+        self.layerTab['Plan']               = 0
+        self.transTab['Plan']               = [1,0,0,0]
+        self.layerTab['CSV Files']          = 0
+        self.transTab['CSV Files']          = [1,0,0,0]
+        self.layerTab['Breathing curves']   = 0
+        self.transTab['Breathing curves']   = [1,0,0,0]
+        self.layerTab['Segmentation']       = 0
+        self.transTab['Segmentation']       = [1,0,0,0]
         #
         # Set the path relative to the executable's location
         base_path = os.path.dirname(os.path.abspath(__file__))     # Location of the script or the executable
@@ -114,7 +114,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         #
         # Set the progress bar value to 0
         self.progressBar.setValue(0)
-        # This section coonects GUI elemtns with functions
+        # This section conects GUI elemtns with functions
         # slider to adjust the images
         self.AxialSlider.valueChanged.connect(self.on_axialslider_change)
         self.SagittalSlider.valueChanged.connect(self.on_sagittalslider_change)
@@ -122,7 +122,6 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         
         set_transp_slider_fcn(self)
               
-        self.layer_selection_box.currentIndexChanged.connect(lambda: update_layer_view(self))
         # # Initialize VTK components
         setup_vtk_comp(self)
         setup_vtk_IrISEval(self)
@@ -134,7 +133,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.threshMaxSlider.valueChanged.connect(self.on_threshslider_change)
         self.segSelectView.currentTextChanged.connect(lambda: update_seg_slider(self))
         #
-        # VTK C omparison module
+        # VTK Comparison module
         self.vtkWidgetsComp = []
         self.renAxComp      = []
         self.dataImporterAxComp = {}

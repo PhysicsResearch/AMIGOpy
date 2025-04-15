@@ -6973,7 +6973,7 @@ p, li { white-space: pre-wrap; }
         </widget>
        </item>
        <item row="1" column="2">
-        <widget class="QComboBox" name="layer_selection_box"/>
+        <widget class="QComboBox" name="Layer_selection"/>
        </item>
        <item row="8" column="2" colspan="4">
         <widget class="QSlider" name="Layer_3_alpha_slider">

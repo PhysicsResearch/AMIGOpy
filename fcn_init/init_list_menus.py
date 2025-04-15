@@ -3,7 +3,13 @@ from fcn_processing.Im_process_list   import on_operation_selected
 from fcn_DECT.DECT_table_disp import on_DECT_list_selection_changed
 from fcn_display.disp_plan_data import update_disp_brachy_plan
 
-def populate_operation_list(self):
+def populate_list_menus(self):
+    # Populate selection box
+    Layers = ["0", "1", "2", "3"]
+    self.layer_selection_box = self.findChild(QtWidgets.QComboBox, 'Layer_selection')
+    self.layer_selection_box.addItems(Layers)   
+    self.layer_selection_box.currentIndexChanged.connect(lambda: update_layer_view(self))
+
     # List of operations
     operations = ["none","Invert Image", "Average", "Sum","Crop","Normalize", "Threshold", "Denoise Gaussian","Denoise Median","Denoise Percentile",
                   "Denoise Min.","Denoise Max.", "Wiener", "FFT Gaussian","Gaussian Grad.","Gaussian Laplace","Sobel","Prewitt","TV Chambolle","Rolling ball","Wavelet",
