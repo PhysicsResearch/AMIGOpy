@@ -1234,35 +1234,36 @@ def update_layer_view(self):
     idx = self.layer_selection_box.currentIndex()
     tabName = self.tabModules.tabText(self.tabModules.currentIndex())
     self.layerTab[tabName] = idx
-    if self.slice_thick[idx] !=0:
-        # Update the slider's value to match the current slice index
-        #
-        Ax_s = self.current_axial_slice_index[idx]
-        Sa_s = self.current_sagittal_slice_index[idx]
-        Co_s = self.current_coronal_slice_index[idx]
-        # check if the current slice is in the range of the layer
-        if Ax_s<0:
-            Ax_s = 0
-        elif Ax_s > self.display_data[idx].shape[0]-1:
-            Ax_s = self.display_data[idx].shape[0] - 1
-        #
-        if    Sa_s < 0:
-            Sa_s = 0
-        elif Sa_s > self.display_data[idx].shape[2]-1:
-            Sa_s = self.display_data[idx].shape[2]-1
-        #
-        if Co_s<0:
-            Co_s =0
-        elif Co_s > self.display_data[idx].shape[1] - 1:
-            Co_s = self.display_data[idx].shape[1] - 1
-        #
-        # Update the slider that will update the view    
-        #
-        self.AxialSlider.setMaximum(self.display_data[idx].shape[0] - 1)
-        self.SagittalSlider.setMaximum(self.display_data[idx].shape[2] - 1)
-        self.CoronalSlider.setMaximum(self.display_data[idx].shape[1] - 1)
-        #
-        self.AxialSlider.setValue(Ax_s)
-        self.SagittalSlider.setValue(Sa_s)
-        self.CoronalSlider.setValue(Co_s)
-        #
+    if self.tabModules.tabText(self.tabModules.currentIndex()) != "segmentation":
+        if self.slice_thick[idx] !=0:
+            # Update the slider's value to match the current slice index
+            #
+            Ax_s = self.current_axial_slice_index[idx]
+            Sa_s = self.current_sagittal_slice_index[idx]
+            Co_s = self.current_coronal_slice_index[idx]
+            # check if the current slice is in the range of the layer
+            if Ax_s<0:
+                Ax_s = 0
+            elif Ax_s > self.display_data[idx].shape[0]-1:
+                Ax_s = self.display_data[idx].shape[0] - 1
+            #
+            if    Sa_s < 0:
+                Sa_s = 0
+            elif Sa_s > self.display_data[idx].shape[2]-1:
+                Sa_s = self.display_data[idx].shape[2]-1
+            #
+            if Co_s<0:
+                Co_s =0
+            elif Co_s > self.display_data[idx].shape[1] - 1:
+                Co_s = self.display_data[idx].shape[1] - 1
+            #
+            # Update the slider that will update the view    
+            #
+            self.AxialSlider.setMaximum(self.display_data[idx].shape[0] - 1)
+            self.SagittalSlider.setMaximum(self.display_data[idx].shape[2] - 1)
+            self.CoronalSlider.setMaximum(self.display_data[idx].shape[1] - 1)
+            #
+            self.AxialSlider.setValue(Ax_s)
+            self.SagittalSlider.setValue(Sa_s)
+            self.CoronalSlider.setValue(Co_s)
+            #

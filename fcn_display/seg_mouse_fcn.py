@@ -3,15 +3,24 @@ from fcn_display.display_images_seg import disp_seg_image_slice
 from fcn_display.colormap_set import set_color_map
 from fcn_display.win_level import set_window
 import time
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication
 
 def left_button_pressseg_event(self, caller, event):
     Caller_id = self.interactor_to_index.get(caller)
     if Caller_id is not None:
         self.left_but_pressed[0] = 1
         self.left_but_pressed[1] = Caller_id
+        if self.seg_brush == 1:
+            self.seg_brush_coords = None
+            QApplication.setOverrideCursor(Qt.CrossCursor)
+           
     
 def left_button_releaseseg_event(self, caller, event):
     self.left_but_pressed[0] = 0
+    if self.seg_brush == 1:
+        self.seg_brush_coords = None
+        QApplication.restoreOverrideCursor()
 
         
 def on_scroll_backwardseg(self, caller, event):
@@ -70,20 +79,24 @@ def onMouseMoveseg(self, caller, event):
     self.textActorSeg[2].SetInput(f"Slice:{self.current_seg_slice_index[layer]}  ({image_coord_vox[0]},{image_coord_vox[1]}) {round(pixel_value,4):.4f}")
     #
     if self.left_but_pressed[0] == 1:
-        current_window = self.windowLevelSeg[layer].GetWindow()
-        current_level  = self.windowLevelSeg[layer].GetLevel()
-        if current_level==0:
-            current_level=1
-        if current_window==0:
-            current_window=1
-        # Data can be in the range of 1 (RED and SPR) or 10 (Zeff)
-        # so the adjustment needs to be done in smaller increments in this region
-        DeltaW = (x-x0)*0.01*current_window
-        DeltaL = (y-y0)*0.01*current_level
-        Window = current_window + DeltaW
-        Level  = current_level  + DeltaL
-        #    
-        set_window(self,Window,Level)
-        set_color_map(self)
+        if self.seg_brush == 1:
+            self.seg_brush_coords = image_coord_vox
+            disp_seg_image_slice(self)
+        else:
+            current_window = self.windowLevelSeg[layer].GetWindow()
+            current_level  = self.windowLevelSeg[layer].GetLevel()
+            if current_level==0:
+                current_level=1
+            if current_window==0:
+                current_window=1
+            # Data can be in the range of 1 (RED and SPR) or 10 (Zeff)
+            # so the adjustment needs to be done in smaller increments in this region
+            DeltaW = (x-x0)*0.01*current_window
+            DeltaL = (y-y0)*0.01*current_level
+            Window = current_window + DeltaW
+            Level  = current_level  + DeltaL
+            #    
+            set_window(self,Window,Level)
+            set_color_map(self)
     #
     self.renSeg.GetRenderWindow().Render()

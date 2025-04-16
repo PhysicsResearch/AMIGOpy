@@ -44,6 +44,8 @@ def initialize_software_variables(self):
     self.Im_PatPosition_seg   = np.zeros((4, 3))
     self.Im_Offset_seg        = np.zeros((4, 3))
     self.display_seg_data       = {}
+    self.seg_brush = 0
+    self.seg_brush_coords = None
     # IrIS ################################################################
     # this varibale will be resized depeding on the number of dwell positions
     # the number of colluns should remaing the same and was included here for documentation purposes.

@@ -2,6 +2,7 @@ from PyQt5 import QtWidgets
 from fcn_processing.Im_process_list   import on_operation_selected
 from fcn_DECT.DECT_table_disp import on_DECT_list_selection_changed
 from fcn_display.disp_plan_data import update_disp_brachy_plan
+from fcn_display.display_images import update_layer_view
 
 def populate_list_menus(self):
     # Populate selection box
