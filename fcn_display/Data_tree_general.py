@@ -285,25 +285,24 @@ def on_DataTreeView_clicked(self,index):
                     self.display_seg_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
 
                 adjust_data_type_seg_input(self,idx)
-                self.current_seg_slice_index[idx]   = int(self.display_seg_data[idx].shape[0]/2)
                 
                 # check the selected view
                 if self.segSelectView.currentText() == "Axial":
                     self.im_ori_seg = 0
-                    self.current_seg_slice_index[idx]   = int(self.display_seg_data[idx].shape[0]/2)
-                    Ax_s = self.current_seg_slice_index[idx]
+                    self.current_seg_slice_index   = int(self.display_seg_data[idx].shape[0]/2)
+                    Ax_s = self.current_seg_slice_index
                     self.segViewSlider.setMaximum(self.display_seg_data[idx].shape[0] - 1)
                     self.segViewSlider.setValue(int(Ax_s))        
                 elif self.segSelectView.currentText() == "Sagittal":
                     self.im_ori_seg = 1
-                    self.current_seg_slice_index[idx]   = int(self.display_seg_data[idx].shape[2]/2)
-                    Ax_s = self.current_seg_slice_index[idx]
+                    self.current_seg_slice_index   = int(self.display_seg_data[idx].shape[2]/2)
+                    Ax_s = self.current_seg_slice_index
                     self.segViewSlider.setMaximum(self.display_seg_data[idx].shape[2] - 1)
                     self.segViewSlider.setValue(int(Ax_s))     
                 elif self.segSelectView.currentText() == "Coronal":
                     self.im_ori_seg = 2
-                    self.current_seg_slice_index[idx]   = int(self.display_seg_data[idx].shape[1]/2)
-                    Ax_s = self.current_seg_slice_index[idx]
+                    self.current_seg_slice_index   = int(self.display_seg_data[idx].shape[1]/2)
+                    Ax_s = self.current_seg_slice_index
                     self.segViewSlider.setMaximum(self.display_seg_data[idx].shape[1] - 1)
                     self.segViewSlider.setValue(int(Ax_s))        
                 #
@@ -311,7 +310,7 @@ def on_DataTreeView_clicked(self,index):
                 self.slice_thick_seg[idx]         = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
                 self.pixel_spac_seg[idx, :2]      = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
                 self.Im_PatPosition_seg[idx, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
-                #
+
                 if idx>0:
                     self.Im_Offset_seg[idx,0]    = (self.Im_PatPosition_seg[idx,0]-self.Im_PatPosition_seg[0,0])
                     self.Im_Offset_seg[idx,1]    = (self.display_seg_data[0].shape[1]*self.pixel_spac_seg[0,0]-self.display_seg_data[idx].shape[1]*self.pixel_spac_seg[idx,0])-(self.Im_PatPosition_seg[idx,1]-self.Im_PatPosition[0,1])

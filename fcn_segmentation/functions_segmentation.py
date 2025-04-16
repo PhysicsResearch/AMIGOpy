@@ -33,10 +33,6 @@ def threshSeg(self):
     
     populate_DICOM_tree(self)
 
-    im = target_series_dict['structures'][new_s_key]['Mask3D']
-    import matplotlib.pyplot as plt
-    plt.imshow(im[im.shape[0] // 2])
-    plt.show()
     
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas

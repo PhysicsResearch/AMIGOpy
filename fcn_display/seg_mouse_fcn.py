@@ -39,11 +39,11 @@ def onMouseMoveseg(self, caller, event):
     ori = self.segSelectView.currentText()
 
     if ori=="Axial": #Axial
-        slice_data = self.display_seg_data[layer][int(self.current_seg_slice_index[layer]), :, :]
+        slice_data = self.display_seg_data[layer][int(self.current_seg_slice_index), :, :]
     elif ori=="Sagittal": #Sagittal 
-        slice_data = self.display_seg_data[layer][:,:,int(self.current_seg_slice_index[layer])]
+        slice_data = self.display_seg_data[layer][:,:,int(self.current_seg_slice_index)]
     elif ori=="Coronal": #Coronal
-        slice_data = self.display_seg_data[layer][:,int(self.current_seg_slice_index[layer]), :]
+        slice_data = self.display_seg_data[layer][:,int(self.current_seg_slice_index), :]
     #    
     # Get the position of the mouse
     x, y = caller.GetEventPosition()
@@ -76,7 +76,7 @@ def onMouseMoveseg(self, caller, event):
     #         0 <= image_coord_vox[1] < slice_data.shape[0]) or self.selected_point is not None:
     pixel_value = slice_data[image_coord_vox[1], image_coord_vox[0]]    
     # 
-    self.textActorSeg[2].SetInput(f"Slice:{self.current_seg_slice_index[layer]}  ({image_coord_vox[0]},{image_coord_vox[1]}) {round(pixel_value,4):.4f}")
+    self.textActorSeg[2].SetInput(f"Slice:{self.current_seg_slice_index}  ({image_coord_vox[0]},{image_coord_vox[1]}) {round(pixel_value,4):.4f}")
     #
     if self.left_but_pressed[0] == 1:
         if self.seg_brush == 1:

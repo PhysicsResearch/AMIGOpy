@@ -17,7 +17,7 @@ def initialize_software_variables(self):
     self.current_axial_slice_index    = [-1,-1,-1,-1]
     self.current_sagittal_slice_index = [-1,-1,-1,-1]
     self.current_coronal_slice_index  = [-1,-1,-1,-1]
-    self.current_seg_slice_index = [-1,-1,-1,-1]
+    self.current_seg_slice_index = -1
     # comparison axes 12 
     self.current_AxComp_slice_index    = np.zeros((12,4))-1
     
