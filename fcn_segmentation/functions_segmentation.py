@@ -32,9 +32,51 @@ def threshSeg(self):
     target_series_dict['structures_names'].append(name)
     
     populate_DICOM_tree(self)
-    print(target_series_dict['structures'][new_s_key]['Mask3D'].sum())
+
     im = target_series_dict['structures'][new_s_key]['Mask3D']
     import matplotlib.pyplot as plt
     plt.imshow(im[im.shape[0] // 2])
     plt.show()
     
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from PyQt5.QtWidgets import QVBoxLayout
+
+    
+def plot_hist(self):
+    self.plot_fig = Figure()  # Create a figure for the first time
+    ax = self.plot_fig.add_subplot(111) 
+    
+    x_min = self.threshMinSlider.value()
+    x_max = self.threshMaxSlider.value()
+    
+    v, x = np.histogram(self.display_seg_data[0], range=(-500, 500), bins=1000)
+    ax.plot(x[:-1], v, "-")
+    ax.axvline(x_min, color="r")
+    ax.axvline(x_max, color="r")
+    
+    # Create a canvas and toolbar
+    canvas = FigureCanvas(self.plot_fig)
+    canvas.setStyleSheet(f"background-color:{self.selected_background};")
+
+    # Check if the container has a layout, set one if not
+    container = self.VTK_SegHistView
+    if container.layout() is None:
+        layout = QVBoxLayout(container)
+        container.setLayout(layout)
+    else:
+        # Clear existing content in the container, if any
+        while container.layout().count():
+            child = container.layout().takeAt(0)
+            if child.widget() and not isinstance(child.widget(), NavigationToolbar):
+                child.widget().deleteLater()
+
+    # Add the canvas and toolbar to the container
+    container.layout().addWidget(canvas)
+    canvas.draw()
+    
+    
+def on_brush_click(self):
+    self.seg_brush = 0 if self.seg_brush == 1 else 1
+        

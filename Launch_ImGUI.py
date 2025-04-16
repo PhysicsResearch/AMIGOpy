@@ -25,6 +25,7 @@ from fcn_init.init_buttons            import initialize_software_buttons
 from fcn_init.init_load_files         import load_Source_cal_csv_file
 from fcn_init.init_list_menus         import populate_list_menus
 from fcn_load.load_dcm                import load_all_dcm
+from fcn_segmentation.functions_segmentation import plot_hist
 import vtk
 
 
@@ -131,6 +132,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         
         self.threshMinSlider.valueChanged.connect(self.on_threshslider_change)
         self.threshMaxSlider.valueChanged.connect(self.on_threshslider_change)
+        self.threshMinSlider.valueChanged.connect(lambda: plot_hist(self))
+        self.threshMaxSlider.valueChanged.connect(lambda: plot_hist(self))
         self.segSelectView.currentTextChanged.connect(lambda: update_seg_slider(self))
         #
         # VTK Comparison module

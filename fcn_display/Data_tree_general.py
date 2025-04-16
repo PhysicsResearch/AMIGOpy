@@ -13,6 +13,7 @@ from fcn_display.colormap_set import set_color_map
 from fcn_display.win_level import set_window
 from fcn_display.disp_plan_data import update_plan_tables
 from fcn_RTFiles.process_rt_files import update_structure_list_widget
+from fcn_segmentation.functions_segmentation import plot_hist
 
 
 
@@ -278,6 +279,7 @@ def on_DataTreeView_clicked(self,index):
                 #
                 if len(hierarchy) == 5: # Series
                     self.display_seg_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                    plot_hist(self)
                 if len(hierarchy) == 7: # binary mask contour
                     s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
                     self.display_seg_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
