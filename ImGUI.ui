@@ -6588,13 +6588,9 @@ p, li { white-space: pre-wrap; }
        <attribute name="title">
         <string>Segmentation</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_seg_tab" rowstretch="1,0,0,0,0,3,0" columnstretch="5,1,0,1">
-        <item row="6" column="0">
-         <widget class="QSlider" name="segViewSlider">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-         </widget>
+       <layout class="QGridLayout" name="gridLayout_seg_tab" rowstretch="1,0,0,0,0,3,0" columnstretch="3,1,0,1">
+        <item row="0" column="0" rowspan="6" colspan="2">
+         <widget class="QWidget" name="VTK_SegView" native="true"/>
         </item>
         <item row="2" column="3">
          <widget class="QSlider" name="threshMaxSlider">
@@ -6612,31 +6608,39 @@ p, li { white-space: pre-wrap; }
           </property>
          </widget>
         </item>
-        <item row="3" column="3">
-         <widget class="QLineEdit" name="segStructureName"/>
-        </item>
-        <item row="6" column="1">
-         <widget class="QComboBox" name="segSelectView"/>
-        </item>
-        <item row="2" column="2">
-         <widget class="QLineEdit" name="threshMaxBox">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>Min. HU threshold: 300 </string>
+        <item row="6" column="0">
+         <widget class="QSlider" name="segViewSlider">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
           </property>
          </widget>
         </item>
         <item row="0" column="2" colspan="2">
          <widget class="QWidget" name="VTK_SegHistView" native="true">
           <layout class="QGridLayout" name="gridLayout_49"/>
+         </widget>
+        </item>
+        <item row="3" column="2">
+         <widget class="QLineEdit" name="lineEdit_createStructureSeg">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Structure name</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QComboBox" name="segSelectView"/>
+        </item>
+        <item row="3" column="3">
+         <widget class="QLineEdit" name="segStructureName"/>
+        </item>
+        <item row="4" column="3">
+         <widget class="QPushButton" name="createSegStructure">
+          <property name="text">
+           <string>Create structure</string>
+          </property>
          </widget>
         </item>
         <item row="1" column="3">
@@ -6658,6 +6662,22 @@ p, li { white-space: pre-wrap; }
           </property>
          </widget>
         </item>
+        <item row="2" column="2">
+         <widget class="QLineEdit" name="threshMaxBox">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Min. HU threshold: 200 </string>
+          </property>
+         </widget>
+        </item>
         <item row="1" column="2">
          <widget class="QLineEdit" name="threshMinBox">
           <property name="enabled">
@@ -6670,12 +6690,9 @@ p, li { white-space: pre-wrap; }
            </sizepolicy>
           </property>
           <property name="text">
-           <string>Min. HU threshold: -300 </string>
+           <string>Min. HU threshold: -200 </string>
           </property>
          </widget>
-        </item>
-        <item row="0" column="0" rowspan="6" colspan="2">
-         <widget class="QWidget" name="VTK_SegView" native="true"/>
         </item>
         <item row="5" column="2" rowspan="2" colspan="2">
          <widget class="QToolBox" name="seg_toolBox">
@@ -6690,7 +6707,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>342</width>
+             <width>423</width>
              <height>634</height>
             </rect>
            </property>
@@ -6725,7 +6742,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>342</width>
+             <width>423</width>
              <height>634</height>
             </rect>
            </property>
@@ -6869,31 +6886,40 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>98</width>
-             <height>28</height>
+             <width>423</width>
+             <height>634</height>
             </rect>
            </property>
            <attribute name="label">
-            <string/>
+            <string>Analysis</string>
            </attribute>
+           <layout class="QGridLayout" name="gridLayout_SegToolBox3">
+            <item row="1" column="0" colspan="2">
+             <widget class="QListWidget" name="tableSegStrucStats"/>
+            </item>
+            <item row="0" column="0">
+             <widget class="QPushButton" name="calcSegStatsButton">
+              <property name="text">
+               <string>Calculate statistics</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QPushButton" name="exportSegStatsButton">
+              <property name="text">
+               <string>Export statistics</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QPushButton" name="exportSegStrucButton">
+              <property name="text">
+               <string>Export structures</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </widget>
-         </widget>
-        </item>
-        <item row="3" column="2">
-         <widget class="QLineEdit" name="lineEdit_createStructureSeg">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="text">
-           <string>Structure name</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="3">
-         <widget class="QPushButton" name="createSegStructure">
-          <property name="text">
-           <string>Create structure</string>
-          </property>
          </widget>
         </item>
        </layout>
