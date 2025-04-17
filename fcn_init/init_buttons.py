@@ -29,7 +29,7 @@ from fcn_breathing_curves.functions_import import openCSVFile_BrCv, setParams, c
 from fcn_breathing_curves.functions_plot import calcStats, plotViewData_BrCv_plot, exportPlot
 from fcn_breathing_curves.functions_edit import applyOperations, undoOperations, exportData, plotViewData_BrCv_edit, cropRange_BrCv_edit, exportGCODE#, cropCurve_BrCv_edit
 from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, update_doses_list, update_structure_list, eqd2_calc
-from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click
+from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg
 
 def initialize_software_buttons(self):
     # IrIS add row dw table
@@ -72,6 +72,8 @@ def initialize_software_buttons(self):
     self.applyThreshSeg.setStyleSheet("background-color: blue; color:white")
     self.segBrushButton.clicked.connect(lambda: on_brush_click(self))
     self.segEraseButton.clicked.connect(lambda: on_erase_click(self))
+    self.createSegStructure.clicked.connect(lambda: InitSeg(self))
+    self.createSegStructure.setStyleSheet("background-color: green; color:white")
 
 
     # Connect the button's clicked signal to the slot function - run im processing operations

@@ -84,6 +84,8 @@ def onMouseMoveseg(self, caller, event):
             self.seg_brush_coords = image_coord_vox
             disp_seg_image_slice(self)
         else:
+            if layer == 1:
+                return
             current_window = self.windowLevelSeg[layer].GetWindow()
             current_level  = self.windowLevelSeg[layer].GetLevel()
             if current_level==0:
