@@ -11,14 +11,15 @@ def left_button_pressseg_event(self, caller, event):
     if Caller_id is not None:
         self.left_but_pressed[0] = 1
         self.left_but_pressed[1] = Caller_id
-        if self.seg_brush == 1:
+        if self.seg_brush or self.seg_erase:
             self.seg_brush_coords = None
             QApplication.setOverrideCursor(Qt.CrossCursor)
+            self.slice_data_copy = self.display_seg_data[1]
            
     
 def left_button_releaseseg_event(self, caller, event):
     self.left_but_pressed[0] = 0
-    if self.seg_brush == 1:
+    if self.seg_brush or self.seg_erase:
         self.seg_brush_coords = None
         QApplication.restoreOverrideCursor()
 
@@ -79,7 +80,7 @@ def onMouseMoveseg(self, caller, event):
     self.textActorSeg[2].SetInput(f"Slice:{self.current_seg_slice_index}  ({image_coord_vox[0]},{image_coord_vox[1]}) {round(pixel_value,4):.4f}")
     #
     if self.left_but_pressed[0] == 1:
-        if self.seg_brush == 1:
+        if self.seg_brush or self.seg_erase:
             self.seg_brush_coords = image_coord_vox
             disp_seg_image_slice(self)
         else:

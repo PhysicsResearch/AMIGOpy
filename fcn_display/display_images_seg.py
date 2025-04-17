@@ -1,3 +1,4 @@
+import vtk 
 
 def sliderSegView_change(self):
     disp_seg_image_slice(self)
@@ -60,22 +61,25 @@ def disp_seg_image_slice(self):
         elif i == 1:
             if len(self.display_seg_data) <= i:
                 continue
-            vol = self.display_seg_data[i]
+
             if ori=="Axial": #Axial
-                slice_data = vol[int(self.current_seg_slice_index), :, :]
+                slice_data = self.display_seg_data[i][int(self.current_seg_slice_index), :, :]
+                slice_data_im = self.display_seg_data[0][int(self.current_seg_slice_index), :, :]
                 # self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,1], 0)
                 self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.pixel_spac_seg[layer,0],1)
             elif ori=="Sagittal": #Sagittal 
-                slice_data = vol[:,:,int(self.current_seg_slice_index)]
+                slice_data = self.display_seg_data[i][:,:,int(self.current_seg_slice_index)]
+                slice_data_im = self.display_seg_data[0][:,:,int(self.current_seg_slice_index)]
                 # self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,1], self.Im_Offset_seg[layer,2], 0)
                 self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,0],self.slice_thick_seg[layer],1)
             elif ori=="Coronal": #Coronal
-                slice_data = vol[:,int(self.current_seg_slice_index), :]
+                slice_data = self.display_seg_data[i][:,int(self.current_seg_slice_index), :]
+                slice_data_im = self.display_seg_data[0][:,int(self.current_seg_slice_index), :]
                 # self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,2], 0)
                 self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.slice_thick_seg[layer],1)
             #
             if self.seg_brush_coords is not None:
-                self.brush_size = 5
+                self.brush_size = self.BrushSizeSlider.value()
                 
                 if ori=="Axial": 
                     Y, X = np.ogrid[:slice_data.shape[0], :slice_data.shape[1]]
@@ -86,8 +90,11 @@ def disp_seg_image_slice(self):
                                                (self.slice_thick_seg[layer] / self.pixel_spac_seg[layer,1]))
                 
                 mask = dist_from_center <= self.brush_size 
-                slice_data[mask] = 0
-                # slice_data[self.seg_brush_coords[1], self.seg_brush_coords[0]] = -1000
+                if self.seg_erase == 1:
+                    slice_data[mask] = 0
+                if self.seg_brush == 1:
+                    mask_hu = (slice_data_im >= self.threshMinSlider.value()) * (slice_data_im <= self.threshMaxSlider.value())
+                    slice_data[mask * mask_hu] = 1
 
             data_string = slice_data.tobytes()
             extent = slice_data.shape
@@ -98,8 +105,14 @@ def disp_seg_image_slice(self):
             #
             self.textActorSeg[2].SetInput(f"Slice:{self.current_seg_slice_index}")
             #
-            imageProperty = self.imageActorSeg[layer].GetProperty()
-            imageProperty.SetOpacity(self.LayerAlpha[layer])  
+            # imageProperty = self.imageActorSeg[layer].GetProperty()
+            lut         = vtk.vtkLookupTable()
+            lut.SetTableValue(0, 0, 0, 0, 0)  # Transparent
+            lut.SetTableValue(1, 1, 0, 0, 0.5)
+            lut.Build()
+
+            self.imageActorSeg[layer].GetProperty().SetLookupTable(lut)
+            # self.imageActorSeg[layer].GetProperty().SetOpacity(0.5)#.imageProperty.SetOpacity(0.5)#self.LayerAlpha[layer])  
             self.dataImporterSeg[layer].Modified()     
             self.renSeg.GetRenderWindow().Render()  
 

@@ -44,13 +44,38 @@ def plot_hist(self):
     self.plot_fig = Figure()  # Create a figure for the first time
     ax = self.plot_fig.add_subplot(111) 
     
+    if self.selected_background == "Transparent":
+        # Set plot background to transparent
+        ax.patch.set_alpha(0.0)
+        self.plot_fig.patch.set_alpha(0.0)
+        
+        # Customize text and axes properties
+        ax.tick_params(colors='white', labelsize=10)  # White ticks with larger text
+        ax.xaxis.label.set_color('white')
+        ax.yaxis.label.set_color('white')
+        ax.spines['bottom'].set_color('white')
+        ax.spines['top'].set_color('white')
+        ax.spines['left'].set_color('white')
+        ax.spines['right'].set_color('white')
+    
     x_min = self.threshMinSlider.value()
     x_max = self.threshMaxSlider.value()
     
-    v, x = np.histogram(self.display_seg_data[0], range=(-500, 500), bins=1000)
-    ax.plot(x[:-1], v, "-")
+    v, x = np.histogram(self.display_seg_data[0], range=(-1000, 1000), bins=2000)
+    
+    min_lim = -500; max_lim = 500
+    if self.threshMinSlider.value() < -500:
+        min_lim = self.threshMinSlider.value() - 100
+    if self.threshMaxSlider.value() > 500:
+        max_lim = self.threshMaxSlider.value() + 100
+    max_counts = (v * (x[:-1] >= min_lim) * (x[:-1] <= max_lim)).max()
+    
+    ax.plot(x[:-1], v / max_counts, "-")
     ax.axvline(x_min, color="r")
     ax.axvline(x_max, color="r")
+    ax.set_xlim(min_lim, max_lim)
+    ax.set_ylim(0, 1.1)
+    ax.set_xlabel("HU")
     
     # Create a canvas and toolbar
     canvas = FigureCanvas(self.plot_fig)
@@ -75,4 +100,12 @@ def plot_hist(self):
     
 def on_brush_click(self):
     self.seg_brush = 0 if self.seg_brush == 1 else 1
-        
+    if self.seg_brush == 1:
+        self.segEraseButton.setChecked(0)
+        self.seg_erase = 0  
+
+def on_erase_click(self):
+    self.seg_erase = 0 if self.seg_erase == 1 else 1 
+    if self.seg_erase == 1:
+        self.segBrushButton.setChecked(0) 
+        self.seg_brush = 0 

@@ -8,6 +8,9 @@ from fcn_display.colormap_set import set_color_map
 
 def window_auto(self):
     idx = self.layer_selection_box.currentIndex()
+    currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
+    if currentTabText == "Segmentation" and idx > 1:
+        return
     slice_data = self.display_data[idx][self.current_slice_index[0], :, :]
     Window = np.std(slice_data)*2
     Level  = np.mean(slice_data)
