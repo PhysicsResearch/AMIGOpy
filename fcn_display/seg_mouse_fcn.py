@@ -9,12 +9,13 @@ from PyQt5.QtWidgets import QApplication
 def left_button_pressseg_event(self, caller, event):
     Caller_id = self.interactor_to_index.get(caller)
     if Caller_id is not None:
+        print("Press")
         self.left_but_pressed[0] = 1
         self.left_but_pressed[1] = Caller_id
         if self.seg_brush or self.seg_erase:
             self.seg_brush_coords = None
             QApplication.setOverrideCursor(Qt.CrossCursor)
-            self.slice_data_copy = self.display_seg_data[1]
+            self.slice_data_copy = self.display_seg_data[1].copy()
            
     
 def left_button_releaseseg_event(self, caller, event):
@@ -38,6 +39,8 @@ def on_scroll_forwardseg(self, caller, event):
 def onMouseMoveseg(self, caller, event):
     layer = self.layer_selection_box.currentIndex()
     ori = self.segSelectView.currentText()
+    if len(self.display_seg_data) == 0:
+        return
 
     if ori=="Axial": #Axial
         slice_data = self.display_seg_data[layer][int(self.current_seg_slice_index), :, :]

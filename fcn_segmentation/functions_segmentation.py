@@ -26,7 +26,7 @@ def threshSeg(self):
     # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
     target_series_dict['structures'][new_s_key] = {
         'Mask3D': mask_3d,
-        'Name': "tumors"
+        'Name': name
     }
     target_series_dict['structures_keys'].append(new_s_key)
     target_series_dict['structures_names'].append(name)
@@ -149,3 +149,97 @@ def on_erase_click(self):
     if self.seg_erase == 1:
         self.segBrushButton.setChecked(0) 
         self.seg_brush = 0 
+
+def calc_com(segmentation):
+    from scipy.ndimage import center_of_mass
+    return center_of_mass(segmentation)
+
+
+from PyQt5.QtWidgets import (
+    QWidget, QCheckBox, QLabel, QPushButton, QHBoxLayout,
+    QVBoxLayout, QColorDialog, QDoubleSpinBox, QListWidgetItem,
+)
+
+
+class listWidgetRow(QWidget):
+    """
+    A custom widget that displays:
+      - A checkbox (to toggle the structure on/off),
+      - A label (for the structure name),
+      - A color-selection button,
+      - A 'Line Width' spinbox,
+      - A 'Transparency' spinbox,
+      - A 'Fill' checkbox (to indicate whether to display a filled polygon).
+    """
+
+    def __init__(self, vals, parent=None):
+        super().__init__(parent)
+
+        # 1) Master checkbox to enable/disable the structure
+        self.checkbox = QCheckBox()
+
+        # Lay out horizontally
+        layout = QHBoxLayout()
+        layout.addWidget(self.checkbox)
+        for val in vals:
+            layout.addWidget(QLabel(f"{val:03f}"))
+
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+
+def calcStrucStats(self):
+    
+    data = {}
+    
+    for patientID in self.dicom_data:
+        print(patientID)
+        for studyID in self.dicom_data[patientID]:
+            print(studyID)
+            for modality in self.dicom_data[patientID][studyID]:
+                print(modality)
+                for target_series_dict in self.dicom_data[patientID][studyID][modality]:
+                    # print(series_index)
+                    # target_series_dict = self.dicom_data[patientID][studyID][modality][series_index]
+                    if len(target_series_dict.get('structures', {})) == 0:
+                        continue
+                    
+                    slice_thick = target_series_dict['metadata']['SliceThickness']
+                    pixel_spac = target_series_dict['metadata']['PixelSpacing']
+                    Im_PatPosition = target_series_dict['metadata']['ImagePositionPatient']
+                    
+                    for k in target_series_dict['structures']:
+                        struct = target_series_dict['structures'][k]
+                        name = "{series_index}_{struct['Name']}"
+                        mask = struct["Mask3D"]
+                        vol_in_voxels = mask.sum() 
+                        vol_in_mm = vol_in_voxels * slice_thick * pixel_spac[0] * pixel_spac[1]
+                        CoM = calc_com(mask)
+                        data[name] = {"volume": vol_in_mm, "CoM": CoM}
+                        
+    self.tableSegStrucStats.clear()
+    layout = QHBoxLayout()
+    layout.addWidget(QLabel("Export:"))
+    layout.addWidget(QLabel("Volume (mm^3)"))
+    layout.addWidget(QLabel("CoM (x)"))
+    layout.addWidget(QLabel("CoM (y)"))
+    layout.addWidget(QLabel("CoM (z)"))
+    
+    for name in data:
+        list_item = QListWidgetItem(self.tableSegStrucStats)
+        custom_item = listWidgetRow([data[name]["volume"], data[name]["CoM"][0],
+                                     data[name]["CoM"][1], data[name]["CoM"][2]])
+        
+        custom_item.structure_key = name  # Save the key for later lookup
+        list_item.setSizeHint(custom_item.sizeHint())
+        self.STRUCTlist.addItem(list_item)
+        self.STRUCTlist.setItemWidget(list_item, custom_item)
+
+
+def undo_event_seg(self):
+    print("entered undo")
+    try:
+        self.display_seg_data[1] = self.slice_data_copy  
+    except:
+        return
+    
