@@ -9,7 +9,6 @@ from PyQt5.QtWidgets import QApplication
 def left_button_pressseg_event(self, caller, event):
     Caller_id = self.interactor_to_index.get(caller)
     if Caller_id is not None:
-        print("Press")
         self.left_but_pressed[0] = 1
         self.left_but_pressed[1] = Caller_id
         if self.seg_brush or self.seg_erase:

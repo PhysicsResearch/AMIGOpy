@@ -2,6 +2,7 @@ import sys
 import os
 import qdarkstyle
 from PyQt5.QtWidgets import QApplication, QMainWindow, QToolBar
+from PyQt5.QtGui import QIcon
 from ImGUI import Ui_AMIGOpy  # Assuming this is the name of your main window class in ImGUI.py
 from fcn_load.sort_dcm import get_data_description
 from fcn_load.org_fol_dcm import organize_files_into_folders
@@ -135,6 +136,10 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.threshMinSlider.valueChanged.connect(lambda: plot_hist(self))
         self.threshMaxSlider.valueChanged.connect(lambda: plot_hist(self))
         self.segSelectView.currentTextChanged.connect(lambda: update_seg_slider(self))
+
+        self.segBrushButton.setIcon(QIcon("./icons/brush.png"))
+        self.segEraseButton.setIcon(QIcon("./icons/eraser.png") )
+        self.undoSeg.setIcon(QIcon("./icons/undo.png"))
         #
         # VTK Comparison module
         self.vtkWidgetsComp = []

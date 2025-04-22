@@ -1,6 +1,7 @@
 import numpy as np
 from fcn_load.populate_dcm_list import populate_DICOM_tree
 
+
 def threshSeg(self):
     layer  = int(self.layer_selection_box.currentIndex())
     min_, max_ = self.threshMinSlider.value(), self.threshMaxSlider.value()
@@ -172,7 +173,7 @@ class listWidgetRow(QWidget):
       - A 'Fill' checkbox (to indicate whether to display a filled polygon).
     """
 
-    def __init__(self, vals, parent=None):
+    def __init__(self, vals, parent=None, checkbox=True):
         super().__init__(parent)
 
         # 1) Master checkbox to enable/disable the structure
@@ -180,9 +181,16 @@ class listWidgetRow(QWidget):
 
         # Lay out horizontally
         layout = QHBoxLayout()
-        layout.addWidget(self.checkbox)
+        if checkbox:
+            layout.addWidget(self.checkbox)
         for val in vals:
-            layout.addWidget(QLabel(f"{val:03f}"))
+            if type(val) == str:
+                layout.addWidget(QLabel(val))
+            else:
+                try:
+                    layout.addWidget(QLabel(f"{val:03f}"))
+                except:
+                    layout.addWidget(QLabel(""))
 
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
@@ -199,10 +207,9 @@ def calcStrucStats(self):
             for modality in self.dicom_data[patientID][studyID]:
                 print(modality)
                 for target_series_dict in self.dicom_data[patientID][studyID][modality]:
-                    # print(series_index)
-                    # target_series_dict = self.dicom_data[patientID][studyID][modality][series_index]
                     if len(target_series_dict.get('structures', {})) == 0:
                         continue
+                    print(target_series_dict)
                     
                     slice_thick = target_series_dict['metadata']['SliceThickness']
                     pixel_spac = target_series_dict['metadata']['PixelSpacing']
@@ -210,7 +217,7 @@ def calcStrucStats(self):
                     
                     for k in target_series_dict['structures']:
                         struct = target_series_dict['structures'][k]
-                        name = "{series_index}_{struct['Name']}"
+                        name = f"{target_series_dict['SeriesNumber']}_{struct['Name']}"
                         mask = struct["Mask3D"]
                         vol_in_voxels = mask.sum() 
                         vol_in_mm = vol_in_voxels * slice_thick * pixel_spac[0] * pixel_spac[1]
@@ -218,28 +225,23 @@ def calcStrucStats(self):
                         data[name] = {"volume": vol_in_mm, "CoM": CoM}
                         
     self.tableSegStrucStats.clear()
-    layout = QHBoxLayout()
-    layout.addWidget(QLabel("Export:"))
-    layout.addWidget(QLabel("Volume (mm^3)"))
-    layout.addWidget(QLabel("CoM (x)"))
-    layout.addWidget(QLabel("CoM (y)"))
-    layout.addWidget(QLabel("CoM (z)"))
+
+    list_item = QListWidgetItem(self.tableSegStrucStats)
+    custom_item = listWidgetRow(["Export", "Name", "Volume (mm^3)",
+                                 "CoM (x)", "CoM (y)", "CoM (z)"], checkbox=False)
+    
+    custom_item.structure_key = name  # Save the key for later lookup
+    list_item.setSizeHint(custom_item.sizeHint())
+    self.tableSegStrucStats.addItem(list_item)
+    self.tableSegStrucStats.setItemWidget(list_item, custom_item)
     
     for name in data:
+        
         list_item = QListWidgetItem(self.tableSegStrucStats)
-        custom_item = listWidgetRow([data[name]["volume"], data[name]["CoM"][0],
+        custom_item = listWidgetRow([name, data[name]["volume"], data[name]["CoM"][0],
                                      data[name]["CoM"][1], data[name]["CoM"][2]])
         
         custom_item.structure_key = name  # Save the key for later lookup
         list_item.setSizeHint(custom_item.sizeHint())
-        self.STRUCTlist.addItem(list_item)
-        self.STRUCTlist.setItemWidget(list_item, custom_item)
-
-
-def undo_event_seg(self):
-    print("entered undo")
-    try:
-        self.display_seg_data[1] = self.slice_data_copy  
-    except:
-        return
-    
+        self.tableSegStrucStats.addItem(list_item)
+        self.tableSegStrucStats.setItemWidget(list_item, custom_item)

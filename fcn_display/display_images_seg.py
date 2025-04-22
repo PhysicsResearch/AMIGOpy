@@ -20,6 +20,15 @@ def update_seg_slider(self):
         self.segViewSlider.setValue(int(self.display_seg_data[layer].shape[1]/2))  
 
     disp_seg_image_slice(self)
+    
+    
+def undo_brush_seg(self):
+    try:
+        self.display_seg_data[1] = self.slice_data_copy  
+        disp_seg_image_slice(self)
+    except:
+        return
+
 
 import numpy as np
 def disp_seg_image_slice(self):
