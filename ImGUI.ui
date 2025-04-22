@@ -6707,7 +6707,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>408</width>
+             <width>422</width>
              <height>629</height>
             </rect>
            </property>
@@ -6742,8 +6742,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>408</width>
-             <height>629</height>
+             <width>125</width>
+             <height>217</height>
             </rect>
            </property>
            <attribute name="label">
@@ -6789,7 +6789,7 @@ p, li { white-space: pre-wrap; }
               <property name="title">
                <string>Drawing</string>
               </property>
-              <layout class="QGridLayout" name="gridLayout_SegEditDraw" columnstretch="1,1,0,0,0,0">
+              <layout class="QGridLayout" name="gridLayout_SegEditDraw" columnstretch="1,1,0">
                <item row="1" column="0">
                 <widget class="QToolButton" name="segEraseButton">
                  <property name="text">
@@ -6907,17 +6907,14 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>206</width>
-             <height>141</height>
+             <width>422</width>
+             <height>629</height>
             </rect>
            </property>
            <attribute name="label">
             <string>Analysis</string>
            </attribute>
            <layout class="QGridLayout" name="gridLayout_SegToolBox3">
-            <item row="1" column="0" colspan="2">
-             <widget class="QListWidget" name="tableSegStrucStats"/>
-            </item>
             <item row="0" column="0">
              <widget class="QPushButton" name="calcSegStatsButton">
               <property name="text">
@@ -6938,6 +6935,9 @@ p, li { white-space: pre-wrap; }
                <string>Export structures</string>
               </property>
              </widget>
+            </item>
+            <item row="1" column="0" colspan="2">
+             <widget class="QTableWidget" name="tableSegStrucStats"/>
             </item>
            </layout>
           </widget>
