@@ -2837,7 +2837,7 @@
             <string>Brachy</string>
            </attribute>
            <layout class="QGridLayout" name="gridLayout_43">
-            <item row="0" column="0">
+            <item row="0" column="1">
              <widget class="QTabWidget" name="BrachytabWidget_2">
               <property name="currentIndex">
                <number>0</number>
@@ -3363,22 +3363,14 @@
                 <string>TG43</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_51">
-                <item row="2" column="3">
-                 <widget class="QLineEdit" name="Brachy_doseRate_label">
-                  <property name="enabled">
-                   <bool>false</bool>
-                  </property>
-                  <property name="font">
-                   <font>
-                    <pointsize>10</pointsize>
-                   </font>
-                  </property>
+                <item row="4" column="0">
+                 <widget class="QPushButton" name="brachy_save_tg43_source">
                   <property name="text">
-                   <string>Dose Rate Constant </string>
+                   <string>Save</string>
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="1">
+                <item row="2" column="1">
                  <spacer name="horizontalSpacer_48">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -3391,7 +3383,14 @@
                   </property>
                  </spacer>
                 </item>
-                <item row="1" column="2">
+                <item row="3" column="0">
+                 <widget class="QPushButton" name="Brachy_load_sources">
+                  <property name="text">
+                   <string>Load Sources</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
                  <spacer name="horizontalSpacer_49">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -3404,44 +3403,10 @@
                   </property>
                  </spacer>
                 </item>
-                <item row="2" column="1">
+                <item row="3" column="1">
                  <widget class="QComboBox" name="brachy_source_list"/>
                 </item>
-                <item row="1" column="4">
-                 <spacer name="horizontalSpacer_50">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-                <item row="3" column="1">
-                 <widget class="QPushButton" name="brachy_delete_source">
-                  <property name="text">
-                   <string>Delete Source</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QPushButton" name="brachy_save_tg43_source">
-                  <property name="text">
-                   <string>Save</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QPushButton" name="Brachy_load_sources">
-                  <property name="text">
-                   <string>Load Sources</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="3">
+                <item row="2" column="3">
                  <spacer name="horizontalSpacer_51">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -3454,16 +3419,14 @@
                   </property>
                  </spacer>
                 </item>
-                <item row="2" column="4">
-                 <widget class="QLineEdit" name="Brachy_dose_rate_cte_value">
-                  <property name="font">
-                   <font>
-                    <pointsize>10</pointsize>
-                   </font>
+                <item row="4" column="1">
+                 <widget class="QPushButton" name="brachy_delete_source">
+                  <property name="text">
+                   <string>Delete Source</string>
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="0">
+                <item row="2" column="0">
                  <spacer name="horizontalSpacer_44">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -3476,7 +3439,20 @@
                   </property>
                  </spacer>
                 </item>
-                <item row="0" column="0" colspan="5">
+                <item row="2" column="4">
+                 <spacer name="horizontalSpacer_50">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="0" column="0" colspan="6">
                  <widget class="QTabWidget" name="tabWidget_2">
                   <property name="currentIndex">
                    <number>0</number>
@@ -4070,6 +4046,32 @@
                     </item>
                    </layout>
                   </widget>
+                  <widget class="QWidget" name="tab_36">
+                   <attribute name="title">
+                    <string>AlongAway</string>
+                   </attribute>
+                   <layout class="QGridLayout" name="gridLayout_55">
+                    <item row="2" column="1">
+                     <widget class="QComboBox" name="comboBox_tg43_along_away"/>
+                    </item>
+                    <item row="2" column="0">
+                     <spacer name="horizontalSpacer_43">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item row="1" column="0" colspan="2">
+                     <widget class="QTableWidget" name="TG43_along_away"/>
+                    </item>
+                   </layout>
+                  </widget>
                   <widget class="QWidget" name="DECT_tab_47">
                    <attribute name="title">
                     <string>Calibration</string>
@@ -4161,7 +4163,22 @@
                   </widget>
                  </widget>
                 </item>
-                <item row="3" column="3">
+                <item row="3" column="2">
+                 <widget class="QLineEdit" name="Brachy_doseRate_label">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Dose Rate Constant </string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="2">
                  <widget class="QLineEdit" name="Brachy_rad_leng_label">
                   <property name="enabled">
                    <bool>false</bool>
@@ -4176,13 +4193,64 @@
                   </property>
                  </widget>
                 </item>
-                <item row="3" column="4">
+                <item row="3" column="3">
+                 <widget class="QLineEdit" name="Brachy_dose_rate_cte_value">
+                  <property name="font">
+                   <font>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="3">
                  <widget class="QLineEdit" name="Brachy_rad_leng">
                   <property name="font">
                    <font>
                     <pointsize>10</pointsize>
                    </font>
                   </property>
+                 </widget>
+                </item>
+                <item row="3" column="4" rowspan="2">
+                 <widget class="QGroupBox" name="Tg43_matrix_size">
+                  <property name="title">
+                   <string>Dose Matrix</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_56">
+                   <item row="1" column="1">
+                    <widget class="QComboBox" name="comboBox_2"/>
+                   </item>
+                   <item row="0" column="0">
+                    <widget class="QLineEdit" name="lineEdit_tg43_01">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>Dose grid (mm)</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QComboBox" name="Tg43_dose_grid"/>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QLineEdit" name="lineEdit_tg43_02">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>Matriz size (mm)</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QPushButton" name="Tg43_dose_calc">
+                     <property name="text">
+                      <string>Calculate</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
                  </widget>
                 </item>
                </layout>
@@ -6707,8 +6775,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>422</width>
-             <height>629</height>
+             <width>420</width>
+             <height>590</height>
             </rect>
            </property>
            <attribute name="label">
@@ -6742,8 +6810,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>125</width>
-             <height>217</height>
+             <width>147</width>
+             <height>254</height>
             </rect>
            </property>
            <attribute name="label">
@@ -6907,8 +6975,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>422</width>
-             <height>629</height>
+             <width>241</width>
+             <height>175</height>
             </rect>
            </property>
            <attribute name="label">
@@ -6989,14 +7057,17 @@ p, li { white-space: pre-wrap; }
         </widget>
        </item>
        <item row="6" column="6">
-        <widget class="QDoubleSpinBox" name="Layer_1_alpha_spinbox">
+        <widget class="QDoubleSpinBox" name="Layer_1_alpha_spin">
          <property name="maximum">
           <double>1.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.050000000000000</double>
          </property>
         </widget>
        </item>
        <item row="7" column="2" colspan="4">
-        <widget class="QSlider" name="Layer_2_alpha_slider">
+        <widget class="QSlider" name="Layer_2_alpha_sli">
          <property name="maximum">
           <number>100</number>
          </property>
@@ -7023,7 +7094,7 @@ p, li { white-space: pre-wrap; }
         </widget>
        </item>
        <item row="6" column="2" colspan="4">
-        <widget class="QSlider" name="Layer_1_alpha_slider">
+        <widget class="QSlider" name="Layer_1_alpha_sli">
          <property name="maximum">
           <number>100</number>
          </property>
@@ -7046,9 +7117,12 @@ p, li { white-space: pre-wrap; }
         </spacer>
        </item>
        <item row="8" column="6">
-        <widget class="QDoubleSpinBox" name="Layer_3_alpha_spinbox">
+        <widget class="QDoubleSpinBox" name="Layer_3_alpha_spin">
          <property name="maximum">
           <double>1.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>5.000000000000000</double>
          </property>
         </widget>
        </item>
@@ -7070,7 +7144,7 @@ p, li { white-space: pre-wrap; }
         <widget class="QComboBox" name="Layer_selection"/>
        </item>
        <item row="8" column="2" colspan="4">
-        <widget class="QSlider" name="Layer_3_alpha_slider">
+        <widget class="QSlider" name="Layer_3_alpha_sli">
          <property name="maximum">
           <number>100</number>
          </property>
@@ -7087,12 +7161,12 @@ p, li { white-space: pre-wrap; }
         </widget>
        </item>
        <item row="4" column="2" colspan="4">
-        <widget class="QSlider" name="Layer_0_alpha_slider">
+        <widget class="QSlider" name="Layer_0_alpha_sli">
          <property name="maximum">
           <number>100</number>
          </property>
          <property name="singleStep">
-          <number>0</number>
+          <number>1</number>
          </property>
          <property name="value">
           <number>100</number>
@@ -7143,9 +7217,12 @@ p, li { white-space: pre-wrap; }
         </widget>
        </item>
        <item row="4" column="6">
-        <widget class="QDoubleSpinBox" name="Layer_0_alpha_spinbox">
+        <widget class="QDoubleSpinBox" name="Layer_0_alpha_spin">
          <property name="maximum">
           <double>1.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.050000000000000</double>
          </property>
          <property name="value">
           <double>1.000000000000000</double>
@@ -7160,9 +7237,12 @@ p, li { white-space: pre-wrap; }
         </widget>
        </item>
        <item row="7" column="6">
-        <widget class="QDoubleSpinBox" name="Layer_2_alpha_spinbox">
+        <widget class="QDoubleSpinBox" name="Layer_2_alpha_spin">
          <property name="maximum">
           <double>1.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.050000000000000</double>
          </property>
         </widget>
        </item>
