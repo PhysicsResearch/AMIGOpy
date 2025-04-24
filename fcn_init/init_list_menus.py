@@ -102,7 +102,7 @@ def populate_list_menus(self):
     self.brachy_tg43_dose_grid.addItems(DoseGrid)
     #
     MatrixSize = ["50x50","100x100","150x150","200x200"]
-    self.brachy_tg43_matrix_size = self.findChild(QtWidgets.QComboBox, 'Tg43_matrix_size')
+    self.brachy_tg43_matrix_size = self.findChild(QtWidgets.QComboBox, 'Tg43_matrix_size_2')
     self.brachy_tg43_matrix_size.addItems(MatrixSize)
     #
     # Brachy channel or dwell view
@@ -142,10 +142,10 @@ def populate_list_menus(self):
     self.brachy_lin_sel_col.addItems(methods)
     self.brachy_p1_sel_col.addItems(methods)
     # Set default selections
-    self.brachy_dw_sel_col.setCurrentText("Red")  # First combo box starts with "Green"
+    self.brachy_dw_sel_col.setCurrentText("Red")      # First combo box starts with "Green"
     self.brachy_lin_sel_col.setCurrentText("White")   # Second combo box starts with "Blue"
-    self.brachy_p1_sel_col.setCurrentText("Blue")    # Third combo box starts with "Red"
-    
+    self.brachy_p1_sel_col.setCurrentText("Blue")     # Third combo box starts with "Red"
+     
     
     #Eqd2
     self.dose_list.addItems(['None'])

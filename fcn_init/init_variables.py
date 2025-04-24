@@ -47,10 +47,13 @@ def initialize_software_variables(self):
     self.TG43 = SimpleNamespace()
     # within it, add an activesource container
     self.TG43.activesource = SimpleNamespace(
+        airkerma_strength=None,
         source_model=None, 
         source_diameter=None,
-        source_length=None,
+        source_length_mm=None,
+        dose_rate_constant=None,
         radial=None,
+        radial_fit=None,
         anisotropy=None,
         along_away_reference=None,
         along_away_reference_calc=None,

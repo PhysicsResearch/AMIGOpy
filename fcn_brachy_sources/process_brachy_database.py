@@ -3,7 +3,10 @@ import sys
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvas, NavigationToolbar2QT as NavigationToolbar
+from fcn_brachy_sources.calculate_TG43_ref_matrix import calculate_dose_reference_matrix
 from PyQt5.QtWidgets import QVBoxLayout, QMessageBox, QTableWidgetItem, QFileDialog
+from PyQt5.QtGui import QColor, QBrush
+from PyQt5.QtCore import Qt 
 
 def on_brachy_load_sources(self):
     """
@@ -90,6 +93,12 @@ def on_brachy_source_selection(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
         anisotropy_file_path = os.path.join(base_dir, selected_folder, "anisotropy.txt")
     
+        # Check if the radial.txt file exists.
+    if not os.path.exists(anisotropy_file_path):
+        QMessageBox.critical(self, "Error", f"along_away.txt not found in folder:\n{along_away_file_path}")
+        return
+    else:
+        load_anisotropy_data(self,anisotropy_file_path)
 
     # Along away -------------------------------
     # Determine the base directory. This works for both compiled executables and scripts.
@@ -101,11 +110,91 @@ def on_brachy_source_selection(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
         along_away_file_path = os.path.join(base_dir, selected_folder, "along_away.txt")
     # Check if the radial.txt file exists.
-    if not os.path.exists(anisotropy_file_path):
+    if not os.path.exists(along_away_file_path):
         QMessageBox.critical(self, "Error", f"along_away.txt not found in folder:\n{along_away_file_path}")
         return
     else:
         load_along_away_data(self,along_away_file_path)
+
+
+
+    # source parameters
+    # Determine the base directory. This works for both compiled executables and scripts.
+    if getattr(sys, 'frozen', False):
+        base_dir = os.path.dirname(sys.executable)
+        # Build the full path to the radial.txt file inside the selected folder.
+        parameters_file_path = os.path.join(base_dir, "fcn_brachy_sources", selected_folder, "parameters.txt")
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        parameters_file_path = os.path.join(base_dir, selected_folder, "parameters.txt")
+    # Check if the radial.txt file exists.
+    if not os.path.exists(parameters_file_path):
+        QMessageBox.critical(self, "Error", f"parameters.txt not found in folder:\n{parameters_file_path}")
+        return
+    else:
+        load_parameters_data(self,parameters_file_path)
+
+
+    # Calculate reference dose matrix
+    calculate_dose_reference_matrix(self)
+
+
+def load_parameters_data(self, parameters_file_path):
+    """
+    Loads data from an along_away.txt file and populates self.Brachy_ani_table.
+    
+    file structure:
+      - Line 1: Description 
+      - Line 2: Comma-separated column headers for the table.
+      - Lines 3+: Data rows (comma-separated values).
+      
+    Signals are blocked during the table update.
+    """
+    try:
+        # Read the file and store only non-empty lines.
+        with open(parameters_file_path, "r") as file:
+            lines = [line.strip() for line in file if line.strip()]
+    except Exception as e:
+        QMessageBox.critical(self, "Error", f"Failed to open parameters.txt.\nError: {e}")
+        return
+
+    # Ensure the file has at least two lines (description and headers).
+    if len(lines) < 2:
+        QMessageBox.critical(self, "Error", "parameters.txt must contain at least two lines.")
+        return
+
+    # Parse first line
+    if ':' in lines[0]:
+        _, val = lines[0].split(':', 1)
+        try:
+            self.TG43.activesource.source_length_mm = float(val.strip())
+        except ValueError:
+            QMessageBox.warning(self, "Parse Warning",
+                                f"Could not parse Length_mm value: '{val.strip()}'")
+    else:
+        QMessageBox.warning(self, "Parse Warning",
+                            f"Line 1 malformed (no colon): '{lines[0]}'")
+
+    # Parse second line
+    if ':' in lines[1]:
+        _, val = lines[1].split(':', 1)
+        try:
+            self.TG43.activesource.dose_rate_constant = float(val.strip())
+        except ValueError:
+            QMessageBox.warning(self, "Parse Warning",
+                                f"Could not parse Dose_rate_cte value: '{val.strip()}'")
+    else:
+        QMessageBox.warning(self, "Parse Warning",
+                            f"Line 2 malformed (no colon): '{lines[1]}'")
+   
+    # Update the QLineEdits (show empty string if parsing failed)
+    if hasattr(self, 'Brachy_rad_leng'):
+        self.Brachy_rad_leng.setText("" if self.TG43.activesource.source_length_mm  is None else str(self.TG43.activesource.source_length_mm))
+    if hasattr(self, 'Brachy_dose_rate_cte_value'):
+        self.Brachy_dose_rate_cte_value.setText("" if self.TG43.activesource.dose_rate_constant is None else str(self.TG43.activesource.dose_rate_constant))
+    
+
+
 
 def load_along_away_data(self, along_away_file_path):
     """
@@ -184,9 +273,8 @@ def load_along_away_data(self, along_away_file_path):
                 data[i, j] = np.nan
     # stack so first row is headers
     along_away_array = np.vstack([dist_headers, data])
-    self.TG43.activesource.along_away = along_away_array
-
-
+    self.TG43.activesource.along_away_reference = along_away_array
+    self.comboBox_tg43_along_away.setCurrentIndex(0)
 
 
 def load_anisotropy_data(self, anisotropy_file_path):
@@ -585,6 +673,8 @@ def plot_brachy_radial_fit(self):
     # Fit a 5th degree polynomial to the data
     try:
         poly_coeffs = np.polyfit(x_data, y_data, 5)
+        # store the fit coefficients (highest degree first) in TG43 model
+        self.TG43.activesource.radial_fit = np.array(poly_coeffs)
     except Exception as e:
         QMessageBox.critical(self, "Fit Error", f"Error during polynomial fitting:\n{e}")
         return
@@ -629,3 +719,89 @@ def plot_brachy_radial_fit(self):
     # Draw the updated canvas to display the new plot
     self.plot_radial_canvas.draw()
 
+def dose_along_away_Disp_eval(self):
+    """
+    Update self.TG43_along_away depending on the combobox:
+      - 'Reference': show src.along_away_reference
+      - 'Calculated': show src.along_away_reference_calc
+      - 'Comparison': show 100*(Calc-Ref)/Ref with color coding,
+                      rounded to 2 dp.
+    In all modes, column 0 (Along / cm) is painted dark gray with white text.
+    """
+    mode = self.comboBox_tg43_along_away.currentText().strip().lower()
+    src  = self.TG43.activesource
+
+    ref  = getattr(src, 'along_away_reference', None)
+    calc = getattr(src, 'along_away_reference_calc', None)
+    data = None
+
+    if mode == "reference":
+        data = ref
+    elif mode == "calculated":
+        data = calc
+    elif mode == "comparison":
+        if ref is None or calc is None:
+            QMessageBox.warning(self, "No Data", "Reference or Calculated data missing.")
+            return
+        with np.errstate(divide='ignore', invalid='ignore'):
+            comp = (calc - ref) / ref * 100.0
+            comp[~np.isfinite(comp)] = np.nan
+        comp[1:,0] = ref[1:,0]
+        comp[0,:]  = ref[0,:]
+        data = comp
+    else:
+        return
+
+    if data is None:
+        QMessageBox.warning(self, "No Data", f"No '{mode}' data available yet.")
+        return
+
+    table = self.TG43_along_away
+    rows, cols = data.shape
+
+    # Clear & size
+    table.clear()
+    table.setRowCount(rows - 1)
+    table.setColumnCount(cols)
+
+    # Hide row indexes
+    table.verticalHeader().setVisible(False)
+
+    # Headers
+    headers = ["Along / cm"] + [f"{v:.2f}" for v in data[0,1:]]
+    table.setHorizontalHeaderLabels(headers)
+
+    # Colors
+    header_gray = QColor(69,83,100)
+    white       = QColor('white')
+
+    for i in range(1, rows):
+        for j in range(cols):
+            val = data[i, j]
+            if j == 0:
+                txt = f"{val:.2f}"
+            else:
+                if mode == "comparison":
+                    txt = "" if np.isnan(val) else f"{val:.2f}"
+                else:
+                    txt = "" if np.isnan(val) else f"{val:.6g}"
+            item = QTableWidgetItem(txt)
+            item.setTextAlignment(Qt.AlignCenter)  # center align text
+
+            if j == 0:
+                item.setBackground(QBrush(header_gray))
+                item.setForeground(QBrush(white))
+            elif mode == "comparison" and not np.isnan(val):
+                a = abs(val)
+                if a <= 1.0:
+                    bg, fg = QColor(144,238,144), QColor('black')   # green
+                elif a <= 2.0:
+                    bg, fg = QColor(255,255,102), QColor('black')   # yellow
+                elif a <= 5.0:
+                    bg, fg = QColor(255,204,102), QColor('black')   # orange
+                else:
+                    bg, fg = QColor(255,102,102), QColor('white')   # red
+                item.setBackground(QBrush(bg))
+                item.setForeground(QBrush(fg))
+
+            table.setItem(i-1, j, item)

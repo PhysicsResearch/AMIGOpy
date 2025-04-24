@@ -22,6 +22,7 @@ from fcn_DECT.create_process_dect import creat_DECT_derived_maps, c_roi_scatter_
 from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwell_channels, export_all_brachy_channels_to_csv
 from fcn_brachy_sources.process_brachy_database import (on_brachy_load_sources, on_brachy_source_selection, select_Radial_file2load, plot_brachy_radial_fit, plot_brachy_ani,
                                                         select_Anisotropy_file2load)
+from fcn_brachy_sources.process_brachy_database import dose_along_away_Disp_eval
 from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
 from fcn_display.meta_viewer import on_metadata_search_text_changed
 from fcn_RTFiles.process_contours import create_contour_masks
@@ -193,9 +194,12 @@ def initialize_software_buttons(self):
     self.brachy_export_dw_channels_csv.clicked.connect(lambda: export_all_brachy_channels_to_csv(self))
     #
     self.Brachy_load_sources.clicked.connect(lambda: on_brachy_load_sources(self))
+    self.Brachy_load_sources.setStyleSheet("background-color: blue; color: white;")
+    self.Brachy_load_sources.clicked.connect(lambda: plot_brachy_ani(self))
     self.brachy_source_list.currentIndexChanged.connect(lambda: on_brachy_source_selection(self))
+    self.comboBox_tg43_along_away.currentIndexChanged.connect(lambda: dose_along_away_Disp_eval(self))
     #
-    # TG43 radial
+    # TG43 
     self.Brachy_Radial_load.setStyleSheet("background-color: blue; color: white;")
     self.Brachy_Radial_load.clicked.connect(lambda: select_Radial_file2load(self))
     self.Brachy_Radial_table.itemChanged.connect(lambda: plot_brachy_radial_fit(self))

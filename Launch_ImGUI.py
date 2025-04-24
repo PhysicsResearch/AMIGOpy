@@ -39,7 +39,9 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         # Create a toolbar
         self.toolbar = QToolBar("My main toolbar")
         self.addToolBar(self.toolbar)
-        
+
+        # populate the list menus
+        populate_list_menus(self)
         # initialize variables
         initialize_software_variables(self)
         # initialize tables
@@ -56,8 +58,6 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         #
         set_fcn_tabModules_changed(self)
         
-        # populate the list menus
-        populate_list_menus(self)
 
         #
         self.layerTab = {}
