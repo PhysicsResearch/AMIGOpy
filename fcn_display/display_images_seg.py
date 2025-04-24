@@ -34,9 +34,11 @@ import numpy as np
 def disp_seg_image_slice(self):
     layer  = int(self.layer_selection_box.currentIndex())
     ori = self.segSelectView.currentText()
-
     self.current_seg_slice_index = self.segViewSlider.value()
     
+    if len(self.display_seg_data[layer]) == 0:
+        return 
+
     for i in range(len(self.dataImporterSeg)):
         layer = i
         if i == 0: # if series

@@ -1,5 +1,8 @@
 import numpy as np
 from fcn_load.populate_dcm_list import populate_DICOM_tree
+from PyQt5.QtWidgets import QTableWidgetItem, QCheckBox, QFileDialog
+from PyQt5 import QtCore
+import os
 
 
 def threshSeg(self):
@@ -8,29 +11,55 @@ def threshSeg(self):
     mask_3d = (self.display_seg_data[layer] >= min_) * (self.display_seg_data[layer] <= max_)
     mask_3d = mask_3d.astype(np.uint8)
     
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    
-    existing_structures = target_series_dict.get('structures', {})
-    existing_structure_count = len(existing_structures)
-    
-    if existing_structure_count == 0:
-        target_series_dict['structures'] = {}
-        target_series_dict['structures_keys'] = []
-        target_series_dict['structures_names'] = []
+    if self.seg_init_all_series:
+        for idx in self.dicom_data[self.patientID][self.studyID][self.modality]: 
+            print(idx)
+            target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][idx]
+            
+            existing_structures = target_series_dict.get('structures', {})
+            existing_structure_count = len(existing_structures)
+            
+            if existing_structure_count == 0:
+                target_series_dict['structures'] = {}
+                target_series_dict['structures_keys'] = []
+                target_series_dict['structures_names'] = []
 
-    current_structure_index = existing_structure_count + 1
+            current_structure_index = existing_structure_count + 1
+                
+            name = "tumor"
+            # Create a new unique key for the structure clearly:
+            new_s_key = f"Structure_{current_structure_index:03d}"
+
+            target_series_dict['structures'][new_s_key] = {
+                'Mask3D': mask_3d,
+                'Name': name
+            }
+            target_series_dict['structures_keys'].append(new_s_key)
+            target_series_dict['structures_names'].append(name)
+    else:
+        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    
+        existing_structures = target_series_dict.get('structures', {})
+        existing_structure_count = len(existing_structures)
         
-    name = "tumor"
-    # Create a new unique key for the structure clearly:
-    new_s_key = f"Structure_{current_structure_index:03d}"
+        if existing_structure_count == 0:
+            target_series_dict['structures'] = {}
+            target_series_dict['structures_keys'] = []
+            target_series_dict['structures_names'] = []
 
-    # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    target_series_dict['structures'][new_s_key] = {
-        'Mask3D': mask_3d,
-        'Name': name
-    }
-    target_series_dict['structures_keys'].append(new_s_key)
-    target_series_dict['structures_names'].append(name)
+        current_structure_index = existing_structure_count + 1
+            
+        name = "tumor"
+        # Create a new unique key for the structure clearly:
+        new_s_key = f"Structure_{current_structure_index:03d}"
+
+        # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        target_series_dict['structures'][new_s_key] = {
+            'Mask3D': mask_3d,
+            'Name': name
+        }
+        target_series_dict['structures_keys'].append(new_s_key)
+        target_series_dict['structures_names'].append(name)
     
     populate_DICOM_tree(self)
     
@@ -39,37 +68,70 @@ def InitSeg(self):
     layer  = int(self.layer_selection_box.currentIndex())
     mask_3d = np.zeros_like(self.display_seg_data[layer])
     mask_3d = mask_3d.astype(np.uint8)
-    
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    
-    existing_structures = target_series_dict.get('structures', {})
-    existing_structure_count = len(existing_structures)
-    
-    if existing_structure_count == 0:
-        target_series_dict['structures'] = {}
-        target_series_dict['structures_keys'] = []
-        target_series_dict['structures_names'] = []
 
-    current_structure_index = existing_structure_count + 1
-    
-    if len(self.segStructureName.text()) > 1:
-        name = self.segStructureName.text()
+    if self.seg_init_all_series:
+        for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]: 
+
+            existing_structures = target_series_dict.get('structures', {})
+            existing_structure_count = len(existing_structures)
+            
+            if existing_structure_count == 0:
+                target_series_dict['structures'] = {}
+                target_series_dict['structures_keys'] = []
+                target_series_dict['structures_names'] = []
+
+            current_structure_index = existing_structure_count + 1
+            
+            if len(self.segStructureName.text()) > 1:
+                name = self.segStructureName.text()
+            else:
+                name = "structure"
+                
+            if name in target_series_dict['structures_names']:
+                new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
+            else:
+                # Create a new unique key for the structure clearly:
+                new_s_key = f"Structure_{current_structure_index:03d}"
+
+            # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+            target_series_dict['structures'][new_s_key] = {
+                'Mask3D': mask_3d.copy(),
+                'Name': name
+            }
+            target_series_dict['structures_keys'].append(new_s_key)
+            target_series_dict['structures_names'].append(name)
+
     else:
-        name = "structure"
+        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
         
-    if name in target_series_dict['structures_names']:
-        new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
-    else:
-        # Create a new unique key for the structure clearly:
-        new_s_key = f"Structure_{current_structure_index:03d}"
+        existing_structures = target_series_dict.get('structures', {})
+        existing_structure_count = len(existing_structures)
+        
+        if existing_structure_count == 0:
+            target_series_dict['structures'] = {}
+            target_series_dict['structures_keys'] = []
+            target_series_dict['structures_names'] = []
 
-    # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    target_series_dict['structures'][new_s_key] = {
-        'Mask3D': mask_3d,
-        'Name': name
-    }
-    target_series_dict['structures_keys'].append(new_s_key)
-    target_series_dict['structures_names'].append(name)
+        current_structure_index = existing_structure_count + 1
+        
+        if len(self.segStructureName.text()) > 1:
+            name = self.segStructureName.text()
+        else:
+            name = "structure"
+            
+        if name in target_series_dict['structures_names']:
+            new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
+        else:
+            # Create a new unique key for the structure clearly:
+            new_s_key = f"Structure_{current_structure_index:03d}"
+
+        # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        target_series_dict['structures'][new_s_key] = {
+            'Mask3D': mask_3d,
+            'Name': name
+        }
+        target_series_dict['structures_keys'].append(new_s_key)
+        target_series_dict['structures_names'].append(name)
     
     populate_DICOM_tree(self)
     
@@ -156,60 +218,16 @@ def calc_com(segmentation):
     return center_of_mass(segmentation)
 
 
-from PyQt5.QtWidgets import (
-    QWidget, QCheckBox, QLabel, QPushButton, QHBoxLayout,
-    QVBoxLayout, QColorDialog, QDoubleSpinBox, QListWidgetItem,
-)
-
-
-class listWidgetRow(QWidget):
-    """
-    A custom widget that displays:
-      - A checkbox (to toggle the structure on/off),
-      - A label (for the structure name),
-      - A color-selection button,
-      - A 'Line Width' spinbox,
-      - A 'Transparency' spinbox,
-      - A 'Fill' checkbox (to indicate whether to display a filled polygon).
-    """
-
-    def __init__(self, vals, parent=None, checkbox=True):
-        super().__init__(parent)
-
-        # 1) Master checkbox to enable/disable the structure
-        self.checkbox = QCheckBox()
-
-        # Lay out horizontally
-        layout = QHBoxLayout()
-        if checkbox:
-            layout.addWidget(self.checkbox)
-        for val in vals:
-            if type(val) == str:
-                layout.addWidget(QLabel(val))
-            else:
-                try:
-                    layout.addWidget(QLabel(f"{val:03f}"))
-                except:
-                    layout.addWidget(QLabel(""))
-
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(layout)
-
-
 def calcStrucStats(self):
     
     data = {}
     
     for patientID in self.dicom_data:
-        print(patientID)
         for studyID in self.dicom_data[patientID]:
-            print(studyID)
             for modality in self.dicom_data[patientID][studyID]:
-                print(modality)
                 for target_series_dict in self.dicom_data[patientID][studyID][modality]:
                     if len(target_series_dict.get('structures', {})) == 0:
                         continue
-                    print(target_series_dict)
                     
                     slice_thick = target_series_dict['metadata']['SliceThickness']
                     pixel_spac = target_series_dict['metadata']['PixelSpacing']
@@ -221,27 +239,74 @@ def calcStrucStats(self):
                         mask = struct["Mask3D"]
                         vol_in_voxels = mask.sum() 
                         vol_in_mm = vol_in_voxels * slice_thick * pixel_spac[0] * pixel_spac[1]
-                        CoM = calc_com(mask)
+                        CoM = calc_com(mask) * np.array([slice_thick, pixel_spac[0], pixel_spac[1]]) + Im_PatPosition[::-1]
                         data[name] = {"volume": vol_in_mm, "CoM": CoM}
                         
     self.tableSegStrucStats.clear()
+    # Clear the table before populating it
+    header_cols = ["Export", "Name", "Volume (mm^3)", "CoM (z)", "CoM (y)", "CoM (x)"]
+    self.tableSegStrucStats.clear()
+    self.tableSegStrucStats.setRowCount(len(data))
+    self.tableSegStrucStats.setColumnCount(len(header_cols))
+    self.tableSegStrucStats.setHorizontalHeaderLabels(header_cols)
 
-    list_item = QListWidgetItem(self.tableSegStrucStats)
-    custom_item = listWidgetRow(["Export", "Name", "Volume (mm^3)",
-                                 "CoM (x)", "CoM (y)", "CoM (z)"], checkbox=False)
+    for row, name in enumerate(data):
+        instance_data = ["checkbox", name, data[name]["volume"], data[name]["CoM"][0],
+                                     data[name]["CoM"][1], data[name]["CoM"][2]]
+        for col, val in enumerate(instance_data):
+            if val == "checkbox":
+                checkkBoxItem = QTableWidgetItem()
+                checkkBoxItem.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+                checkkBoxItem.setCheckState(QtCore.Qt.Unchecked)       
+                self.tableSegStrucStats.setItem(row,col,checkkBoxItem)
+            elif type(val) == str:
+                self.tableSegStrucStats.setItem(row, col, QTableWidgetItem(val))
+            else:
+                try:
+                    self.tableSegStrucStats.setItem(row, col, QTableWidgetItem(f"{val:03f}"))
+                except:
+                    self.tableSegStrucStats.setItem(row, col, QTableWidgetItem(""))
+
+
+def exportStrucStats(self): 
     
-    custom_item.structure_key = name  # Save the key for later lookup
-    list_item.setSizeHint(custom_item.sizeHint())
-    self.tableSegStrucStats.addItem(list_item)
-    self.tableSegStrucStats.setItemWidget(list_item, custom_item)
+    options = QFileDialog.Options()
+    folder = QFileDialog.getExistingDirectory(self, options=options)
     
-    for name in data:
-        
-        list_item = QListWidgetItem(self.tableSegStrucStats)
-        custom_item = listWidgetRow([name, data[name]["volume"], data[name]["CoM"][0],
-                                     data[name]["CoM"][1], data[name]["CoM"][2]])
-        
-        custom_item.structure_key = name  # Save the key for later lookup
-        list_item.setSizeHint(custom_item.sizeHint())
-        self.tableSegStrucStats.addItem(list_item)
-        self.tableSegStrucStats.setItemWidget(list_item, custom_item)
+    # Get the checked items from the table
+    checked_items = []
+    for row in range(self.tableSegStrucStats.rowCount()):
+        item = self.tableSegStrucStats.item(row, 0)  # Assuming the checkbox is in the first column
+        if item and item.checkState() == QtCore.Qt.Checked:
+            name = self.tableSegStrucStats.item(row, 1).text()
+            volume = self.tableSegStrucStats.item(row, 2).text()
+            z = self.tableSegStrucStats.item(row, 3).text()
+            y = self.tableSegStrucStats.item(row, 4).text()
+            x = self.tableSegStrucStats.item(row, 5).text()
+            checked_items.append((name, volume, z, y, x))
+
+    import csv
+
+    with open(os.path.join(folder, "structure_stats.csv"), 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerows(checked_items)
+
+
+def exportSegStruc(self):
+    options = QFileDialog.Options()
+    folder = QFileDialog.getExistingDirectory(self, options=options)
+    save_dir = os.path.join(folder, "segmentations")
+    os.makedirs(save_dir, exist_ok=True)
+    
+    # Get the checked items from the table
+    checked_items = []
+    for row in range(self.tableSegStrucStats.rowCount()):
+        item = self.tableSegStrucStats.item(row, 0)  # Assuming the checkbox is in the first column
+        if item and item.checkState() == QtCore.Qt.Checked:
+            name = self.tableSegStrucStats.item(row, 1).text()
+            idx = int(name.split("_")[0])
+            for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]:
+                if target_series_dict['SeriesNumber'] == idx:
+                    s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name.split("_")[1])]
+                    mask = target_series_dict['structures'][s_key]["Mask3D"]
+                    np.save(os.path.join(save_dir, f"{name}.nii.gz"), mask)

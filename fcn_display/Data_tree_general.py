@@ -280,6 +280,9 @@ def on_DataTreeView_clicked(self,index):
                 if len(hierarchy) == 5: # Series
                     self.display_seg_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
                     plot_hist(self)
+                    Window = 2000; Level = 100
+                    self.windowLevelSeg[idx].SetWindow(Window)
+                    self.windowLevelSeg[idx].SetLevel(Level)
                 if len(hierarchy) == 7: # binary mask contour
                     s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
                     self.display_seg_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
@@ -322,6 +325,7 @@ def on_DataTreeView_clicked(self,index):
                 #
                 Window = self.windowLevelSeg[idx].GetWindow()
                 Level  = self.windowLevelSeg[idx].GetLevel()
+                
                 self.textActorSeg[1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
                 layer = self.layer_selection_box.currentIndex()
                 self.renSeg.ResetCamera()

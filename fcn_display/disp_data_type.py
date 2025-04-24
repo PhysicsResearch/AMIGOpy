@@ -75,7 +75,10 @@ def adjust_data_type_input_IrIS_eval(self,idx):
     # #    
     
 def adjust_data_type_seg_input(self,idx):
-    data_type =self.display_seg_data[idx].dtype
+    try:
+        data_type =self.display_seg_data[idx].dtype
+    except:
+        return
     #
     if data_type == np.int16:
         self.dataImporterSeg[idx].SetDataScalarTypeToShort()
