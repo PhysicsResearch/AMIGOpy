@@ -106,13 +106,13 @@ def on_DataTreeView_clicked(self,index):
             #
             if idx == 0:
                 self.LayerAlpha[0] = 1.0
-                self.Layer_0_alpha_slider.setValue(int(self.LayerAlpha[0]*100))
+                self.Layer_0_alpha_sli.setValue(int(self.LayerAlpha[0]*100))
             elif idx==1:
                 self.LayerAlpha[1] = 0.6
-                self.Layer_1_alpha_slider.setValue(int(self.LayerAlpha[1]*100))
+                self.Layer_1_alpha_sli.setValue(int(self.LayerAlpha[1]*100))
             elif idx==2:
                 self.LayerAlpha[2] = 0.6
-                self.Layer_2_alpha_slider.setValue(int(self.LayerAlpha[2]*100))
+                self.Layer_2_alpha_sli.setValue(int(self.LayerAlpha[2]*100))
             #
             # check the current module
             if currentTabText == "View":

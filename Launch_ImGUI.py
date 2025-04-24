@@ -122,7 +122,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.SagittalSlider.valueChanged.connect(self.on_sagittalslider_change)
         self.CoronalSlider.valueChanged.connect(self.on_coronalslider_change)
         
-        set_transp_slider_fcn(self)
+        
               
         # # Initialize VTK components
         setup_vtk_comp(self)
@@ -155,7 +155,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         # if folder_path is not None:
         #     print(folder_path)
         #     load_all_dcm(self,folder_path, progress_callback=None, update_label=None)
-
+        set_transp_slider_fcn(self)
 
     def organize_dcm_folder(self):
         self.label.setText("Reading folders")
