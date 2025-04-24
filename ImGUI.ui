@@ -6649,7 +6649,7 @@ p, li { white-space: pre-wrap; }
        <attribute name="title">
         <string>Segmentation</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_seg_tab" rowstretch="1,0,0,0,0,3,0" columnstretch="3,1,0,1">
+       <layout class="QGridLayout" name="gridLayout_seg_tab" rowstretch="1,0,0,0,0,2,0" columnstretch="4,1,1,2">
         <item row="0" column="0" rowspan="6" colspan="2">
          <widget class="QWidget" name="VTK_SegView" native="true"/>
         </item>
@@ -6729,7 +6729,7 @@ p, li { white-space: pre-wrap; }
            <bool>false</bool>
           </property>
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -6745,7 +6745,7 @@ p, li { white-space: pre-wrap; }
            <bool>false</bool>
           </property>
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -6768,8 +6768,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>119</width>
-             <height>57</height>
+             <width>587</width>
+             <height>553</height>
             </rect>
            </property>
            <attribute name="label">
@@ -6778,6 +6778,12 @@ p, li { white-space: pre-wrap; }
            <layout class="QGridLayout" name="gridLayout_segTools" rowstretch="1,0,0,1,1,1,3" columnstretch="0,0">
             <item row="0" column="1">
              <widget class="QPushButton" name="applyThreshSeg">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
               <property name="text">
                <string>Apply threshold</string>
               </property>
@@ -6803,15 +6809,15 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>147</width>
-             <height>254</height>
+             <width>125</width>
+             <height>189</height>
             </rect>
            </property>
            <attribute name="label">
             <string>Manual edits</string>
            </attribute>
-           <layout class="QGridLayout" name="gridLayout_48" columnstretch="0,0,0,0">
-            <item row="4" column="0">
+           <layout class="QGridLayout" name="gridLayout_48" columnstretch="0,0,0">
+            <item row="3" column="0">
              <spacer name="spacer_seg3">
               <property name="orientation">
                <enum>Qt::Vertical</enum>
@@ -6824,28 +6830,7 @@ p, li { white-space: pre-wrap; }
               </property>
              </spacer>
             </item>
-            <item row="3" column="1">
-             <widget class="QLineEdit" name="segEllipseBox">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="text">
-               <string>Ellipse</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QToolButton" name="segEllipseButton">
-              <property name="text">
-               <string>...</string>
-              </property>
-              <property name="icon">
-               <iconset>
-                <normaloff>../Downloads/ellipse.png</normaloff>../Downloads/ellipse.png</iconset>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="0" colspan="4">
+            <item row="0" column="0" colspan="3">
              <widget class="QGroupBox" name="groupBox_SegEditDraw">
               <property name="title">
                <string>Drawing</string>
@@ -6968,8 +6953,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>241</width>
-             <height>179</height>
+             <width>206</width>
+             <height>147</height>
             </rect>
            </property>
            <attribute name="label">
@@ -7002,6 +6987,16 @@ p, li { white-space: pre-wrap; }
             </item>
            </layout>
           </widget>
+         </widget>
+        </item>
+        <item row="4" column="2">
+         <widget class="QCheckBox" name="initStrucCheck">
+          <property name="layoutDirection">
+           <enum>Qt::RightToLeft</enum>
+          </property>
+          <property name="text">
+           <string>All series</string>
+          </property>
          </widget>
         </item>
        </layout>
