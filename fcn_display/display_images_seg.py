@@ -36,6 +36,8 @@ def disp_seg_image_slice(self):
     ori = self.segSelectView.currentText()
     self.current_seg_slice_index = self.segViewSlider.value()
     
+    if layer not in self.display_seg_data:
+        return
     if len(self.display_seg_data[layer]) == 0:
         return 
 
@@ -123,7 +125,7 @@ def disp_seg_image_slice(self):
             lut.Build()
 
             self.imageActorSeg[layer].GetProperty().SetLookupTable(lut)
-            # self.imageActorSeg[layer].GetProperty().SetOpacity(0.5)#.imageProperty.SetOpacity(0.5)#self.LayerAlpha[layer])  
+            self.imageActorSeg[layer].GetProperty().SetOpacity(self.LayerAlpha[layer])  
             self.dataImporterSeg[layer].Modified()     
             self.renSeg.GetRenderWindow().Render()  
 

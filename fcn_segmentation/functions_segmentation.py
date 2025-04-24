@@ -135,6 +135,13 @@ def plot_hist(self):
     if self.threshMaxSlider.value() > 500:
         max_lim = self.threshMaxSlider.value() + 100
     max_counts = (v * (x[:-1] >= min_lim) * (x[:-1] <= max_lim)).max()
+
+    ax.tick_params(
+        axis='y',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        left=False,      # ticks along the bottom edge are off
+        right=False,         # ticks along the top edge are off
+        labelleft=False) # labels along the bottom edge are off
     
     ax.plot(x[:-1], v / max_counts, "-")
     ax.axvline(x_min, color="r")
