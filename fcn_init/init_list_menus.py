@@ -91,6 +91,20 @@ def populate_list_menus(self):
     # Populate the QComboBox
     self.IrIS_CorrFrame_operation.addItems(methods)
     
+    # Brachy -----------------------------------------------------------
+    #
+    along_away = ["Reference", "Calculated", "Comparison"]
+    self.brachy_along_away_type = self.findChild(QtWidgets.QComboBox, 'comboBox_tg43_along_away')
+    self.brachy_along_away_type.addItems(along_away)
+    #
+    DoseGrid = ["0.5","1","2","3","4","5"]
+    self.brachy_tg43_dose_grid = self.findChild(QtWidgets.QComboBox, 'Tg43_dose_grid')
+    self.brachy_tg43_dose_grid.addItems(DoseGrid)
+    #
+    MatrixSize = ["50x50","100x100","150x150","200x200"]
+    self.brachy_tg43_matrix_size = self.findChild(QtWidgets.QComboBox, 'Tg43_matrix_size')
+    self.brachy_tg43_matrix_size.addItems(MatrixSize)
+    #
     # Brachy channel or dwell view
     # 
     methods = ["Dwells", "Channels"]

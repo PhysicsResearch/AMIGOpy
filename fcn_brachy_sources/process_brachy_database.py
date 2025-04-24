@@ -61,6 +61,8 @@ def on_brachy_source_selection(self):
         # QMessageBox.critical(self, "Error", "No folder selected.")
         return
     
+    # Source model/name
+    self.TG43.activesource.source_model = self.brachy_source_list.currentText().strip()
     # Radial file -------------------------------
     # Determine the base directory. This works for both compiled executables and scripts.
     if getattr(sys, 'frozen', False):
@@ -88,12 +90,102 @@ def on_brachy_source_selection(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
         anisotropy_file_path = os.path.join(base_dir, selected_folder, "anisotropy.txt")
     
+
+    # Along away -------------------------------
+    # Determine the base directory. This works for both compiled executables and scripts.
+    if getattr(sys, 'frozen', False):
+        base_dir = os.path.dirname(sys.executable)
+        # Build the full path to the radial.txt file inside the selected folder.
+        along_away_file_path = os.path.join(base_dir, "fcn_brachy_sources", selected_folder, "along_away.txt")
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        along_away_file_path = os.path.join(base_dir, selected_folder, "along_away.txt")
     # Check if the radial.txt file exists.
     if not os.path.exists(anisotropy_file_path):
-        QMessageBox.critical(self, "Error", f"anisotropy.txt not found in folder:\n{anisotropy_file_path}")
+        QMessageBox.critical(self, "Error", f"along_away.txt not found in folder:\n{along_away_file_path}")
         return
     else:
-        load_anisotropy_data(self,anisotropy_file_path)
+        load_along_away_data(self,along_away_file_path)
+
+def load_along_away_data(self, along_away_file_path):
+    """
+    Loads data from an along_away.txt file and populates self.Brachy_ani_table.
+    
+    file structure:
+      - Line 1: Description 
+      - Line 2: Comma-separated column headers for the table.
+      - Lines 3+: Data rows (comma-separated values).
+      
+    Signals are blocked during the table update.
+    """
+    try:
+        # Read the file and store only non-empty lines.
+        with open(along_away_file_path, "r") as file:
+            lines = [line.strip() for line in file if line.strip()]
+    except Exception as e:
+        QMessageBox.critical(self, "Error", f"Failed to open anisotropy.txt.\nError: {e}")
+        return
+
+    # Ensure the file has at least two lines (description and headers).
+    if len(lines) < 2:
+        QMessageBox.critical(self, "Error", "along_away.txt must contain at least two lines (description and column headers).")
+        return
+
+   
+    # Process the second line as comma-separated column headers.
+    headers = [header.strip() for header in lines[1].split(",")]
+    
+    # Clear the table and set its column count and headers.
+    self.TG43_along_away.clear()
+    self.TG43_along_away.setColumnCount(len(headers))
+    self.TG43_along_away.setHorizontalHeaderLabels(headers)
+    self.TG43_along_away.setRowCount(0)
+
+    # Use headers (skipping the first one) to update the combobox.
+    if hasattr(self, "Brachy_ani_dist_list"):
+        self.Brachy_ani_dist_list.clear()
+        # Slice the headers list to skip the first column header.
+        self.Brachy_ani_dist_list.addItems(headers[1:])
+
+    # Process the remaining lines and add them as rows.
+    for data_line in lines[2:]:
+        row_values = [value.strip() for value in data_line.split(",")]
+        current_row = self.TG43_along_away.rowCount()
+        self.TG43_along_away.insertRow(current_row)
+        for col in range(len(headers)):
+            # If there is no corresponding data value, leave the cell empty.
+            cell_value = row_values[col] if col < len(row_values) else ""
+            item = QTableWidgetItem(cell_value)
+            self.TG43_along_away.setItem(current_row, col, item)
+    
+
+    # Store the data for dose calculation later 
+
+    #  Along away data
+    ani_tbl = self.TG43_along_away
+    a_rows = ani_tbl.rowCount()
+    a_cols = ani_tbl.columnCount()
+    # grab headers
+    headers = []
+    for j in range(a_cols):
+        h_item = ani_tbl.horizontalHeaderItem(j)
+        text = h_item.text() if h_item else ""
+        headers.append(text)
+    # replace first header with "0" and convert to float
+    dist_headers = [0.0] + [float(h) for h in headers[1:]]
+    # now read the numeric data
+    data = np.zeros((a_rows, a_cols), dtype=float)
+    for i in range(a_rows):
+        for j in range(a_cols):
+            item = ani_tbl.item(i, j)
+            try:
+                data[i, j] = float(item.text())
+            except (AttributeError, ValueError):
+                data[i, j] = np.nan
+    # stack so first row is headers
+    along_away_array = np.vstack([dist_headers, data])
+    self.TG43.activesource.along_away = along_away_array
+
 
 
 
@@ -152,6 +244,35 @@ def load_anisotropy_data(self, anisotropy_file_path):
     
     # Re-enable signals.
     self.Brachy_ani_table.blockSignals(False)
+    #
+    # Store the data for dose calculation later 
+
+    #  Anisotropy data
+    ani_tbl = self.Brachy_ani_table
+    a_rows = ani_tbl.rowCount()
+    a_cols = ani_tbl.columnCount()
+    # grab headers
+    headers = []
+    for j in range(a_cols):
+        h_item = ani_tbl.horizontalHeaderItem(j)
+        text = h_item.text() if h_item else ""
+        headers.append(text)
+    # replace first header with "0" and convert to float
+    dist_headers = [0.0] + [float(h) for h in headers[1:]]
+    # now read the numeric data
+    data = np.zeros((a_rows, a_cols), dtype=float)
+    for i in range(a_rows):
+        for j in range(a_cols):
+            item = ani_tbl.item(i, j)
+            try:
+                data[i, j] = float(item.text())
+            except (AttributeError, ValueError):
+                data[i, j] = np.nan
+    # stack so first row is headers
+    anisotropy_array = np.vstack([dist_headers, data])
+    self.TG43.activesource.anisotropy = anisotropy_array
+
+    #
     plot_brachy_ani(self)
 
 def plot_brachy_ani(self):
@@ -351,6 +472,22 @@ def load_radial_data(self,radial_file_path):
     # Disable signals before making changes.
     self.Brachy_Radial_table.blockSignals(False)
     # print(f"Loaded radial.txt from folder '{selected_folder}' with headers {headers} and {len(lines)-2} data rows.")
+    #
+    # store the data for dose calculation later
+        # 1) Radial data
+    radial_tbl = self.Brachy_Radial_table
+    r_rows = radial_tbl.rowCount()
+    r_cols = radial_tbl.columnCount()
+    radial_array = np.zeros((r_rows, r_cols), dtype=float)
+    for i in range(r_rows):
+        for j in range(r_cols):
+            item = radial_tbl.item(i, j)
+            try:
+                radial_array[i, j] = float(item.text())
+            except (AttributeError, ValueError):
+                radial_array[i, j] = np.nan
+    self.TG43.activesource.radial = radial_array
+    #
     plot_brachy_radial_fit(self)
 
 def plot_brachy_radial_fit(self):
