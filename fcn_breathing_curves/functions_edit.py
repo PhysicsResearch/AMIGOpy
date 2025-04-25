@@ -41,8 +41,8 @@ def getDataframeFromTable(self):
     cols = [x_index, y_index]
     extra_cols = ["time", "phase", "instance", "ends"]
     for col in range(self.tableViewCSV_BrCv.columnCount()):
-        if self.tableViewCSV_BrCv.horizontalHeaderItem(col).text() in extra_cols:
-            cols.append(col)
+        # if self.tableViewCSV_BrCv.horizontalHeaderItem(col).text() in extra_cols:
+        cols.append(col)
         
     # Extract data from the table widget
     data = {}
@@ -52,7 +52,10 @@ def getDataframeFromTable(self):
         for row in range(0, self.tableViewCSV_BrCv.rowCount()):
             item = self.tableViewCSV_BrCv.item(row, col)
             if item:
-                data[column_name].append(float(item.text()))
+                try:
+                    data[column_name].append(float(item.text()))
+                except:
+                    data[column_name].append(item.text())
 
     self.dfEdit_BrCv = pd.DataFrame(data)
     if "instance" in self.dfEdit_BrCv.columns and "ends" not in self.dfEdit_BrCv.columns:
@@ -174,10 +177,16 @@ def scaleFreq(self):
     
     time_step_init = df.loc[1, "timestamp"] - df.loc[0, "timestamp"]
     time_step_ms = df.loc[1, "time"] - df.loc[0, "time"]
-    scale_factor = self.scaleFreq_BrCv.value()
+    scale_factor = 1/self.scaleFreq_BrCv.value()
     time_step = int(time_step_init / scale_factor)
-    
-    col_names = ["timestamp", "amplitude", "phase", "instance", "ends"] 
+    scale_factor = time_step_init / time_step
+    mark_idxs_P = df.loc[df["mark"] == "P"].index.tolist()
+    mark_idxs_Z = df.loc[df["mark"] == "Z"].index.tolist()
+
+    mark_timestamps_P = df.iloc[mark_idxs_P]["timestamp"].tolist()
+    mark_timestamps_Z = df.iloc[mark_idxs_Z]["timestamp"].tolist()
+
+    col_names = ["timestamp", "amplitude", "phase", "instance", "ends", "cycle_time", "ttlin"] 
     df_copy = pd.DataFrame()
     for col in col_names:
         if col in df:
@@ -198,6 +207,7 @@ def scaleFreq(self):
     df = df.interpolate(method='linear', limit_area='inside')
     df = df.resample(f"{time_step}ms").median()
     df["instance"] = df["instance"].round()
+    df["ttlin"] = df["ttlin"].round()
 
     df["timestamp"] = np.linspace(0, (len(df) - 1) * time_step_init, len(df))
     df["time"] = np.linspace(0, (len(df) - 1) * time_step_ms, len(df))
@@ -209,9 +219,15 @@ def scaleFreq(self):
             max_timestamp = df[df["instance"] == i]["timestamp"].idxmax()
 
             df.loc[min_timestamp, "ends"] = 1
-            df.loc[max_timestamp, "ends"] = 1#[(df["instance"] == i) & (df["timestamp"] == max_timestamp)]["ends"] = 1
+            df.loc[max_timestamp, "ends"] = 1
 
     df = df.reset_index(drop=True)
+
+    df["mark"] = np.nan
+    for t in mark_timestamps_P:
+        df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "P"
+    for t in mark_timestamps_Z:
+        df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "Z"
 
     self.dfEdit_BrCv = df
     del df
@@ -348,7 +364,10 @@ def copyCurve(self):
     
 def exportData(self):
     if not hasattr(self, "dfEdit_BrCv"):
-        return
+        try:
+            getDataframeFromTable(self)
+        except:
+            return
     self.dfEdit_BrCv_copy = self.dfEdit_BrCv.copy()
     copyCurve(self)
     options = QFileDialog.Options()
@@ -382,11 +401,7 @@ def exportGCODE(self):
     
     # Create a new index for resampling at 0.1s intervals
     new_index = pd.timedelta_range(start=df[time_col].min(), end=df[time_col].max(), freq='10L')
-    pd.set_option('display.max_rows', 500)
-    print(df.head(400))
-    print(df[df.index.duplicated()])
-    print(df[df[time_col].duplicated()])
-    pd.reset_option('display.max_rows')
+
     # Reindex the DataFrame to the new index, keeping original data points
     df = df.set_index(time_col).reindex(new_index.union(df[time_col])).sort_index()
     
