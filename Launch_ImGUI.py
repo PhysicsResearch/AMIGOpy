@@ -17,7 +17,7 @@ from fcn_init.transp_slider_spin_set  import set_transp_slider_fcn
 from fcn_init.set_menu_bar_icons      import menu_bar_icon_actions
 from fcn_init.vtk_IrIS_eval_axes      import setup_vtk_IrISEval
 from fcn_display.display_images       import update_layer_view
-from fcn_display.display_images_seg   import update_seg_slider
+from fcn_display.display_images_seg   import update_seg_slider, disp_seg_image_slice
 from fcn_init.ModulesTab_change       import set_fcn_tabModules_changed
 from fcn_init.IrIS_cal_init           import init_cal_markers_IrIS
 from fcn_init.init_variables          import initialize_software_variables
@@ -136,6 +136,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.threshMinSlider.valueChanged.connect(lambda: plot_hist(self))
         self.threshMaxSlider.valueChanged.connect(lambda: plot_hist(self))
         self.segSelectView.currentTextChanged.connect(lambda: update_seg_slider(self))
+        self.segViewSlider.valueChanged.connect(lambda: disp_seg_image_slice(self))
 
         self.segBrushButton.setIcon(QIcon("./icons/brush.png"))
         self.segEraseButton.setIcon(QIcon("./icons/eraser.png") )

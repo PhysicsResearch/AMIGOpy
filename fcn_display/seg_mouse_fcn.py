@@ -14,6 +14,8 @@ def left_button_pressseg_event(self, caller, event):
         if self.seg_brush or self.seg_erase:
             self.seg_brush_coords = None
             QApplication.setOverrideCursor(Qt.CrossCursor)
+            if 1 not in self.display_seg_data:
+                return
             self.slice_data_copy = self.display_seg_data[1].copy()
            
     
@@ -29,6 +31,7 @@ def on_scroll_backwardseg(self, caller, event):
     if Caller_id is not None:
         self.segViewSlider.setValue(self.segViewSlider.value() -1) 
 
+
 def on_scroll_forwardseg(self, caller, event):
     Caller_id = self.interactor_to_index.get(caller)
     if Caller_id is not None:
@@ -38,7 +41,7 @@ def on_scroll_forwardseg(self, caller, event):
 def onMouseMoveseg(self, caller, event):
     layer = self.layer_selection_box.currentIndex()
     ori = self.segSelectView.currentText()
-    if len(self.display_seg_data) == 0:
+    if layer not in self.display_seg_data:
         return
 
     if ori=="Axial": #Axial
@@ -83,6 +86,8 @@ def onMouseMoveseg(self, caller, event):
     #
     if self.left_but_pressed[0] == 1:
         if self.seg_brush or self.seg_erase:
+            if 1 not in self.display_seg_data:
+                return
             self.seg_brush_coords = image_coord_vox
             disp_seg_image_slice(self)
         else:

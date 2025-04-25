@@ -2,12 +2,14 @@ import numpy as np
 from fcn_load.populate_dcm_list import populate_DICOM_tree
 from fcn_display.disp_data_type import adjust_data_type_seg_input
 from fcn_display.display_images_seg import disp_seg_image_slice
-from PyQt5.QtWidgets import QTableWidgetItem, QCheckBox, QFileDialog
+from PyQt5.QtWidgets import QTableWidgetItem, QCheckBox, QFileDialog, QMessageBox
 from PyQt5 import QtCore
 import os
 
 
 def threshSeg(self):
+    if len(self.display_seg_data) == 0:
+        return
     layer  = int(self.layer_selection_box.currentIndex())
     min_, max_ = self.threshMinSlider.value(), self.threshMaxSlider.value()
     target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
@@ -28,11 +30,13 @@ def threshSeg(self):
     
     
 def InitSeg(self):
+    if len(self.display_seg_data) == 0:
+        return
     layer  = int(self.layer_selection_box.currentIndex())
     mask_3d = np.zeros_like(self.display_seg_data[layer])
     mask_3d = mask_3d.astype(np.uint8)
 
-    if self.seg_init_all_series:
+    if self.initStrucCheck.isChecked():
         for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]: 
 
             existing_structures = target_series_dict.get('structures', {})
@@ -107,6 +111,9 @@ from PyQt5.QtWidgets import QVBoxLayout
 
     
 def plot_hist(self):
+    if 0 not in self.display_seg_data:
+        return
+
     self.plot_fig = Figure()  # Create a figure for the first time
     ax = self.plot_fig.add_subplot(111) 
     
@@ -191,7 +198,8 @@ def calc_com(segmentation):
 def calcStrucStats(self):
     
     data = {}
-    
+    if self.dicom_data is None:
+        return
     for patientID in self.dicom_data:
         for studyID in self.dicom_data[patientID]:
             for modality in self.dicom_data[patientID][studyID]:
@@ -239,6 +247,12 @@ def calcStrucStats(self):
 
 
 def exportStrucStats(self): 
+    if self.dicom_data is None:
+        return
+    if self.tableSegStrucStats.rowCount() == 0:
+        calcStrucStats(self)
+        QMessageBox.warning(None, "Warning", "No statistics to export.\nPlease select the statistics to export.")
+        return
     
     options = QFileDialog.Options()
     folder = QFileDialog.getExistingDirectory(self, options=options)
@@ -261,8 +275,16 @@ def exportStrucStats(self):
         writer = csv.writer(f)
         writer.writerows(checked_items)
 
+import nibabel as nib
 
 def exportSegStruc(self):
+    if self.dicom_data is None:
+        return
+    if self.tableSegStrucStats.rowCount() == 0:
+        calcStrucStats(self)
+        QMessageBox.warning(None, "Warning", "No structures to export.\nPlease select the structures to export.")
+        return
+
     options = QFileDialog.Options()
     folder = QFileDialog.getExistingDirectory(self, options=options)
     save_dir = os.path.join(folder, "segmentations")
@@ -279,4 +301,7 @@ def exportSegStruc(self):
                 if target_series_dict['SeriesNumber'] == idx:
                     s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name.split("_")[1])]
                     mask = target_series_dict['structures'][s_key]["Mask3D"]
-                    np.save(os.path.join(save_dir, f"{name}.nii.gz"), mask)
+                    img = nib.Nifti1Image(mask, np.eye(4))
+                    img.header.get_xyzt_units()
+                    nib.save(img, os.path.join(save_dir, f"{name}.nii.gz"))  
+                    # np.save(os.path.join(save_dir, f"{name}.nii.gz"), mask)

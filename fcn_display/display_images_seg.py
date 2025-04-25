@@ -6,6 +6,8 @@ def sliderSegView_change(self):
     
 def update_seg_slider(self):
     layer  = int(self.layer_selection_box.currentIndex())
+    if layer not in self.display_seg_data:
+        return
     ori = self.segSelectView.currentText()
 
     if ori=="Axial":
@@ -43,7 +45,7 @@ def disp_seg_image_slice(self):
 
     for i in range(len(self.dataImporterSeg)):
         layer = i
-        if i == 0: # if series
+        if i == 0 and 0 in self.display_seg_data: # if series
             if ori=="Axial": #Axial
                 slice_data = self.display_seg_data[layer][int(self.current_seg_slice_index), :, :]
                 self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,1], 0)
@@ -71,7 +73,7 @@ def disp_seg_image_slice(self):
             imageProperty.SetOpacity(self.LayerAlpha[layer])  
             self.dataImporterSeg[layer].Modified()     
             self.renSeg.GetRenderWindow().Render()  
-        elif i == 1:
+        elif i == 1 and 1 in self.display_seg_data:
             if len(self.display_seg_data) <= i:
                 continue
 

@@ -278,12 +278,16 @@ def on_DataTreeView_clicked(self,index):
 
                 #
                 if len(hierarchy) == 5: # Series
+                    if idx != 0:
+                        return
                     self.display_seg_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
                     plot_hist(self)
                     Window = 2000; Level = 100
                     self.windowLevelSeg[idx].SetWindow(Window)
                     self.windowLevelSeg[idx].SetLevel(Level)
                 if len(hierarchy) == 7: # binary mask contour
+                    if idx != 1:
+                        return
                     s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
                     self.seg_curr_struc = s_key
                     self.display_seg_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
