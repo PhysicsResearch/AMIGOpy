@@ -8,9 +8,8 @@ import os
 
 
 def threshSeg(self):
-    if len(self.display_seg_data) == 0:
+    if 0 not in self.display_seg_data:
         return
-    layer  = int(self.layer_selection_box.currentIndex())
     min_, max_ = self.threshMinSlider.value(), self.threshMaxSlider.value()
     target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
 
@@ -23,9 +22,9 @@ def threshSeg(self):
     mask_3d = ((self.display_seg_data[0] >= min_) * (self.display_seg_data[0] <= max_)).astype(np.uint8)
 
     self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.seg_curr_struc]['Mask3D'] = mask_3d
-    self.display_seg_data[layer] = mask_3d
+    self.display_seg_data[1] = mask_3d
 
-    adjust_data_type_seg_input(self,layer)
+    adjust_data_type_seg_input(self,1)
     disp_seg_image_slice(self) 
     
     
@@ -213,23 +212,24 @@ def calcStrucStats(self):
                     
                     for k in target_series_dict['structures']:
                         struct = target_series_dict['structures'][k]
-                        name = f"{target_series_dict['SeriesNumber']}_{struct['Name']}"
+                        series_id = target_series_dict['SeriesNumber']
+                        struct_name = struct['Name']
                         mask = struct["Mask3D"]
                         vol_in_voxels = mask.sum() 
                         vol_in_mm = vol_in_voxels * slice_thick * pixel_spac[0] * pixel_spac[1]
                         CoM = calc_com(mask) * np.array([slice_thick, pixel_spac[0], pixel_spac[1]]) + Im_PatPosition[::-1]
-                        data[name] = {"volume": vol_in_mm, "CoM": CoM}
+                        data[f"{series_id}_{struct_name}"] = {"series_id": series_id, "name": struct_name, "volume": vol_in_mm, "CoM": CoM}
                         
     self.tableSegStrucStats.clear()
     # Clear the table before populating it
-    header_cols = ["Export", "Name", "Volume (mm^3)", "CoM (z)", "CoM (y)", "CoM (x)"]
+    header_cols = ["Export", "Series ID", "Name", "Volume (mm^3)", "CoM (z)", "CoM (y)", "CoM (x)"]
     self.tableSegStrucStats.clear()
     self.tableSegStrucStats.setRowCount(len(data))
     self.tableSegStrucStats.setColumnCount(len(header_cols))
     self.tableSegStrucStats.setHorizontalHeaderLabels(header_cols)
 
     for row, name in enumerate(data):
-        instance_data = ["checkbox", name, data[name]["volume"], data[name]["CoM"][0],
+        instance_data = ["checkbox", data[name]["series_id"], data[name]["name"], data[name]["volume"], data[name]["CoM"][0],
                                      data[name]["CoM"][1], data[name]["CoM"][2]]
         for col, val in enumerate(instance_data):
             if val == "checkbox":
@@ -239,6 +239,8 @@ def calcStrucStats(self):
                 self.tableSegStrucStats.setItem(row,col,checkkBoxItem)
             elif type(val) == str:
                 self.tableSegStrucStats.setItem(row, col, QTableWidgetItem(val))
+            elif col == 1:
+                self.tableSegStrucStats.setItem(row, col, QTableWidgetItem(str(int(val))))
             else:
                 try:
                     self.tableSegStrucStats.setItem(row, col, QTableWidgetItem(f"{val:03f}"))
@@ -258,16 +260,17 @@ def exportStrucStats(self):
     folder = QFileDialog.getExistingDirectory(self, options=options)
     
     # Get the checked items from the table
-    checked_items = []
+    checked_items = [("series_id", "name", "volume", "z", "y", "x")]
     for row in range(self.tableSegStrucStats.rowCount()):
         item = self.tableSegStrucStats.item(row, 0)  # Assuming the checkbox is in the first column
         if item and item.checkState() == QtCore.Qt.Checked:
-            name = self.tableSegStrucStats.item(row, 1).text()
-            volume = self.tableSegStrucStats.item(row, 2).text()
-            z = self.tableSegStrucStats.item(row, 3).text()
-            y = self.tableSegStrucStats.item(row, 4).text()
-            x = self.tableSegStrucStats.item(row, 5).text()
-            checked_items.append((name, volume, z, y, x))
+            series_id = self.tableSegStrucStats.item(row, 1).text()
+            name = self.tableSegStrucStats.item(row, 2).text()
+            volume = self.tableSegStrucStats.item(row, 3).text()
+            z = self.tableSegStrucStats.item(row, 4).text()
+            y = self.tableSegStrucStats.item(row, 5).text()
+            x = self.tableSegStrucStats.item(row, 6).text()
+            checked_items.append((series_id, name, volume, z, y, x))
 
     import csv
 
@@ -295,13 +298,15 @@ def exportSegStruc(self):
     for row in range(self.tableSegStrucStats.rowCount()):
         item = self.tableSegStrucStats.item(row, 0)  # Assuming the checkbox is in the first column
         if item and item.checkState() == QtCore.Qt.Checked:
-            name = self.tableSegStrucStats.item(row, 1).text()
-            idx = int(name.split("_")[0])
+            series_id = int(self.tableSegStrucStats.item(row, 1).text())
+            s_key = self.tableSegStrucStats.item(row, 2).text()
             for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]:
-                if target_series_dict['SeriesNumber'] == idx:
-                    s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name.split("_")[1])]
-                    mask = target_series_dict['structures'][s_key]["Mask3D"]
-                    img = nib.Nifti1Image(mask, np.eye(4))
-                    img.header.get_xyzt_units()
-                    nib.save(img, os.path.join(save_dir, f"{name}.nii.gz"))  
-                    # np.save(os.path.join(save_dir, f"{name}.nii.gz"), mask)
+                if target_series_dict['SeriesNumber'] == series_id:        
+                    for k in target_series_dict['structures']:
+                        struct = target_series_dict['structures'][k]
+                        if struct['Name'] == s_key:
+                            mask = target_series_dict['structures'][k]["Mask3D"]
+                            img = nib.Nifti1Image(mask, np.eye(4))
+                            img.header.get_xyzt_units()
+                            nib.save(img, os.path.join(save_dir, f"{series_id}_{s_key}.nii.gz"))  
+
