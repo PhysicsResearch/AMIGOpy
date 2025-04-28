@@ -1,4 +1,5 @@
 from fcn_display.display_images   import displayaxial, displaycoronal, displaysagittal
+from fcn_display.display_images_seg import disp_seg_image_slice
 from fcn_display.display_images_IrISeval import disp_eval_iris_slice
 from PyQt5.QtWidgets import QInputDialog
 import numpy as np
@@ -7,6 +8,9 @@ from fcn_display.colormap_set import set_color_map
 
 def window_auto(self):
     idx = self.layer_selection_box.currentIndex()
+    currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
+    if currentTabText == "Segmentation" and idx > 1:
+        return
     slice_data = self.display_data[idx][self.current_slice_index[0], :, :]
     Window = np.std(slice_data)*2
     Level  = np.mean(slice_data)
@@ -55,9 +59,10 @@ def set_window(self,Window,Level):
             self.textActorAxCom[Ax_idx,1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
             
     elif currentTabText == "Segmentation":
-            Window = self.windowLevelAxSeg[layer].GetWindow()
-            Level  = self.windowLevelAxSeg[layer].GetLevel()
-            self.textActorAxSeg[1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
+        self.windowLevelSeg[layer].SetWindow(Window)
+        self.windowLevelSeg[layer].SetLevel(Level)
+        self.textActorSeg[1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
+        disp_seg_image_slice(self)
             
             
 

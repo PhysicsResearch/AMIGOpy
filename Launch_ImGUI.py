@@ -2,6 +2,7 @@ import sys
 import os
 import qdarkstyle
 from PyQt5.QtWidgets import QApplication, QMainWindow, QToolBar
+from PyQt5.QtGui import QIcon
 from ImGUI import Ui_AMIGOpy  # Assuming this is the name of your main window class in ImGUI.py
 from fcn_load.sort_dcm import get_data_description
 from fcn_load.org_fol_dcm import organize_files_into_folders
@@ -11,10 +12,12 @@ from fcn_display.mouse_move_slicechanges import change_sliceAxial, change_sliceS
 from fcn_display.Data_tree_general import on_DataTreeView_clicked
 from fcn_init.create_menu import initializeMenuBar
 from fcn_init.vtk_comp import setup_vtk_comp
+from fcn_init.vtk_comp_seg import setup_vtk_seg
 from fcn_init.transp_slider_spin_set  import set_transp_slider_fcn
 from fcn_init.set_menu_bar_icons      import menu_bar_icon_actions
 from fcn_init.vtk_IrIS_eval_axes      import setup_vtk_IrISEval
 from fcn_display.display_images       import update_layer_view
+from fcn_display.display_images_seg   import update_seg_slider, disp_seg_image_slice
 from fcn_init.ModulesTab_change       import set_fcn_tabModules_changed
 from fcn_init.IrIS_cal_init           import init_cal_markers_IrIS
 from fcn_init.init_variables          import initialize_software_variables
@@ -23,6 +26,7 @@ from fcn_init.init_buttons            import initialize_software_buttons
 from fcn_init.init_load_files         import load_Source_cal_csv_file
 from fcn_init.init_list_menus         import populate_list_menus
 from fcn_load.load_dcm                import load_all_dcm
+from fcn_segmentation.functions_segmentation import plot_hist
 import vtk
 
 
@@ -123,8 +127,20 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         # # Initialize VTK components
         setup_vtk_comp(self)
         setup_vtk_IrISEval(self)
+        setup_vtk_seg(self)
         # Calibration module IrIS
         init_cal_markers_IrIS(self)
+        
+        self.threshMinSlider.valueChanged.connect(self.on_seg_min_slider_change)
+        self.threshMaxSlider.valueChanged.connect(self.on_seg_max_slider_change)
+        self.threshMinSlider.valueChanged.connect(lambda: plot_hist(self))
+        self.threshMaxSlider.valueChanged.connect(lambda: plot_hist(self))
+        self.segSelectView.currentTextChanged.connect(lambda: update_seg_slider(self))
+        self.segViewSlider.valueChanged.connect(lambda: disp_seg_image_slice(self))
+
+        self.segBrushButton.setIcon(QIcon("./icons/brush.png"))
+        self.segEraseButton.setIcon(QIcon("./icons/eraser.png") )
+        self.undoSeg.setIcon(QIcon("./icons/undo.png"))
         #
         # VTK Comparison module
         self.vtkWidgetsComp = []
@@ -133,6 +149,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.windowLevelAxComp  = {}
         self.imageActorAxComp   = {}
         #
+        
         self.DataTreeView.clicked.connect(lambda index: on_DataTreeView_clicked(self, index))
         #
         vtk.vtkObject.GlobalWarningDisplayOff()
@@ -206,6 +223,26 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         
     def update_progress(self, progress):
         self.progressBar.setValue(int(progress))
+        
+    def on_seg_min_slider_change(self):
+        min_ = self.threshMinSlider.value()
+        max_ = self.threshMaxSlider.value()
+        
+        if min_ >= max_:
+            self.threshMinSlider.setValue(max_ - 1) 
+            min_ = self.threshMinSlider.value()
+        
+        self.threshMinBox.setText(f"Min. HU threshold: {min_}")
+        
+    def on_seg_max_slider_change(self):
+        min_ = self.threshMinSlider.value()
+        max_ = self.threshMaxSlider.value()
+        
+        if min_ >= max_:
+            self.threshMaxSlider.setValue(min_ + 1) 
+            max_ = self.threshMinSlider.value()
+            
+        self.threshMaxBox.setText(f"Max. HU threshold: {max_}")
 
    
       
