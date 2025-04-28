@@ -38,98 +38,88 @@ def disp_seg_image_slice(self):
     ori = self.segSelectView.currentText()
     self.current_seg_slice_index = self.segViewSlider.value()
     
-    if layer not in self.display_seg_data:
-        return
-    if len(self.display_seg_data[layer]) == 0:
+    if 0 not in self.display_seg_data[layer] or 1 not in self.display_seg_data[layer]:
         return 
 
-    for i in range(len(self.dataImporterSeg)):
-        layer = i
-        if i == 0 and 0 in self.display_seg_data: # if series
-            if ori=="Axial": #Axial
-                slice_data = self.display_seg_data[layer][int(self.current_seg_slice_index), :, :]
-                self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,1], 0)
-                self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.pixel_spac_seg[layer,0],1)
-            elif ori=="Sagittal": #Sagittal 
-                slice_data = self.display_seg_data[layer][:,:,int(self.current_seg_slice_index)]
-                self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,1], self.Im_Offset_seg[layer,2], 0)
-                self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,0],self.slice_thick_seg[0],1)
-            elif ori=="Coronal": #Coronal
-                slice_data = self.display_seg_data[layer][:,int(self.current_seg_slice_index), :]
-                self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,2], 0)
-                self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.slice_thick_seg[0],1)
-            #
+    layer = 0
+    if ori=="Axial": #Axial
+        slice_data = self.display_seg_data[layer][int(self.current_seg_slice_index), :, :]
+        self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,1], 0)
+        self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.pixel_spac_seg[layer,0],1)
+    elif ori=="Sagittal": #Sagittal 
+        slice_data = self.display_seg_data[layer][:,:,int(self.current_seg_slice_index)]
+        self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,1], self.Im_Offset_seg[layer,2], 0)
+        self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,0],self.slice_thick_seg[0],1)
+    elif ori=="Coronal": #Coronal
+        slice_data = self.display_seg_data[layer][:,int(self.current_seg_slice_index), :]
+        self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,2], 0)
+        self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.slice_thick_seg[0],1)
+    #
+    data_string = slice_data.tobytes()
+    extent = slice_data.shape
+    self.dataImporterSeg[layer].CopyImportVoidPointer(data_string, len(data_string))
+    self.dataImporterSeg[layer].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+    self.dataImporterSeg[layer].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+    #
+    self.textActorSeg[2].SetInput(f"Slice:{self.current_seg_slice_index}")
+    imageProperty = self.imageActorSeg[layer].GetProperty()
+    imageProperty.SetOpacity(self.LayerAlpha[layer])  
+    self.dataImporterSeg[layer].Modified()     
+    self.renSeg.GetRenderWindow().Render()  
+
+    if not self.curr_struc_available:
+        return
+
+    layer = 1
+    slice_data_im = slice_data.copy()
+    if ori=="Axial": #Axial
+        slice_data = self.display_seg_data[layer][int(self.current_seg_slice_index), :, :]
+        # self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,1], 0)
+        self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.pixel_spac_seg[layer,0],1)
+    elif ori=="Sagittal": #Sagittal 
+        slice_data = self.display_seg_data[layer][:,:,int(self.current_seg_slice_index)]
+        # self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,1], self.Im_Offset_seg[layer,2], 0)
+        self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,0],self.slice_thick_seg[layer],1)
+    elif ori=="Coronal": #Coronal
+        slice_data = self.display_seg_data[layer][:,int(self.current_seg_slice_index), :]
+        # self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,2], 0)
+        self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.slice_thick_seg[layer],1)
+    #
+    if self.seg_brush_coords is not None:
+        self.brush_size = self.BrushSizeSlider.value()
         
-            data_string = slice_data.tobytes()
-            extent = slice_data.shape
-            self.dataImporterSeg[layer].CopyImportVoidPointer(data_string, len(data_string))
-            self.dataImporterSeg[layer].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-            self.dataImporterSeg[layer].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-            #
-            #
-            self.textActorSeg[2].SetInput(f"Slice:{self.current_seg_slice_index}")
-            #
-            imageProperty = self.imageActorSeg[layer].GetProperty()
-            imageProperty.SetOpacity(self.LayerAlpha[layer])  
-            self.dataImporterSeg[layer].Modified()     
-            self.renSeg.GetRenderWindow().Render()  
-        elif i == 1 and 1 in self.display_seg_data:
-            if len(self.display_seg_data) <= i:
-                continue
+        if ori=="Axial": 
+            Y, X = np.ogrid[:slice_data.shape[0], :slice_data.shape[1]]
+            dist_from_center = np.sqrt((X - self.seg_brush_coords[0])**2 + (Y-self.seg_brush_coords[1])**2)
+        else:
+            Y, X = np.ogrid[:slice_data.shape[0], :slice_data.shape[1]]
+            dist_from_center = np.sqrt((X - self.seg_brush_coords[0])**2 + (Y-self.seg_brush_coords[1])**2 * 
+                                        (self.slice_thick_seg[layer] / self.pixel_spac_seg[layer,1]))
+        
+        mask = dist_from_center <= self.brush_size 
+        if self.seg_erase == 1:
+            slice_data[mask] = 0
+        if self.seg_brush == 1:
+            mask_hu = (slice_data_im >= self.threshMinSlider.value()) * (slice_data_im <= self.threshMaxSlider.value())
+            slice_data[mask * mask_hu] = 1
 
-            if ori=="Axial": #Axial
-                slice_data = self.display_seg_data[i][int(self.current_seg_slice_index), :, :]
-                slice_data_im = self.display_seg_data[0][int(self.current_seg_slice_index), :, :]
-                # self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,1], 0)
-                self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.pixel_spac_seg[layer,0],1)
-            elif ori=="Sagittal": #Sagittal 
-                slice_data = self.display_seg_data[i][:,:,int(self.current_seg_slice_index)]
-                slice_data_im = self.display_seg_data[0][:,:,int(self.current_seg_slice_index)]
-                # self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,1], self.Im_Offset_seg[layer,2], 0)
-                self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,0],self.slice_thick_seg[layer],1)
-            elif ori=="Coronal": #Coronal
-                slice_data = self.display_seg_data[i][:,int(self.current_seg_slice_index), :]
-                slice_data_im = self.display_seg_data[0][:,int(self.current_seg_slice_index), :]
-                # self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,2], 0)
-                self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.slice_thick_seg[layer],1)
-            #
-            if self.seg_brush_coords is not None:
-                self.brush_size = self.BrushSizeSlider.value()
-                
-                if ori=="Axial": 
-                    Y, X = np.ogrid[:slice_data.shape[0], :slice_data.shape[1]]
-                    dist_from_center = np.sqrt((X - self.seg_brush_coords[0])**2 + (Y-self.seg_brush_coords[1])**2)
-                else:
-                    Y, X = np.ogrid[:slice_data.shape[0], :slice_data.shape[1]]
-                    dist_from_center = np.sqrt((X - self.seg_brush_coords[0])**2 + (Y-self.seg_brush_coords[1])**2 * 
-                                               (self.slice_thick_seg[layer] / self.pixel_spac_seg[layer,1]))
-                
-                mask = dist_from_center <= self.brush_size 
-                if self.seg_erase == 1:
-                    slice_data[mask] = 0
-                if self.seg_brush == 1:
-                    mask_hu = (slice_data_im >= self.threshMinSlider.value()) * (slice_data_im <= self.threshMaxSlider.value())
-                    slice_data[mask * mask_hu] = 1
+    data_string = slice_data.tobytes()
+    extent = slice_data.shape
+    self.dataImporterSeg[layer].CopyImportVoidPointer(data_string, len(data_string))
+    self.dataImporterSeg[layer].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+    self.dataImporterSeg[layer].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+    #
+    self.textActorSeg[2].SetInput(f"Slice:{self.current_seg_slice_index}")
+    # set segmentation color and transparency
+    lut = vtk.vtkLookupTable()
+    lut.SetTableValue(0, 0, 0, 0, 0)  # Set zero to transparent
+    lut.SetTableValue(1, 1, 0, 0, self.LayerAlpha[1])
+    lut.Build()
+    self.imageActorSeg[layer].GetProperty().SetLookupTable(lut)
+    self.imageActorSeg[layer].GetProperty().SetOpacity(self.LayerAlpha[layer])  
+    self.dataImporterSeg[layer].Modified()     
+    self.renSeg.GetRenderWindow().Render() 
 
-            data_string = slice_data.tobytes()
-            extent = slice_data.shape
-            self.dataImporterSeg[layer].CopyImportVoidPointer(data_string, len(data_string))
-            self.dataImporterSeg[layer].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-            self.dataImporterSeg[layer].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-            #
-            #
-            self.textActorSeg[2].SetInput(f"Slice:{self.current_seg_slice_index}")
-            #
-            # imageProperty = self.imageActorSeg[layer].GetProperty()
-            lut         = vtk.vtkLookupTable()
-            lut.SetTableValue(0, 0, 0, 0, 0)  # Transparent
-            lut.SetTableValue(1, 1, 0, 0, 0.5)
-            lut.Build()
-
-            self.imageActorSeg[layer].GetProperty().SetLookupTable(lut)
-            self.imageActorSeg[layer].GetProperty().SetOpacity(self.LayerAlpha[layer])  
-            self.dataImporterSeg[layer].Modified()     
-            self.renSeg.GetRenderWindow().Render()  
 
 
 def update_layer_view_seg(self):

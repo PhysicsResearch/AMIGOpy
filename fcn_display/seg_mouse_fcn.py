@@ -40,6 +40,11 @@ def on_scroll_forwardseg(self, caller, event):
 
 def onMouseMoveseg(self, caller, event):
     layer = self.layer_selection_box.currentIndex()
+    if self.left_but_pressed[0] == 1:
+        if self.seg_brush or self.seg_erase:
+            layer = 1
+        else:
+            layer = 0
     ori = self.segSelectView.currentText()
     if layer not in self.display_seg_data:
         return
