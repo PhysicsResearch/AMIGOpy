@@ -3261,7 +3261,7 @@ class Ui_AMIGOpy(object):
         self.seg_toolBox.setFrameShadow(QtWidgets.QFrame.Plain)
         self.seg_toolBox.setObjectName("seg_toolBox")
         self.seg_toolBoxPage1 = QtWidgets.QWidget()
-        self.seg_toolBoxPage1.setGeometry(QtCore.QRect(0, 0, 587, 553))
+        self.seg_toolBoxPage1.setGeometry(QtCore.QRect(0, 0, 101, 47))
         self.seg_toolBoxPage1.setObjectName("seg_toolBoxPage1")
         self.gridLayout_segTools = QtWidgets.QGridLayout(self.seg_toolBoxPage1)
         self.gridLayout_segTools.setObjectName("gridLayout_segTools")
@@ -3517,7 +3517,7 @@ class Ui_AMIGOpy(object):
         AMIGOpy.setStatusBar(self.statusbar)
 
         self.retranslateUi(AMIGOpy)
-        self.tabModules.setCurrentIndex(3)
+        self.tabModules.setCurrentIndex(0)
         self.tabView01.setCurrentIndex(0)
         self.tabWidget_6.setCurrentIndex(0)
         self.tabWidget_4.setCurrentIndex(0)
