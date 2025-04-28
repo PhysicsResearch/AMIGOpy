@@ -87,5 +87,7 @@ def initialize_software_variables(self):
     self.circle_actors_ax = []
     self.circle_actors_co = []
     self.circle_actors_sa = []
+    #Initialize a list to store the CT calibration curves
+    self.ct_cal_curves={}
    
         

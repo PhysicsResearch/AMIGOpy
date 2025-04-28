@@ -33,6 +33,7 @@ from fcn_breathing_curves.functions_edit import applyOperations, undoOperations,
 from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, update_doses_list, update_structure_list, eqd2_calc
 from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc
 from fcn_display.display_images_seg import undo_brush_seg
+from fcn_ctcal.ct_cal import load_ct_cal_curve
 
 def initialize_software_buttons(self):
     # IrIS add row dw table
@@ -229,7 +230,9 @@ def initialize_software_buttons(self):
     self.eqd2_update_dose_list.clicked.connect(lambda: update_doses_list(self))
     self.eqd2_update_structure_list.clicked.connect(lambda: update_structure_list(self))
     self.calc_eqd2_2.clicked.connect(lambda: eqd2_calc(self))
-
+    
+    #CT CALIBRATION--------------------------------------------------------------------------
+    self.load_ct_cal.clicked.connect(lambda: load_ct_cal_curve(self))
     
     # Circle ROI -----------------------------------------------------------------------------------
     # display (or not) ROI
@@ -248,6 +251,8 @@ def initialize_software_buttons(self):
     self.exp_csv_roi_c_values.clicked.connect(lambda: export_roi_circ_values_to_csv(self))
     self.exp_csv_roi_c_values.setStyleSheet("background-color: blue; color: white;")
     
+    #CT CALIBRATION--------------------------------------------------------------------------
+    self.load_ct_cal
     
 def on_display_dw_overlay_clicked(self):
     """
