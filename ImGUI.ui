@@ -4600,13 +4600,13 @@
              </item>
             </layout>
            </widget>
-           <widget class="QWidget" name="plot" native="true">
+           <widget class="QWidget" name="ct_cal_plot" native="true">
             <property name="geometry">
              <rect>
               <x>719</x>
               <y>19</y>
               <width>831</width>
-              <height>761</height>
+              <height>431</height>
              </rect>
             </property>
            </widget>
@@ -6877,8 +6877,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>101</width>
-             <height>47</height>
+             <width>587</width>
+             <height>553</height>
             </rect>
            </property>
            <attribute name="label">
