@@ -4528,7 +4528,7 @@
               <string>Load</string>
              </property>
             </widget>
-            <widget class="QPushButton" name="new_ct_cal">
+            <widget class="QPushButton" name="save_changes_ct_cal">
              <property name="geometry">
               <rect>
                <x>100</x>
@@ -6877,8 +6877,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>587</width>
-             <height>553</height>
+             <width>101</width>
+             <height>47</height>
             </rect>
            </property>
            <attribute name="label">
