@@ -6,7 +6,9 @@ from PyQt5.QtWidgets import (
     QWidget, QLineEdit, QLabel, QComboBox, QCheckBox, QTableWidget, QTableWidgetItem,QHeaderView)
 
 from PyQt5.QtCore import Qt  # Import Qt to use Qt.ItemIsEditable flag
-
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -64,14 +66,91 @@ def update_ct_cal_table(self,ct_cal_data):
     self.ct_cal_table.resizeColumnsToContents()
     self.ct_cal_table.horizontalHeader().setVisible(False)
     self.ct_cal_table.verticalHeader().setVisible(False)
-    
 
+def plot_ct_cal(self, ct_cal_data):
+    # Clean up previous figure, canvas, and toolbar
+    if hasattr(self, 'fig_ct_cal') and self.fig_ct_cal:
+        plt.close(self.fig_ct_cal)
+    if hasattr(self, 'canvas_ct_cal') and self.canvas_ct_cal:
+        self.canvas_ct_cal.deleteLater()
+    if hasattr(self, 'toolbar_ct_cal') and self.toolbar_ct_cal:
+        self.toolbar_ct_cal.deleteLater()
+
+    # Create new figure and axes
+    self.fig_ct_cal, self.ax_ct_cal = plt.subplots()
+
+    # Apply transparency settings to Matplotlib figure
+    if self.selected_background == "Transparent":
+        self.ax_ct_cal.patch.set_alpha(0.0)
+        self.fig_ct_cal.patch.set_alpha(0.0)
+
+        self.ax_ct_cal.tick_params(colors='white', labelsize=self.selected_font_size - 2)
+        self.ax_ct_cal.xaxis.label.set_color('white')
+        self.ax_ct_cal.yaxis.label.set_color('white')
+        for spine in self.ax_ct_cal.spines.values():
+            spine.set_color('white')
+    else:
+        self.ax_ct_cal.tick_params(labelsize=self.selected_font_size - 2)
+
+    # Plot data
+    headers = ct_cal_data.columns.tolist()
+    HU = ct_cal_data['HU']
+    density = ct_cal_data[headers[1]]
+    self.ax_ct_cal.plot(HU, density)
+    self.ax_ct_cal.set_xlabel('HU', fontsize=self.selected_font_size)
+    self.ax_ct_cal.set_ylabel(headers[1], fontsize=self.selected_font_size)
+
+    title_kwargs = {'fontsize': self.selected_font_size + 4}
+    if self.selected_background == "Transparent":
+        title_kwargs['color'] = 'white'
+    self.fig_ct_cal.suptitle(f"HU vs {headers[1]}", **title_kwargs)
+
+    # Create canvas and toolbar
+    self.canvas_ct_cal = FigureCanvas(self.fig_ct_cal)
+    self.toolbar_ct_cal = NavigationToolbar(self.canvas_ct_cal, self)
+
+    # Apply transparency to canvas and container
+    if self.selected_background == "Transparent":
+        for widget in [self.canvas_ct_cal, self.ct_cal_plot]:
+            widget.setAttribute(Qt.WA_TranslucentBackground)
+            widget.setAutoFillBackground(False)
+            widget.setStyleSheet("background-color: transparent;")
+    else:
+        self.canvas_ct_cal.setStyleSheet(f"background-color:{self.selected_background};")
+
+    # Ensure container has a layout
+    container = self.ct_cal_plot
+    if container.layout() is None:
+        layout = QVBoxLayout(container)
+        container.setLayout(layout)
+    else:
+        # Clear existing content in layout
+        while container.layout().count():
+            child = container.layout().takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+    # Add toolbar and canvas to layout
+    container.layout().addWidget(self.toolbar_ct_cal)
+    container.layout().addWidget(self.canvas_ct_cal)
+    self.canvas_ct_cal.draw()
+
+
+            
+    
 def update_ct_cal_view(self):
     selected_text = self.ct_cal_list.currentText()
     if selected_text not in self.ct_cal_curves.keys():
         return 
     ct_cal_data=self.ct_cal_curves[selected_text]
     update_ct_cal_table(self, ct_cal_data)
+    plot_ct_cal(self, ct_cal_data)
+
+
+
+def export_ct_cal_to_csv(self):
+    pass
+
 
 def save_changes(self):
     row_count = self.ct_cal_table.rowCount()
@@ -103,14 +182,75 @@ def save_changes(self):
     update_ct_cal_list(self)
     update_ct_cal_view(self)
 
-
-def export_ct_cal_to_csv(self):
-    pass
-
-def update_ct_cal_graph(self):
-    pass
-
+    
+# def plot_ct_cal(self,ct_cal_data):
+#     #cleaning all figures to free up memory
+    
+#     # Close the previous figure if it exists
+#     if hasattr(self, 'fig_ct_cal') and self.fig_ct_cal:
+#         plt.close(self.fig_ct_cal)  # Close the previous figure to release memory
+#     # Check if previous canvas exists, and delete it
+#     if hasattr(self, 'canvas_ct_cal') and self.canvas_ct_cal:
+#         self.canvas_ct_cal.deleteLater()  # Delete the previous canvas
+    
+#     # Check if previous toolbar exists, and delete it
+#     if hasattr(self, 'toolbar_ct_cal') and self.toolbar_ct_cal:
+#         self.toolbar_ct_cal.deleteLater()  # Delete the previous toolbar
+        
 
     
-
+#     self.fig_ct_cal,self.ax_ct_cal=plt.subplots()
+#     if self.selected_background == "Transparent":
+#         # Set plot background to transparent
+#         self.ax_ct_cal.patch.set_alpha(0.0)
+#         self.fig_ct_cal.set_alpha(0.0)
+        
+#         # Customize text and axes properties
+#         self.ax_ct_cal.tick_params(colors='white', labelsize=self.selected_font_size-2)  # White ticks with larger text
+#         self.ax_ct_cal.xaxis.label.set_color('white')
+#         self.ax_ct_cal.yaxis.label.set_color('white')
+#         self.ax_ct_cal.spines['bottom'].set_color('white')
+#         self.ax_ct_cal.spines['top'].set_color('white')
+#         self.ax_ct_cal.spines['left'].set_color('white')
+#         self.ax_ct_cal.spines['right'].set_color('white')
+#     else:
+#         self.ax_ct_cal.tick_params(labelsize=self.selected_font_size-2)  # White ticks with larger text
+        
+#     #plot the data
+#     headers=ct_cal_data.columns.tolist()
+#     HU=ct_cal_data['HU']
+#     density=ct_cal_data[headers[1]]
+#     self.ax_ct_cal.plot(HU,density)
+#     self.ax_ct_cal.set_xlabel('HU', fontsize=self.selected_font_size)
+#     self.ax_ct_cal.set_ylabel(headers[1], fontsize=self.selected_font_size)
     
+#     if self.selected_background == "Transparent":
+#         self.fig_ct_cal.suptitle(f"HU vs {headers[1]}", 
+#                                fontsize=self.selected_font_size + 4,
+#                                color="white")
+#     else:
+#         self.fig_ct_cal.suptitle(f"HU vs {headers[1]}", 
+#                                fontsize=self.selected_font_size + 4)
+    
+
+#     # Create a canvas and toolbar
+#     self.canvas_ct_cal = FigureCanvas(self.fig_ct_cal)
+#     self.canvas_ct_cal.setStyleSheet(f"background-color:{self.selected_background};")
+#     self.toolbar_ct_cal = NavigationToolbar(self.canvas_ct_cal, self)
+
+#     # Check if the container has a layout, set one if not
+#     container = self.ct_cal_plot
+#     if container.layout() is None:
+#         layout = QVBoxLayout(container)
+#         container.setLayout(layout)
+#     else:
+#         # Clear existing content in the container, if any
+#         while container.layout().count():
+#             child = container.layout().takeAt(0)
+#             if child.widget() and not isinstance(child.widget(), NavigationToolbar):
+#                 child.widget().deleteLater()
+
+#     # Add the canvas and toolbar to the container
+#     container.layout().addWidget(self.toolbar_ct_cal)
+#     container.layout().addWidget(self.canvas_ct_cal)
+#     self.canvas_ct_cal.draw()
