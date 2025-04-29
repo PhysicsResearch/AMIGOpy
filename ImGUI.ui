@@ -335,7 +335,7 @@
     <item row="0" column="1" rowspan="5" colspan="2">
      <widget class="QTabWidget" name="tabModules">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="im_display_tab">
        <attribute name="title">
@@ -4570,17 +4570,42 @@
              <rect>
               <x>350</x>
               <y>20</y>
-              <width>441</width>
-              <height>761</height>
+              <width>351</width>
+              <height>431</height>
              </rect>
             </property>
+            <layout class="QGridLayout" name="gridLayout_57">
+             <item row="0" column="0" colspan="2">
+              <widget class="QTableWidget" name="ct_cal_table"/>
+             </item>
+             <item row="1" column="0">
+              <spacer name="ct_cal_spacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>249</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item row="1" column="1">
+              <widget class="QPushButton" name="pushButton_3">
+               <property name="text">
+                <string>Add row</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </widget>
            <widget class="QWidget" name="plot" native="true">
             <property name="geometry">
              <rect>
-              <x>809</x>
+              <x>719</x>
               <y>19</y>
-              <width>741</width>
+              <width>831</width>
               <height>761</height>
              </rect>
             </property>
@@ -6852,9 +6877,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>101</width>
-             <height>47</height>
-
+             <width>587</width>
+             <height>538</height>
             </rect>
            </property>
            <attribute name="label">
@@ -6894,8 +6918,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>147</width>
-             <height>221</height>
+             <width>134</width>
+             <height>194</height>
             </rect>
            </property>
            <attribute name="label">
@@ -7038,8 +7062,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>241</width>
-             <height>179</height>
+             <width>234</width>
+             <height>161</height>
             </rect>
            </property>
            <attribute name="label">
