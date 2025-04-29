@@ -140,6 +140,7 @@ def populate_list_menus(self):
     
     #Ct calibration
     self.ct_cal_list.currentTextChanged.connect(lambda: update_ct_cal_view(self))
+    self.ct_cal_list.addItems(['<New...>'])
     
     
     

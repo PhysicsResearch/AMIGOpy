@@ -33,7 +33,7 @@ from fcn_breathing_curves.functions_edit import applyOperations, undoOperations,
 from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, update_doses_list, update_structure_list, eqd2_calc
 from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc
 from fcn_display.display_images_seg import undo_brush_seg
-from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes
+from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes,add_row_to_ct_table
 
 def initialize_software_buttons(self):
     # IrIS add row dw table
@@ -234,6 +234,7 @@ def initialize_software_buttons(self):
     #CT CALIBRATION--------------------------------------------------------------------------
     self.load_ct_cal.clicked.connect(lambda: load_ct_cal_curve(self))
     self.save_changes_ct_cal.clicked.connect(lambda: save_changes(self))
+    self.ct_cal_add_row.clicked.connect(lambda: add_row_to_ct_table(self))
     
     # Circle ROI -----------------------------------------------------------------------------------
     # display (or not) ROI

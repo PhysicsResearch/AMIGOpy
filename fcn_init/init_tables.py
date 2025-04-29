@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QHeaderView
 from fcn_processing.roi_circle import on_roitable_item_changed
 from PyQt5.QtWidgets import QHeaderView, QAbstractItemView
+from fcn_ctcal.ct_cal import init_ct_cal_table
 
 
 def initialize_software_tables(self):
@@ -70,3 +71,6 @@ def initialize_software_tables(self):
     self.ab_table.setHorizontalHeaderLabels(["Structure Name", "α/β"])
     self.ab_table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # Make it read-only
     self.ab_table.resizeColumnsToContents() 
+    
+    #initialise ct cal table
+    init_ct_cal_table(self)

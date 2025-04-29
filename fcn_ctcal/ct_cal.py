@@ -13,6 +13,34 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
+def init_ct_cal_table(self):
+    self.ct_cal_table.setRowCount(6)
+    self.ct_cal_table.setColumnCount(2)
+    self.ct_cal_table.clear()
+    item0=QTableWidgetItem('HU')
+    item0.setTextAlignment(Qt.AlignCenter)
+    item0.setFlags(item0.flags() & ~Qt.ItemIsEditable)  # Make (0, 0) uneditable
+    self.ct_cal_table.setItem(0, 0, item0)
+    item1 = QTableWidgetItem('Density')
+    item1.setTextAlignment(Qt.AlignCenter)
+    self.ct_cal_table.setItem(0, 1, item1)  # Editable by default
+    # Add 5 empty editable rows below the header
+    for row in range(1, 6):
+        for col in range(6):
+            empty_item = QTableWidgetItem("")
+            empty_item.setTextAlignment(Qt.AlignCenter)
+            self.ct_cal_table.setItem(row, col, empty_item)
+    
+
+def add_row_to_ct_table(self):
+    current_rows = self.ct_cal_table.rowCount()
+    self.ct_cal_table.insertRow(current_rows)  # Add a new row at the bottom
+    
+    # Insert empty, centered items into each column of the new row
+    for col in range(self.ct_cal_table.columnCount()):
+        item = QTableWidgetItem("")
+        item.setTextAlignment(Qt.AlignCenter)
+        self.ct_cal_table.setItem(current_rows, col, item)
 
 def load_ct_cal_curve(self):
     options = QFileDialog.Options()
@@ -28,8 +56,16 @@ def load_ct_cal_curve(self):
         delimiter = ',' if ',' in lines[1] else ';'
     data_ct_cal=pd.read_csv(fileName,skiprows=[0],delimiter=delimiter)
     ct_cal_name=fileName.split('/')[-1].split('.')[0]
+    i=1
     while ct_cal_name in self.ct_cal_curves.keys():
-        ct_cal_name=f'{ct_cal_name}_1'
+        if i>1:
+            splitted_name=ct_cal_name.split('_')
+            if len(splitted_name)>1:
+                ct_cal_name='_'.join(splitted_name[:len(splitted_name)-1])
+            else:
+                ct_cal_name=splitted_name[0]
+        ct_cal_name=f'{ct_cal_name}_{i}'
+        i=i+1
     self.ct_cal_curves[ct_cal_name]=data_ct_cal
     update_ct_cal_list(self)
     
@@ -52,19 +88,21 @@ def update_ct_cal_table(self,ct_cal_data):
     # Set column headers (e.g., 'HU', 'Density', etc.)
     header = ct_cal_data.columns.tolist()
     item0 = QTableWidgetItem(header[0])
+    item0.setTextAlignment(Qt.AlignCenter)
     item0.setFlags(item0.flags() & ~Qt.ItemIsEditable)  # Make (0, 0) uneditable
     self.ct_cal_table.setItem(0, 0, item0)
 
     item1 = QTableWidgetItem(header[1])
+    item1.setTextAlignment(Qt.AlignCenter)
     self.ct_cal_table.setItem(0, 1, item1)  # Editable by default
 
     # Loop through all rows and columns to make all cells editable
     for row in range(n_rows):
         for col in range(n_cols):
             item = QTableWidgetItem(str(ct_cal_data.iloc[row, col]))
+            item.setTextAlignment(Qt.AlignCenter)
             self.ct_cal_table.setItem(row+1, col, item)
 
-    self.ct_cal_table.resizeColumnsToContents()
     self.ct_cal_table.horizontalHeader().setVisible(False)
     self.ct_cal_table.verticalHeader().setVisible(False)
 
@@ -141,10 +179,32 @@ def plot_ct_cal(self, ct_cal_data):
     
 def update_ct_cal_view(self):
     selected_text = self.ct_cal_list.currentText()
-    if selected_text not in self.ct_cal_curves.keys():
-        return 
+
     if selected_text == '<New...>':
-        return
+        init_ct_cal_table(self)
+    # If a previous plot exists, clear it
+        if hasattr(self, 'fig_ct_cal') and self.fig_ct_cal:
+            plt.close(self.fig_ct_cal)
+            self.fig_ct_cal = None
+        if hasattr(self, 'canvas_ct_cal') and self.canvas_ct_cal:
+            self.canvas_ct_cal.deleteLater()
+            self.canvas_ct_cal = None
+        if hasattr(self, 'toolbar_ct_cal') and self.toolbar_ct_cal:
+            self.toolbar_ct_cal.deleteLater()
+            self.toolbar_ct_cal = None
+    
+        # Also clear the layout in the plot container
+        container = self.ct_cal_plot
+        if container.layout() is not None:
+            while container.layout().count():
+                child = container.layout().takeAt(0)
+                if child.widget():
+                    child.widget().deleteLater()
+    
+        return  # Do not proceed to plot or update table with real data
+    
+    elif selected_text not in self.ct_cal_curves.keys():
+        return 
     ct_cal_data=self.ct_cal_curves[selected_text]
     update_ct_cal_table(self, ct_cal_data)
     plot_ct_cal(self, ct_cal_data)
@@ -179,8 +239,21 @@ def save_changes(self):
 
     # Optional: Convert to numeric if needed
     df = df.apply(pd.to_numeric, errors='ignore')
+    df=df.dropna()
     #getting the current table name:
     table_name=self.ct_cal_list.currentText()
+    if table_name=='<New...>':
+        table_name='NewTable'
+        i=1
+        while table_name in self.ct_cal_curves.keys():
+            if i>1:
+                splitted_name=table_name.split('_')
+                if len(splitted_name)>1:
+                   table_name='_'.join(splitted_name[:len(splitted_name)-1])
+                else:
+                    table_name=splitted_name[0]
+            table_name=f'{table_name}_{i}'
+            i=i+1
     self.ct_cal_curves[table_name]=df
     update_ct_cal_list(self)
     self.ct_cal_list.setCurrentText(table_name)
