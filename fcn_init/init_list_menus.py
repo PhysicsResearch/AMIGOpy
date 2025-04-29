@@ -3,6 +3,7 @@ from fcn_processing.Im_process_list   import on_operation_selected
 from fcn_DECT.DECT_table_disp import on_DECT_list_selection_changed
 from fcn_display.disp_plan_data import update_disp_brachy_plan
 from fcn_display.display_images import update_layer_view
+from fcn_ctcal.ct_cal import update_ct_cal_view
 
 def populate_list_menus(self):
     # Populate selection box
@@ -136,6 +137,9 @@ def populate_list_menus(self):
     #Eqd2
     self.dose_list.addItems(['None'])
     self.eqd2_struct_list.addItems(['None'])
+    
+    #Ct calibration
+    self.ct_cal_list.currentTextChanged.connect(lambda: update_ct_cal_view(self))
     
     
     
