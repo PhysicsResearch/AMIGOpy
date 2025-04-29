@@ -38,6 +38,7 @@ def load_ct_cal_curve(self):
 def update_ct_cal_list(self):
     self.ct_cal_list.clear()
     names=[k for k in self.ct_cal_curves.keys()]
+    self.ct_cal_list.addItems(['<New...>'])
     self.ct_cal_list.addItems(names)
 
 
@@ -142,6 +143,8 @@ def update_ct_cal_view(self):
     selected_text = self.ct_cal_list.currentText()
     if selected_text not in self.ct_cal_curves.keys():
         return 
+    if selected_text == '<New...>':
+        return
     ct_cal_data=self.ct_cal_curves[selected_text]
     update_ct_cal_table(self, ct_cal_data)
     plot_ct_cal(self, ct_cal_data)
@@ -180,6 +183,7 @@ def save_changes(self):
     table_name=self.ct_cal_list.currentText()
     self.ct_cal_curves[table_name]=df
     update_ct_cal_list(self)
+    self.ct_cal_list.setCurrentText(table_name)
     update_ct_cal_view(self)
 
     
