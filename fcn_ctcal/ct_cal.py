@@ -3,7 +3,7 @@ import vtk
 from copy import deepcopy
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QFileDialog, QTextEdit, QVBoxLayout, 
-    QWidget, QLineEdit, QLabel, QComboBox, QCheckBox, QTableWidget, QTableWidgetItem,QHeaderView)
+    QWidget, QLineEdit, QLabel, QComboBox, QCheckBox, QTableWidget, QTableWidgetItem,QHeaderView, QInputDialog, QMessageBox)
 
 from PyQt5.QtCore import Qt  # Import Qt to use Qt.ItemIsEditable flag
 from matplotlib.figure import Figure
@@ -21,7 +21,7 @@ def init_ct_cal_table(self):
     item0.setTextAlignment(Qt.AlignCenter)
     item0.setFlags(item0.flags() & ~Qt.ItemIsEditable)  # Make (0, 0) uneditable
     self.ct_cal_table.setItem(0, 0, item0)
-    item1 = QTableWidgetItem('Density')
+    item1 = QTableWidgetItem('DENSITY')
     item1.setTextAlignment(Qt.AlignCenter)
     self.ct_cal_table.setItem(0, 1, item1)  # Editable by default
     # Add 5 empty editable rows below the header
@@ -41,6 +41,39 @@ def add_row_to_ct_table(self):
         item = QTableWidgetItem("")
         item.setTextAlignment(Qt.AlignCenter)
         self.ct_cal_table.setItem(current_rows, col, item)
+        
+def validate_ct_cal_headers(self, data_ct_cal):
+    # Force all column names to uppercase
+    data_ct_cal.columns = [col.upper() for col in data_ct_cal.columns]
+    headers = data_ct_cal.columns.tolist()
+
+    # Check that there are exactly two columns
+    if len(headers) != 2:
+        QMessageBox.warning(self, "Invalid Format", "File must contain exactly two columns.")
+        return None
+
+    # First column must be 'HU'
+    if headers[0] != 'HU':
+        QMessageBox.warning(self, "Invalid Format", "The first column must be 'HU'.")
+        return None
+
+    # Second column must be 'A', 'B', or 'C'
+    possible_headers=['DENSITY','RED','SPR']
+    while headers[1] not in possible_headers:
+        # Ask user to rename the second column
+        text, ok = QInputDialog.getText(
+            self, "Rename Column",
+            f"Second column name '{headers[1]}' is invalid.\nEnter 'DENSITY', 'RED', or 'SPR':"
+        )
+        if not ok:
+            return None  # User canceled
+        if text.upper() in possible_headers:
+            data_ct_cal.columns = ['HU', text.upper()]
+            return data_ct_cal
+        else:
+            QMessageBox.warning(self, "Invalid Input", "Please enter 'DENSITY', 'RED', or 'SPR'.")
+
+    return data_ct_cal
 
 def load_ct_cal_curve(self):
     options = QFileDialog.Options()
@@ -55,6 +88,11 @@ def load_ct_cal_curve(self):
             return  # file too short or empty
         delimiter = ',' if ',' in lines[1] else ';'
     data_ct_cal=pd.read_csv(fileName,skiprows=[0],delimiter=delimiter)
+    #Checking the headers
+    validated_data = validate_ct_cal_headers(self,data_ct_cal)
+    if validated_data is None:
+        return  # User cancelled or headers invalid
+    # Proceed with validated_data
     ct_cal_name=fileName.split('/')[-1].split('.')[0]
     i=1
     while ct_cal_name in self.ct_cal_curves.keys():
@@ -66,7 +104,7 @@ def load_ct_cal_curve(self):
                 ct_cal_name=splitted_name[0]
         ct_cal_name=f'{ct_cal_name}_{i}'
         i=i+1
-    self.ct_cal_curves[ct_cal_name]=data_ct_cal
+    self.ct_cal_curves[ct_cal_name]=validated_data
     update_ct_cal_list(self)
     
     
@@ -137,7 +175,10 @@ def plot_ct_cal(self, ct_cal_data):
     density = ct_cal_data[headers[1]]
     self.ax_ct_cal.plot(HU, density)
     self.ax_ct_cal.set_xlabel('HU', fontsize=self.selected_font_size)
-    self.ax_ct_cal.set_ylabel(headers[1], fontsize=self.selected_font_size)
+    y_label=headers[1]
+    if y_label=='DENSITY':
+        y_label=f'{y_label} (g/$cm^3$)'
+    self.ax_ct_cal.set_ylabel(y_label, fontsize=self.selected_font_size)
 
     title_kwargs = {'fontsize': self.selected_font_size + 4}
     if self.selected_background == "Transparent":
@@ -240,6 +281,7 @@ def save_changes(self):
     # Optional: Convert to numeric if needed
     df = df.apply(pd.to_numeric, errors='ignore')
     df=df.dropna()
+    validate_df=validate_ct_cal_headers(self, df)
     #getting the current table name:
     table_name=self.ct_cal_list.currentText()
     if table_name=='<New...>':
@@ -254,7 +296,7 @@ def save_changes(self):
                     table_name=splitted_name[0]
             table_name=f'{table_name}_{i}'
             i=i+1
-    self.ct_cal_curves[table_name]=df
+    self.ct_cal_curves[table_name]=validate_df
     update_ct_cal_list(self)
     self.ct_cal_list.setCurrentText(table_name)
     update_ct_cal_view(self)
