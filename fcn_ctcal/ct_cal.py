@@ -10,6 +10,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
+from datetime import datetime
 import pandas as pd
 
 
@@ -106,6 +107,7 @@ def load_ct_cal_curve(self):
         i=i+1
     self.ct_cal_curves[ct_cal_name]=validated_data
     update_ct_cal_list(self)
+    self.ct_cal_list.setCurrentText(ct_cal_name)
     
     
     
@@ -251,11 +253,6 @@ def update_ct_cal_view(self):
     plot_ct_cal(self, ct_cal_data)
 
 
-
-def export_ct_cal_to_csv(self):
-    pass
-
-
 def save_changes(self):
     row_count = self.ct_cal_table.rowCount()
     col_count = self.ct_cal_table.columnCount()
@@ -300,7 +297,32 @@ def save_changes(self):
     update_ct_cal_list(self)
     self.ct_cal_list.setCurrentText(table_name)
     update_ct_cal_view(self)
+    return table_name, validate_df #used for export
 
+
+
+def export_ct_cal_to_csv(self):
+    # Save changes and get the table name and DataFrame
+    table_name, data = save_changes(self)  # Assuming data is a pandas DataFrame
+
+    # Get current date and time
+    current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    first_row=f'Exported from AMIGOpy {current_datetime}'
+    output_rows = []
+    output_rows.append([first_row] + [''])
+
+    # Second row: headers
+    output_rows.append(data.columns.tolist())
+
+    # Following rows: data (as rows without header)
+    output_rows.extend(data.values.tolist())
+    export_df = pd.DataFrame(output_rows)
+
+    # Ask user where to save the file
+    filepath, _ = QFileDialog.getSaveFileName(self, "Save CSV", f"{table_name}.csv", "CSV Files (*.csv)")
+    if filepath:
+        export_df.to_csv(filepath, index=False, header=False)
+    
     
 # def plot_ct_cal(self,ct_cal_data):
 #     #cleaning all figures to free up memory
