@@ -14,6 +14,7 @@ from datetime import datetime
 import pandas as pd
 
 
+
 def init_ct_cal_table(self):
     self.ct_cal_table.setRowCount(6)
     self.ct_cal_table.setColumnCount(2)
@@ -31,6 +32,10 @@ def init_ct_cal_table(self):
             empty_item = QTableWidgetItem("")
             empty_item.setTextAlignment(Qt.AlignCenter)
             self.ct_cal_table.setItem(row, col, empty_item)
+    self.ct_cal_table.horizontalHeader().setVisible(False)
+    self.ct_cal_table.verticalHeader().setVisible(False)
+    self.ct_cal_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
     
 
 def add_row_to_ct_table(self):
@@ -145,6 +150,7 @@ def update_ct_cal_table(self,ct_cal_data):
 
     self.ct_cal_table.horizontalHeader().setVisible(False)
     self.ct_cal_table.verticalHeader().setVisible(False)
+    self.ct_cal_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
 def plot_ct_cal(self, ct_cal_data):
     # Clean up previous figure, canvas, and toolbar
@@ -296,7 +302,6 @@ def save_changes(self):
     self.ct_cal_curves[table_name]=validate_df
     update_ct_cal_list(self)
     self.ct_cal_list.setCurrentText(table_name)
-    update_ct_cal_view(self)
     return table_name, validate_df #used for export
 
 
@@ -304,7 +309,6 @@ def save_changes(self):
 def export_ct_cal_to_csv(self):
     # Save changes and get the table name and DataFrame
     table_name, data = save_changes(self)  # Assuming data is a pandas DataFrame
-
     # Get current date and time
     current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     first_row=f'Exported from AMIGOpy {current_datetime}'
