@@ -101,7 +101,10 @@ def disp_seg_image_slice(self):
             slice_data[mask] = 0
         if self.seg_brush == 1:
             mask_hu = (slice_data_im >= self.threshMinSlider.value()) * (slice_data_im <= self.threshMaxSlider.value())
-            slice_data[mask * mask_hu] = 1
+            if self.brushClipHU.isChecked():
+                slice_data[mask * mask_hu] = 1
+            else:
+                slice_data[mask] = 1
 
     data_string = slice_data.tobytes()
     extent = slice_data.shape
