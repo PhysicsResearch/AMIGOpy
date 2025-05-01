@@ -37,16 +37,10 @@ def getDataframeFromTable(self):
     
     if x_index is None or y_index is None:
         return
-    
-    cols = [x_index, y_index]
-    extra_cols = ["time", "phase", "instance", "ends"]
-    for col in range(self.tableViewCSV_BrCv.columnCount()):
-        # if self.tableViewCSV_BrCv.horizontalHeaderItem(col).text() in extra_cols:
-        cols.append(col)
         
     # Extract data from the table widget
     data = {}
-    for col in cols:
+    for col in range(self.tableViewCSV_BrCv.columnCount()):
         column_name = self.tableViewCSV_BrCv.horizontalHeaderItem(col).text()
         data[column_name] = []
         for row in range(0, self.tableViewCSV_BrCv.rowCount()):
@@ -58,13 +52,6 @@ def getDataframeFromTable(self):
                     data[column_name].append(item.text())
 
     self.dfEdit_BrCv = pd.DataFrame(data)
-    if "instance" in self.dfEdit_BrCv.columns and "ends" not in self.dfEdit_BrCv.columns:
-        self.dfEdit_BrCv["ends"] = 0
-        for i in range(len(self.dfEdit_BrCv) - 1):
-            if self.dfEdit_BrCv.loc[i, "instance"] < self.dfEdit_BrCv.loc[i+1, "instance"]:
-                self.dfEdit_BrCv.loc[i, "ends"] = 1 
-                self.dfEdit_BrCv.loc[i+1, "ends"] = 1
-    
     self.dfEdit_BrCv_copy = self.dfEdit_BrCv.copy()
     
     
@@ -114,11 +101,13 @@ def clipCycles(self):
         df = self.dfEdit_BrCv
         min_, max_ = int(df["instance"].min()), int(df["instance"].max())
         for i in range(min_, max_):
-            if df["ends"][df["instance"] == i].sum() < 2:
+            if ((df[df["instance"] == i]["mark"] == "P_min").sum() == 0) or \
+                ((df[df["instance"] == i]["mark"] == "Z").sum() == 0):
                 min_ = i + 1
                 break
+
         for i in range(max_, min_, -1):
-            if df["ends"][df["instance"] == i].sum() < 2:
+            if ((df[df["instance"] == i]["mark"] == "E").sum() == 0):
                 max_ = i - 1
                 break
 
@@ -128,7 +117,6 @@ def clipCycles(self):
         df.loc[:, "instance"] -= df["instance"].min()
         df = df.reset_index(drop=True)
         self.dfEdit_BrCv = df
-
     else:
         return
 
@@ -147,7 +135,6 @@ def cropRange_BrCv_edit(self):
     plotViewData_BrCv_edit(self, self.dfEdit_BrCv)
     
 
-        
 def resetRange_BrCv_edit(self):
     delattr(self, "dfEdit_BrCv")
     init_BrCv_edit(self)
@@ -163,96 +150,147 @@ def setMinZero(self):
     
 def scaleFreq(self):
 
-    df = self.dfEdit_BrCv
-    
-    min_, max_ = int(df["instance"].min()), int(df["instance"].max())
-    for i in range(min_, max_):
-        if df["ends"][df["instance"] == i].sum() < 2:
-            min_ = i + 1
-            break
-    for i in range(max_, min_, -1):
-        if df["ends"][df["instance"] == i].sum() < 2:
-            max_ = i - 1
-            break
+    df = self.dfEdit_BrCv.copy()
     
     time_step_init = df.loc[1, "timestamp"] - df.loc[0, "timestamp"]
     time_step_ms = df.loc[1, "time"] - df.loc[0, "time"]
-    scale_factor = 1/self.scaleFreq_BrCv.value()
-    time_step = int(time_step_init / scale_factor)
+    time_step = int(time_step_init * self.scaleFreq_BrCv.value())
     scale_factor = time_step_init / time_step
-    mark_idxs_P = df.loc[df["mark"] == "P"].index.tolist()
-    mark_idxs_Z = df.loc[df["mark"] == "Z"].index.tolist()
 
-    mark_timestamps_P = df.iloc[mark_idxs_P]["timestamp"].tolist()
-    mark_timestamps_Z = df.iloc[mark_idxs_Z]["timestamp"].tolist()
+    col_names = ["timestamp", "amplitude", "phase", "cycle_time", "instance", "ttlin", "ttlout"] 
+    df = df[df.columns.intersection(col_names)] 
 
-    col_names = ["timestamp", "amplitude", "phase", "instance", "ends", "cycle_time", "ttlin"] 
-    df_copy = pd.DataFrame()
-    for col in col_names:
-        if col in df:
-            df_copy[col] = df[col]
-    
-    df = df_copy.copy()
+    if "instance" in df.columns:
+        t0 = 0
+        df_scaled = pd.DataFrame()
+        for i in df["instance"].unique():
+            df_i = df[df["instance"] == i].copy()
+            
+            # Convert the time column to TimedeltaIndex for resampling
+            df_i["timedelta"] = pd.to_timedelta(df_i["timestamp"], unit='ms')
 
-    # Convert the time column to TimedeltaIndex for resampling
-    df["timedelta"] = pd.to_timedelta(df["timestamp"], unit='ms')
-    
-    # Create a new index for resampling at 1ms intervals
-    new_index = pd.timedelta_range(start=df["timedelta"].min(), end=df["timedelta"].max(), freq='ms')
-    
-    # Reindex the DataFrame to the new index, keeping original data points
-    df = df.set_index("timedelta").reindex(new_index.union(df["timedelta"])).sort_index()
-    
-    # Interpolate only the missing values
-    df = df.interpolate(method='linear', limit_area='inside')
-    df = df.resample(f"{time_step}ms").median()
-    df["instance"] = df["instance"].round()
-    df["ttlin"] = df["ttlin"].round()
+            # Create a new index for resampling at 1ms intervals
+            new_index = pd.timedelta_range(start=df_i["timedelta"].min(), end=df_i["timedelta"].max(), freq='ms')
 
-    df["timestamp"] = np.linspace(0, (len(df) - 1) * time_step_init, len(df))
-    df["time"] = np.linspace(0, (len(df) - 1) * time_step_ms, len(df))
+            # Reindex the DataFrame to the new index, keeping original data points
+            df_i = df_i.set_index("timedelta").reindex(new_index.union(df_i["timedelta"])).sort_index()
+        
+            # Interpolate only the missing values
+            df_i = df_i.interpolate(method='linear', limit_area='inside')
+            df_i = df_i.resample(f"{time_step}ms").median()
+            if "ttlin" in df_i.columns:
+                df_i["ttlin"] = df_i["ttlin"].round()
 
-    if "instance" in df:
-        df["ends"] = 0
-        for i in range(min_, max_+1):
-            min_timestamp = df[df["instance"] == i]["timestamp"].idxmin()
-            max_timestamp = df[df["instance"] == i]["timestamp"].idxmax()
+            df_i["timestamp"] = np.linspace(t0, t0 + (len(df_i) - 1) * time_step_init, len(df_i))
+            df_i["time"] = np.linspace(t0 / 1e3, t0 / 1e3 + (len(df_i) - 1) * time_step_ms, len(df_i))
+            t0 = df_i["timestamp"].max() + time_step_init
+            df_i = df_i.reset_index(drop=True)
 
-            df.loc[min_timestamp, "ends"] = 1
-            df.loc[max_timestamp, "ends"] = 1
+            # Define the mark column
+            df_i["mark"] = np.nan
+            if self.curve_origin == "created":
+                df_i.loc[0, "mark"] = "P_min"
+                max_idx = df_i["amplitude"].idxmax()
+                df_i.loc[max_idx, "mark"] = "Z"
+                df_i.loc[len(df_i) - 1, "mark"] = "E"
+            elif self.curve_origin == "measured":
+                df_i.loc[0, "mark"] = "Z"
+                min_idx = df_i["amplitude"].idxmin()
+                df_i.loc[min_idx, "mark"] = "P_min"
+                df_i.loc[len(df_i) - 1, "mark"] = "E"
 
-    df = df.reset_index(drop=True)
+            # Concatenate the scaled instance DataFrame
+            df_scaled = pd.concat([df_scaled, df_i], ignore_index=True)
 
-    df["mark"] = np.nan
-    for t in mark_timestamps_P:
-        df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "P"
-    for t in mark_timestamps_Z:
-        df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "Z"
+        self.dfEdit_BrCv = df_scaled
+        del df_i, df_scaled
 
-    self.dfEdit_BrCv = df
+    else:
+        mark_timestamps_P = df.loc[df["mark"] == "P_min", "timestamp"].tolist()
+        mark_timestamps_Z = df.loc[df["mark"] == "Z", "timestamp"].tolist()
+        mark_timestamps_E = df.loc[df["mark"] == "E", "timestamp"].tolist()
+
+        # Convert the time column to TimedeltaIndex for resampling
+        df["timedelta"] = pd.to_timedelta(df["timestamp"], unit='ms')
+        
+        # Create a new index for resampling at 1ms intervals
+        new_index = pd.timedelta_range(start=df["timedelta"].min(), end=df["timedelta"].max(), freq='ms')
+        
+        # Reindex the DataFrame to the new index, keeping original data points
+        df = df.set_index("timedelta").reindex(new_index.union(df["timedelta"])).sort_index()
+        
+        # Interpolate only the missing values
+        df = df.interpolate(method='linear', limit_area='inside')
+        df = df.resample(f"{time_step}ms").median()
+        df["instance"] = df["instance"].round()
+        df["ttlin"] = df["ttlin"].round()
+
+        df["timestamp"] = np.linspace(0, (len(df) - 1) * time_step_init, len(df))
+        df["time"] = np.linspace(0, (len(df) - 1) * time_step_ms, len(df))
+
+        df = df.reset_index(drop=True)
+
+        df["mark"] = np.nan
+        for t in mark_timestamps_P:
+            df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "P_min"
+        for t in mark_timestamps_Z:
+            df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "Z"
+        for t in mark_timestamps_E:
+            df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "E"
+        self.dfEdit_BrCv = df
     del df
     
     
 def scaleAmpl(self):
+    """Function to scale amplitude of the fragment
+        Input:
+            - df: fragment to scale [pandas.dataframe]
+            - scaleAmpl_BrCv: factor to scale amplitude [float],
+        Output:
+            - pandas.DataFrame with scaled amplitude
+    """
     scale_factor = self.scaleAmpl_BrCv.value()
     self.dfEdit_BrCv["amplitude"] *= scale_factor
     
     
 def shiftAmpl(self):
+    """Function to shift amplitude of the fragment
+        Input:
+            - df: fragment to shift [pandas.dataframe]
+            - shiftAmpl_BrCv: value to shift amplitude [float],
+        Output:
+            - pandas.DataFrame with shifted amplitude
+    """
     self.dfEdit_BrCv["amplitude"] += self.shiftAmpl_BrCv.value()
     
     
 def setMaxThresh(self):
+    """Function to clip maximum amplitude of the fragment
+        Input:
+            - df: fragment to clip maximum amplitude [pandas.dataframe]
+            - maxAmplThresh_BrCv: value to clip amplitude [float],
+        Output:
+            - pandas.DataFrame with clipped amplitude
+    """
     t = self.maxAmplThresh_BrCv.value()
     self.dfEdit_BrCv["amplitude"][self.dfEdit_BrCv["amplitude"] > t] = t
     
 
 def applyBreathhold(self):
+    """Function to insert breathhold in the fragment
+        Input:
+            - df: fragment to insert breathhold [pandas.dataframe]
+            - breathholdStart: timestamp at which to insert breathhold [float],
+            - breathholdDuration: duration of breathhold [float],
+        Output:
+            - pandas.DataFrame with shifted amplitude
+    """
     
     if "instance" in self.dfEdit_BrCv.columns:
     
         df = self.dfEdit_BrCv
         x_col = self.editXAxis_BrCv.currentText()
+        # Get the breathhold duration value
         duration = self.breathholdDuration.value()
     
         timestep_ms = df.loc[1, "timestamp"] - df.loc[0, "timestamp"]
@@ -263,10 +301,12 @@ def applyBreathhold(self):
         else:
             i_start = int(self.breathholdStart.value() / timestep)
     
-        max_idx = df.groupby(by="instance").idxmax()["amplitude"].tolist()
+        # Get the index of the maximum amplitude for each instance
+        max_idx = df.groupby(by="instance")["amplitude"].idxmax().tolist()
         idx = min(max_idx, key=lambda x:abs(x-i_start)) 
         n_time = int(duration / timestep_ms * 1e3) 
             
+        # Copy the row at breathhold index and repeat it n_time times
         b = pd.concat([df.iloc[idx:idx+1]] * n_time)
         b = b.reset_index(drop=True)
         
@@ -277,13 +317,20 @@ def applyBreathhold(self):
         df.loc[idx:, "timestamp"] += (n + 1) * timestep_ms
         df.loc[idx:, "time"] += (n + 1) * timestep
         
+        # Insert the copied rows into the original DataFrame
         df = pd.concat([df.iloc[:idx], b, df.iloc[idx:]]).reset_index(drop=True)
-        pd.set_option('display.max_rows', 500)
-        pd.reset_option('display.max_rows')
         self.dfEdit_BrCv = df
         
 
 def applyOperations(self):
+    """Function to apply operation to the fragment
+        Input:
+            - df: fragment to apply operations [pandas.dataframe]
+            - breathholdStart: timestamp at which to insert breathhold [float],
+            - breathholdDuration: duration of breathhold [float],
+        Output:
+            - pandas.DataFrame with shifted amplitude
+    """
     
     self.dfEdit_BrCv_copy = self.dfEdit_BrCv.copy()
     
@@ -292,28 +339,35 @@ def applyOperations(self):
         
     if self.shiftAmpl_BrCv.value() != 0:
         shiftAmpl(self)
-        
+
     if self.scaleFreq_BrCv.value() != 1:
         scaleFreq(self)
-        
+ 
     if self.applyBreathhold.isChecked():
         applyBreathhold(self)
         
+    # Set minimum value to zero, to get relative amplitudes
     if self.setMinZero_BrCv.isChecked():
         setMinZero(self)
         
     setMaxThresh(self)
     
-    # if self.copyCurve_BrCv.value() > 1:
-    #     copyCurve(self)
-        
+    # Calculate additional columns for the edited dataframe
     self.dfEdit_BrCv = addColumns(self, self.dfEdit_BrCv)
-        
+
+    # Reset the plot view to the new data range
     initXRange(self)
     plotViewData_BrCv_edit(self)
     
     
 def undoOperations(self):
+    """Function to undo the last operations applied to the fragment
+        Input: 
+            - dfEdit_BrCv_copy: latest copy of the fragment [pandas.dataframe]
+        Output:
+            - pandas.DataFrame of fragment with operations undone [pandas.dataframe]
+    """
+
     self.dfEdit_BrCv = self.dfEdit_BrCv_copy.copy()
     initXRange(self)
     plotViewData_BrCv_edit(self)
@@ -336,7 +390,7 @@ def copyCurve(self):
     N = self.copyCurve_BrCv.value()
     timestep = df.iloc[1]["timestamp"] - df.iloc[0]["timestamp"]
     
-    if "instance" in df.columns:
+    if "instance" in df.columns and N > 1:
         # If instance information available, scale last cycle from minimum
         # until the end to ensure that the beginning and end of fragment match
         min1 = df[df["instance"] == df["instance"].max()]["amplitude"].min()
@@ -363,17 +417,30 @@ def copyCurve(self):
     
     
 def exportData(self):
+    """Function to export all the columns of the edited fragment to a CSV file
+        Input:
+            - df: fragment to apply operations [pandas.dataframe]
+            - breathholdStart: timestamp at which to insert breathhold [float],
+            - breathholdDuration: duration of breathhold [float],
+        Output:
+            - pandas.DataFrame with shifted amplitude
+    """
+    
     if not hasattr(self, "dfEdit_BrCv"):
         try:
             getDataframeFromTable(self)
         except:
             return
     self.dfEdit_BrCv_copy = self.dfEdit_BrCv.copy()
+    # Copy the fragment N times
     copyCurve(self)
+    # Prompt user to select a folder
     options = QFileDialog.Options()
     folder = QFileDialog.getExistingDirectory(self, options=options)
+    # Save the DataFrame to a CSV file in the selected folder
     fileName = os.path.join(folder, self.editExportFile_BrCv.text()+".csv")
     self.dfEdit_BrCv.to_csv(fileName)
+    # Reset the dataframe to one copy
     undoOperations(self)
     
     
@@ -385,13 +452,11 @@ def exportGCODE(self):
     if not folder_path:
         return  # User canceled, exit the function
 
-    # Get the file name and number of columns
+    # Get the file name 
     file_name = self.editExportFile_BrCv.text()
-    
-    # Prepare the file path
     file_path = os.path.join(folder_path, file_name + ".csv")
     
-    # Extract data from the table widget
+    # Copy the fragment N times and extract timestamp and amplitude data
     copyCurve(self)
     df = self.dfEdit_BrCv[["timestamp", "amplitude"]]
     
@@ -417,9 +482,8 @@ def exportGCODE(self):
     # Calculate velocity and acceleration for each column
     results = pd.DataFrame()
     results[time_col] = df[time_col].dt.total_seconds()
-    axis_labels = ['X', 'Y', 'Z', 'U', 'W']  # Define axis labels
-    # N_repetitions
-    num_repetitions = self.copyCurve_BrCv.value()
+    axis_labels = ['X', 'Y', 'Z']  # Define axis labels
+
     # Write G-code file
     for col in df.columns[1:]:
         results[col] = df[col]
@@ -427,14 +491,19 @@ def exportGCODE(self):
         vel = df[col].diff().shift(-1) / df[time_col].diff().shift(-1).dt.total_seconds()
         vel.iloc[-1] = vel.iloc[-2]  # Copy the second last value to the last element
         results[f'{col}_vel'] = vel
+        # Calculate speed in mm/min
+        results[f'{col}_speed'] = abs(vel) * 60 
         
         # Calculate acceleration
         accel = vel.diff() / df[time_col].diff().dt.total_seconds()
         accel.iloc[-1] = accel.iloc[-2]  # Copy the second last value to the last element
         results[f'{col}_accel'] = accel
-    #       
-    results.to_csv(file_path, index=False, mode='w')
-    print(f"Exported data to {file_path}")
+     
+    # Save results to CSV file
+    try:
+        results.to_csv(file_path, index=False, mode='w')
+    except:
+        return
     #
     gcode_file_path = os.path.join(folder_path, file_name + ".gcode")
     gcode_lines = ["G90"]  # Initialize G-code lines with absolute positioning command
@@ -443,21 +512,21 @@ def exportGCODE(self):
         if i == 0:
             continue  # Skip the first row for G-code generation
         # Calculate speed in mm per minute
-        speed = abs(row[f'{df.columns[1]}_vel'] * 60)  # Convert m/s to mm/min
+        speed = row[f'{df.columns[1]}_speed'] 
         # Prepare G-code line
         gcode_line = f"G0 F{speed:.6f}"
-        for j, col in enumerate(df.columns[1:]):
+        for j, col in enumerate(axis_labels):
             if j < len(axis_labels):
-                gcode_line += f" {axis_labels[j]}{row[col]:.6f}"  # X, Y, Z, U, W
+                gcode_line += f" {axis_labels[j]}{row[f'{df.columns[1]}']:.6f}"  # X, Y, Z, U, W
             else:
-                gcode_line += f" {chr(85 + j)}{row[col]:.6f}"  # Continue with U, V, W, etc. if more than 5 columns
+                gcode_line += f" {chr(85 + j)}{row[f'{df.columns[1]}']:.6f}"  # Continue with U, V, W, etc. if more than 5 columns
         gcode_lines.append(gcode_line)
 
     # Write G-code lines to the file
     with open(gcode_file_path, 'w') as gcode_file:
         gcode_file.write('\n'.join(gcode_lines))
 
-    print(f"Generated G-code file at {gcode_file_path}")
+    # Set the DataFrame back to non-interpolated state
     undoOperations(self)
     
     
