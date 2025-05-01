@@ -273,7 +273,7 @@ def setMaxThresh(self):
             - pandas.DataFrame with clipped amplitude
     """
     t = self.maxAmplThresh_BrCv.value()
-    self.dfEdit_BrCv["amplitude"][self.dfEdit_BrCv["amplitude"] > t] = t
+    self.dfEdit_BrCv[self.dfEdit_BrCv["amplitude"] > t]["amplitude"] = t
     
 
 def applyBreathhold(self):
