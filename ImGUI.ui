@@ -2830,7 +2830,7 @@
         <item row="0" column="0">
          <widget class="QTabWidget" name="Plan_tabs">
           <property name="currentIndex">
-           <number>0</number>
+           <number>3</number>
           </property>
           <widget class="QWidget" name="Brachy_plan_tab">
            <attribute name="title">
@@ -4566,6 +4566,659 @@
                </size>
               </property>
              </spacer>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="Plan_Evaluation">
+           <attribute name="title">
+            <string>Plan Evaluation </string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_59" columnstretch="1,2,1">
+            <item row="0" column="0">
+             <layout class="QGridLayout" name="plan_eval_grid_left" columnstretch="1,2,2">
+              <item row="18" column="2">
+               <widget class="QCheckBox" name="dose_unit_Gy">
+                <property name="text">
+                 <string>Gy</string>
+                </property>
+               </widget>
+              </item>
+              <item row="17" column="1">
+               <spacer name="HS_6">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="17" column="2">
+               <widget class="QLabel" name="DoseUnit">
+                <property name="text">
+                 <string>Dose Unit</string>
+                </property>
+               </widget>
+              </item>
+              <item row="17" column="0">
+               <widget class="QLabel" name="VolumeUnit">
+                <property name="text">
+                 <string>Volume Unit</string>
+                </property>
+               </widget>
+              </item>
+              <item row="16" column="1">
+               <spacer name="HS_1">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="13" column="0" colspan="3">
+               <widget class="QListWidget" name="struct_list_DVH"/>
+              </item>
+              <item row="20" column="2">
+               <widget class="QPushButton" name="button_calculate_dvhs">
+                <property name="text">
+                 <string>Calculate DVHs</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="select_dose">
+                <property name="text">
+                 <string>Select Dose</string>
+                </property>
+               </widget>
+              </item>
+              <item row="16" column="2">
+               <widget class="QLineEdit" name="box_reference_dose"/>
+              </item>
+              <item row="20" column="0" colspan="2">
+               <spacer name="HS_2">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="19" column="0">
+               <widget class="QCheckBox" name="volume_unit_percentage">
+                <property name="text">
+                 <string>%</string>
+                </property>
+               </widget>
+              </item>
+              <item row="18" column="1">
+               <spacer name="HS_5">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="6" column="1" colspan="2">
+               <spacer name="HS_8">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="19" column="1">
+               <spacer name="HS_4">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="14" column="0" colspan="2">
+               <spacer name="HS_3">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="18" column="0">
+               <widget class="QCheckBox" name="volume_unit_cm3">
+                <property name="text">
+                 <string>cm³</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QLabel" name="Structures">
+                <property name="text">
+                 <string>Structures</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1" colspan="2">
+               <spacer name="HS_7">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="19" column="2">
+               <widget class="QCheckBox" name="dose_unit_percentage">
+                <property name="text">
+                 <string>%</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0" colspan="3">
+               <widget class="QListWidget" name="box_select_dose"/>
+              </item>
+              <item row="16" column="0">
+               <widget class="QLabel" name="reference_dose">
+                <property name="text">
+                 <string>Reference Dose</string>
+                </property>
+               </widget>
+              </item>
+              <item row="14" column="2">
+               <widget class="QPushButton" name="button_update_select_dose">
+                <property name="text">
+                 <string>Update</string>
+                </property>
+               </widget>
+              </item>
+              <item row="15" column="0" colspan="3">
+               <widget class="Line" name="horizontalline_left_grid">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="0" column="1">
+             <layout class="QGridLayout" name="plan_eval_grid_middle" rowstretch="0,4,4,0,0,0,0,0,0,0" columnstretch="1,2,1">
+              <item row="0" column="0">
+               <widget class="QLabel" name="DVHs">
+                <property name="text">
+                 <string>Dose Volume Histogram</string>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="2">
+               <widget class="QPushButton" name="button_export_dose_stats_to_excel">
+                <property name="text">
+                 <string>Export to CSV</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0" colspan="3">
+               <widget class="QGraphicsView" name="view_dvhs"/>
+              </item>
+              <item row="5" column="2">
+               <widget class="QPushButton" name="button_delete_column">
+                <property name="text">
+                 <string>Delete column</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="Line" name="line_split_planevaluation_2">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0" colspan="3">
+               <widget class="QTableWidget" name="table_dose_stats"/>
+              </item>
+              <item row="5" column="0">
+               <widget class="QLabel" name="DoseStatistics">
+                <property name="text">
+                 <string>Dose Statistics </string>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="0">
+               <widget class="Line" name="verticalline_middle_grid">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="1">
+               <spacer name="HS_9">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="7" column="0">
+               <widget class="QPushButton" name="button_update_plot">
+                <property name="text">
+                 <string>Plot</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="1">
+               <spacer name="HS_10">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="2" column="0" colspan="3">
+               <widget class="Line" name="line_split_planevaluation_3">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1" colspan="2">
+               <spacer name="HS_11">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </item>
+            <item row="0" column="2">
+             <layout class="QGridLayout" name="plan_eval_grid_right" rowstretch="4,7,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0" columnstretch="1,1,1,1">
+              <item row="12" column="0">
+               <widget class="QLabel" name="Dxx">
+                <property name="text">
+                 <string>Dx</string>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="1">
+               <widget class="QComboBox" name="vxx_input_dropdown"/>
+              </item>
+              <item row="11" column="2">
+               <widget class="QLabel" name="vxx_t_label">
+                <property name="text">
+                 <string>to</string>
+                </property>
+               </widget>
+              </item>
+              <item row="16" column="0" colspan="3">
+               <spacer name="HS_12">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="15" column="0">
+               <widget class="QLineEdit" name="dxx_input_value"/>
+              </item>
+              <item row="8" column="0" colspan="4">
+               <spacer name="HS_13">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="15" column="1">
+               <widget class="QComboBox" name="dxx_input_dropdown"/>
+              </item>
+              <item row="16" column="3">
+               <widget class="QPushButton" name="button_calculate_vxx_dxx">
+                <property name="text">
+                 <string>Calculate / Add to table</string>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="1" colspan="3">
+               <spacer name="HS_16">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="11" column="0">
+               <widget class="QLineEdit" name="vxx_input_value"/>
+              </item>
+              <item row="10" column="0">
+               <widget class="QLabel" name="Vxx">
+                <property name="text">
+                 <string>Vx</string>
+                </property>
+               </widget>
+              </item>
+              <item row="15" column="3">
+               <widget class="QComboBox" name="dxx_output_dropdown"/>
+              </item>
+              <item row="15" column="2">
+               <widget class="QLabel" name="dxx_to_label">
+                <property name="text">
+                 <string>to</string>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="1" colspan="3">
+               <spacer name="HS_14">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="11" column="3">
+               <widget class="QComboBox" name="vxx_output_dropdown"/>
+              </item>
+              <item row="17" column="0" colspan="4">
+               <spacer name="HS_15">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="7" column="0" colspan="4">
+               <widget class="Line" name="line_grid_right">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0" rowspan="2" colspan="4">
+               <widget class="QTabWidget" name="tab_errors">
+                <property name="currentIndex">
+                 <number>0</number>
+                </property>
+                <widget class="QWidget" name="uncertainty">
+                 <attribute name="title">
+                  <string>Uncertainty</string>
+                 </attribute>
+                 <widget class="QLabel" name="Mean">
+                  <property name="geometry">
+                   <rect>
+                    <x>80</x>
+                    <y>10</y>
+                    <width>69</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>Mean</string>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_Y_std_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>210</x>
+                    <y>80</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="NumberOfInteractions">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>250</y>
+                    <width>171</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>Number of Interactions</string>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="Y">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>80</y>
+                    <width>31</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>Y</string>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_X_std_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>210</x>
+                    <y>40</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_Z_mean_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>70</x>
+                    <y>120</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_X_mean_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>70</x>
+                    <y>40</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="StandardDeviation">
+                  <property name="geometry">
+                   <rect>
+                    <x>210</x>
+                    <y>10</y>
+                    <width>69</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>St. Dev.</string>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="X">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>40</y>
+                    <width>31</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>X</string>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="T">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>160</y>
+                    <width>31</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>T</string>
+                  </property>
+                 </widget>
+                 <widget class="QPushButton" name="button_apply_uncertainty">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>310</y>
+                    <width>89</width>
+                    <height>28</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>Apply</string>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_T_mean_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>70</x>
+                    <y>160</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_Z_std_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>210</x>
+                    <y>120</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_T_std_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>210</x>
+                    <y>160</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_Y_mean_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>70</x>
+                    <y>80</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="Z">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>120</y>
+                    <width>31</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>Z</string>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_number_of_interactions">
+                  <property name="geometry">
+                   <rect>
+                    <x>210</x>
+                    <y>250</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                </widget>
+                <widget class="QWidget" name="error_simulation">
+                 <attribute name="title">
+                  <string>Error Simulation</string>
+                 </attribute>
+                </widget>
+               </widget>
+              </item>
+             </layout>
             </item>
            </layout>
           </widget>
@@ -6836,7 +7489,7 @@ p, li { white-space: pre-wrap; }
              <x>0</x>
              <y>0</y>
              <width>587</width>
-             <height>553</height>
+             <height>538</height>
             </rect>
            </property>
            <attribute name="label">
@@ -6876,8 +7529,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>587</width>
-             <height>553</height>
+             <width>263</width>
+             <height>194</height>
             </rect>
            </property>
            <attribute name="label">
@@ -6902,7 +7555,7 @@ p, li { white-space: pre-wrap; }
               <property name="title">
                <string>Drawing</string>
               </property>
-              <layout class="QGridLayout" name="gridLayout_SegEditDraw" columnstretch="1,1,3,0">
+              <layout class="QGridLayout" name="gridLayout_SegEditDraw" columnstretch="1,1,3">
                <item row="1" column="0">
                 <widget class="QToolButton" name="segEraseButton">
                  <property name="text">
@@ -7027,8 +7680,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>206</width>
-             <height>147</height>
+             <width>234</width>
+             <height>149</height>
             </rect>
            </property>
            <attribute name="label">
