@@ -62,33 +62,38 @@ def create_contour_masks(self):
     spacing = (z_spacing, y_spacing, x_spacing)
     origin  = (origin_x, origin_y, origin_z)
 
-    structures_keys  = data_dict.get('structures_keys', [])
-    structures_dict  = data_dict.get('structures', {})
+    structures_keys = data_dict.get('structures_keys', [])
+    structures_dict = data_dict.get('structures', {})
     structures_names = data_dict.get('structures_names', [])
 
     struc_names = target_series_dict['structures_names']
-    struc_keys  = target_series_dict['structures_keys']
+    struc_keys = target_series_dict['structures_keys']
 
-    #
     self.progressBar.setValue(10)
 
     for idx, s_key in enumerate(structures_keys):
-        structure = structures_dict.get(s_key)        
+        structure = structures_dict.get(s_key)
 
         # Progress bar
         self.progressBar.setValue(int((idx / len(structures_keys)) * 100))
-
-        if not structure:
-            continue
 
         widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(idx))
         if not widget.checkbox.isChecked():
             continue
 
-        mask_3d = create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, origin)
-        name = structures_names[idx] if idx < len(structures_names) else f"Structure_{current_structure_index}"
+        contour_seq = getattr(structure, 'ContourSequence', None)
 
-        # Create a new unique key for the structure clearly:
+        if not contour_seq:
+            print(f"Structure '{structures_names[idx]}' has no ContourSequence. Creating empty mask explicitly.")
+            mask_3d = np.zeros(mask_shape, dtype=np.uint8)
+        else:
+            mask_3d = create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, origin)
+            if not mask_3d.any():
+                print(f"Structure '{structures_names[idx]}' resulted in empty mask. Creating empty mask explicitly.")
+                mask_3d = np.zeros(mask_shape, dtype=np.uint8)
+
+        # Ensure names strictly follow the index
+        name = structures_names[idx] if idx < len(structures_names) else f"Structure_{current_structure_index:03d}"
         new_s_key = f"Structure_{current_structure_index:03d}"
 
         struc_names.append(name)
@@ -101,29 +106,21 @@ def create_contour_masks(self):
 
         vtk_actors_2d = {'axial': {}, 'sagittal': {}, 'coronal': {}}
 
-        for z_idx in range(mask_shape[0]):  # Iterate over all axial slices
+        for z_idx in range(mask_shape[0]):
             slice_2d = mask_3d[z_idx, :, :]
-            
             contours = extract_contours_from_binary_slice(slice_2d)
-            if not contours:
-                continue  # Skip empty slices
+            if contours:
+                vtk_poly = contours_to_vtk_polydata(contours, (y_spacing, x_spacing))
+                vtk_actors_2d['axial'][z_idx] = create_actor_2d(vtk_poly)
 
-            vtk_poly = contours_to_vtk_polydata(contours, (y_spacing, x_spacing))
-            actor = create_actor_2d(vtk_poly)
-
-            # Store the actor with the correct index
-            vtk_actors_2d['axial'][z_idx] = actor  # Ensure index matches later retrieval
-
-        # **Sagittal slices**
-        for x_idx in range(mask_shape[2]):  
+        for x_idx in range(mask_shape[2]):
             slice_2d = mask_3d[:, :, x_idx]
             contours = extract_contours_from_binary_slice(slice_2d)
             if contours:
                 vtk_poly = contours_to_vtk_polydata(contours, (z_spacing, y_spacing))
                 vtk_actors_2d['sagittal'][x_idx] = create_actor_2d(vtk_poly)
 
-        # **Coronal slices**
-        for y_idx in range(mask_shape[1]):  
+        for y_idx in range(mask_shape[1]):
             slice_2d = mask_3d[:, y_idx, :]
             contours = extract_contours_from_binary_slice(slice_2d)
             if contours:
@@ -132,16 +129,13 @@ def create_contour_masks(self):
 
         target_series_dict['structures'][new_s_key]['VTKActors2D'] = vtk_actors_2d
 
-        # Increment counter clearly
         current_structure_index += 1
 
-    # Update lists clearly:
-    target_series_dict['structures_keys']  = struc_keys
+    # Update structure lists clearly
+    target_series_dict['structures_keys'] = struc_keys
     target_series_dict['structures_names'] = struc_names
 
-    # Final progress bar clearly set
     self.progressBar.setValue(100)
-
     populate_DICOM_tree(self)
 
 

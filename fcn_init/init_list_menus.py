@@ -91,6 +91,20 @@ def populate_list_menus(self):
     # Populate the QComboBox
     self.IrIS_CorrFrame_operation.addItems(methods)
     
+    # Brachy -----------------------------------------------------------
+    #
+    along_away = ["Reference", "Calculated", "Comparison"]
+    self.brachy_along_away_type = self.findChild(QtWidgets.QComboBox, 'comboBox_tg43_along_away')
+    self.brachy_along_away_type.addItems(along_away)
+    #
+    DoseGrid = ["0.5","1","2","3","4","5"]
+    self.brachy_tg43_dose_grid = self.findChild(QtWidgets.QComboBox, 'Tg43_dose_grid')
+    self.brachy_tg43_dose_grid.addItems(DoseGrid)
+    #
+    MatrixSize = ["50x50","100x100","150x150","200x200"]
+    self.brachy_tg43_matrix_size = self.findChild(QtWidgets.QComboBox, 'Tg43_matrix_size_2')
+    self.brachy_tg43_matrix_size.addItems(MatrixSize)
+    #
     # Brachy channel or dwell view
     # 
     methods = ["Dwells", "Channels"]
@@ -128,10 +142,10 @@ def populate_list_menus(self):
     self.brachy_lin_sel_col.addItems(methods)
     self.brachy_p1_sel_col.addItems(methods)
     # Set default selections
-    self.brachy_dw_sel_col.setCurrentText("Red")  # First combo box starts with "Green"
+    self.brachy_dw_sel_col.setCurrentText("Red")      # First combo box starts with "Green"
     self.brachy_lin_sel_col.setCurrentText("White")   # Second combo box starts with "Blue"
-    self.brachy_p1_sel_col.setCurrentText("Blue")    # Third combo box starts with "Red"
-    
+    self.brachy_p1_sel_col.setCurrentText("Blue")     # Third combo box starts with "Red"
+     
     
     #Eqd2
     self.dose_list.addItems(['None'])

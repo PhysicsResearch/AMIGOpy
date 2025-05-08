@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 import numpy as np
 # relevant variables
 #
@@ -38,6 +39,29 @@ def initialize_software_variables(self):
     self.Im_Offset_comp      = np.zeros((12,4, 3))
     self.display_comp_data   = {}
     self.left_but_pressed    = np.zeros(2)  
+
+    # TG43 - Brachy
+    # ——— TG43 storage structure ———
+    # create a simple container for TG43
+    self.TG43 = SimpleNamespace()
+    # within it, add an activesource container
+    self.TG43.activesource = SimpleNamespace(
+        airkerma_strength=None,
+        source_model=None, 
+        source_diameter=None,
+        source_length_mm=None,
+        dose_rate_constant=None,
+        radial=None,
+        radial_fit=None,
+        anisotropy=None,
+        along_away_reference=None,
+        along_away_reference_calc=None,
+        DoseMatrix=None,
+        DoseMatrix_res_mm=None,
+        DoseMatrix_size=None
+    )
+    # —————————————————————————— 
+
     
     self.slice_thick_seg      = np.zeros(4)
     self.pixel_spac_seg       = np.zeros((4,2))
