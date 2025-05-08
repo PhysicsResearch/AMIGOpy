@@ -1,6 +1,8 @@
 import vtk
-from PyQt5.QtWidgets import QApplication, QPushButton, QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QApplication, QPushButton, QWidget, QVBoxLayout, QAction, QShortcut
 from PyQt5 import QtWidgets  # Import the correct module for QMessageBox
+from PyQt5.QtGui import QKeySequence
+from PyQt5.QtCore import Qt
 from fcn_init.vtk_comparison_axes     import create_vtk_elements_comp
 from fcn_IrIS.FindDwell_IrIS import add_row_dw_table, remove_row_dw_table
 from fcn_processing.Im_process_list import image_processing_undo, run_image_processing
@@ -30,6 +32,8 @@ from fcn_breathing_curves.functions_import import openCSVFile_BrCv, setParams, c
 from fcn_breathing_curves.functions_plot import calcStats, plotViewData_BrCv_plot, exportPlot
 from fcn_breathing_curves.functions_edit import applyOperations, undoOperations, exportData, plotViewData_BrCv_edit, cropRange_BrCv_edit, exportGCODE#, cropCurve_BrCv_edit
 from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, update_doses_list, update_structure_list, eqd2_calc
+from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc
+from fcn_display.display_images_seg import undo_brush_seg
 
 def initialize_software_buttons(self):
     # IrIS add row dw table
@@ -67,8 +71,21 @@ def initialize_software_buttons(self):
     self.cropRangeEdit_BrCv.clicked.connect(lambda: cropRange_BrCv_edit(self))
     self.cropRangeEdit_BrCv.setStyleSheet("background-color: blue; color:white")
 
-
-
+    # Segmentation
+    self.applyThreshSeg.clicked.connect(lambda: threshSeg(self))
+    self.applyThreshSeg.setStyleSheet("background-color: blue; color:white")
+    self.segBrushButton.clicked.connect(lambda: on_brush_click(self))
+    self.segEraseButton.clicked.connect(lambda: on_erase_click(self))
+    self.undoSeg.clicked.connect(lambda: undo_brush_seg(self))
+    self.createSegStructure.clicked.connect(lambda: InitSeg(self))
+    self.createSegStructure.setStyleSheet("background-color: green; color:white")
+    self.calcSegStatsButton.clicked.connect(lambda: calcStrucStats(self))
+    self.calcSegStatsButton.setStyleSheet("background-color: green; color:white")
+    self.exportSegStatsButton.clicked.connect(lambda: exportStrucStats(self))
+    self.exportSegStatsButton.setStyleSheet("background-color: blue; color:white")
+    self.exportSegStrucButton.clicked.connect(lambda: exportSegStruc(self))
+    self.exportSegStrucButton.setStyleSheet("background-color: blue; color:white")
+    
     # Connect the button's clicked signal to the slot function - run im processing operations
     self.run_im_process.clicked.connect(lambda: run_image_processing(self))
     self.run_im_process.setStyleSheet("background-color: blue; color: white;")
@@ -300,7 +317,5 @@ def on_display_dw_overlay_clicked(self):
         return
 
 
-    
-    
     
     
