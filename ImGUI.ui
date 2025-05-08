@@ -4776,7 +4776,7 @@
              </layout>
             </item>
             <item row="0" column="1">
-             <layout class="QGridLayout" name="plan_eval_grid_middle" rowstretch="0,4,4,0,0,0,0,0,0,0" columnstretch="1,2,1">
+             <layout class="QGridLayout" name="plan_eval_grid_middle" rowstretch="0,4,4,0,0,0,0,0,0" columnstretch="1,2,1">
               <item row="0" column="0">
                <widget class="QLabel" name="DVHs">
                 <property name="text">
@@ -4881,7 +4881,7 @@
              </layout>
             </item>
             <item row="0" column="2">
-             <layout class="QGridLayout" name="plan_eval_grid_right" rowstretch="4,7,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0" columnstretch="1,1,1,1">
+             <layout class="QGridLayout" name="plan_eval_grid_right" rowstretch="4,7,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1" columnstretch="1,1,1,1">
               <item row="12" column="0">
                <widget class="QLabel" name="Dxx">
                 <property name="text">
@@ -7488,8 +7488,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>587</width>
-             <height>538</height>
+             <width>114</width>
+             <height>48</height>
             </rect>
            </property>
            <attribute name="label">
