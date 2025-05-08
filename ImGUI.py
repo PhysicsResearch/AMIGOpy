@@ -3785,7 +3785,7 @@ class Ui_AMIGOpy(object):
         AMIGOpy.setStatusBar(self.statusbar)
 
         self.retranslateUi(AMIGOpy)
-        self.tabModules.setCurrentIndex(3)
+        self.tabModules.setCurrentIndex(0)
         self.tabView01.setCurrentIndex(0)
         self.tabWidget_6.setCurrentIndex(0)
         self.tabWidget_4.setCurrentIndex(0)

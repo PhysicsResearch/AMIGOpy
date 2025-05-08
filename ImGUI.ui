@@ -335,7 +335,7 @@
     <item row="0" column="1" rowspan="5" colspan="2">
      <widget class="QTabWidget" name="tabModules">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="im_display_tab">
        <attribute name="title">
@@ -4776,7 +4776,7 @@
              </layout>
             </item>
             <item row="0" column="1">
-             <layout class="QGridLayout" name="plan_eval_grid_middle" rowstretch="0,4,4,0,0,0,0,0,0" columnstretch="1,2,1">
+             <layout class="QGridLayout" name="plan_eval_grid_middle" rowstretch="0,4,4,0,0,0,0,0,0,0" columnstretch="1,2,1">
               <item row="0" column="0">
                <widget class="QLabel" name="DVHs">
                 <property name="text">
