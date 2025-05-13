@@ -141,8 +141,67 @@ def calculate_dose_reference_matrix(self):
 
         src.DoseMatrix = Dose
 
+        # Replace zero values along the central line by anm average of non zero voxels
+        # Identify central line
+        central_y_idx = ny // 2  # central horizontal line at y=0
+
+        # Maximum allowed distance to apply correction (20 cm → 200 mm)
+        max_dist_mm = 200
+
+        # Iterate over central line
+        for ix, x_mm in enumerate(xs):
+            r_mm = abs(x_mm)
+            
+            # Skip positions beyond 20 cm
+            if r_mm > max_dist_mm:
+                continue
+
+            dose_val = Dose[central_y_idx, ix]
+
+            # If dose is zero or NaN, correct it
+            if dose_val == 0 or np.isnan(dose_val):
+                # Extract nearby non-zero, finite dose values
+                neighbors = []
+
+                # Look left
+                if ix > 0:
+                    left_val = Dose[central_y_idx, ix - 1]
+                    if left_val > 0 and np.isfinite(left_val):
+                        neighbors.append(left_val)
+
+                # Look right
+                if ix < nx - 1:
+                    right_val = Dose[central_y_idx, ix + 1]
+                    if right_val > 0 and np.isfinite(right_val):
+                        neighbors.append(right_val)
+
+                # Set dose value as the mean of neighbors if available
+                if neighbors:
+                    corrected_val = np.mean(neighbors)
+                    Dose[central_y_idx, ix] = corrected_val
+
         # 6) build along–away from the matrix
         calculate_along_away_reference_calc(self)
+
+        # print to csv for checking
+        # Define output file path
+        out_csv_path = r"c:\test\dose_central_slice.csv"
+
+        # Central slice index
+        central_idx = ny // 2  # horizontal slice at y = 0 mm
+
+        # Extract central slice data
+        central_slice = Dose[central_idx, :]
+
+        # Create DataFrame with coordinates and dose
+        df_slice = pd.DataFrame({
+            'X_mm': xs,
+            'Y_mm': np.zeros_like(xs),
+            'Dose_cGy_per_h': central_slice
+        })
+
+        # Export to CSV
+        df_slice.to_csv(out_csv_path, index=False, float_format='%.6g')
 
 
 
