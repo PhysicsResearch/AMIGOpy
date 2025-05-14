@@ -111,7 +111,7 @@ def onMouseMoveseg(self, caller, event):
             Window = current_window + DeltaW
             Level  = current_level  + DeltaL
             #    
+            self.seg_win_lev = [Window, Level]
             set_window(self,Window,Level)
-            set_color_map(self)
     #
     self.renSeg.GetRenderWindow().Render()

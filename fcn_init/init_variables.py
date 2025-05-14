@@ -72,6 +72,7 @@ def initialize_software_variables(self):
     self.seg_erase = 0
     self.seg_brush_coords = None
     self.seg_init_all_series = True
+    self.seg_win_lev = [None, None]
     # IrIS ################################################################
     # this varibale will be resized depeding on the number of dwell positions
     # the number of colluns should remaing the same and was included here for documentation purposes.

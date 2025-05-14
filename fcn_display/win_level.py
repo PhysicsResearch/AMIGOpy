@@ -9,9 +9,10 @@ from fcn_display.colormap_set import set_color_map
 def window_auto(self):
     idx = self.layer_selection_box.currentIndex()
     currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
-    if currentTabText == "Segmentation" and idx > 1:
-        return
-    slice_data = self.display_data[idx][self.current_slice_index[0], :, :]
+    if currentTabText == "Segmentation":
+        slice_data = self.display_seg_data[0][self.current_slice_index[0], :, :]
+    else:
+        slice_data = self.display_data[idx][self.current_slice_index[0], :, :]
     Window = np.std(slice_data)*2
     Level  = np.mean(slice_data)
     set_window(self,Window,Level)
@@ -59,6 +60,7 @@ def set_window(self,Window,Level):
             self.textActorAxCom[Ax_idx,1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
             
     elif currentTabText == "Segmentation":
+        self.seg_win_lev = [Window, Level]
         self.windowLevelSeg[layer].SetWindow(Window)
         self.windowLevelSeg[layer].SetLevel(Level)
         self.textActorSeg[1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
