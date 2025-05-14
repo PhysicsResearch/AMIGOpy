@@ -93,6 +93,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         # slice index ... It is important so different element of the GUI can have access to them 
         #
         self.dicom_data   = None            # Initialize the attribute to store DICOM data
+        #self.TG43_Data    = None            # Initialize the attribute to store TG43 data
         self.IrIS_data    = None            # Initialize the attribute to store IrIS data
         self.IrIS_corr    = {}              # Initialize the attribute to store IrIS correction data
         self.current_slice_index = [-1,-1,-1]  # axial, sagital and coronal slices

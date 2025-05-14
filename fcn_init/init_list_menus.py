@@ -100,10 +100,12 @@ def populate_list_menus(self):
     DoseGrid = ["0.5","1","2","3","4","5"]
     self.brachy_tg43_dose_grid = self.findChild(QtWidgets.QComboBox, 'Tg43_dose_grid')
     self.brachy_tg43_dose_grid.addItems(DoseGrid)
+    self.brachy_tg43_dose_grid.setCurrentIndex(1)
     #
     MatrixSize = ["50x50","100x100","150x150","200x200"]
     self.brachy_tg43_matrix_size = self.findChild(QtWidgets.QComboBox, 'Tg43_matrix_size_2')
     self.brachy_tg43_matrix_size.addItems(MatrixSize)
+    self.brachy_tg43_matrix_size.setCurrentIndex(3)
     #
     # Brachy channel or dwell view
     # 
