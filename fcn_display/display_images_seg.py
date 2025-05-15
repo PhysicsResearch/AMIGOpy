@@ -1,4 +1,5 @@
 import vtk 
+import numpy as np
 
 def sliderSegView_change(self):
     disp_seg_image_slice(self)
@@ -31,14 +32,12 @@ def undo_brush_seg(self):
     except:
         return
 
-
-import numpy as np
 def disp_seg_image_slice(self):
     layer  = int(self.layer_selection_box.currentIndex())
     ori = self.segSelectView.currentText()
     self.current_seg_slice_index = self.segViewSlider.value()
     
-    if 0 not in self.display_seg_data[layer] or 1 not in self.display_seg_data[layer]:
+    if 0 not in self.display_seg_data or 1 not in self.display_seg_data:
         return 
 
     layer = 0
@@ -73,6 +72,7 @@ def disp_seg_image_slice(self):
 
     layer = 1
     slice_data_im = slice_data.copy()
+
     if ori=="Axial": #Axial
         slice_data = self.display_seg_data[layer][int(self.current_seg_slice_index), :, :]
         # self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,1], 0)

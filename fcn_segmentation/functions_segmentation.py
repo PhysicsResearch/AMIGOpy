@@ -26,17 +26,33 @@ def threshSeg(self):
 
     adjust_data_type_seg_input(self,1)
     disp_seg_image_slice(self) 
+
+
+def overwrite_dialog(self, all_series=False):
+    dlg = QMessageBox(self)
+    dlg.setWindowTitle("Overwrite warning!")
+    if all_series:
+        dlg.setText("One of the series already has a structure with the same name. \nDo you want to overwrite ALL?")
+    else:
+        dlg.setText("This series already has a structure with the same name. \nDo you want to overwrite it?")
+    dlg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    dlg.setIcon(QMessageBox.Question)
+    button = dlg.exec()
+    if button == QMessageBox.Yes:
+        return True
+    else:
+        return False
     
     
 def InitSeg(self):
     if len(self.display_seg_data) == 0:
         return
-    layer  = int(self.layer_selection_box.currentIndex())
-    mask_3d = np.zeros_like(self.display_seg_data[layer])
-    mask_3d = mask_3d.astype(np.uint8)
 
     if self.initStrucCheck.isChecked():
+        check_duplicates = True
         for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]: 
+            mask_3d = np.zeros_like(target_series_dict["3DMatrix"])
+            mask_3d = mask_3d.astype(np.uint8)
 
             existing_structures = target_series_dict.get('structures', {})
             existing_structure_count = len(existing_structures)
@@ -54,6 +70,13 @@ def InitSeg(self):
                 name = "structure"
                 
             if name in target_series_dict['structures_names']:
+                if check_duplicates:
+                    check_duplicates = False
+                    if overwrite_dialog(self, all_series=True):
+                        pass
+                    else:
+                        return
+
                 new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
             else:
                 # Create a new unique key for the structure clearly:
@@ -61,7 +84,7 @@ def InitSeg(self):
 
             # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
             target_series_dict['structures'][new_s_key] = {
-                'Mask3D': mask_3d.copy(),
+                'Mask3D': mask_3d,
                 'Name': name
             }
             target_series_dict['structures_keys'].append(new_s_key)
@@ -69,6 +92,8 @@ def InitSeg(self):
 
     else:
         target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        mask_3d = np.zeros_like(target_series_dict["3DMatrix"])
+        mask_3d = mask_3d.astype(np.uint8)
         
         existing_structures = target_series_dict.get('structures', {})
         existing_structure_count = len(existing_structures)
@@ -86,6 +111,11 @@ def InitSeg(self):
             name = "structure"
             
         if name in target_series_dict['structures_names']:
+            if overwrite_dialog(self, all_series=False):
+                pass
+            else:
+                return
+
             new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
         else:
             # Create a new unique key for the structure clearly:
@@ -100,6 +130,14 @@ def InitSeg(self):
         target_series_dict['structures_names'].append(name)
     
     populate_DICOM_tree(self)
+
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
+    mask_3d = target_series_dict["structures"][new_s_key]["Mask3D"]
+    self.display_seg_data[1] = mask_3d
+    adjust_data_type_seg_input(self,1)
+    disp_seg_image_slice(self)
+
     
 
     
