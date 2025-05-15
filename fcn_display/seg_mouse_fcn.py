@@ -115,3 +115,24 @@ def onMouseMoveseg(self, caller, event):
             set_window(self,Window,Level)
     #
     self.renSeg.GetRenderWindow().Render()
+
+def on_right_click_move_pan(self, caller, event):
+
+    if len(self.display_seg_data) == 0:
+        caller.OnRightButtonUp()
+        caller.OnMiddleButtonUp()
+        return
+
+    renderer = self.renSeg.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    camera = renderer.GetActiveCamera()
+
+    zoom_scale = camera.GetParallelScale()  # Smaller = more zoomed in
+    center = camera.GetFocalPoint()  # World-space center of zoom
+    position = camera.GetPosition()
+
+    self.zoom_scale = zoom_scale
+    self.zoom_center = center
+    self.camera_pos = position
+
+    caller.OnRightButtonUp()
+    caller.OnMiddleButtonUp()
