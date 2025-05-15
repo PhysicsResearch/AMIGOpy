@@ -34,6 +34,8 @@ from fcn_breathing_curves.functions_edit import applyOperations, undoOperations,
 from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, update_doses_list, update_structure_list, eqd2_calc
 from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc
 from fcn_display.display_images_seg import undo_brush_seg
+from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
+
 
 def initialize_software_buttons(self):
     # IrIS add row dw table
@@ -225,7 +227,9 @@ def initialize_software_buttons(self):
     self.Brachy_load_ani.setStyleSheet("background-color: blue; color: white;")
     self.Brachy_load_ani.clicked.connect(lambda: select_Anisotropy_file2load(self))
 
-
+    # using a place holder button for testing
+    self.Brachy_Calcualte_TG43.clicked.connect(lambda: calculate_TG43_plan_dose(self))
+    self.Brachy_Calcualte_TG43.setStyleSheet("background-color: blue; color: white;")
     #EQD2
     self.calc_eqd2.clicked.connect(lambda: generate_eqd2_dose(self))
     self.add_to_ab_list.clicked.connect(lambda: add_ab(self))

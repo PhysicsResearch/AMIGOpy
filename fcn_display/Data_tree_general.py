@@ -142,7 +142,9 @@ def on_DataTreeView_clicked(self,index):
                 #
     
                 # update_metadata_table
-                update_meta_view_table_dicom(self,self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'])
+                meta_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
+                if 'DCM_Info' in meta_dict:
+                    update_meta_view_table_dicom(self, meta_dict['DCM_Info'])
                 self.modality_metadata = self.modality
                 # display info
                 display_dicom_info(self)
@@ -721,8 +723,6 @@ def update_coronal_image(self,  Im = None):
 
         if self.slice_thick[i] ==0:
             continue   
-        
-        
         
         Offset = (self.display_data[idx].shape[1]*self.pixel_spac[idx,0]-self.display_data[i].shape[1]*self.pixel_spac[i,0]-(self.Im_PatPosition[i,1]-self.Im_PatPosition[idx,1]))/self.pixel_spac[i,0]
         self.current_coronal_slice_index[i] = int((self.current_coronal_slice_index[idx]*(self.pixel_spac[idx,0]/self.pixel_spac[i,0]))-Offset)

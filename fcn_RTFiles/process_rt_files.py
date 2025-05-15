@@ -308,6 +308,7 @@ def read_brachy_plan(plan,ref_str,structured_data):
         channel_info.append(info)
         #
         structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['Plan_Brachy_Channels'] = channel_info
+        structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['ReferenceAirKermaRate']= structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['SourceSequence'][0]['ReferenceAirKermaRate']
 
 
 

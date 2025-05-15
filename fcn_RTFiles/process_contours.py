@@ -67,7 +67,7 @@ def create_contour_masks(self):
     structures_names = data_dict.get('structures_names', [])
 
     struc_names = target_series_dict['structures_names']
-    struc_keys = target_series_dict['structures_keys']
+    struc_keys  = target_series_dict['structures_keys']
 
     self.progressBar.setValue(10)
 

@@ -4,222 +4,202 @@ import numpy as np
 import pandas as pd
 
 def calculate_dose_reference_matrix(self):
-        """
-        Builds a 2D TG-43 dose reference matrix over [-S,S] mm at Res-mm spacing,
-        using the fitted radial polynomial and anisotropy table, and stores it in
-        self.TG43.activesource.DoseMatrix (cGy/h).
-        """
-        src = self.TG43.activesource
+    """
+    Builds a full 3D TG-43 dose reference volume over [-S,S] mm at Res-mm spacing by:
+      1. Computing a 2D meridian map D_mer[z, x] in the X–Z plane (Y=0)
+      2. Filling zeros along the central axis (angles 0 & 180) by neighbor averaging
+      3. Revolving that meridian around the Z axis to create the full [Z,Y,X] grid
+    If S=200 mm and Res=1 mm, produces a 401×401×401 array.
+    Stores result in self.TG43.activesource.DoseMatrix (cGy/h).
+    """
+    import numpy as np
+    from PyQt5.QtWidgets import QMessageBox
 
-        # 1) Sync UI → model: dose-rate constant & source length
-        try:
-            src.dose_rate_constant = float(self.Brachy_dose_rate_cte_value.text().strip())
-            src.source_length_mm   = float(self.Brachy_rad_leng.text().strip())
-        except ValueError as e:
-            QMessageBox.critical(self, "Input Error",
-                                 f"Could not parse TG-43 parameters:\n{e}")
-            return
+    src = self.TG43.activesource
 
-        # 2) Sync UI → model: grid resolution and half-size
-        try:
-            src.DoseMatrix_res_mm = float(self.Tg43_dose_grid.currentText().strip())
-        except ValueError:
-            QMessageBox.critical(self, "Input Error",
-                                 f"Invalid grid resolution: '{self.Tg43_dose_grid.currentText()}'")
-            return
+    # 1) Read UI parameters and sync to model
+    try:
+        Λ    = float(self.Brachy_dose_rate_cte_value.text().strip())         # cGy/h/U
+        L_mm = float(self.Brachy_rad_leng.text().strip())                    # mm
+        Res  = float(self.Tg43_dose_grid.currentText().strip())              # mm per voxel
+        S    = float(self.Tg43_matrix_size_2.currentText().split('x',1)[0])  # mm half-span
+    except Exception as e:
+        QMessageBox.critical(self, "Input Error", f"Invalid TG-43 inputs:{e}")
+        return
+    src.DoseMatrix_res_mm = Res
+    src.DoseMatrix_size   = S
+    # Set the progress bar value
+    self.progressBar.setValue(10)
 
-        try:
-            size_mm = float(self.Tg43_matrix_size_2.currentText().split('x',1)[0])
-            src.DoseMatrix_size = size_mm
-        except Exception:
-            QMessageBox.critical(self, "Input Error",
-                                 f"Invalid matrix size: '{self.Tg43_matrix_size_2.currentText()}'")
-            return
+    # 2) Unpack polynomial fit and anisotropy
+    coeffs    = src.radial_fit                 # 5th-degree poly
+    ani       = src.anisotropy
+    dist_cm   = ani[0,1:]                      # distances (cm)
+    ang_deg   = ani[1:,0]                      # angles (deg)
+    F_data    = np.nan_to_num(ani[1:,1:], nan=0.0)
+    # Set the progress bar value
+    self.progressBar.setValue(20)
 
-        # # 3) Validate that everything else is loaded
-        # missing = []
-        # if src.airkerma_strength is None:
-        #     missing.append("air-kerma strength")
-        # if not hasattr(src, 'radial_fit') or src.radial_fit is None:
-        #     missing.append("radial fit coefficients")
-        # if src.anisotropy is None:
-        #     missing.append("anisotropy data")
-        # if missing:
-        #     QMessageBox.critical(self, "Missing TG-43 Data",
-        #                          "Please load or set:\n • " + "\n • ".join(missing))
-        #     return
+    # 3) Geometry factor
+    def G_line(r, θ, L_cm):
+        if abs(np.sin(θ)) < 1e-8:
+            d = r*r - (L_cm/2)**2
+            return 1.0/d if d>0 else 0.0
+        ρ = r*np.sin(θ)
+        z = r*np.cos(θ)
+        a1 = np.arctan2((L_cm/2)-z, ρ)
+        a2 = np.arctan2((L_cm/2)+z, ρ)
+        return (a1 + a2) / (L_cm * ρ)
+    L_cm = L_mm / 10.0
+    G_ref = G_line(1.0, np.deg2rad(90.0), L_cm)
+    # Set the progress bar value
+    self.progressBar.setValue(30)
 
-        # 4) Unpack
-        Sk     = src.airkerma_strength          # U
-        Λ      = src.dose_rate_constant         # cGy/h/U
-        L_cm   = src.source_length_mm / 10.0    # cm
-        Res    = src.DoseMatrix_res_mm          # mm
-        S      = src.DoseMatrix_size            # mm half-span
-        coeffs = src.radial_fit                 # [a5, a4, …, a0]
+    # 4) Build 1D axes for meridian plane
+    xs = np.linspace(-S, S, int(2*S/Res)+1)  # X in mm
+    zs = np.linspace(-S, S, int(2*S/Res)+1)  # Z in mm
+    nx, nz = xs.size, zs.size
+    # Set the progress bar value
+    self.progressBar.setValue(60)
+    # 5) Compute 2D meridian dose map D_mer[z, x]
+    D_mer = np.zeros((nz, nx), dtype=float)
+    for iz, z_mm in enumerate(zs):
+        for ix, x_mm in enumerate(xs):
+            r_cm = np.hypot(x_mm, z_mm)/10.0
+            if r_cm == 0:
+                continue
+            θ = np.arccos(z_mm/(r_cm*10.0))
+            G = G_line(r_cm, θ, L_cm)
+            g = 1.0 if r_cm < dist_cm[0] else max(0.0, np.polyval(coeffs, r_cm))
 
-        # anisotropy table
-        ani        = src.anisotropy
-        # Correct definition of distance and anisotropy values (skip first column!)
-        dist_vals  = ani[0, 1:]  # distances start at second column!
-        angle_vals = ani[1:, 0]  # angles correctly from first column
-        F_data     = np.nan_to_num(ani[1:, 1:], nan=0.0)  # skip angle column
+            deg = np.degrees(θ)
+            ai  = np.clip(np.searchsorted(ang_deg, deg), 1, len(ang_deg)-1)
+            a0, a1 = ai-1, ai
+            w = 0.0 if ang_deg[a1]==ang_deg[a0] else (deg-ang_deg[a0])/(ang_deg[a1]-ang_deg[a0])
+            if r_cm <= dist_cm[0]:
+                F0, F1 = F_data[a0,0], F_data[a1,0]
+            else:
+                F0 = np.interp(r_cm, dist_cm, F_data[a0], left=F_data[a0,0])
+                F1 = np.interp(r_cm, dist_cm, F_data[a1], left=F_data[a1,0])
+            F = F0*(1-w) + F1*w
 
-        # geometry factor for a line of length L_cm
-        def geometry_factor(r, theta_rad, L_cm):
-            """
-            TG-43 line-source geometry factor.
-            
-            r        : distance (cm)
-            theta_rad: polar angle (radians)
-            L_cm     : active source length (cm)
-            """
-            # On-axis case (theta=0 or 180°) → (r^2 - (L/2)^2)^{-1}
-            if abs(np.sin(theta_rad)) < 1e-8:
-                denom = r*r - (L_cm/2)**2
-                return 1.0/denom if denom>0 else 0.0
+            D_mer[iz, ix] = Λ * (G/G_ref) * g * F
+    # Set the progress bar value
+    self.progressBar.setValue(80)
+    # 6) Replace *all* zeros along the central axis by 1-D interpolation
+    #     
+    center_x = nx // 2
 
-            # Off-axis: standard line‐source formula
-            rho = r * np.sin(theta_rad)
-            z   = r * np.cos(theta_rad)
-            alpha1 = np.arctan2((L_cm/2) - z, rho)
-            alpha2 = np.arctan2((L_cm/2) + z, rho)
-            beta   = alpha1 + alpha2
-            return beta / (L_cm * rho)
+    for iz in range(nz):
+        # if this central voxel is zero…
+        if D_mer[iz, center_x] == 0.0:
+            # grab its left/right neighbors (or 0 if out of bounds)
+            left_val  = D_mer[iz, center_x - 1] if center_x > 0     else 0.0
+            right_val = D_mer[iz, center_x + 1] if center_x < nx-1 else 0.0
 
-        G_ref = geometry_factor(1.0, np.deg2rad(90.0),L_cm)
+            # pick a positive neighbor (or average them)
+            if left_val > 0 and right_val > 0:
+                D_mer[iz, center_x] = 0.5 * (left_val + right_val)
+            elif left_val > 0:
+                D_mer[iz, center_x] = left_val
+            elif right_val > 0:
+                D_mer[iz, center_x] = right_val
+            # otherwise leave it at zero
+    # Set the progress bar value
+    self.progressBar.setValue(90)
 
-        # build grid coords in mm
-        xs = np.linspace(-S, S, int(2*S/Res) + 1)
-        ys = np.linspace(-S, S, int(2*S/Res) + 1)
-        ny, nx = ys.size, xs.size
+    # 7) Revolve meridian into full 3D volume
+    ys = xs.copy()
+    ny = ys.size
+    Dose3D = np.zeros((nz, ny, nx), dtype=float)
+    Xg, Yg = np.meshgrid(xs, ys, indexing='xy')
+    Rg = np.hypot(Xg, Yg)
+    k = np.rint(Rg/Res).astype(int)
+    idx = center_x + k
+    np.clip(idx, 0, nx-1, out=idx)
+    for iz in range(nz):
+        Dose3D[iz] = D_mer[iz, idx]
 
-        Dose = np.zeros((ny, nx), dtype=float)
+    # 8) Store result and update along-away
+    src.DoseMatrix = Dose3D
 
-        # 5) fill dose matrix
-        for iy, y in enumerate(ys):
-            for ix, x in enumerate(xs):
-                r_cm = np.hypot(x, y) / 10.0
-                if r_cm == 0:  # singularity
-                    continue
+    # # 1) grab the 3D array and axes info
+    # dose3d = src.DoseMatrix                      # shape (nz, ny, nx)
+    # nz, ny, nx = dose3d.shape
+    # Res = src.DoseMatrix_res_mm                   # mm
+    # S   = src.DoseMatrix_size                     # mm half-span
 
-                theta = np.arctan2(y, x)
-                theta_deg = (np.degrees(theta) + 360) % 360
-                if theta_deg > 180:
-                    theta_deg = 360 - theta_deg
+    # # 2) central-slice index (Z-axis)
+    # zc = nz // 2
+    # slice2d = dose3d[:, zc, :]                    # shape (ny, nx)
 
-                # geometry
-                G = geometry_factor(r_cm, theta, L_cm)
+    # # 3) build real-world axes in cm
+    # xs_mm = np.linspace(-S, S, nx)
+    # ys_mm = np.linspace(-S, S, ny)
+    # xs_cm = xs_mm / 10.0
+    # ys_cm = ys_mm / 10.0
+    # # 4) make a DataFrame and export
+    # df = pd.DataFrame(slice2d, index=ys_cm, columns=xs_cm)
+    # df.index.name  = "Y (cm)"
+    # df.columns.name = "X (cm)"
 
-                # radial
-                if r_cm<src.radial[0,0]:
-                    g = 1
-                else:
-                    # from polynomial
-                    g = np.polyval(coeffs, r_cm)
-                    if g < 0:
-                        g = 0.0
-                # anisotropy
-                # Angle interpolation indices
-                ai = np.clip(np.searchsorted(angle_vals, theta_deg), 1, angle_vals.size-1)
-                a0, a1 = ai-1, ai
-                θ0, θ1 = angle_vals[a0], angle_vals[a1]
-                w = 0.0 if θ1==θ0 else (theta_deg - θ0)/(θ1 - θ0)
+    # out_dir = r"c:\test"
+    # os.makedirs(out_dir, exist_ok=True)
+    # out_path = os.path.join(out_dir, "central_dose_slice.csv")
+    # df.to_csv(out_path, float_format="%.6g")
 
-                # Clamp to first radial distance if below minimum
-                if r_cm <= dist_vals[0]:
-                    F0 = F_data[a0, 0]  # correct: first radial-distance bin at angle θ0
-                    F1 = F_data[a1, 0]  # correct: first radial-distance bin at angle θ1
-                    F  = F0*(1 - w) + F1*w
-                else:
-                    F0 = np.interp(r_cm, dist_vals, F_data[a0, :], left=F_data[a0, 0], right=0.0)
-                    F1 = np.interp(r_cm, dist_vals, F_data[a1, :], left=F_data[a1, 0], right=0.0)
-                    F  = F0*(1 - w) + F1*w
+    # QMessageBox.information(self, "Export Successful",
+    #     f"Central Z-slice (z={zc}) exported to:\n{out_path}")
 
-
-                # TG-43 dose rate - Sk will be multiplied during plan dose calculation
-                Dose[iy, ix] = Λ * (G/G_ref) * g * F
-
-        src.DoseMatrix = Dose
-
-        # 6) build along–away from the matrix
-        calculate_along_away_reference_calc(self)
+    # # Optionally recalc along–away from central slice
+    calculate_along_away_reference_calc(self)
+    # Set the progress bar value
+    self.progressBar.setValue(100)
 
 
 
 def calculate_along_away_reference_calc(self):
     """
-    Samples self.TG43.activesource.DoseMatrix at the along/away reference
-    points (in self.TG43.activesource.along_away_reference) with bilinear interp.
-    Any point that lies beyond the grid extent (±S mm) is set to NaN.
+    Samples the 3D DoseMatrix at along/away reference points using direct voxel lookup.
     """
-    ref  = self.TG43.activesource.along_away_reference
-    Dose = self.TG43.activesource.DoseMatrix
-    Res  = self.TG43.activesource.DoseMatrix_res_mm
-    S    = self.TG43.activesource.DoseMatrix_size
+    import numpy as np
 
-    # Rebuild the same grid as the dose‐matrix
-    xs = np.arange(-S, S + Res, Res)  # mm
-    ys = np.arange(-S, S + Res, Res)  # mm
-    ny, nx = ys.size, xs.size
+    src   = self.TG43.activesource
+    ref   = src.along_away_reference        # shape (M+1, N+1)
+    Dose3 = src.DoseMatrix                  # shape (nz, ny, nx)
+    Res   = src.DoseMatrix_res_mm           # mm/voxel
+    S     = src.DoseMatrix_size             # mm half-span
 
-    # Compute the numeric bounds
-    x_min, x_max = xs[0], xs[-1]
-    y_min, y_max = ys[0], ys[-1]
+    nz, ny, nx = Dose3.shape
 
-    # Prepare the output array (same shape as ref)
+    # center indices for each axis
+    cz = nz // 2
+    cy = ny // 2
+    cx = nx // 2
+
+    # Prepare output
     calc = np.empty_like(ref, dtype=float)
-    # Copy headers back
-    calc[0, 0]  = ref[0, 0]
-    calc[0, 1:] = ref[0, 1:]
-    calc[1:, 0] = ref[1:, 0]
+    calc[0, 0]   = ref[0, 0]
+    calc[0, 1:]  = ref[0, 1:]
+    calc[1:, 0]  = ref[1:, 0]
 
-    # Convert along/away from cm to mm
+    # Convert reference distances (cm → mm)
     along_mm = ref[1:, 0] * 10.0
     away_mm  = ref[0, 1:] * 10.0
 
-    # Loop and interpolate
-    for i, a in enumerate(along_mm, start=1):
-        for j, b in enumerate(away_mm, start=1):
-            # 1) If outside the ±S range, set NaN and continue.
-            if not (x_min <= a <= x_max and y_min <= b <= y_max):
+    # Loop over each table cell
+    for i, z_mm in enumerate(along_mm, start=1):
+        z_idx = int(round(z_mm / Res)) + cz
+        for j, r_mm in enumerate(away_mm, start=1):
+            x_idx = cx + int(round(r_mm / Res))
+            # if indices in range, sample; else NaN
+            if 0 <= z_idx < nz and 0 <= cy < ny and 0 <= x_idx < nx:
+                calc[i, j] = Dose3[z_idx, cy, x_idx]
+            else:
                 calc[i, j] = np.nan
-                continue
 
-            # 2) Else find the four surrounding voxels...
-            ix = np.clip(np.searchsorted(xs, a), 1, nx - 1)
-            iy = np.clip(np.searchsorted(ys, b), 1, ny - 1)
-
-            # Explicit check to avoid indexing at the boundary
-            if ix == nx - 1:
-                ix -= 1
-            if iy == ny - 1:
-                iy -= 1
-
-            x0, x1 = xs[ix-1], xs[ix]
-            y0, y1 = ys[iy-1], ys[iy]
-
-            Q11 = Dose[iy-1, ix-1]
-            Q21 = Dose[iy-1, ix]
-            Q12 = Dose[iy,   ix-1]
-            Q22 = Dose[iy,   ix]
-
-            # 3) Compute weights
-            tx = 0.0 if x1 == x0 else (a - x0) / (x1 - x0)
-            ty = 0.0 if y1 == y0 else (b - y0) / (y1 - y0)
-
-            # 4) Bilinear interpolation
-            calc[i, j] = (
-                Q11 * (1 - tx) * (1 - ty) +
-                Q21 *   tx   * (1 - ty) +
-                Q12 * (1 - tx) *   ty   +
-                Q22 *   tx   *   ty
-            )
-
-    # Store the result back on the model
-    # Flip vertical: reverse all rows except the header row
+    # Flip rows (so along=0 appears at top or bottom as desired)
     calc[1:, :] = calc[1:, :][::-1, :]
-    # Flip necessary to match with refrence data for along away .... 
-    self.TG43.activesource.along_away_reference_calc = calc
 
-
-
+    # Store back
+    src.along_away_reference_calc = calc

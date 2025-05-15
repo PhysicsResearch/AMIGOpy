@@ -67,6 +67,9 @@ def update_disp_brachy_plan(self):
     else:
         populate_brachy_table(self, current_ch.get('ChPos'))
 
+    # Display air kerma strength
+    AirKerma = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['ReferenceAirKermaRate']
+    self.brachy_plan_Ac.setText(str(AirKerma.value))
     apply_alternating_row_colors(self)
     plot_brachy_dwell_channels(self)
     calculate_total_time(self)
