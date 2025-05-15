@@ -331,30 +331,43 @@ def on_DataTreeView_clicked(self,index):
                     self.pixel_spac_seg[1, :2]      = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
                     self.Im_PatPosition_seg[1, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
 
+                # Check if view needs to be initialized
+                self.seg_curr_data = {"Orientation": self.segSelectView.currentText(), "Dimensions": self.display_seg_data[0].shape,
+                        "SliceThickness": self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness'],
+                        "PixelSpacing": self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']}
+
+                if self.seg_prev_data["Orientation"] is None:
+                    self.seg_init_view = True
+                else:
+                    if self.seg_curr_data != self.seg_prev_data:
+                        self.seg_init_view = True
+                    else:
+                        self.seg_init_view = False
+
+                self.seg_prev_data = self.seg_curr_data
+
                 # check the selected view
                 if self.segSelectView.currentText() == "Axial":
-                    if getattr(self, "im_ori_seg", 1) != 0:
-                        self.seg_init_view = True
                     self.im_ori_seg = 0
                     if self.seg_init_view == True:
                         self.current_seg_slice_index   = int(self.display_seg_data[0].shape[0]/2)
+                        Ax_s = self.current_seg_slice_index
                         self.segViewSlider.setMaximum(self.display_seg_data[0].shape[0] - 1)
+                        self.segViewSlider.setValue(int(Ax_s))   
                 elif self.segSelectView.currentText() == "Sagittal":
-                    if getattr(self, "im_ori_seg", 0) != 1:
-                        self.seg_init_view = True
                     self.im_ori_seg = 1
                     if self.seg_init_view == True:
                         self.current_seg_slice_index   = int(self.display_seg_data[0].shape[2]/2)
+                        Ax_s = self.current_seg_slice_index
                         self.segViewSlider.setMaximum(self.display_seg_data[0].shape[2] - 1)  
+                        self.segViewSlider.setValue(int(Ax_s))   
                 elif self.segSelectView.currentText() == "Coronal":
-                    if getattr(self, "im_ori_seg", 0) != 2:
-                        self.seg_init_view = True
                     self.im_ori_seg = 2
                     if self.seg_init_view == True:
                         self.current_seg_slice_index   = int(self.display_seg_data[0].shape[1]/2)
+                        Ax_s = self.current_seg_slice_index
                         self.segViewSlider.setMaximum(self.display_seg_data[0].shape[1] - 1)  
-                Ax_s = self.current_seg_slice_index
-                self.segViewSlider.setValue(int(Ax_s))      
+                        self.segViewSlider.setValue(int(Ax_s))      
                 #
                 # Add ID 
                 self.textActorSeg[0].SetInput(f"{self.modality} / {hierarchy[4]}")
@@ -367,6 +380,9 @@ def on_DataTreeView_clicked(self,index):
                     self.renSeg.ResetCamera()
                     self.renSeg.GetRenderWindow().Render() 
                     self.seg_init_view = False
+                    self.zoom_scale = None
+                    self.zoom_center = (None, None, None)
+                    self.camera_pos = (None, None, None)
 
                 if self.zoom_scale is not None:
                     renderer = self.renSeg.GetRenderWindow().GetRenderers().GetFirstRenderer()
