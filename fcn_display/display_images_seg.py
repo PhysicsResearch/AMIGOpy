@@ -60,11 +60,12 @@ def disp_seg_image_slice(self):
     self.dataImporterSeg[layer].CopyImportVoidPointer(data_string, len(data_string))
     self.dataImporterSeg[layer].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
     self.dataImporterSeg[layer].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+    self.dataImporterSeg[layer].Modified() 
     #
     self.textActorSeg[2].SetInput(f"Slice:{self.current_seg_slice_index}")
     imageProperty = self.imageActorSeg[layer].GetProperty()
-    imageProperty.SetOpacity(self.LayerAlpha[layer])  
-    self.dataImporterSeg[layer].Modified()     
+    imageProperty.SetOpacity(self.LayerAlpha[layer])   
+
     self.renSeg.GetRenderWindow().Render()  
 
     if not self.curr_struc_available:

@@ -47,6 +47,7 @@ def Layer_alpha_slider_set(self,layer):
             imageProperty.SetOpacity(self.LayerAlpha[layer])
             self.renAxComp[i].GetRenderWindow().Render()  
     elif currentTabText == "Segmentation":
+        self.LayerAlpha[layer] = np.clip(self.LayerAlpha[layer], 0, 0.99)
         imageProperty = self.imageActorSeg[layer].GetProperty()
         imageProperty.SetOpacity(self.LayerAlpha[layer])
         self.renSeg.GetRenderWindow().Render()

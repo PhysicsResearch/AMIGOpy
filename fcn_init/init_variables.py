@@ -72,6 +72,14 @@ def initialize_software_variables(self):
     self.seg_erase = 0
     self.seg_brush_coords = None
     self.seg_init_all_series = True
+    self.seg_win_lev = [None, None]
+    self.seg_curr_extent = [[None, None], [None, None]]
+    self.zoom_scale = None
+    self.zoom_center = (None, None, None)
+    self.camera_pos = (None, None, None)
+    self.seg_init_view = True
+    self.seg_prev_data = {"Orientation": None, "Dimensions": (None, None, None),
+                          "SliceThickness": None, "PixelSpacing": (None, None)}
     # IrIS ################################################################
     # this varibale will be resized depeding on the number of dwell positions
     # the number of colluns should remaing the same and was included here for documentation purposes.
