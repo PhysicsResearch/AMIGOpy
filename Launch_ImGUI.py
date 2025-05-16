@@ -132,10 +132,10 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         # Calibration module IrIS
         init_cal_markers_IrIS(self)
         
-        self.threshMinSlider.valueChanged.connect(self.on_seg_min_slider_change)
-        self.threshMaxSlider.valueChanged.connect(self.on_seg_max_slider_change)
-        self.threshMinSlider.valueChanged.connect(lambda: plot_hist(self))
-        self.threshMaxSlider.valueChanged.connect(lambda: plot_hist(self))
+        self.segThreshMinHU.setValue(-200)
+        self.segThreshMaxHU.setValue(200)
+        self.segThreshMinHU.valueChanged.connect(self.on_seg_hu_min_change)
+        self.segThreshMaxHU.valueChanged.connect(self.on_seg_hu_max_change)
         self.segSelectView.currentTextChanged.connect(lambda: update_seg_slider(self))
         self.segViewSlider.valueChanged.connect(lambda: disp_seg_image_slice(self))
 
@@ -224,29 +224,18 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         
     def update_progress(self, progress):
         self.progressBar.setValue(int(progress))
-        
-    def on_seg_min_slider_change(self):
-        min_ = self.threshMinSlider.value()
-        max_ = self.threshMaxSlider.value()
-        
-        if min_ >= max_:
-            self.threshMinSlider.setValue(max_ - 1) 
-            min_ = self.threshMinSlider.value()
-        
-        self.threshMinBox.setText(f"Min. HU threshold: {min_}")
-        
-    def on_seg_max_slider_change(self):
-        min_ = self.threshMinSlider.value()
-        max_ = self.threshMaxSlider.value()
-        
-        if min_ >= max_:
-            self.threshMaxSlider.setValue(min_ + 1) 
-            max_ = self.threshMinSlider.value()
-            
-        self.threshMaxBox.setText(f"Max. HU threshold: {max_}")
-
    
-      
+    def on_seg_hu_min_change(self):
+        min_ = self.segThreshMinHU.value()
+        if min_ >= self.segThreshMaxHU.value():
+            self.segThreshMinHU.setValue(self.segThreshMaxHU.value()-1)
+        plot_hist(self)
+
+    def on_seg_hu_max_change(self):
+        max_ = self.segThreshMaxHU.value()
+        if max_ <= self.segThreshMinHU.value():
+            self.segThreshMaxHU.setValue(self.segThreshMinHU.value()+1)
+        plot_hist(self)
         
 if __name__ == "__main__":
     app = QApplication(sys.argv)

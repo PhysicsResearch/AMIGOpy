@@ -8,9 +8,9 @@ import os
 
 
 def threshSeg(self):
-    if 0 not in self.display_seg_data:
+    if 0 not in self.display_seg_data or not hasattr(self, 'seg_curr_struc'):
         return
-    min_, max_ = self.threshMinSlider.value(), self.threshMaxSlider.value()
+    min_, max_ = self.segThreshMinHU.value(), self.segThreshMaxHU.value()
     target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
 
     existing_structures = target_series_dict.get('structures', {})
@@ -26,17 +26,49 @@ def threshSeg(self):
 
     adjust_data_type_seg_input(self,1)
     disp_seg_image_slice(self) 
+
+
+def overwrite_dialog(self, all_series=False):
+    dlg = QMessageBox(self)
+    dlg.setWindowTitle("Overwrite warning!")
+    if all_series:
+        dlg.setText("One of the series already has a structure with the same name. \nDo you want to overwrite ALL?")
+    else:
+        dlg.setText("This series already has a structure with the same name. \nDo you want to overwrite it?")
+    dlg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    dlg.setIcon(QMessageBox.Question)
+    button = dlg.exec()
+    if button == QMessageBox.Yes:
+        return True
+    else:
+        return False
+    
+
+def delete_dialog(self, name, all_series=False):
+    dlg = QMessageBox(self)
+    dlg.setWindowTitle("Delete warning!")
+    if all_series:
+        dlg.setText(f"Structure '{name}' will be deleted from ALL series. \nProceed?")
+    else:
+        dlg.setText(f"Structure '{name}' will be deleted from this series. \nProceed?")
+    dlg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    dlg.setIcon(QMessageBox.Question)
+    button = dlg.exec()
+    if button == QMessageBox.Yes:
+        return True
+    else:
+        return False
     
     
 def InitSeg(self):
     if len(self.display_seg_data) == 0:
         return
-    layer  = int(self.layer_selection_box.currentIndex())
-    mask_3d = np.zeros_like(self.display_seg_data[layer])
-    mask_3d = mask_3d.astype(np.uint8)
 
     if self.initStrucCheck.isChecked():
+        check_duplicates = True
         for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]: 
+            mask_3d = np.zeros_like(target_series_dict["3DMatrix"])
+            mask_3d = mask_3d.astype(np.uint8)
 
             existing_structures = target_series_dict.get('structures', {})
             existing_structure_count = len(existing_structures)
@@ -54,6 +86,13 @@ def InitSeg(self):
                 name = "structure"
                 
             if name in target_series_dict['structures_names']:
+                if check_duplicates:
+                    check_duplicates = False
+                    if overwrite_dialog(self, all_series=True):
+                        pass
+                    else:
+                        return
+
                 new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
             else:
                 # Create a new unique key for the structure clearly:
@@ -61,7 +100,7 @@ def InitSeg(self):
 
             # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
             target_series_dict['structures'][new_s_key] = {
-                'Mask3D': mask_3d.copy(),
+                'Mask3D': mask_3d,
                 'Name': name
             }
             target_series_dict['structures_keys'].append(new_s_key)
@@ -69,6 +108,8 @@ def InitSeg(self):
 
     else:
         target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        mask_3d = np.zeros_like(target_series_dict["3DMatrix"])
+        mask_3d = mask_3d.astype(np.uint8)
         
         existing_structures = target_series_dict.get('structures', {})
         existing_structure_count = len(existing_structures)
@@ -86,6 +127,11 @@ def InitSeg(self):
             name = "structure"
             
         if name in target_series_dict['structures_names']:
+            if overwrite_dialog(self, all_series=False):
+                pass
+            else:
+                return
+
             new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
         else:
             # Create a new unique key for the structure clearly:
@@ -100,7 +146,71 @@ def InitSeg(self):
         target_series_dict['structures_names'].append(name)
     
     populate_DICOM_tree(self)
+
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
+    mask_3d = target_series_dict["structures"][new_s_key]["Mask3D"]
+    self.display_seg_data[1] = mask_3d
+    adjust_data_type_seg_input(self,1)
+    disp_seg_image_slice(self)
+
+
+
+def DeleteSeg(self):
+    if len(self.display_seg_data) == 0:
+        return
+    if not hasattr(self, 'seg_curr_struc'):
+        return
     
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    s_key = self.seg_curr_struc
+
+    if 'structures' not in target_series_dict:
+        return
+    if s_key not in target_series_dict['structures']:
+        return
+    s_key_name = target_series_dict['structures'][s_key]['Name']
+
+    if self.initStrucCheck.isChecked():
+        if delete_dialog(self, s_key_name, all_series=True):
+            pass
+        else:
+            return
+        for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]:
+            if 'structures' in target_series_dict:
+                if s_key in target_series_dict['structures']:
+                    target_series_dict['structures_keys'].remove(s_key)
+                    target_series_dict['structures_names'].remove(s_key_name)
+                    target_series_dict['structures'].pop(s_key, None)
+    else:
+        if delete_dialog(self, s_key_name, all_series=False):
+            pass
+        else:
+            return
+        target_series_dict['structures_keys'].remove(s_key)
+        target_series_dict['structures_names'].remove(s_key_name)
+        target_series_dict['structures'].pop(s_key, None)
+
+    self.display_seg_data[1] = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
+    adjust_data_type_seg_input(self,1)
+
+    populate_DICOM_tree(self)
+    self.curr_struc_available = False
+    delattr(self, 'seg_curr_struc')
+
+    slice_data = np.zeros((100, 100), dtype=np.uint16)
+    data_string = slice_data.tobytes()
+    extent = slice_data.shape
+    # initialize display image
+    self.dataImporterSeg[1].SetDataScalarTypeToUnsignedShort()
+    #
+    self.dataImporterSeg[1].CopyImportVoidPointer(data_string, len(data_string))
+    self.dataImporterSeg[1].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+    self.dataImporterSeg[1].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+    imageProperty = self.imageActorSeg[1].GetProperty()
+    imageProperty.SetOpacity(0)  
+    self.dataImporterSeg[1].Modified()    
+    self.renSeg.GetRenderWindow().Render() 
 
     
 from matplotlib.figure import Figure
@@ -130,16 +240,16 @@ def plot_hist(self):
         ax.spines['left'].set_color('white')
         ax.spines['right'].set_color('white')
     
-    x_min = self.threshMinSlider.value()
-    x_max = self.threshMaxSlider.value()
+    x_min = self.segThreshMinHU.value()
+    x_max = self.segThreshMaxHU.value()
     
     v, x = np.histogram(self.display_seg_data[0], range=(-1000, 1000), bins=2000)
     
     min_lim = -500; max_lim = 500
-    if self.threshMinSlider.value() < -500:
-        min_lim = self.threshMinSlider.value() - 100
-    if self.threshMaxSlider.value() > 500:
-        max_lim = self.threshMaxSlider.value() + 100
+    if self.segThreshMinHU.value() < -500:
+        min_lim = self.segThreshMinHU.value() - 100
+    if self.segThreshMaxHU.value() > 500:
+        max_lim = self.segThreshMaxHU.value() + 100
     max_counts = (v * (x[:-1] >= min_lim) * (x[:-1] <= max_lim)).max()
 
     ax.tick_params(
