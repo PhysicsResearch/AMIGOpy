@@ -8,9 +8,9 @@ import os
 
 
 def threshSeg(self):
-    if 0 not in self.display_seg_data:
+    if 0 not in self.display_seg_data or not hasattr(self, 'seg_curr_struc'):
         return
-    min_, max_ = self.threshMinSlider.value(), self.threshMaxSlider.value()
+    min_, max_ = self.segThreshMinHU.value(), self.segThreshMaxHU.value()
     target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
 
     existing_structures = target_series_dict.get('structures', {})
@@ -44,13 +44,13 @@ def overwrite_dialog(self, all_series=False):
         return False
     
 
-def delete_dialog(self, all_series=False):
+def delete_dialog(self, name, all_series=False):
     dlg = QMessageBox(self)
     dlg.setWindowTitle("Delete warning!")
     if all_series:
-        dlg.setText("Structure '{}' will be deleted from this series. \nProceed?")
+        dlg.setText(f"Structure '{name}' will be deleted from ALL series. \nProceed?")
     else:
-        dlg.setText("Structure '{}' will be deleted from ALL series. \nProceed?")
+        dlg.setText(f"Structure '{name}' will be deleted from this series. \nProceed?")
     dlg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
     dlg.setIcon(QMessageBox.Question)
     button = dlg.exec()
@@ -164,20 +164,26 @@ def DeleteSeg(self):
     
     target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
     s_key = self.seg_curr_struc
+
+    if 'structures' not in target_series_dict:
+        return
+    if s_key not in target_series_dict['structures']:
+        return
     s_key_name = target_series_dict['structures'][s_key]['Name']
 
     if self.initStrucCheck.isChecked():
-        if overwrite_dialog(self, all_series=True):
+        if delete_dialog(self, s_key_name, all_series=True):
             pass
         else:
             return
         for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]:
-            if s_key in target_series_dict['structures']:
-                target_series_dict['structures_keys'].remove(s_key)
-                target_series_dict['structures_names'].remove(s_key_name)
-                target_series_dict['structures'].pop(s_key, None)
+            if 'structures' in target_series_dict:
+                if s_key in target_series_dict['structures']:
+                    target_series_dict['structures_keys'].remove(s_key)
+                    target_series_dict['structures_names'].remove(s_key_name)
+                    target_series_dict['structures'].pop(s_key, None)
     else:
-        if overwrite_dialog(self, all_series=False):
+        if delete_dialog(self, s_key_name, all_series=False):
             pass
         else:
             return
@@ -190,6 +196,7 @@ def DeleteSeg(self):
 
     populate_DICOM_tree(self)
     self.curr_struc_available = False
+    delattr(self, 'seg_curr_struc')
 
     slice_data = np.zeros((100, 100), dtype=np.uint16)
     data_string = slice_data.tobytes()
@@ -233,16 +240,16 @@ def plot_hist(self):
         ax.spines['left'].set_color('white')
         ax.spines['right'].set_color('white')
     
-    x_min = self.threshMinSlider.value()
-    x_max = self.threshMaxSlider.value()
+    x_min = self.segThreshMinHU.value()
+    x_max = self.segThreshMaxHU.value()
     
     v, x = np.histogram(self.display_seg_data[0], range=(-1000, 1000), bins=2000)
     
     min_lim = -500; max_lim = 500
-    if self.threshMinSlider.value() < -500:
-        min_lim = self.threshMinSlider.value() - 100
-    if self.threshMaxSlider.value() > 500:
-        max_lim = self.threshMaxSlider.value() + 100
+    if self.segThreshMinHU.value() < -500:
+        min_lim = self.segThreshMinHU.value() - 100
+    if self.segThreshMaxHU.value() > 500:
+        max_lim = self.segThreshMaxHU.value() + 100
     max_counts = (v * (x[:-1] >= min_lim) * (x[:-1] <= max_lim)).max()
 
     ax.tick_params(
