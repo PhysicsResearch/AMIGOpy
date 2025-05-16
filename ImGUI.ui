@@ -7369,27 +7369,11 @@ p, li { white-space: pre-wrap; }
        <attribute name="title">
         <string>Segmentation</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_seg_tab" rowstretch="1,0,0,0,0,2,0" columnstretch="4,1,0,0,1,1">
+       <layout class="QGridLayout" name="gridLayout_seg_tab" rowstretch="1,0,0,0,0,2,0" columnstretch="5,1,0,1,1,1">
         <item row="4" column="4">
          <widget class="QPushButton" name="createSegStructure">
           <property name="text">
            <string>Create structure</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="2">
-         <widget class="QLineEdit" name="threshMinBox">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>Min. HU threshold</string>
           </property>
          </widget>
         </item>
@@ -7406,8 +7390,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>587</width>
-             <height>553</height>
+             <width>527</width>
+             <height>572</height>
             </rect>
            </property>
            <attribute name="label">
@@ -7557,8 +7541,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>587</width>
-             <height>553</height>
+             <width>101</width>
+             <height>47</height>
             </rect>
            </property>
            <attribute name="label">
@@ -7634,57 +7618,6 @@ p, li { white-space: pre-wrap; }
           </widget>
          </widget>
         </item>
-        <item row="1" column="4" colspan="2">
-         <widget class="QSlider" name="threshMinSlider">
-          <property name="minimum">
-           <number>-1024</number>
-          </property>
-          <property name="maximum">
-           <number>3000</number>
-          </property>
-          <property name="value">
-           <number>-200</number>
-          </property>
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="tickPosition">
-           <enum>QSlider::NoTicks</enum>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="2">
-         <widget class="QLineEdit" name="threshMaxBox">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>Max. HU threshold</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="4" colspan="2">
-         <widget class="QSlider" name="threshMaxSlider">
-          <property name="minimum">
-           <number>-1024</number>
-          </property>
-          <property name="maximum">
-           <number>3000</number>
-          </property>
-          <property name="value">
-           <number>150</number>
-          </property>
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-         </widget>
-        </item>
         <item row="6" column="0">
          <widget class="QSlider" name="segViewSlider">
           <property name="orientation">
@@ -7710,26 +7643,6 @@ p, li { white-space: pre-wrap; }
           <layout class="QGridLayout" name="gridLayout_49"/>
          </widget>
         </item>
-        <item row="1" column="3">
-         <widget class="QSpinBox" name="segThreshMinHU">
-          <property name="minimum">
-           <number>-1024</number>
-          </property>
-          <property name="maximum">
-           <number>3072</number>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="3">
-         <widget class="QSpinBox" name="segThreshMaxHU">
-          <property name="minimum">
-           <number>-1024</number>
-          </property>
-          <property name="maximum">
-           <number>3072</number>
-          </property>
-         </widget>
-        </item>
         <item row="4" column="2" colspan="2">
          <widget class="QCheckBox" name="initStrucCheck">
           <property name="layoutDirection">
@@ -7752,6 +7665,62 @@ p, li { white-space: pre-wrap; }
            <string>Structure name</string>
           </property>
          </widget>
+        </item>
+        <item row="1" column="2" rowspan="2" colspan="4">
+         <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="2,1,2,1">
+          <item>
+           <widget class="QLineEdit" name="threshMinBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Min. HU threshold</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="segThreshMinHU">
+            <property name="minimum">
+             <number>-1024</number>
+            </property>
+            <property name="maximum">
+             <number>3072</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="threshMaxBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Max. HU threshold</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="segThreshMaxHU">
+            <property name="minimum">
+             <number>-1024</number>
+            </property>
+            <property name="maximum">
+             <number>3072</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>
