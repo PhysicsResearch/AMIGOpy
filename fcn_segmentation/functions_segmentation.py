@@ -43,6 +43,22 @@ def overwrite_dialog(self, all_series=False):
     else:
         return False
     
+
+def delete_dialog(self, all_series=False):
+    dlg = QMessageBox(self)
+    dlg.setWindowTitle("Delete warning!")
+    if all_series:
+        dlg.setText("Structure '{}' will be deleted from this series. \nProceed?")
+    else:
+        dlg.setText("Structure '{}' will be deleted from ALL series. \nProceed?")
+    dlg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    dlg.setIcon(QMessageBox.Question)
+    button = dlg.exec()
+    if button == QMessageBox.Yes:
+        return True
+    else:
+        return False
+    
     
 def InitSeg(self):
     if len(self.display_seg_data) == 0:
@@ -138,7 +154,56 @@ def InitSeg(self):
     adjust_data_type_seg_input(self,1)
     disp_seg_image_slice(self)
 
+
+
+def DeleteSeg(self):
+    if len(self.display_seg_data) == 0:
+        return
+    if not hasattr(self, 'seg_curr_struc'):
+        return
     
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    s_key = self.seg_curr_struc
+    s_key_name = target_series_dict['structures'][s_key]['Name']
+
+    if self.initStrucCheck.isChecked():
+        if overwrite_dialog(self, all_series=True):
+            pass
+        else:
+            return
+        for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]:
+            if s_key in target_series_dict['structures']:
+                target_series_dict['structures_keys'].remove(s_key)
+                target_series_dict['structures_names'].remove(s_key_name)
+                target_series_dict['structures'].pop(s_key, None)
+    else:
+        if overwrite_dialog(self, all_series=False):
+            pass
+        else:
+            return
+        target_series_dict['structures_keys'].remove(s_key)
+        target_series_dict['structures_names'].remove(s_key_name)
+        target_series_dict['structures'].pop(s_key, None)
+
+    self.display_seg_data[1] = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
+    adjust_data_type_seg_input(self,1)
+
+    populate_DICOM_tree(self)
+    self.curr_struc_available = False
+
+    slice_data = np.zeros((100, 100), dtype=np.uint16)
+    data_string = slice_data.tobytes()
+    extent = slice_data.shape
+    # initialize display image
+    self.dataImporterSeg[1].SetDataScalarTypeToUnsignedShort()
+    #
+    self.dataImporterSeg[1].CopyImportVoidPointer(data_string, len(data_string))
+    self.dataImporterSeg[1].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+    self.dataImporterSeg[1].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+    imageProperty = self.imageActorSeg[1].GetProperty()
+    imageProperty.SetOpacity(0)  
+    self.dataImporterSeg[1].Modified()    
+    self.renSeg.GetRenderWindow().Render() 
 
     
 from matplotlib.figure import Figure

@@ -37,7 +37,7 @@ def disp_seg_image_slice(self):
     ori = self.segSelectView.currentText()
     self.current_seg_slice_index = self.segViewSlider.value()
     
-    if 0 not in self.display_seg_data or 1 not in self.display_seg_data:
+    if 0 not in self.display_seg_data:
         return 
 
     layer = 0
@@ -67,7 +67,7 @@ def disp_seg_image_slice(self):
 
     self.renSeg.GetRenderWindow().Render()  
 
-    if not self.curr_struc_available:
+    if not self.curr_struc_available or 1 not in self.display_seg_data:
         return
 
     layer = 1
