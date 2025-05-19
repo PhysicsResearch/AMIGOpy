@@ -390,7 +390,7 @@ def copyCurve(self):
     N = self.copyCurve_BrCv.value()
     timestep = df.iloc[1]["timestamp"] - df.iloc[0]["timestamp"]
     
-    if "instance" in df.columns and N > 1:
+    if "instance" in df.columns and N > 1 and self.curve_origin == "measured":
         # If instance information available, scale last cycle from minimum
         # until the end to ensure that the beginning and end of fragment match
         min1 = df[df["instance"] == df["instance"].max()]["amplitude"].min()
@@ -413,7 +413,6 @@ def copyCurve(self):
         df_mult = pd.concat([df_mult, df_copy]).reset_index(drop=True)
 
     self.dfEdit_BrCv = df_mult
-    
     
     
 def exportData(self):
