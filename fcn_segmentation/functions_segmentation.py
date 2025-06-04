@@ -408,10 +408,10 @@ def exportSegStruc(self):
     for row in range(self.tableSegStrucStats.rowCount()):
         item = self.tableSegStrucStats.item(row, 0)  # Assuming the checkbox is in the first column
         if item and item.checkState() == QtCore.Qt.Checked:
-            series_id = int(self.tableSegStrucStats.item(row, 1).text())
+            series_id = self.tableSegStrucStats.item(row, 1).text()
             s_key = self.tableSegStrucStats.item(row, 2).text()
             for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]:
-                if target_series_dict['SeriesNumber'] == series_id:        
+                if str(target_series_dict['SeriesNumber']) == series_id:        
                     for k in target_series_dict['structures']:
                         struct = target_series_dict['structures'][k]
                         if struct['Name'] == s_key:
