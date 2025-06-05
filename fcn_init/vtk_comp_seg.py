@@ -112,12 +112,3 @@ def setup_vtk_seg(self):
     reg_ex = QRegExp("[a-zA-Z][a-zA-Z0-9]{0,15}")
     input_validator = QRegExpValidator(reg_ex, self.segStructName)
     self.segStructName.setValidator(input_validator)
-
-    # Set layer opacities
-    self.LayerAlpha[0]  = 1
-    self.LayerAlpha[1]  = 0.99
-    self.Layer_1_alpha_spin.setValue(self.LayerAlpha[1])
-    self.Layer_1_alpha_sli.setValue(int(self.LayerAlpha[1]*100))
-    self.LayerAlpha[2]  = 0.99
-    self.Layer_2_alpha_spin.setValue(self.LayerAlpha[2])
-    self.Layer_2_alpha_sli.setValue(int(self.LayerAlpha[2]*100))

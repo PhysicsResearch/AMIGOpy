@@ -165,8 +165,8 @@ def disp_seg_image_slice(self):
         self.dataImporterSeg[layer].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
 
         # Skip window-level mapping; connect importer directly
-        self.imageActorSeg[layer].GetMapper().SetInputConnection(self.dataImporterSeg[layer].GetOutputPort())
-        self.imageActorSeg[layer].GetProperty().SetOpacity(0.0)
+        imageProperty = self.imageActorSeg[layer].GetProperty()
+        imageProperty.SetOpacity(0)  
 
         self.dataImporterSeg[layer].SetDataScalarTypeToUnsignedChar()
         self.dataImporterSeg[layer].Modified()   
