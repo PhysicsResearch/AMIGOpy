@@ -25,6 +25,7 @@ from fcn_init.init_tables             import initialize_software_tables
 from fcn_init.init_buttons            import initialize_software_buttons
 from fcn_init.init_load_files         import load_Source_cal_csv_file
 from fcn_init.init_list_menus         import populate_list_menus
+from fcn_init.init_drop_options       import initialize_drop_fcn
 from fcn_load.load_dcm                import load_all_dcm
 from fcn_segmentation.functions_segmentation import plot_hist
 import vtk
@@ -44,6 +45,10 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.toolbar = QToolBar("My main toolbar")
         self.addToolBar(self.toolbar)
 
+        # Set the progress bar value to 0
+        self.progressBar.setValue(0)
+
+
         # populate the list menus
         populate_list_menus(self)
         # initialize variables
@@ -52,6 +57,9 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         initialize_software_tables(self)
         # initialize buttons
         initialize_software_buttons(self)
+        # initialize drop functions
+        # Enable drag and drop
+        initialize_drop_fcn(self)
         # load ref csv files
         load_Source_cal_csv_file(self)
         
@@ -115,8 +123,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.LeftButtonSagittalDown  = False
         # self.LeftButtonSegDown = False
         #
-        # Set the progress bar value to 0
-        self.progressBar.setValue(0)
+
         # This section conects GUI elemtns with functions
         # slider to adjust the images
         self.AxialSlider.valueChanged.connect(self.on_axialslider_change)

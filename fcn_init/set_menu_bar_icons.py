@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QAction
 from PyQt5.QtCore import  QSize
 from PyQt5.QtGui import  QIcon
 from fcn_display.ruller import create_ruler
-from fcn_display.dicom_info import disp_dicom_info_from_amigo
+from fcn_display.dicom_info import open_dicom_tag_viewer
 
 def menu_bar_icon_actions(self, base_path):
         # Add a button/action with an icon - Ruler
@@ -22,7 +22,7 @@ def menu_bar_icon_actions(self, base_path):
         icon_path = os.path.join(base_path, "icons", "dcm_insp.png")  # Adjusted path for icons
         button_action = QAction(QIcon(icon_path), "DICOM Info", self)
         button_action.setStatusTip("Inspect DICOM file")
-        button_action.triggered.connect(lambda:disp_dicom_info_from_amigo(self))
+        button_action.triggered.connect(lambda:open_dicom_tag_viewer())
         self.viewer = None
 
         # Optional: Set a fixed size for the action to make it more squared
