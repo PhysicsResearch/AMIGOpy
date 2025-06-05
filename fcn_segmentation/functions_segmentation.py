@@ -222,9 +222,6 @@ def delete_dialog(self, name, all_series=False):
 def plot_hist(self):
     if 0 not in self.display_seg_data:
         return
-    
-    if self.curr_struc_key is None:
-        return
 
     self.plot_fig = Figure()  # Create a figure for the first time
     ax = self.plot_fig.add_subplot(111) 
