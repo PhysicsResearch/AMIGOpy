@@ -326,6 +326,7 @@ class ColorCheckItem(QWidget):
 
         # 1) Master checkbox to enable/disable the structure
         self.checkbox = QCheckBox()
+
         # 2) Label for the structure name
         self.label = QLabel(text)
 
@@ -348,7 +349,6 @@ class ColorCheckItem(QWidget):
         layout.addWidget(self.color_button)
         layout.addWidget(QLabel("Transp:"))
         layout.addWidget(self.transparency_spinbox)
-        # layout.addWidget(self.fill_checkbox)
 
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
@@ -403,9 +403,19 @@ def update_seg_struct_list(self, structures_keys, delete=False):
             # Append new item
             self.segStructList.addItem(list_item)
             self.segStructList.setItemWidget(list_item, custom_item)
+    
+    for row in range(self.segStructList.count()):
+        item = self.segStructList.item(row)
+        widget = self.segStructList.itemWidget(item)
+        checkbox = getattr(widget, "checkbox", None)
+        checkbox.stateChanged.connect(lambda: disp_seg_image_slice(self))
+        colorbutton = getattr(widget, "color_button", None)
+        colorbutton.clicked.connect(lambda: disp_seg_image_slice(self))
+        transparency_spinbox = getattr(widget, "transparency_spinbox", None)
+        transparency_spinbox.valueChanged.connect(lambda: disp_seg_image_slice(self))
 
     disp_seg_image_slice(self)
-    
+
 
 ##########################
 ### SEGMENTATION TOOLS ###
