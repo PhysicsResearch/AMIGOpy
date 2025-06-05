@@ -287,42 +287,40 @@ def on_DataTreeView_clicked(self,index):
                 self.windowLevelSeg[0].SetLevel(Level)
                 
                 # Accessing the values
-                for i in range(2):
+                for i in range(3):
                     self.slice_thick_seg[i]         = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
                     self.pixel_spac_seg[i, :2]      = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
                     self.Im_PatPosition_seg[i, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
                 #
                 if len(hierarchy) == 5: # Series
-                    self.LayerAlpha[1] = 0.0
-                    self.Layer_1_alpha_sli.setValue(int(self.LayerAlpha[1]*100))
                     self.display_seg_data = {}
-                    self.curr_struc_available = False
+                    self.curr_struc_key = None
+                    self.curr_struc_name = None
+
                     # Get and store the selected series volume
                     self.display_seg_data[0] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
-                    plot_hist(self)
-
                     adjust_data_type_seg_input(self,0)
+                    plot_hist(self)
 
                     self.display_seg_data[1] = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
                     adjust_data_type_seg_input(self,1)
                     
                 if len(hierarchy) == 7: # binary mask contour
-                    self.LayerAlpha[1] = 0.6
-                    self.Layer_1_alpha_sli.setValue(int(self.LayerAlpha[1]*100))
-
                     self.display_seg_data = {}
-                    self.curr_struc_available = True
-                    # Get and store the selected structure 
-                    s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
-                    self.seg_curr_struc = s_key
-                    self.display_seg_data[1] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
-                    adjust_data_type_seg_input(self,1)
 
                     # Get and store the corresponding series volume
                     self.display_seg_data[0] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                    adjust_data_type_seg_input(self,0)
                     plot_hist(self)
 
-                    adjust_data_type_seg_input(self,0)
+                    # Get and store the selected structure 
+                    s_key  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
+                    s_name = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'][hierarchy_indices[6].row()]
+                    self.curr_struc_key = s_key
+                    self.curr_struc_name = s_name
+
+                    self.display_seg_data[1] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+                    adjust_data_type_seg_input(self,1)
 
                     self.Im_Offset_seg[1,0]    = (self.Im_PatPosition_seg[1,0]-self.Im_PatPosition_seg[0,0])
                     self.Im_Offset_seg[1,1]    = (self.display_seg_data[0].shape[1]*self.pixel_spac_seg[0,0]-self.display_seg_data[1].shape[1]*self.pixel_spac_seg[1,0])-(self.Im_PatPosition_seg[1,1]-self.Im_PatPosition[0,1])
@@ -333,10 +331,13 @@ def on_DataTreeView_clicked(self,index):
                     self.pixel_spac_seg[1, :2]      = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
                     self.Im_PatPosition_seg[1, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
 
+                self.curr_series_no = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['SeriesNumber']
+
                 # Check if view needs to be initialized
-                self.seg_curr_data = {"Orientation": self.segSelectView.currentText(), "Dimensions": self.display_seg_data[0].shape,
-                        "SliceThickness": self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness'],
-                        "PixelSpacing": self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']}
+                self.seg_curr_data = {"Orientation": self.segSelectView.currentText(), 
+                                      "Dimensions": self.display_seg_data[0].shape,
+                                      "SliceThickness": self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness'],
+                                      "PixelSpacing": self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']}
 
                 if self.seg_prev_data["Orientation"] is None:
                     self.seg_init_view = True
@@ -345,7 +346,6 @@ def on_DataTreeView_clicked(self,index):
                         self.seg_init_view = True
                     else:
                         self.seg_init_view = False
-
                 self.seg_prev_data = self.seg_curr_data
 
                 # check the selected view

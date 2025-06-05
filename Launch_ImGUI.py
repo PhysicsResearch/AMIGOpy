@@ -82,7 +82,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.layerTab['Breathing curves']   = 0
         self.transTab['Breathing curves']   = [1,0,0,0]
         self.layerTab['Segmentation']       = 0
-        self.transTab['Segmentation']       = [1,0,0,0]
+        self.transTab['Segmentation']       = [1,0.99,0.99,0]
         #
         # Set the path relative to the executable's location
         base_path = os.path.dirname(os.path.abspath(__file__))     # Location of the script or the executable
