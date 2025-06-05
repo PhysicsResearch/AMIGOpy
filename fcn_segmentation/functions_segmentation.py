@@ -1,31 +1,190 @@
+import os
+import csv
+import nibabel as nib
+# from rt_utils import RTStructBuilder
 import numpy as np
+
 from fcn_load.populate_dcm_list import populate_DICOM_tree
 from fcn_display.disp_data_type import adjust_data_type_seg_input
 from fcn_display.display_images_seg import disp_seg_image_slice
-from PyQt5.QtWidgets import QTableWidgetItem, QCheckBox, QFileDialog, QMessageBox
+
 from PyQt5 import QtCore
-import os
+from PyQt5.QtWidgets import (
+    QWidget, QCheckBox, QLabel, QPushButton, QHBoxLayout, QMessageBox,
+    QVBoxLayout, QColorDialog, QDoubleSpinBox, QListWidgetItem, QFileDialog, QTableWidgetItem
+)
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import Qt, QTimer
 
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-def threshSeg(self):
-    if 0 not in self.display_seg_data or not hasattr(self, 'seg_curr_struc'):
-        return
-    min_, max_ = self.segThreshMinHU.value(), self.segThreshMaxHU.value()
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+#########################
+### GENERAL FUNCTIONS ###
+#########################
 
-    existing_structures = target_series_dict.get('structures', {})
-    existing_structure_count = len(existing_structures)
-
-    if existing_structure_count == 0:
+def InitSeg(self):
+    if len(self.display_seg_data) == 0:
         return
     
-    mask_3d = ((self.display_seg_data[0] >= min_) * (self.display_seg_data[0] <= max_)).astype(np.uint8)
+    structures_keys = []
 
-    self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.seg_curr_struc]['Mask3D'] = mask_3d
+    if self.initStructCheck.isChecked():
+        check_duplicates = True
+        for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]: 
+            mask_3d = np.zeros_like(target_series_dict["3DMatrix"])
+            mask_3d = mask_3d.astype(np.uint8)
+
+            existing_structures = target_series_dict.get('structures', {})
+            existing_structure_count = len(existing_structures)
+            
+            if existing_structure_count == 0:
+                target_series_dict['structures'] = {}
+                target_series_dict['structures_keys'] = []
+                target_series_dict['structures_names'] = []
+
+            current_structure_index = existing_structure_count + 1
+            
+            if len(self.segStructName.text()) > 1:
+                name = self.segStructName.text()
+            else:
+                name = "structure"
+                
+            if name in target_series_dict['structures_names']:
+                if check_duplicates:
+                    check_duplicates = False
+                    if overwrite_dialog(self, all_series=True):
+                        pass
+                    else:
+                        return
+
+                new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
+            else:
+                # Create a new unique key for the structure clearly:
+                new_s_key = f"Structure_{current_structure_index:03d}"
+
+            # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+            target_series_dict['structures'][new_s_key] = {
+                'Mask3D': mask_3d,
+                'Name': name
+            }
+            target_series_dict['structures_keys'].append(new_s_key)
+            target_series_dict['structures_names'].append(name)
+            structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber']])
+
+    else:
+        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        mask_3d = np.zeros_like(target_series_dict["3DMatrix"])
+        mask_3d = mask_3d.astype(np.uint8)
+        
+        existing_structures = target_series_dict.get('structures', {})
+        existing_structure_count = len(existing_structures)
+        
+        if existing_structure_count == 0:
+            target_series_dict['structures'] = {}
+            target_series_dict['structures_keys'] = []
+            target_series_dict['structures_names'] = []
+
+        current_structure_index = existing_structure_count + 1
+        
+        if len(self.segStructName.text()) > 1:
+            name = self.segStructName.text()
+        else:
+            name = "structure"
+            
+        if name in target_series_dict['structures_names']:
+            if overwrite_dialog(self, all_series=False):
+                pass
+            else:
+                return
+
+            new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
+        else:
+            # Create a new unique key for the structure clearly:
+            new_s_key = f"Structure_{current_structure_index:03d}"
+
+        # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        target_series_dict['structures'][new_s_key] = {
+            'Mask3D': mask_3d,
+            'Name': name
+        }
+        target_series_dict['structures_keys'].append(new_s_key)
+        target_series_dict['structures_names'].append(name)
+        structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber']])
+    
+    populate_DICOM_tree(self)
+
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
+    mask_3d = target_series_dict["structures"][new_s_key]["Mask3D"]
     self.display_seg_data[1] = mask_3d
-
     adjust_data_type_seg_input(self,1)
-    disp_seg_image_slice(self) 
+    disp_seg_image_slice(self)
+    update_seg_struct_list(self, structures_keys, delete=False)
+
+
+def DeleteSeg(self):
+    if len(self.display_seg_data) == 0:
+        return
+    if self.curr_struc_key is None:
+        return
+    
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    s_key = self.curr_struc_key
+    structures_keys = []
+
+    if 'structures' not in target_series_dict:
+        return
+    if s_key not in target_series_dict['structures']:
+        return
+    s_key_name = target_series_dict['structures'][s_key]['Name']
+
+    if self.initStructCheck.isChecked():
+        if delete_dialog(self, s_key_name, all_series=True):
+            pass
+        else:
+            return
+        for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]:
+            if 'structures' in target_series_dict:
+                if s_key in target_series_dict['structures']:
+                    target_series_dict['structures_keys'].remove(s_key)
+                    target_series_dict['structures_names'].remove(s_key_name)
+                    target_series_dict['structures'].pop(s_key, None)
+                    structures_keys.append([s_key, s_key_name, target_series_dict['SeriesNumber']])
+
+    else:
+        if delete_dialog(self, s_key_name, all_series=False):
+            pass
+        else:
+            return
+        target_series_dict['structures_keys'].remove(s_key)
+        target_series_dict['structures_names'].remove(s_key_name)
+        target_series_dict['structures'].pop(s_key, None)
+        structures_keys.append([s_key, s_key_name, target_series_dict['SeriesNumber']])
+
+    self.display_seg_data[1] = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
+    adjust_data_type_seg_input(self,1)
+
+    populate_DICOM_tree(self)
+    self.curr_struc_key = None
+    self.curr_struc_name = None
+
+    slice_data = np.zeros((100, 100), dtype=np.uint16)
+    data_string = slice_data.tobytes()
+    extent = slice_data.shape
+    # initialize display image
+    self.dataImporterSeg[1].SetDataScalarTypeToUnsignedShort()
+    #
+    self.dataImporterSeg[1].CopyImportVoidPointer(data_string, len(data_string))
+    self.dataImporterSeg[1].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+    self.dataImporterSeg[1].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+    imageProperty = self.imageActorSeg[1].GetProperty()
+    imageProperty.SetOpacity(0)  
+    self.dataImporterSeg[1].Modified()    
+    self.renSeg.GetRenderWindow().Render() 
+
+    update_seg_struct_list(self, structures_keys, delete=True)
 
 
 def overwrite_dialog(self, all_series=False):
@@ -59,168 +218,12 @@ def delete_dialog(self, name, all_series=False):
     else:
         return False
     
-    
-def InitSeg(self):
-    if len(self.display_seg_data) == 0:
-        return
 
-    if self.initStrucCheck.isChecked():
-        check_duplicates = True
-        for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]: 
-            mask_3d = np.zeros_like(target_series_dict["3DMatrix"])
-            mask_3d = mask_3d.astype(np.uint8)
-
-            existing_structures = target_series_dict.get('structures', {})
-            existing_structure_count = len(existing_structures)
-            
-            if existing_structure_count == 0:
-                target_series_dict['structures'] = {}
-                target_series_dict['structures_keys'] = []
-                target_series_dict['structures_names'] = []
-
-            current_structure_index = existing_structure_count + 1
-            
-            if len(self.segStructureName.text()) > 1:
-                name = self.segStructureName.text()
-            else:
-                name = "structure"
-                
-            if name in target_series_dict['structures_names']:
-                if check_duplicates:
-                    check_duplicates = False
-                    if overwrite_dialog(self, all_series=True):
-                        pass
-                    else:
-                        return
-
-                new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
-            else:
-                # Create a new unique key for the structure clearly:
-                new_s_key = f"Structure_{current_structure_index:03d}"
-
-            # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-            target_series_dict['structures'][new_s_key] = {
-                'Mask3D': mask_3d,
-                'Name': name
-            }
-            target_series_dict['structures_keys'].append(new_s_key)
-            target_series_dict['structures_names'].append(name)
-
-    else:
-        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-        mask_3d = np.zeros_like(target_series_dict["3DMatrix"])
-        mask_3d = mask_3d.astype(np.uint8)
-        
-        existing_structures = target_series_dict.get('structures', {})
-        existing_structure_count = len(existing_structures)
-        
-        if existing_structure_count == 0:
-            target_series_dict['structures'] = {}
-            target_series_dict['structures_keys'] = []
-            target_series_dict['structures_names'] = []
-
-        current_structure_index = existing_structure_count + 1
-        
-        if len(self.segStructureName.text()) > 1:
-            name = self.segStructureName.text()
-        else:
-            name = "structure"
-            
-        if name in target_series_dict['structures_names']:
-            if overwrite_dialog(self, all_series=False):
-                pass
-            else:
-                return
-
-            new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
-        else:
-            # Create a new unique key for the structure clearly:
-            new_s_key = f"Structure_{current_structure_index:03d}"
-
-        # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-        target_series_dict['structures'][new_s_key] = {
-            'Mask3D': mask_3d,
-            'Name': name
-        }
-        target_series_dict['structures_keys'].append(new_s_key)
-        target_series_dict['structures_names'].append(name)
-    
-    populate_DICOM_tree(self)
-
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
-    mask_3d = target_series_dict["structures"][new_s_key]["Mask3D"]
-    self.display_seg_data[1] = mask_3d
-    adjust_data_type_seg_input(self,1)
-    disp_seg_image_slice(self)
-
-
-
-def DeleteSeg(self):
-    if len(self.display_seg_data) == 0:
-        return
-    if not hasattr(self, 'seg_curr_struc'):
-        return
-    
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    s_key = self.seg_curr_struc
-
-    if 'structures' not in target_series_dict:
-        return
-    if s_key not in target_series_dict['structures']:
-        return
-    s_key_name = target_series_dict['structures'][s_key]['Name']
-
-    if self.initStrucCheck.isChecked():
-        if delete_dialog(self, s_key_name, all_series=True):
-            pass
-        else:
-            return
-        for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]:
-            if 'structures' in target_series_dict:
-                if s_key in target_series_dict['structures']:
-                    target_series_dict['structures_keys'].remove(s_key)
-                    target_series_dict['structures_names'].remove(s_key_name)
-                    target_series_dict['structures'].pop(s_key, None)
-    else:
-        if delete_dialog(self, s_key_name, all_series=False):
-            pass
-        else:
-            return
-        target_series_dict['structures_keys'].remove(s_key)
-        target_series_dict['structures_names'].remove(s_key_name)
-        target_series_dict['structures'].pop(s_key, None)
-
-    self.display_seg_data[1] = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
-    adjust_data_type_seg_input(self,1)
-
-    populate_DICOM_tree(self)
-    self.curr_struc_available = False
-    delattr(self, 'seg_curr_struc')
-
-    slice_data = np.zeros((100, 100), dtype=np.uint16)
-    data_string = slice_data.tobytes()
-    extent = slice_data.shape
-    # initialize display image
-    self.dataImporterSeg[1].SetDataScalarTypeToUnsignedShort()
-    #
-    self.dataImporterSeg[1].CopyImportVoidPointer(data_string, len(data_string))
-    self.dataImporterSeg[1].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-    self.dataImporterSeg[1].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-    imageProperty = self.imageActorSeg[1].GetProperty()
-    imageProperty.SetOpacity(0)  
-    self.dataImporterSeg[1].Modified()    
-    self.renSeg.GetRenderWindow().Render() 
-
-    
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from PyQt5.QtWidgets import QVBoxLayout
-
-    
 def plot_hist(self):
     if 0 not in self.display_seg_data:
+        return
+    
+    if self.curr_struc_key is None:
         return
 
     self.plot_fig = Figure()  # Create a figure for the first time
@@ -264,29 +267,181 @@ def plot_hist(self):
     ax.axvline(x_max, color="r")
     ax.set_xlim(min_lim, max_lim)
     ax.set_ylim(0, 1.1)
-    ax.set_xlabel("HU")
+    ax.legend(["HU distribution"], loc='upper right')
     
-    # Create a canvas and toolbar
-    canvas = FigureCanvas(self.plot_fig)
+    # Custom canvas that adjusts on resize
+    class ResizableCanvas(FigureCanvas):
+        def resizeEvent(self, event):
+            # Schedule tight_layout after the resize event completes
+            QTimer.singleShot(0, self._apply_tight_layout)
+            super().resizeEvent(event)
+
+        def _apply_tight_layout(self):
+            self.figure.tight_layout()
+            self.draw()
+
+    # Create the canvas
+    canvas = ResizableCanvas(self.plot_fig)
     canvas.setStyleSheet(f"background-color:{self.selected_background};")
 
-    # Check if the container has a layout, set one if not
+    # Layout setup
     container = self.VTK_SegHistView
     if container.layout() is None:
         layout = QVBoxLayout(container)
         container.setLayout(layout)
     else:
-        # Clear existing content in the container, if any
-        while container.layout().count():
-            child = container.layout().takeAt(0)
-            if child.widget() and not isinstance(child.widget(), NavigationToolbar):
-                child.widget().deleteLater()
+        layout = container.layout()
 
-    # Add the canvas and toolbar to the container
-    container.layout().addWidget(canvas)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(0)
+
+    # Clear previous widgets except the toolbar
+    while layout.count():
+        child = layout.takeAt(0)
+        if child.widget() and not isinstance(child.widget(), NavigationToolbar):
+            child.widget().deleteLater()
+
+    # Add the canvas
+    layout.addWidget(canvas)
+
+    # Tight layout to remove extra padding
+    self.plot_fig.tight_layout()
     canvas.draw()
+
+
+class ColorCheckItem(QWidget):
+    """
+    A custom widget that displays:
+      - A checkbox (to toggle the structure on/off),
+      - A label (for the structure name),
+      - A color-selection button,
+      - A 'Line Width' spinbox,
+      - A 'Transparency' spinbox,
+      - A 'Fill' checkbox (to indicate whether to display a filled polygon).
+    """
+
+    def __init__(self, text, parent=None):
+        super().__init__(parent)
+        self.selectedColor = None
+
+        # 1) Master checkbox to enable/disable the structure
+        self.checkbox = QCheckBox()
+
+        # 2) Label for the structure name
+        self.label = QLabel(text)
+
+        # 3) Button to pick color
+        self.color_button = QPushButton("Select Color")
+        self.color_button.setMaximumWidth(100)
+        self.color_button.clicked.connect(self.openColorDialog)
+
+        # 5) Spinbox for transparency (0=opaque, 1=fully transparent)
+        self.transparency_spinbox = QDoubleSpinBox()
+        self.transparency_spinbox.setRange(0.0, 1.0)
+        self.transparency_spinbox.setValue(1.0)
+        self.transparency_spinbox.setSingleStep(0.1)
+        self.transparency_spinbox.setDecimals(2)
+
+        # Lay out horizontally
+        layout = QHBoxLayout()
+        layout.addWidget(self.checkbox)
+        layout.addWidget(self.label)
+        layout.addWidget(self.color_button)
+        layout.addWidget(QLabel("Transp:"))
+        layout.addWidget(self.transparency_spinbox)
+
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+    def openColorDialog(self):
+        color = QColorDialog.getColor(
+            initial=self.selectedColor or QColor(Qt.white),
+            parent=self
+        )
+        if color.isValid():
+            self.selectedColor = color
+            self.color_button.setStyleSheet(f"background-color: {color.name()};")
+
+
+def update_seg_struct_list(self, structures_keys, delete=False):
+    """
+    Update self.STRUCTlist (a QListWidget) with custom items that display the structure name,
+    a checkbox, and a color-selection button. The corresponding structure key is stored in the custom widget.
+    """
+    for key, name, series_id in structures_keys:
+        target_key  = f"{series_id}_{name}"
+
+        if delete:
+            for i in range(self.segStructList.count()):
+                item = self.segStructList.item(i)
+                widget = self.segStructList.itemWidget(item)
+                if not widget:
+                    continue
+                if getattr(widget, "structure_key", None) == target_key:
+                    self.segStructList.removeItemWidget(item)  # Detach widget
+                    widget.deleteLater()                       # Schedule widget for deletion
+                    self.segStructList.takeItem(i)             # Remove the QListWidgetItem
+                    break
+
+        else:
+            # Check if the item already exists and delete it first
+            for i in range(self.segStructList.count()):
+                item = self.segStructList.item(i)
+                widget = self.segStructList.itemWidget(item)
+                if not widget:
+                    continue
+                if getattr(widget, "structure_key", None) == target_key:
+                    self.segStructList.removeItemWidget(item)
+                    widget.deleteLater()
+                    self.segStructList.takeItem(i)
+                    break
+            list_item = QListWidgetItem(self.segStructList)
+            custom_item = ColorCheckItem(target_key)
+            custom_item.structure_key = target_key
+            list_item.setSizeHint(custom_item.sizeHint())
     
+            # Append new item
+            self.segStructList.addItem(list_item)
+            self.segStructList.setItemWidget(list_item, custom_item)
     
+    for row in range(self.segStructList.count()):
+        item = self.segStructList.item(row)
+        widget = self.segStructList.itemWidget(item)
+        checkbox = getattr(widget, "checkbox", None)
+        checkbox.stateChanged.connect(lambda: disp_seg_image_slice(self))
+        colorbutton = getattr(widget, "color_button", None)
+        colorbutton.clicked.connect(lambda: disp_seg_image_slice(self))
+        transparency_spinbox = getattr(widget, "transparency_spinbox", None)
+        transparency_spinbox.valueChanged.connect(lambda: disp_seg_image_slice(self))
+
+    disp_seg_image_slice(self)
+
+
+##########################
+### SEGMENTATION TOOLS ###
+##########################
+
+def threshSeg(self):
+    if 0 not in self.display_seg_data or not hasattr(self, 'curr_struc_key'):
+        return
+    min_, max_ = self.segThreshMinHU.value(), self.segThreshMaxHU.value()
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+
+    existing_structures = target_series_dict.get('structures', {})
+    existing_structure_count = len(existing_structures)
+
+    if existing_structure_count == 0:
+        return
+    
+    mask_3d = ((self.display_seg_data[0] >= min_) * (self.display_seg_data[0] <= max_)).astype(np.uint8)
+
+    self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = mask_3d
+    self.display_seg_data[1] = mask_3d
+
+    adjust_data_type_seg_input(self,1)
+    disp_seg_image_slice(self) 
+
+
 def on_brush_click(self):
     self.seg_brush = 0 if self.seg_brush == 1 else 1
     if self.seg_brush == 1:
@@ -298,6 +453,11 @@ def on_erase_click(self):
     if self.seg_erase == 1:
         self.segBrushButton.setChecked(0) 
         self.seg_brush = 0 
+    
+    
+################
+### ANALYSIS ###
+################
 
 def calc_com(segmentation):
     from scipy.ndimage import center_of_mass
@@ -312,6 +472,8 @@ def calcStrucStats(self):
     for patientID in self.dicom_data:
         for studyID in self.dicom_data[patientID]:
             for modality in self.dicom_data[patientID][studyID]:
+                if modality != "CT":
+                    continue
                 for target_series_dict in self.dicom_data[patientID][studyID][modality]:
                     if len(target_series_dict.get('structures', {})) == 0:
                         continue
@@ -382,13 +544,46 @@ def exportStrucStats(self):
             x = self.tableSegStrucStats.item(row, 6).text()
             checked_items.append((series_id, name, volume, z, y, x))
 
-    import csv
-
     with open(os.path.join(folder, "structure_stats.csv"), 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerows(checked_items)
 
-import nibabel as nib
+
+#########################
+### EXPORT STRUCTURES ###
+#########################
+
+def overwrite_rtstruct_dialog(self, name):
+    dlg = QMessageBox(self)
+    dlg.setWindowTitle("Overwrite warning!")
+    dlg.setText(f"A structure named '{name}' already exists in this RTSTRUCT. \nDo you want to overwrite this structure?")
+    dlg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    dlg.setIcon(QMessageBox.Question)
+    button = dlg.exec()
+    if button == QMessageBox.Yes:
+        return True
+    else:
+        return False
+
+
+def remove_roi_by_name(rtstruct, roi_name):
+    # Get index corresponding to ROI_name
+    roi_index = None
+    for i, roi in enumerate(rtstruct.ds.StructureSetROISequence):
+        print(roi.ROIName)
+        if roi.ROIName == roi_name:
+            roi_index = i
+            break
+
+    if roi_index is None:
+        return None
+    
+    rtstruct.ds.StructureSetROISequence.pop(roi_index)
+    rtstruct.ds.ROIContourSequence.pop(roi_index)
+    rtstruct.ds.RTROIObservationsSequence.pop(roi_index)
+
+    return rtstruct
+
 
 def exportSegStruc(self):
     if self.dicom_data is None:
@@ -404,7 +599,6 @@ def exportSegStruc(self):
     os.makedirs(save_dir, exist_ok=True)
     
     # Get the checked items from the table
-    checked_items = []
     for row in range(self.tableSegStrucStats.rowCount()):
         item = self.tableSegStrucStats.item(row, 0)  # Assuming the checkbox is in the first column
         if item and item.checkState() == QtCore.Qt.Checked:
@@ -419,4 +613,3 @@ def exportSegStruc(self):
                             img = nib.Nifti1Image(mask, np.eye(4))
                             img.header.get_xyzt_units()
                             nib.save(img, os.path.join(save_dir, f"{series_id}_{s_key}.nii.gz"))  
-
