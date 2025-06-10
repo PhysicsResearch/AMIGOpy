@@ -132,6 +132,11 @@ def processCSV(self, filePath):
     # Load the CSV file into a DataFrame
     try:
         dataframe = pd.read_csv(filePath, sep=separator, skiprows=skip_lines, header=header_param)
+        # Remove columns that are completely NaN
+        dataframe = dataframe.dropna(axis=1, how='all')
+        
+        if 'timestamp' not in dataframe.columns or 'amplitude' not in dataframe.columns:
+            return
         # 
         # If no header, set default column names
         if header_line == -1:
