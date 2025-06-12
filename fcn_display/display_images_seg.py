@@ -89,6 +89,7 @@ def disp_seg_image_slice(self):
     # If any structure is selected, display selected segmentation in layer 1
     slice_data_im = slice_data.copy()
     if self.curr_struc_key is not None and 1 in self.display_seg_data: 
+        self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
         target_key = f"{self.patientID}_{self.curr_series_no}_{self.curr_struc_name}"
 
         if ori=="Axial": #Axial

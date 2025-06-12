@@ -67,7 +67,8 @@ def InitSeg(self):
             # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
             target_series_dict['structures'][new_s_key] = {
                 'Mask3D': mask_3d,
-                'Name': name
+                'Name': name,
+                'Modified': 1
             }
             target_series_dict['structures_keys'].append(new_s_key)
             target_series_dict['structures_names'].append(name)
@@ -107,7 +108,8 @@ def InitSeg(self):
         # target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
         target_series_dict['structures'][new_s_key] = {
             'Mask3D': mask_3d,
-            'Name': name
+            'Name': name,
+            'Modified': 1
         }
         target_series_dict['structures_keys'].append(new_s_key)
         target_series_dict['structures_names'].append(name)
@@ -365,47 +367,73 @@ class ColorCheckItem(QWidget):
             self.color_button.setStyleSheet(f"background-color: {color.name()};")
 
 
-def update_seg_struct_list(self, structures_keys, delete=False):
+def update_seg_struct_list(self, structures_keys=None, delete=False):
     """
     Update self.STRUCTlist (a QListWidget) with custom items that display the structure name,
     a checkbox, and a color-selection button. The corresponding structure key is stored in the custom widget.
     """
-    for key, name, series_id, patient_id in structures_keys:
-        target_key  = f"{patient_id}_{series_id}_{name}"
-
-        if delete:
-            for i in range(self.segStructList.count()):
-                item = self.segStructList.item(i)
-                widget = self.segStructList.itemWidget(item)
-                if not widget:
-                    continue
-                if getattr(widget, "structure_key", None) == target_key:
-                    self.segStructList.removeItemWidget(item)  # Detach widget
-                    widget.deleteLater()                       # Schedule widget for deletion
-                    self.segStructList.takeItem(i)             # Remove the QListWidgetItem
-                    break
-
-        else:
-            # Check if the item already exists and delete it first
-            for i in range(self.segStructList.count()):
-                item = self.segStructList.item(i)
-                widget = self.segStructList.itemWidget(item)
-                if not widget:
-                    continue
-                if getattr(widget, "structure_key", None) == target_key:
-                    self.segStructList.removeItemWidget(item)
-                    widget.deleteLater()
-                    self.segStructList.takeItem(i)
-                    break
-            list_item = QListWidgetItem(self.segStructList)
-            custom_item = ColorCheckItem([patient_id, series_id, name])
-            custom_item.structure_key = target_key
-            list_item.setSizeHint(custom_item.sizeHint())
+    if structures_keys is None:
+        if self.segStructList.count() != 0 or self.dicom_data is None:
+            return
+        for patientID in self.dicom_data:
+            for studyID in self.dicom_data[patientID]:
+                for modality in self.dicom_data[patientID][studyID]:
+                    if modality != "CT":
+                        continue
+                    for target_series_dict in self.dicom_data[patientID][studyID][modality]:
+                        if type(target_series_dict) is dict and 'structures' in target_series_dict:
+                            seriesID = target_series_dict["SeriesNumber"]
+                            for k in target_series_dict['structures']:
+                                name = target_series_dict['structures'][k]['Name']
+                                target_key = f"{patientID}_{seriesID}_{name}"
+                            
+                                list_item = QListWidgetItem(self.segStructList)
+                                custom_item = ColorCheckItem([patientID, seriesID, name])
+                                custom_item.structure_key = target_key
+                                list_item.setSizeHint(custom_item.sizeHint())
     
-            # Append new item
-            self.segStructList.addItem(list_item)
-            self.segStructList.setItemWidget(list_item, custom_item)
-    
+                                # Append new item
+                                self.segStructList.addItem(list_item)
+                                self.segStructList.setItemWidget(list_item, custom_item)
+    else:
+        for key, name, series_id, patient_id in structures_keys:
+            target_key  = f"{patient_id}_{series_id}_{name}"
+
+            if delete:
+                for i in range(self.segStructList.count()):
+                    item = self.segStructList.item(i)
+                    widget = self.segStructList.itemWidget(item)
+                    if not widget:
+                        continue
+                    if getattr(widget, "structure_key", None) == target_key:
+                        self.segStructList.removeItemWidget(item)  # Detach widget
+                        widget.deleteLater()                       # Schedule widget for deletion
+                        self.segStructList.takeItem(i)             # Remove the QListWidgetItem
+                        break
+
+            else:
+                # Check if the item already exists and delete it first
+                for i in range(self.segStructList.count()):
+                    item = self.segStructList.item(i)
+                    widget = self.segStructList.itemWidget(item)
+                    if not widget:
+                        continue
+                    if getattr(widget, "structure_key", None) == target_key:
+                        self.segStructList.removeItemWidget(item)
+                        widget.deleteLater()
+                        self.segStructList.takeItem(i)
+                        break
+                list_item = QListWidgetItem(self.segStructList)
+                custom_item = ColorCheckItem([patient_id, series_id, name])
+                custom_item.structure_key = target_key
+                list_item.setSizeHint(custom_item.sizeHint())
+        
+                # Append new item
+                self.segStructList.addItem(list_item)
+                self.segStructList.setItemWidget(list_item, custom_item)
+
+        disp_seg_image_slice(self)
+        
     for row in range(self.segStructList.count()):
         item = self.segStructList.item(row)
         widget = self.segStructList.itemWidget(item)
@@ -416,7 +444,7 @@ def update_seg_struct_list(self, structures_keys, delete=False):
         transparency_spinbox = getattr(widget, "transparency_spinbox", None)
         transparency_spinbox.valueChanged.connect(lambda: disp_seg_image_slice(self))
 
-    disp_seg_image_slice(self)
+    
 
 
 ##########################
@@ -437,6 +465,7 @@ def threshSeg(self):
     
     mask_3d = ((self.display_seg_data[0] >= min_) * (self.display_seg_data[0] <= max_)).astype(np.uint8)
 
+    self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
     self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = mask_3d
     self.display_seg_data[1] = mask_3d
 
