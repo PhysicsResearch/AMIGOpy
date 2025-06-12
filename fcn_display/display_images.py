@@ -1,6 +1,9 @@
+from PyQt5.QtWidgets import QProgressDialog
+from PyQt5.QtCore import Qt
 import vtk
 import numpy as np
 import math
+from fcn_RTFiles.process_contours import build_contours_for_structure, actors_from_contours
 
 
 def displayaxial(self, Im = None):
@@ -122,6 +125,8 @@ def disp_structure_overlay_axial(self):
     # pixel spacing (row, col)  →  (y, x) in mm
     px_spacing = (self.pixel_spac[0, 1], self.pixel_spac[0, 0])
 
+    # ─── WARNDLG SETUP ──────────────────────────────────────────────
+    warn_dlg = None
     for i in range(self.STRUCTlist.count()):
         item_widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
         if not item_widget.checkbox.isChecked():
@@ -133,11 +138,30 @@ def disp_structure_overlay_axial(self):
 
         s_data = series_dict["structures"].get(s_key, {})
 
-        # ── 1) make sure axial actors exist  ──────────────────────────
+        # ── 1) make sure axial actors exist  if not create all ──────────────────────────
+        if 'Contours2D' not in s_data:
+            return
+        if not s_data['Contours2D']:
+            return
+        
         if "VTKActors2D" not in s_data:
+            # show the warn dialog once
+            if warn_dlg is None:
+                warn_dlg = QProgressDialog(
+                    "Pre-loading contours… it may take a few seconds",
+                    None, 0, 0, self
+                )
+                warn_dlg.setWindowTitle("Please wait")
+                warn_dlg.setWindowModality(Qt.WindowModal)
+                warn_dlg.setAutoClose(False)
+                warn_dlg.setMinimumDuration(0)
+                warn_dlg.show()
             s_data["VTKActors2D"] = {}
 
-        if "axial" not in s_data["VTKActors2D"]:
+        if not s_data['Contours2D']['axial'] or s_data['Modified'] == 1:          # still empty?
+            s_data['Contours2D'] = build_contours_for_structure(s_data['Mask3D'])
+
+        if "axial" not in s_data["VTKActors2D"] or s_data['Modified'] == 1:
             # build once, cache forever (in RAM only)
             contours_axial = s_data.get("Contours2D", {}).get("axial", {})
             s_data["VTKActors2D"]["axial"] = actors_from_contours(
@@ -148,6 +172,9 @@ def disp_structure_overlay_axial(self):
             )
 
         actors_dict = s_data["VTKActors2D"]["axial"]
+
+        if s_data['Modified'] == 1:
+            s_data['Modified'] = 0          # reset modified flag
 
         if slice_idx not in actors_dict:
             continue                          # no contour on this slice
@@ -172,7 +199,9 @@ def disp_structure_overlay_axial(self):
 
         renderer.AddActor(actor)
         self.structure_actors_ax.append(actor)
-
+    # ─── CLOSE THE WARNDLG ──────────────────────────────────────────
+    if warn_dlg is not None and warn_dlg.isVisible():
+        warn_dlg.close()
     self.vtkWidgetAxial.GetRenderWindow().Render()
 
 
@@ -549,6 +578,7 @@ def disp_structure_overlay_coronal(self):
         .GetFirstRenderer()
     )
 
+
     # ─── clear previous overlay ───────────────────────────────────────
     for actor in getattr(self, "structure_actors_co", []):
         renderer.RemoveActor(actor)
@@ -577,6 +607,12 @@ def disp_structure_overlay_coronal(self):
             continue
 
         s_data = series_dict["structures"].get(s_key, {})
+
+        # ── 1) make sure axial actors exist  if not create all ──────────────────────────
+        if 'Contours2D' not in s_data:
+            return
+        if not s_data['Contours2D']:
+            return
 
         # ── 1) make sure coronal actors exist ─────────────────────────
         if "VTKActors2D" not in s_data:
@@ -1020,6 +1056,7 @@ def disp_structure_overlay_sagittal(self):
         .GetFirstRenderer()
     )
 
+
     # ── clear existing overlay ────────────────────────────────────────
     for actor in getattr(self, "structure_actors_sa", []):
         renderer.RemoveActor(actor)
@@ -1050,6 +1087,11 @@ def disp_structure_overlay_sagittal(self):
         s_data = series_dict["structures"].get(s_key, {})
 
         # ── 1) make sure sagittal actors exist ───────────────────────
+        if 'Contours2D' not in s_data:
+            return
+        if not s_data['Contours2D']:
+            return
+            
         if "VTKActors2D" not in s_data:
             s_data["VTKActors2D"] = {}
 
@@ -1433,59 +1475,3 @@ def update_layer_view(self):
             #
 
 
-
-def actors_from_contours(contours_by_slice, pixel_spacing, line_width=2, color=(1,0,0)):
-    """
-    Convert {sliceIdx: [np.ndarray, …]} → {sliceIdx: vtkActor}
-    Returned dict is ready to be cached under entry['VTKActors2D'].
-    """
-    actors = {}
-    for slice_idx, contours in contours_by_slice.items():
-        poly = contours_to_vtk_polydata(contours, pixel_spacing)
-        actors[slice_idx] = create_actor_2d(poly, color=color, line_width=line_width)
-    return actors
-
-def contours_to_vtk_polydata(contours, pixel_spacing):
-    """
-    Convert list of numpy contours to vtkPolyData for VTK visualization.
-    Applies pixel spacing and image origin for correct alignment.
-    """
-    points = vtk.vtkPoints()
-    lines = vtk.vtkCellArray()
-
-    point_id = 0
-
-    for contour in contours:
-        line = vtk.vtkPolyLine()
-        num_points = len(contour)
-        line.GetPointIds().SetNumberOfIds(num_points)
-
-        for idx, (row, col) in enumerate(contour):
-            # Apply pixel spacing and origin shift
-            x = col * pixel_spacing[1] 
-            y = row * pixel_spacing[0] 
-
-            points.InsertNextPoint(x, y, 0)  # Keep z = 0 for 2D display
-            line.GetPointIds().SetId(idx, point_id)
-            point_id += 1
-
-        lines.InsertNextCell(line)
-
-    polydata = vtk.vtkPolyData()
-    polydata.SetPoints(points)
-    polydata.SetLines(lines)
-
-    return polydata
-
-def create_actor_2d(polydata, color=(1, 0, 0), line_width=2):
-    mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputData(polydata)
-    
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    actor.GetProperty().SetColor(color)
-    actor.GetProperty().SetLineWidth(line_width)
-    actor.GetProperty().SetRepresentationToWireframe()
-    actor.GetProperty().SetOpacity(1.0)
-    
-    return actor

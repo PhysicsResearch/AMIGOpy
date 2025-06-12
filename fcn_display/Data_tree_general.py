@@ -13,6 +13,7 @@ from fcn_display.colormap_set import set_color_map
 from fcn_display.win_level import set_window
 from fcn_display.disp_plan_data import update_plan_tables
 from fcn_RTFiles.process_rt_files import update_structure_list_widget
+from fcn_RTFiles.process_contours import find_matching_series
 from fcn_segmentation.functions_segmentation import plot_hist
 
 
@@ -72,7 +73,7 @@ def on_DataTreeView_clicked(self,index):
                 update_meta_view_table_dicom(self,self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info'])
                 update_structure_list_widget(self,
                                              self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'],
-                                             self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys']
+                                             self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys'],
                                             )
                 # find reference series
                 Ref = None
@@ -820,43 +821,3 @@ def update_sagittal_image(self,  Im = None):
             imageProperty.SetOpacity(0)
             self.dataImporterSagittal[i].Modified() 
         #    
-def find_matching_series(self, Ref):
-    """Search through all studies, modalities, and series for the given SeriesInstanceUID (Ref). 
-       Returns a list of all matches found.
-    """
-    matches = []
-
-    # Make sure this patientID is in dicom_data
-    if self.patientID not in self.dicom_data:
-        print(f"No data found for patientID={self.patientID}")
-        return matches
-
-    # Loop over all studies for this patient
-    for studyID, study_data in self.dicom_data[self.patientID].items():
-        # Loop over all modalities in each study
-        for modality, modality_data in study_data.items():
-            # If the next level is a list, iterate accordingly
-            if isinstance(modality_data, list):
-                for series_index, series_data in enumerate(modality_data):
-                    # Extract the UID, compare to Ref
-                    metadata = series_data.get('metadata', {})
-                    dcm_info = metadata.get('DCM_Info', {})
-                    series_uid = dcm_info.get('SeriesInstanceUID')
-
-                    if series_uid == Ref:
-                        Acq_number   = metadata.get('AcquisitionNumber')
-                        matches={
-                            'studyID'      : studyID,
-                            'modality'     : modality,
-                            'series_index' : series_index,
-                            'series_label' : f"Acq_{Acq_number}_Series: {series_data.get('SeriesNumber')}"
-                        }
-                        self.StructRefSeries.setText(f"Acq_{Acq_number}_Series: {series_data.get('SeriesNumber')}")
-                        break
-            else:
-                # Unexpected structure; handle or ignore
-                print(f"Unexpected structure at modality '{modality}' in study '{studyID}'. "
-                      f"Expected dict or list, got {type(modality_data)}.")
-                continue
-
-    return matches
