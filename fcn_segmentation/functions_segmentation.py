@@ -71,7 +71,7 @@ def InitSeg(self):
             }
             target_series_dict['structures_keys'].append(new_s_key)
             target_series_dict['structures_names'].append(name)
-            structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber']])
+            structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber'], self.patientID])
 
     else:
         target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
@@ -111,7 +111,7 @@ def InitSeg(self):
         }
         target_series_dict['structures_keys'].append(new_s_key)
         target_series_dict['structures_names'].append(name)
-        structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber']])
+        structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber'], self.patientID])
     
     populate_DICOM_tree(self)
 
@@ -151,7 +151,7 @@ def DeleteSeg(self):
                     target_series_dict['structures_keys'].remove(s_key)
                     target_series_dict['structures_names'].remove(s_key_name)
                     target_series_dict['structures'].pop(s_key, None)
-                    structures_keys.append([s_key, s_key_name, target_series_dict['SeriesNumber']])
+                    structures_keys.append([s_key, s_key_name, target_series_dict['SeriesNumber'], self.patientID])
 
     else:
         if delete_dialog(self, s_key_name, all_series=False):
@@ -161,7 +161,7 @@ def DeleteSeg(self):
         target_series_dict['structures_keys'].remove(s_key)
         target_series_dict['structures_names'].remove(s_key_name)
         target_series_dict['structures'].pop(s_key, None)
-        structures_keys.append([s_key, s_key_name, target_series_dict['SeriesNumber']])
+        structures_keys.append([s_key, s_key_name, target_series_dict['SeriesNumber'], self.patientID])
 
     self.display_seg_data[1] = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
     adjust_data_type_seg_input(self,1)
@@ -317,7 +317,7 @@ class ColorCheckItem(QWidget):
       - A 'Fill' checkbox (to indicate whether to display a filled polygon).
     """
 
-    def __init__(self, text, parent=None):
+    def __init__(self, widget_info, parent=None):
         super().__init__(parent)
         self.selectedColor = None
 
@@ -325,7 +325,10 @@ class ColorCheckItem(QWidget):
         self.checkbox = QCheckBox()
 
         # 2) Label for the structure name
-        self.label = QLabel(text)
+        patient_id, series_id, struct_name = widget_info
+        self.patient_id = QLabel(str(patient_id))
+        self.series_id = QLabel(str(series_id))
+        self.struct_name = QLabel(str(struct_name))
 
         # 3) Button to pick color
         self.color_button = QPushButton("Select Color")
@@ -342,7 +345,9 @@ class ColorCheckItem(QWidget):
         # Lay out horizontally
         layout = QHBoxLayout()
         layout.addWidget(self.checkbox)
-        layout.addWidget(self.label)
+        layout.addWidget(self.patient_id)
+        layout.addWidget(self.series_id)
+        layout.addWidget(self.struct_name)
         layout.addWidget(self.color_button)
         layout.addWidget(QLabel("Transp:"))
         layout.addWidget(self.transparency_spinbox)
@@ -365,8 +370,8 @@ def update_seg_struct_list(self, structures_keys, delete=False):
     Update self.STRUCTlist (a QListWidget) with custom items that display the structure name,
     a checkbox, and a color-selection button. The corresponding structure key is stored in the custom widget.
     """
-    for key, name, series_id in structures_keys:
-        target_key  = f"{series_id}_{name}"
+    for key, name, series_id, patient_id in structures_keys:
+        target_key  = f"{patient_id}_{series_id}_{name}"
 
         if delete:
             for i in range(self.segStructList.count()):
@@ -393,7 +398,7 @@ def update_seg_struct_list(self, structures_keys, delete=False):
                     self.segStructList.takeItem(i)
                     break
             list_item = QListWidgetItem(self.segStructList)
-            custom_item = ColorCheckItem(target_key)
+            custom_item = ColorCheckItem([patient_id, series_id, name])
             custom_item.structure_key = target_key
             list_item.setSizeHint(custom_item.sizeHint())
     
@@ -487,19 +492,19 @@ def calcStrucStats(self):
                         vol_in_voxels = mask.sum() 
                         vol_in_mm = vol_in_voxels * slice_thick * pixel_spac[0] * pixel_spac[1]
                         CoM = calc_com(mask) * np.array([slice_thick, pixel_spac[0], pixel_spac[1]]) + Im_PatPosition[::-1]
-                        data[f"{series_id}_{struct_name}"] = {"series_id": series_id, "name": struct_name, "volume": vol_in_mm, "CoM": CoM}
+                        data[f"{patientID}_{series_id}_{struct_name}"] = {"patient_id": patientID, "series_id": series_id, "name": struct_name, "volume": vol_in_mm, "CoM": CoM}
                         
     self.tableSegStrucStats.clear()
     # Clear the table before populating it
-    header_cols = ["Export", "Series ID", "Name", "Volume (mm^3)", "CoM (z)", "CoM (y)", "CoM (x)"]
+    header_cols = ["Export", "Patient ID", "Series ID", "Name", "Volume (mm^3)", "CoM (z)", "CoM (y)", "CoM (x)"]
     self.tableSegStrucStats.clear()
     self.tableSegStrucStats.setRowCount(len(data))
     self.tableSegStrucStats.setColumnCount(len(header_cols))
     self.tableSegStrucStats.setHorizontalHeaderLabels(header_cols)
 
     for row, name in enumerate(data):
-        instance_data = ["checkbox", data[name]["series_id"], data[name]["name"], data[name]["volume"], data[name]["CoM"][0],
-                                     data[name]["CoM"][1], data[name]["CoM"][2]]
+        instance_data = ["checkbox", data[name]["patient_id"], data[name]["series_id"], data[name]["name"], data[name]["volume"], 
+                                     data[name]["CoM"][0], data[name]["CoM"][1], data[name]["CoM"][2]]
         for col, val in enumerate(instance_data):
             if val == "checkbox":
                 checkkBoxItem = QTableWidgetItem()
@@ -508,7 +513,7 @@ def calcStrucStats(self):
                 self.tableSegStrucStats.setItem(row,col,checkkBoxItem)
             elif type(val) == str:
                 self.tableSegStrucStats.setItem(row, col, QTableWidgetItem(val))
-            elif col == 1:
+            elif col == 2:
                 self.tableSegStrucStats.setItem(row, col, QTableWidgetItem(str(int(val))))
             else:
                 try:
@@ -529,17 +534,18 @@ def exportStrucStats(self):
     folder = QFileDialog.getExistingDirectory(self, options=options)
     
     # Get the checked items from the table
-    checked_items = [("series_id", "name", "volume", "z", "y", "x")]
+    checked_items = [("patient_id", "series_id", "name", "volume", "z", "y", "x")]
     for row in range(self.tableSegStrucStats.rowCount()):
         item = self.tableSegStrucStats.item(row, 0)  # Assuming the checkbox is in the first column
         if item and item.checkState() == QtCore.Qt.Checked:
-            series_id = self.tableSegStrucStats.item(row, 1).text()
-            name = self.tableSegStrucStats.item(row, 2).text()
-            volume = self.tableSegStrucStats.item(row, 3).text()
-            z = self.tableSegStrucStats.item(row, 4).text()
-            y = self.tableSegStrucStats.item(row, 5).text()
-            x = self.tableSegStrucStats.item(row, 6).text()
-            checked_items.append((series_id, name, volume, z, y, x))
+            patient_id = self.tableSegStrucStats.item(row, 1).text()
+            series_id = self.tableSegStrucStats.item(row, 2).text()
+            name = self.tableSegStrucStats.item(row, 3).text()
+            volume = self.tableSegStrucStats.item(row, 4).text()
+            z = self.tableSegStrucStats.item(row, 5).text()
+            y = self.tableSegStrucStats.item(row, 6).text()
+            x = self.tableSegStrucStats.item(row, 7).text()
+            checked_items.append((patient_id, series_id, name, volume, z, y, x))
 
     with open(os.path.join(folder, "structure_stats.csv"), 'w', newline='') as f:
         writer = csv.writer(f)
@@ -599,14 +605,22 @@ def exportSegStruc(self):
     for row in range(self.tableSegStrucStats.rowCount()):
         item = self.tableSegStrucStats.item(row, 0)  # Assuming the checkbox is in the first column
         if item and item.checkState() == QtCore.Qt.Checked:
-            series_id = self.tableSegStrucStats.item(row, 1).text()
-            s_key = self.tableSegStrucStats.item(row, 2).text()
-            for target_series_dict in self.dicom_data[self.patientID][self.studyID][self.modality]:
-                if str(target_series_dict['SeriesNumber']) == series_id:        
-                    for k in target_series_dict['structures']:
-                        struct = target_series_dict['structures'][k]
-                        if struct['Name'] == s_key:
-                            mask = target_series_dict['structures'][k]["Mask3D"]
-                            img = nib.Nifti1Image(mask, np.eye(4))
-                            img.header.get_xyzt_units()
-                            nib.save(img, os.path.join(save_dir, f"{series_id}_{s_key}.nii.gz"))  
+            patient_id = self.tableSegStrucStats.item(row, 1).text()
+            series_id = self.tableSegStrucStats.item(row, 2).text()
+            s_key = self.tableSegStrucStats.item(row, 3).text()
+            for studyID in self.dicom_data[patient_id]:
+                for modality in self.dicom_data[patient_id][studyID]:
+                    for target_series_dict in self.dicom_data[patient_id][studyID][modality]:
+                        if 'SeriesNumber' not in target_series_dict:
+                            continue
+                        if str(target_series_dict['SeriesNumber']) != series_id:  
+                            continue
+                        if 'structures' not in target_series_dict:
+                            continue      
+                        for k in target_series_dict['structures']:
+                            struct = target_series_dict['structures'][k]
+                            if struct['Name'] == s_key:
+                                mask = target_series_dict['structures'][k]["Mask3D"]
+                                img = nib.Nifti1Image(mask, np.eye(4))
+                                img.header.get_xyzt_units()
+                                nib.save(img, os.path.join(save_dir, f"{patient_id}_{series_id}_{s_key}.nii.gz"))  

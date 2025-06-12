@@ -70,13 +70,14 @@ def initXRange(self):
     import math
     try:
         x_col = self.editXAxis_BrCv.currentText()
+        min_val = math.floor(self.dfEdit_BrCv[x_col].min())
         max_val = math.ceil(self.dfEdit_BrCv[x_col].max())
     
-        self.editXMinSlider_BrCv.setMinimum(0)
+        self.editXMinSlider_BrCv.setMinimum(min_val)
         self.editXMinSlider_BrCv.setMaximum(max_val - 1)
-        self.editXMinSlider_BrCv.setValue(0)
+        self.editXMinSlider_BrCv.setValue(min_val)
         
-        self.editXMaxSlider_BrCv.setMinimum(1)
+        self.editXMaxSlider_BrCv.setMinimum(min_val + 1)
         self.editXMaxSlider_BrCv.setMaximum(max_val)
         self.editXMaxSlider_BrCv.setValue(max_val)
     except:
@@ -206,9 +207,10 @@ def scaleFreq(self):
         del df_i, df_scaled
 
     else:
-        mark_timestamps_P = df.loc[df["mark"] == "P_min", "timestamp"].tolist()
-        mark_timestamps_Z = df.loc[df["mark"] == "Z", "timestamp"].tolist()
-        mark_timestamps_E = df.loc[df["mark"] == "E", "timestamp"].tolist()
+        if "mark" in df.columns:
+            mark_timestamps_P = df.loc[df["mark"] == "P_min", "timestamp"].tolist()
+            mark_timestamps_Z = df.loc[df["mark"] == "Z", "timestamp"].tolist()
+            mark_timestamps_E = df.loc[df["mark"] == "E", "timestamp"].tolist()
 
         # Convert the time column to TimedeltaIndex for resampling
         df["timedelta"] = pd.to_timedelta(df["timestamp"], unit='ms')
@@ -222,21 +224,23 @@ def scaleFreq(self):
         # Interpolate only the missing values
         df = df.interpolate(method='linear', limit_area='inside')
         df = df.resample(f"{time_step}ms").median()
-        df["instance"] = df["instance"].round()
-        df["ttlin"] = df["ttlin"].round()
+        if "instance" in df.columns and "ttlin" in df.columns:
+            df["instance"] = df["instance"].round()
+            df["ttlin"] = df["ttlin"].round()
 
         df["timestamp"] = np.linspace(0, (len(df) - 1) * time_step_init, len(df))
         df["time"] = np.linspace(0, (len(df) - 1) * time_step_ms, len(df))
 
         df = df.reset_index(drop=True)
 
-        df["mark"] = np.nan
-        for t in mark_timestamps_P:
-            df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "P_min"
-        for t in mark_timestamps_Z:
-            df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "Z"
-        for t in mark_timestamps_E:
-            df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "E"
+        if "mark" in df.columns:
+            df["mark"] = np.nan
+            for t in mark_timestamps_P:
+                df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "P_min"
+            for t in mark_timestamps_Z:
+                df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "Z"
+            for t in mark_timestamps_E:
+                df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "E"
         self.dfEdit_BrCv = df
     del df
     
@@ -286,41 +290,43 @@ def applyBreathhold(self):
             - pandas.DataFrame with shifted amplitude
     """
     
-    if "instance" in self.dfEdit_BrCv.columns:
+    df = self.dfEdit_BrCv
+    x_col = self.editXAxis_BrCv.currentText()
+    # Get the breathhold duration value
+    duration = self.breathholdDuration.value()
+
+    timestep_ms = df.loc[1, "timestamp"] - df.loc[0, "timestamp"]
+    timestep = df.loc[1, "time"] - df.loc[0, "time"]
     
-        df = self.dfEdit_BrCv
-        x_col = self.editXAxis_BrCv.currentText()
-        # Get the breathhold duration value
-        duration = self.breathholdDuration.value()
-    
-        timestep_ms = df.loc[1, "timestamp"] - df.loc[0, "timestamp"]
-        timestep = df.loc[1, "time"] - df.loc[0, "time"]
-        
-        if x_col == "timestamp":
-            i_start = int(self.breathholdStart.value() / timestep_ms)
-        else:
-            i_start = int(self.breathholdStart.value() / timestep)
-    
+    if x_col == "timestamp":
+        i_start = int(self.breathholdStart.value() / timestep_ms)
+    else:
+        i_start = int(self.breathholdStart.value() / timestep)
+
+    if "instance" in df.columns:
         # Get the index of the maximum amplitude for each instance
         max_idx = df.groupby(by="instance")["amplitude"].idxmax().tolist()
         idx = min(max_idx, key=lambda x:abs(x-i_start)) 
-        n_time = int(duration / timestep_ms * 1e3) 
-            
-        # Copy the row at breathhold index and repeat it n_time times
-        b = pd.concat([df.iloc[idx:idx+1]] * n_time)
-        b = b.reset_index(drop=True)
+    else:
+        idx = (df[x_col] - self.breathholdStart.value()).abs().idxmin()
+
+    n_time = int(duration / timestep_ms * 1e3) 
         
-        for n in range(n_time):
-            b.loc[n, "timestamp"] += n * timestep_ms
-            b.loc[n, "time"] += n * timestep
-        
-        df.loc[idx:, "timestamp"] += (n + 1) * timestep_ms
-        df.loc[idx:, "time"] += (n + 1) * timestep
-        
-        # Insert the copied rows into the original DataFrame
-        df = pd.concat([df.iloc[:idx], b, df.iloc[idx:]]).reset_index(drop=True)
-        self.dfEdit_BrCv = df
-        
+    # Copy the row at breathhold index and repeat it n_time times
+    b = pd.concat([df.iloc[idx:idx+1]] * n_time)
+    b = b.reset_index(drop=True)
+    
+    for n in range(n_time):
+        b.loc[n, "timestamp"] += n * timestep_ms
+        b.loc[n, "time"] += n * timestep
+    
+    df.loc[idx:, "timestamp"] += (n + 1) * timestep_ms
+    df.loc[idx:, "time"] += (n + 1) * timestep
+    
+    # Insert the copied rows into the original DataFrame
+    df = pd.concat([df.iloc[:idx], b, df.iloc[idx:]]).reset_index(drop=True)
+    self.dfEdit_BrCv = df
+    
 
 def applyOperations(self):
     """Function to apply operation to the fragment
