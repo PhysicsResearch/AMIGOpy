@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QWidget, QTreeView
 from PyQt5.QtCore import Qt
 from fcn_load.load_dcm  import load_all_dcm
 from fcn_display.dicom_info import open_dicom_tag_viewer
+from fcn_load.save_load import load_amigo_bundle
 
 class FolderDropArea(QWidget):
     def __init__(self, parent=None):
@@ -59,13 +60,20 @@ def generic_drop_event(self, event):
 ## check file extensition and define proper callback function
 
 def handle_dropped_path(main_window, path):
-    def is_dicom_file(filename):
+    def is_dicom_file(filename: str) -> bool:
         ext = os.path.splitext(filename)[-1].lower()
-        return ext in ('', '.dcm', '.ima')
+        return ext in ("", ".dcm", ".ima")
+
+    def is_amigo_file(filename: str) -> bool:
+        return os.path.splitext(filename)[-1].lower() == ".amigo"
 
     if os.path.isfile(path):
         if is_dicom_file(path):
             open_dicom_tag_viewer(path)
+
+        elif is_amigo_file(path):
+            # call your async loader (reuse the existing menu slot)
+            load_amigo_bundle(main_window, path)      # see note ①
         else:
             print(f"Unsupported file type: {os.path.splitext(path)[-1]}")
         return

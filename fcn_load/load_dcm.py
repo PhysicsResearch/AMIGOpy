@@ -337,8 +337,8 @@ def load_all_dcm(self,folder_path=None, progress_callback=None, update_label=Non
 
     populate_DICOM_tree(self)
     
-    for index, file_info in enumerate(non_im_files):
-        print(f"{file_info['FilePath']} {file_info['Modality']}")
+    # for index, file_info in enumerate(non_im_files):
+    #     print(f"{file_info['FilePath']} {file_info['Modality']}")
     #return dicom_data
 
 

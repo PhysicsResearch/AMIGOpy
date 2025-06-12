@@ -1,5 +1,4 @@
 import numpy as np
-import vtk
 from skimage.draw import polygon
 from skimage.measure import find_contours
 from fcn_load.populate_dcm_list import populate_DICOM_tree
@@ -104,30 +103,37 @@ def create_contour_masks(self):
             'Name': name
         }
 
-        vtk_actors_2d = {'axial': {}, 'sagittal': {}, 'coronal': {}}
+        # --------------------------------------------------------
+        # Generate & store contours (no VTK objects here!)
+        # --------------------------------------------------------
+        contours_2d = {'axial': {}, 'sagittal': {}, 'coronal': {}}
 
-        for z_idx in range(mask_shape[0]):
-            slice_2d = mask_3d[z_idx, :, :]
+        for z_idx in range(mask_shape[0]):          # axial slices
+            slice_2d = mask_3d[z_idx]
             contours = extract_contours_from_binary_slice(slice_2d)
             if contours:
-                vtk_poly = contours_to_vtk_polydata(contours, (y_spacing, x_spacing))
-                vtk_actors_2d['axial'][z_idx] = create_actor_2d(vtk_poly)
+                contours_2d['axial'][z_idx] = contours
 
-        for x_idx in range(mask_shape[2]):
+        for x_idx in range(mask_shape[2]):          # sagittal
             slice_2d = mask_3d[:, :, x_idx]
             contours = extract_contours_from_binary_slice(slice_2d)
             if contours:
-                vtk_poly = contours_to_vtk_polydata(contours, (z_spacing, y_spacing))
-                vtk_actors_2d['sagittal'][x_idx] = create_actor_2d(vtk_poly)
+                contours_2d['sagittal'][x_idx] = contours
 
-        for y_idx in range(mask_shape[1]):
+        for y_idx in range(mask_shape[1]):          # coronal
             slice_2d = mask_3d[:, y_idx, :]
             contours = extract_contours_from_binary_slice(slice_2d)
             if contours:
-                vtk_poly = contours_to_vtk_polydata(contours, (z_spacing, x_spacing))
-                vtk_actors_2d['coronal'][y_idx] = create_actor_2d(vtk_poly)
+                contours_2d['coronal'][y_idx] = contours
 
-        target_series_dict['structures'][new_s_key]['VTKActors2D'] = vtk_actors_2d
+        entry = {
+            'Mask3D': mask_3d,
+            'Name'  : name,
+            'Contours2D': contours_2d,   # <── new, pickle-safe
+            # 'VTKActors2D' will be added lazily at render-time
+        }
+
+        target_series_dict['structures'][new_s_key] = entry
 
         current_structure_index += 1
 
@@ -240,47 +246,3 @@ def smooth_contours(contours, method="savgol", window_length=5, polyorder=2, sig
     return smoothed_contours
 
 
-def contours_to_vtk_polydata(contours, pixel_spacing):
-    """
-    Convert list of numpy contours to vtkPolyData for VTK visualization.
-    Applies pixel spacing and image origin for correct alignment.
-    """
-    points = vtk.vtkPoints()
-    lines = vtk.vtkCellArray()
-
-    point_id = 0
-
-    for contour in contours:
-        line = vtk.vtkPolyLine()
-        num_points = len(contour)
-        line.GetPointIds().SetNumberOfIds(num_points)
-
-        for idx, (row, col) in enumerate(contour):
-            # Apply pixel spacing and origin shift
-            x = col * pixel_spacing[1] 
-            y = row * pixel_spacing[0] 
-
-            points.InsertNextPoint(x, y, 0)  # Keep z = 0 for 2D display
-            line.GetPointIds().SetId(idx, point_id)
-            point_id += 1
-
-        lines.InsertNextCell(line)
-
-    polydata = vtk.vtkPolyData()
-    polydata.SetPoints(points)
-    polydata.SetLines(lines)
-
-    return polydata
-
-def create_actor_2d(polydata, color=(1, 0, 0), line_width=2):
-    mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputData(polydata)
-    
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    actor.GetProperty().SetColor(color)
-    actor.GetProperty().SetLineWidth(line_width)
-    actor.GetProperty().SetRepresentationToWireframe()
-    actor.GetProperty().SetOpacity(1.0)
-    
-    return actor

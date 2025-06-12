@@ -2,7 +2,13 @@ import vtk
 import numpy as np
 import math
 
+
 def displayaxial(self, Im = None):
+    # ------------------------------------------------------------------
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0):
+        return   
     idx = self.layer_selection_box.currentIndex()
     #
     for i in range(len(self.dataImporterAxial)):
@@ -79,59 +85,93 @@ def displayaxial(self, Im = None):
         self.vtkWidgetCoronal.GetRenderWindow().Render()
 
 def disp_structure_overlay_axial(self):
-    renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    """
+    Show checked structures on the axial renderer.
 
-    # Clear previous actors explicitly
-    if hasattr(self, "structure_actors_ax"):
-        for actor in self.structure_actors_ax:
-            renderer.RemoveActor(actor)
+    • If VTK actors are already cached under
+      structure_data['VTKActors2D']['axial'], reuse them.
+
+    • If *only* Contours2D are present (freshly loaded bundle),
+      lazily convert those contours → vtkActors and cache them,
+      so next call is instant.
+
+    The bundle itself stays pickle-safe because actors are never stored
+    back to disk.
+    """
+    renderer = (
+        self.vtkWidgetAxial.GetRenderWindow()
+        .GetRenderers()
+        .GetFirstRenderer()
+    )
+
+    # ─── clear any actors from the previous draw ──────────────────────
+    for actor in getattr(self, "structure_actors_ax", []):
+        renderer.RemoveActor(actor)
     self.structure_actors_ax = []
 
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    if 'structures' not in target_series_dict or not target_series_dict['structures']:
-        # print("No structures found.")
-        return
+    # ─── grab data for the currently displayed image series ───────────
+    series_dict = (
+        self.dicom_data[self.patientID][self.studyID]
+                       [self.modality][self.series_index]
+    )
+    if not series_dict.get("structures"):
+        return                              # nothing to draw yet
 
-    slice_index = self.current_axial_slice_index[0]  # Base reference slice
-    # print(f"Displaying actors for axial slice: {slice_index}")
+    slice_idx = self.current_axial_slice_index[0]     # current Z
 
-    structures_dict = target_series_dict['structures']
+    # pixel spacing (row, col)  →  (y, x) in mm
+    px_spacing = (self.pixel_spac[0, 1], self.pixel_spac[0, 0])
 
     for i in range(self.STRUCTlist.count()):
-        widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
-        if widget.checkbox.isChecked():
-            structure_key = getattr(widget, 'structure_key', None)
-            if structure_key is None:
-                continue
+        item_widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
+        if not item_widget.checkbox.isChecked():
+            continue                      # structure not selected
 
-            structure_data = structures_dict.get(structure_key, {})
-            actors_dict = structure_data.get('VTKActors2D', {}).get('axial', {})
+        s_key = getattr(item_widget, "structure_key", None)
+        if s_key is None:
+            continue
 
-            if slice_index not in actors_dict:
-                # print(f"No actor stored for slice {slice_index} in structure {structure_key}. Available slices: {list(actors_dict.keys())}")
-                continue
-            
-            actor = actors_dict.get(slice_index)
+        s_data = series_dict["structures"].get(s_key, {})
 
-            actor_copy = vtk.vtkActor()
-            actor_copy.ShallowCopy(actor)
-            actor_copy.GetProperty().SetColor(widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1, 1, 1))
-            actor_copy.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
-            actor_copy.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+        # ── 1) make sure axial actors exist  ──────────────────────────
+        if "VTKActors2D" not in s_data:
+            s_data["VTKActors2D"] = {}
 
-            # ✅ Check fill option and apply the correct representation
-            # if widget.fill_checkbox.isChecked():
-            #     actor_copy.GetProperty().SetRepresentationToSurface()  # Solid Fill
-            # else:
-            actor_copy.GetProperty().SetRepresentationToWireframe()  # Wireframe only
+        if "axial" not in s_data["VTKActors2D"]:
+            # build once, cache forever (in RAM only)
+            contours_axial = s_data.get("Contours2D", {}).get("axial", {})
+            s_data["VTKActors2D"]["axial"] = actors_from_contours(
+                contours_axial, px_spacing,
+                line_width=item_widget.line_width_spinbox.value(),
+                color=item_widget.selectedColor.getRgbF()[:3]
+                      if item_widget.selectedColor else (1, 0, 0),
+            )
 
-            # 🔹 Fix Position: Align with Image using Im_Offset
-            actor_copy.SetPosition(self.Im_Offset[0, 0], 
-                                   self.Im_Offset[0, 1], 
-                                   2000)  # Move contour on top layer
+        actors_dict = s_data["VTKActors2D"]["axial"]
 
-            renderer.AddActor(actor_copy)
-            self.structure_actors_ax.append(actor_copy)
+        if slice_idx not in actors_dict:
+            continue                          # no contour on this slice
+
+        src_actor = actors_dict[slice_idx]
+
+        # ── 2) customise appearance per-widget (colour, opacity …) ───
+        actor = vtk.vtkActor()
+        actor.ShallowCopy(src_actor)
+        actor.GetProperty().SetColor(
+            item_widget.selectedColor.getRgbF()[:3]
+            if item_widget.selectedColor else (1, 1, 1)
+        )
+        actor.GetProperty().SetOpacity(1 - item_widget.transparency_spinbox.value())
+        actor.GetProperty().SetLineWidth(item_widget.line_width_spinbox.value())
+        actor.GetProperty().SetRepresentationToWireframe()
+
+        # move a little above the image plane so contours are visible
+        actor.SetPosition(self.Im_Offset[0, 0],
+                          self.Im_Offset[0, 1],
+                          2000)
+
+        renderer.AddActor(actor)
+        self.structure_actors_ax.append(actor)
 
     self.vtkWidgetAxial.GetRenderWindow().Render()
 
@@ -218,6 +258,7 @@ def display_dwell_positions_ax(self):
     - Dwell positions with dwell_time > 0 are shown in dark green.
     - Dwell positions within Ref_Z ± slice_thickness/2 are shown in light green.
     """
+
     renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
     # Remove any previous dwell actors
@@ -225,9 +266,18 @@ def display_dwell_positions_ax(self):
         renderer.RemoveActor(actor)
     self.dwell_actors_ax.clear()
 
-    # Retrieve channels from dicom_data
-    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
-
+    try:
+        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+                                [self.modality][self.series_index]
+                                ['metadata'])
+        channels = meta.get('Plan_Brachy_Channels')
+    except KeyError:
+        # Data tree incomplete (no metadata at all) ─ silently abort
+        return
+    
+    if not channels:                     # None or empty list
+        return                           # nothing to draw
+    
     # Determine whether to show all channels or only the one selected by the spinbox
     if self.overlay_all_channels.isChecked():
         channels_to_display = channels  # Show all channels
@@ -312,7 +362,17 @@ def display_brachy_channel_overlay_ax(self):
     self.channel_actors_ax.clear()
 
     # Retrieve channels from dicom_data
-    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+    try:
+        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+                                [self.modality][self.series_index]
+                                ['metadata'])
+        channels = meta.get('Plan_Brachy_Channels')
+    except KeyError:
+        # Data tree incomplete (no metadata at all) ─ silently abort
+        return
+
+    if not channels:                     # None or empty list
+        return                           # nothing to draw
 
     # Determine whether to show all channels or only the one selected by the spinbox
     if self.overlay_all_channels.isChecked():
@@ -395,6 +455,11 @@ def display_brachy_channel_overlay_ax(self):
 
 
 def displaycoronal(self, Im = None):
+    # ------------------------------------------------------------------
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0):
+        return   
     idx = self.layer_selection_box.currentIndex()
     if self.display_data[idx].ndim==2:
         return
@@ -470,62 +535,87 @@ def displaycoronal(self, Im = None):
 
 def disp_structure_overlay_coronal(self):
     """
-    Displays structure contours in the coronal view.
-    """
-    renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    Show checked structures in the *coronal* renderer.
 
-    # Clear previous coronal actors
-    if hasattr(self, "structure_actors_co"):
-        for actor in self.structure_actors_co:
-            renderer.RemoveActor(actor)
+    * Actors are created on-demand from stored Contours2D and cached
+      in RAM (structure_data['VTKActors2D']['coronal']).
+
+    * No VTK objects are ever written back to disk, so the bundle
+      remains pickle-safe.
+    """
+    renderer = (
+        self.vtkWidgetCoronal.GetRenderWindow()
+        .GetRenderers()
+        .GetFirstRenderer()
+    )
+
+    # ─── clear previous overlay ───────────────────────────────────────
+    for actor in getattr(self, "structure_actors_co", []):
+        renderer.RemoveActor(actor)
     self.structure_actors_co = []
 
-    # Retrieve structure dictionary
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    if 'structures' not in target_series_dict or not target_series_dict['structures']:
-        return  # No structures to display
+    # ─── fetch data for current series ────────────────────────────────
+    series_dict = (
+        self.dicom_data[self.patientID][self.studyID]
+                       [self.modality][self.series_index]
+    )
+    if not series_dict.get("structures"):
+        return                         # nothing to draw
 
-    slice_index = self.current_coronal_slice_index[0]  # Reference slice for coronal view
+    slice_idx = self.current_coronal_slice_index[0]   # Y index
 
-    structures_dict = target_series_dict['structures']
+    # pixel spacing for coronal slices: (row = z, col = x)
+    px_spacing = (self.slice_thick[0], self.pixel_spac[0, 0])
 
     for i in range(self.STRUCTlist.count()):
         widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
-        if widget.checkbox.isChecked():
-            structure_key = getattr(widget, 'structure_key', None)
-            if structure_key is None:
-                continue
+        if not widget.checkbox.isChecked():
+            continue
 
-            structure_data = structures_dict.get(structure_key, {})
-            actors_dict = structure_data.get('VTKActors2D', {}).get('coronal', {})
+        s_key = getattr(widget, "structure_key", None)
+        if s_key is None:
+            continue
 
-            if slice_index not in actors_dict:
-                continue  # Skip if no contour for this slice
+        s_data = series_dict["structures"].get(s_key, {})
 
-            actor = actors_dict.get(slice_index)
+        # ── 1) make sure coronal actors exist ─────────────────────────
+        if "VTKActors2D" not in s_data:
+            s_data["VTKActors2D"] = {}
 
-            # Clone the actor to modify properties
-            actor_copy = vtk.vtkActor()
-            actor_copy.ShallowCopy(actor)
-            actor_copy.GetProperty().SetColor(widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1, 1, 1))
-            actor_copy.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
-            actor_copy.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+        if "coronal" not in s_data["VTKActors2D"]:
+            contours_cor = s_data.get("Contours2D", {}).get("coronal", {})
+            s_data["VTKActors2D"]["coronal"] = actors_from_contours(
+                contours_cor, px_spacing,
+                line_width=widget.line_width_spinbox.value(),
+                color=widget.selectedColor.getRgbF()[:3]
+                      if widget.selectedColor else (1, 0, 0),
+            )
 
-            # # Set fill representation if enabled
-            # if widget.fill_checkbox.isChecked():
-            #     actor_copy.GetProperty().SetRepresentationToSurface()  # Filled
-            # else:
-            actor_copy.GetProperty().SetRepresentationToWireframe()  # Wireframe
+        actors_dict = s_data["VTKActors2D"]["coronal"]
+        if slice_idx not in actors_dict:
+            continue                    # no contour on this Y slice
 
-            # Align with image using Im_Offset
-            actor_copy.SetPosition(self.Im_Offset[0, 0],
-                                   self.Im_Offset[0, 2],
-                                   2000)  # Ensure contour is above the image
+        src_actor = actors_dict[slice_idx]
 
-            renderer.AddActor(actor_copy)
-            self.structure_actors_co.append(actor_copy)
+        # ── 2) customise per-UI-settings ─────────────────────────────
+        actor = vtk.vtkActor()
+        actor.ShallowCopy(src_actor)
+        actor.GetProperty().SetColor(
+            widget.selectedColor.getRgbF()[:3]
+            if widget.selectedColor else (1, 1, 1)
+        )
+        actor.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
+        actor.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+        actor.GetProperty().SetRepresentationToWireframe()
 
-    # Render the updated coronal view
+        # place slightly above image plane so wireframe is visible
+        actor.SetPosition(self.Im_Offset[0, 0],    # X shift
+                          self.Im_Offset[0, 2],    # Z shift (coronal view)
+                          2000)
+
+        renderer.AddActor(actor)
+        self.structure_actors_co.append(actor)
+
     self.vtkWidgetCoronal.GetRenderWindow().Render()
 
 def disp_roi_coronal(self):
@@ -645,7 +735,17 @@ def display_dwell_positions_co(self):
     self.dwell_actors_co.clear()
 
     # Retrieve channels from dicom_data
-    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+    try:
+        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+                                [self.modality][self.series_index]
+                                ['metadata'])
+        channels = meta.get('Plan_Brachy_Channels')
+    except KeyError:
+        # Data tree incomplete (no metadata at all) ─ silently abort
+        return
+
+    if not channels:                     # None or empty list
+        return                           # nothing to draw
 
     # Determine whether to show all channels or only the one selected by the spinbox
     if self.overlay_all_channels.isChecked():
@@ -731,7 +831,17 @@ def display_brachy_channel_overlay_co(self):
     self.channel_actors_co.clear()
 
     # Retrieve channels from dicom_data
-    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+    try:
+        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+                                [self.modality][self.series_index]
+                                ['metadata'])
+        channels = meta.get('Plan_Brachy_Channels')
+    except KeyError:
+        # Data tree incomplete (no metadata at all) ─ silently abort
+        return
+
+    if not channels:                     # None or empty list
+        return                           # nothing to draw
 
     # Determine whether to show all channels or only the one selected by the spinbox
     if self.overlay_all_channels.isChecked():
@@ -818,6 +928,15 @@ def display_brachy_channel_overlay_co(self):
 
 
 def displaysagittal(self,Im = None):
+
+    # ------------------------------------------------------------------
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0):
+        return                    # nothing loaded → ignore the call
+
+
+    
     idx = self.layer_selection_box.currentIndex()
     if self.display_data[idx].ndim==2:
         return
@@ -889,63 +1008,88 @@ def displaysagittal(self,Im = None):
 
 def disp_structure_overlay_sagittal(self):
     """
-    Displays structure contours in the sagittal view.
-    """
-    renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    Show checked structures in the *sagittal* renderer.
 
-    # Clear previous sagittal actors
-    if hasattr(self, "structure_actors_sa"):
-        for actor in self.structure_actors_sa:
-            renderer.RemoveActor(actor)
+    • Creates actors on-demand from Contours2D → vtkActor, caches them.
+    • Reuses cached actors on subsequent calls for speed.
+    • UI controls (colour, opacity, line-width) still work per structure.
+    """
+    renderer = (
+        self.vtkWidgetSagittal.GetRenderWindow()
+        .GetRenderers()
+        .GetFirstRenderer()
+    )
+
+    # ── clear existing overlay ────────────────────────────────────────
+    for actor in getattr(self, "structure_actors_sa", []):
+        renderer.RemoveActor(actor)
     self.structure_actors_sa = []
 
-    # Retrieve structure dictionary
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    if 'structures' not in target_series_dict or not target_series_dict['structures']:
-        return  # No structures to display
+    # ── fetch current series data ─────────────────────────────────────
+    series_dict = (
+        self.dicom_data[self.patientID][self.studyID]
+                       [self.modality][self.series_index]
+    )
+    if not series_dict.get("structures"):
+        return                              # nothing to draw
 
-    slice_index = self.current_sagittal_slice_index[0]  # Reference slice for sagittal view
+    slice_idx = self.current_sagittal_slice_index[0]   # X index
 
-    structures_dict = target_series_dict['structures']
+    # pixel spacing for sagittal slices: (row = z, col = y)
+    px_spacing = (self.slice_thick[0], self.pixel_spac[0, 1])
 
     for i in range(self.STRUCTlist.count()):
         widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
-        if widget.checkbox.isChecked():
-            structure_key = getattr(widget, 'structure_key', None)
-            if structure_key is None:
-                continue
+        if not widget.checkbox.isChecked():
+            continue
 
-            structure_data = structures_dict.get(structure_key, {})
-            actors_dict = structure_data.get('VTKActors2D', {}).get('sagittal', {})
+        s_key = getattr(widget, "structure_key", None)
+        if s_key is None:
+            continue
 
-            if slice_index not in actors_dict:
-                continue  # Skip if no contour for this slice
+        s_data = series_dict["structures"].get(s_key, {})
 
-            actor = actors_dict.get(slice_index)
+        # ── 1) make sure sagittal actors exist ───────────────────────
+        if "VTKActors2D" not in s_data:
+            s_data["VTKActors2D"] = {}
 
-            # Clone the actor to modify properties
-            actor_copy = vtk.vtkActor()
-            actor_copy.ShallowCopy(actor)
-            actor_copy.GetProperty().SetColor(widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1, 1, 1))
-            actor_copy.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
-            actor_copy.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+        if "sagittal" not in s_data["VTKActors2D"]:
+            # build once, cache in RAM
+            contours_sag = s_data.get("Contours2D", {}).get("sagittal", {})
+            s_data["VTKActors2D"]["sagittal"] = actors_from_contours(
+                contours_sag, px_spacing,
+                line_width=widget.line_width_spinbox.value(),
+                color=widget.selectedColor.getRgbF()[:3]
+                      if widget.selectedColor else (1, 0, 0),
+            )
 
-            # # Set fill representation if enabled
-            # if widget.fill_checkbox.isChecked():
-            #     actor_copy.GetProperty().SetRepresentationToSurface()  # Filled
-            # else:
-            actor_copy.GetProperty().SetRepresentationToWireframe()  # Wireframe
+        actors_dict = s_data["VTKActors2D"]["sagittal"]
+        if slice_idx not in actors_dict:
+            continue                          # no contour on this X slice
 
-            # Align with image using Im_Offset
-            actor_copy.SetPosition(self.Im_Offset[0, 1],  # X-coordinate
-                                   self.Im_Offset[0, 2],  # Y-coordinate
-                                   2000)  # Move contour to ensure it's above the image
+        src_actor = actors_dict[slice_idx]
 
-            renderer.AddActor(actor_copy)
-            self.structure_actors_sa.append(actor_copy)
+        # ── 2) clone & style according to UI ─────────────────────────
+        actor = vtk.vtkActor()
+        actor.ShallowCopy(src_actor)
+        actor.GetProperty().SetColor(
+            widget.selectedColor.getRgbF()[:3]
+            if widget.selectedColor else (1, 1, 1)
+        )
+        actor.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
+        actor.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+        actor.GetProperty().SetRepresentationToWireframe()
 
-    # Render the updated sagittal view
+        # place slightly above image plane for visibility
+        actor.SetPosition(self.Im_Offset[0, 1],    # Y shift
+                          self.Im_Offset[0, 2],    # Z shift
+                          2000)
+
+        renderer.AddActor(actor)
+        self.structure_actors_sa.append(actor)
+
     self.vtkWidgetSagittal.GetRenderWindow().Render()
+
 
 def disp_roi_sagittal(self):
     for row in range(self.table_circ_roi.rowCount()):
@@ -1064,7 +1208,17 @@ def display_dwell_positions_sa(self):
     self.dwell_actors_sa.clear()
 
     # Retrieve channels from dicom_data
-    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+    try:
+        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+                                [self.modality][self.series_index]
+                                ['metadata'])
+        channels = meta.get('Plan_Brachy_Channels')
+    except KeyError:
+        # Data tree incomplete (no metadata at all) ─ silently abort
+        return
+
+    if not channels:                     # None or empty list
+        return                           # nothing to draw
 
     # Determine whether to show all channels or only the one selected by the spinbox
     if self.overlay_all_channels.isChecked():
@@ -1148,7 +1302,17 @@ def display_brachy_channel_overlay_sa(self):
     self.channel_actors_sa.clear()
 
     # Retrieve channels from dicom_data
-    channels = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['Plan_Brachy_Channels']
+    try:
+        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+                                [self.modality][self.series_index]
+                                ['metadata'])
+        channels = meta.get('Plan_Brachy_Channels')
+    except KeyError:
+        # Data tree incomplete (no metadata at all) ─ silently abort
+        return
+
+    if not channels:                     # None or empty list
+        return                           # nothing to draw
 
     # Determine whether to show all channels or only the one selected by the spinbox
     if self.overlay_all_channels.isChecked():
@@ -1267,3 +1431,61 @@ def update_layer_view(self):
             self.SagittalSlider.setValue(Sa_s)
             self.CoronalSlider.setValue(Co_s)
             #
+
+
+
+def actors_from_contours(contours_by_slice, pixel_spacing, line_width=2, color=(1,0,0)):
+    """
+    Convert {sliceIdx: [np.ndarray, …]} → {sliceIdx: vtkActor}
+    Returned dict is ready to be cached under entry['VTKActors2D'].
+    """
+    actors = {}
+    for slice_idx, contours in contours_by_slice.items():
+        poly = contours_to_vtk_polydata(contours, pixel_spacing)
+        actors[slice_idx] = create_actor_2d(poly, color=color, line_width=line_width)
+    return actors
+
+def contours_to_vtk_polydata(contours, pixel_spacing):
+    """
+    Convert list of numpy contours to vtkPolyData for VTK visualization.
+    Applies pixel spacing and image origin for correct alignment.
+    """
+    points = vtk.vtkPoints()
+    lines = vtk.vtkCellArray()
+
+    point_id = 0
+
+    for contour in contours:
+        line = vtk.vtkPolyLine()
+        num_points = len(contour)
+        line.GetPointIds().SetNumberOfIds(num_points)
+
+        for idx, (row, col) in enumerate(contour):
+            # Apply pixel spacing and origin shift
+            x = col * pixel_spacing[1] 
+            y = row * pixel_spacing[0] 
+
+            points.InsertNextPoint(x, y, 0)  # Keep z = 0 for 2D display
+            line.GetPointIds().SetId(idx, point_id)
+            point_id += 1
+
+        lines.InsertNextCell(line)
+
+    polydata = vtk.vtkPolyData()
+    polydata.SetPoints(points)
+    polydata.SetLines(lines)
+
+    return polydata
+
+def create_actor_2d(polydata, color=(1, 0, 0), line_width=2):
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(polydata)
+    
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(color)
+    actor.GetProperty().SetLineWidth(line_width)
+    actor.GetProperty().SetRepresentationToWireframe()
+    actor.GetProperty().SetOpacity(1.0)
+    
+    return actor

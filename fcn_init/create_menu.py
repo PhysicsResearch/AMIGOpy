@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QMenuBar, QAction, QActionGroup
 from fcn_load.read_IrIS import load_IrIS_folder
 from fcn_load.load_dcm  import load_all_dcm
+from fcn_load.save_load import load_amigo_bundle, save_amigo_bundle
 from fcn_display.win_level import window_auto, window_custom, window_stissue, window_lung, window_bone, window_sprred, window_zeff, window_IrIS_1, window_IrIS_2, window_IrIS_3, window_IrIS_4
 from fcn_display.colormap_set import set_color_map_gray, set_color_map_bone, set_color_map_hot, set_color_map_coolwarm, set_color_map_cold, set_color_map_jet, set_color_map_viridis, set_color_map_rainbow
 from fcn_export.export_fcn import export_np_array, export_dw_np, export_dcm_np_array
@@ -12,9 +13,18 @@ def initializeMenuBar(self):
     menu_bar = QMenuBar(self)
     self.setMenuBar(menu_bar)
     fileMenu = self.menuBar().addMenu("File")
+    # ------------------------------------------------------------
+    # save
+    # -------------------------------------------------------------
+    saveAction = QAction("Save", self)
+    saveAction.setShortcut("Ctrl+S")          # Ctrl+S on all platforms
+    saveAction.triggered.connect(lambda: save_amigo_bundle(self))
+    fileMenu.addAction(saveAction)                     # temporarily add; we’ll reposition later
+    # -----------------------------------------------------------------------
+    # open
     openMenu = fileMenu.addMenu("Open")
     # Add items 
-    items = ["DICOM", "NIfTI", "Tiff", "EGSPhant","IrIS", "MCNPinp", "MCNPout"]
+    items = ["DICOM", "NIfTI","AMIGOpy","Tiff", "EGSPhant","IrIS", "MCNPinp", "MCNPout"]
     for item in items:
         action = QAction(item, self)
         # Connect the Folder action to the load_dcm function
@@ -24,6 +34,9 @@ def initializeMenuBar(self):
         if item == "IrIS":
             action.triggered.connect(lambda: load_IrIS_folder(self))
             action.setShortcut("Ctrl+I")
+        if item == "AMIGOpy":
+            action.triggered.connect(lambda: load_amigo_bundle(self))
+            action.setShortcut("Ctrl+A")    
         openMenu.addAction(action)
 
     ViewMenu      = self.menuBar().addMenu("View")
