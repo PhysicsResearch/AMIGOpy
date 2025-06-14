@@ -28,8 +28,9 @@ from fcn_init.init_list_menus         import populate_list_menus
 from fcn_init.init_drop_options       import initialize_drop_fcn
 from fcn_load.load_dcm                import load_all_dcm
 from fcn_segmentation.functions_segmentation import plot_hist
+from fcn_init.init_vtk_3D_display     import init_vtk3d_widget
 import vtk
-
+from PyQt5.QtGui import QSurfaceFormat
 
 
 class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
@@ -77,6 +78,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         #
         self.layerTab['View']               = 0
         self.transTab['View']               = [1,0,0,0]
+        self.layerTab['_3Dview']            = 0
+        self.transTab['_3Dview']            = [1,0,0,0]
         self.layerTab['Compare']            = 0
         self.transTab['Compare']            = [1,0,0,0]
         self.layerTab['IrIS']               = 0
@@ -136,6 +139,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         setup_vtk_comp(self)
         setup_vtk_IrISEval(self)
         setup_vtk_seg(self)
+        # VTK 3D view
+        self.VTK3D_widget, self.VTK3D_renderer, self.VTK3D_interactor = init_vtk3d_widget(self, self.VTK_view_3D)
         # Calibration module IrIS
         init_cal_markers_IrIS(self)
         
@@ -245,6 +250,12 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         plot_hist(self)
         
 if __name__ == "__main__":
+    fmt = QSurfaceFormat()
+    fmt.setVersion(3, 2)                   # request at least OpenGL 3.2
+    fmt.setProfile(QSurfaceFormat.CoreProfile)
+    fmt.setDepthBufferSize(24)
+    fmt.setStencilBufferSize(8)
+    QSurfaceFormat.setDefaultFormat(fmt)
     app = QApplication(sys.argv)
     folder_path = None
     if len(sys.argv) > 1:

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>2012</width>
-    <height>1172</height>
+    <width>1739</width>
+    <height>1181</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -1382,6 +1382,517 @@
             </item>
            </layout>
           </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="_3Dview">
+       <attribute name="title">
+        <string>_3Dview</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_63">
+        <item row="0" column="3">
+         <widget class="QGroupBox" name="View3DgroupBox_12">
+          <property name="title">
+           <string>Render</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_65">
+           <item row="1" column="0">
+            <widget class="QLineEdit" name="View3D_name_02">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Brightness</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLineEdit" name="View3D_name_04">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Render mode</string>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="2">
+            <widget class="QPushButton" name="View3D_clear_all">
+             <property name="text">
+              <string>Clear all</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="2">
+            <widget class="QDoubleSpinBox" name="View3D_quality_spin_01"/>
+           </item>
+           <item row="0" column="1">
+            <widget class="QSlider" name="View3D_quality_slider">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="1">
+            <widget class="QPushButton" name="View3D_reset_camera">
+             <property name="text">
+              <string>Reset Camera</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLineEdit" name="View3D_name_05">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Lighting</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QLineEdit" name="View3D_name_01">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Quality (vs speed) </string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QSlider" name="View3D_brightness_slider">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLineEdit" name="View3D_name_03">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Specular power</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QDoubleSpinBox" name="View3D_brightness_spin_01"/>
+           </item>
+           <item row="4" column="1" colspan="2">
+            <widget class="QComboBox" name="iew3D_lighting_options"/>
+           </item>
+           <item row="3" column="1" colspan="2">
+            <widget class="QComboBox" name="View3D_render_options"/>
+           </item>
+           <item row="2" column="2">
+            <widget class="QDoubleSpinBox" name="View3D_specular_spin_01"/>
+           </item>
+           <item row="2" column="1">
+            <widget class="QSlider" name="View3D_specular_slider">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="0">
+            <widget class="QCheckBox" name="View3D_shading_checkBox">
+             <property name="text">
+              <string>Shading</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="1">
+            <widget class="QCheckBox" name="View3D_shoiw_axes_checkBox">
+             <property name="text">
+              <string>Show axes</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="2">
+            <widget class="QCheckBox" name="View3D_annotation_checkBox">
+             <property name="text">
+              <string>Annotation</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="3" column="3">
+         <spacer name="View3DhorizontalSpacer_78">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="2" column="0">
+         <spacer name="View3DverticalSpacer_22">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="0" column="0">
+         <spacer name="View3DverticalSpacer_21">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="0" column="1" rowspan="3" colspan="2">
+         <widget class="QWidget" name="VTK_view_3D" native="true"/>
+        </item>
+        <item row="3" column="2">
+         <spacer name="View3DhorizontalSpacer_79">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="3" column="1">
+         <spacer name="View3DhorizontalSpacer_77">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="1" column="3">
+         <widget class="QGroupBox" name="View3DgroupBox_13">
+          <property name="title">
+           <string>3D view</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_67">
+           <item row="15" column="3">
+            <spacer name="View3DhorizontalSpacer_86">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="2" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_Threshold_slider_01">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_coronal_slider_01">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="14" column="5">
+            <spacer name="View3DverticalSpacer_23">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="4" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_axial_slider_01">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="5">
+            <widget class="QSpinBox" name="View3D_axial_spin_02"/>
+           </item>
+           <item row="15" column="0">
+            <spacer name="View3DhorizontalSpacer_80">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="12" column="5">
+            <widget class="QPushButton" name="View3D_Apply">
+             <property name="text">
+              <string>Apply</string>
+             </property>
+            </widget>
+           </item>
+           <item row="10" column="1" colspan="4">
+            <widget class="QComboBox" name="View3D_colormap"/>
+           </item>
+           <item row="4" column="5">
+            <widget class="QSpinBox" name="View3D_axial_spin_01"/>
+           </item>
+           <item row="15" column="4">
+            <spacer name="View3DhorizontalSpacer_82">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="2" column="5">
+            <widget class="QDoubleSpinBox" name="View3D_Threshold_spin_01"/>
+           </item>
+           <item row="15" column="2">
+            <spacer name="View3DhorizontalSpacer_85">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="6" column="5">
+            <widget class="QSpinBox" name="View3D_coronal_spin_01"/>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLineEdit" name="View3D_name_06">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Isovalue </string>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_sagittal_slider_01">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="9" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_sagittal_slider_02">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="5">
+            <widget class="QDoubleSpinBox" name="View3D_Threshold_spin_02"/>
+           </item>
+           <item row="9" column="5">
+            <widget class="QSpinBox" name="View3D_sagittal_spin_02"/>
+           </item>
+           <item row="8" column="5">
+            <widget class="QSpinBox" name="View3D_sagittal_spin_01"/>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLineEdit" name="View3D_name_08">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Axial Limit</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_isovalue_slider">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="0">
+            <widget class="QLineEdit" name="View3D_name_09">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Cor. Limit</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_Threshold_slider_02">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="0">
+            <widget class="QLineEdit" name="View3D_name_10">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Sag. Limit</string>
+             </property>
+            </widget>
+           </item>
+           <item row="15" column="1">
+            <spacer name="View3DhorizontalSpacer_81">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="5" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_axial_slider_02">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="15" column="5">
+            <spacer name="View3DhorizontalSpacer_83">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="0" column="0" colspan="6">
+            <widget class="QWidget" name="View3D_histogram" native="true"/>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLineEdit" name="View3D_name_07">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Threshold</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="5">
+            <widget class="QSpinBox" name="View3D_coronal_spin_02"/>
+           </item>
+           <item row="1" column="5">
+            <widget class="QDoubleSpinBox" name="View3D_isovalue_spin_01"/>
+           </item>
+           <item row="16" column="0" colspan="7">
+            <widget class="QGroupBox" name="View3DgroupBox_14">
+             <property name="title">
+              <string>4D-CT</string>
+             </property>
+             <layout class="QGridLayout" name="gridLayout_66">
+              <item row="0" column="2">
+               <widget class="QSlider" name="View3D_4D_speed_play_slider">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QToolButton" name="View3D_play4D">
+                <property name="text">
+                 <string>Play</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLineEdit" name="View3D_name_12">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
+                <property name="text">
+                 <string>Speed</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="3">
+               <widget class="QDoubleSpinBox" name="View3D_4D_speed_play_spin_01"/>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item row="10" column="0">
+            <widget class="QLineEdit" name="View3D_name_11">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Colormap</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_coronal_slider_02">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="11" column="5">
+            <widget class="QCheckBox" name="View3D_real_time_checkBox">
+             <property name="text">
+              <string>Real-time</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
        </layout>
@@ -7433,8 +7944,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>222</width>
-             <height>130</height>
+             <width>242</width>
+             <height>151</height>
             </rect>
            </property>
            <attribute name="label">
@@ -7575,8 +8086,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>101</width>
-             <height>41</height>
+             <width>120</width>
+             <height>50</height>
             </rect>
            </property>
            <attribute name="label">
@@ -7603,8 +8114,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>517</width>
-             <height>385</height>
+             <width>440</width>
+             <height>365</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8034,7 +8545,7 @@ p, li { white-space: pre-wrap; }
     <item row="4" column="0" rowspan="2">
      <layout class="QGridLayout" name="gridLayout_5">
       <item row="1" column="1">
-       <widget class="QPushButton" name="pushButton_2">
+       <widget class="QPushButton" name="pushButton_test_2">
         <property name="text">
          <string>Place holder</string>
         </property>

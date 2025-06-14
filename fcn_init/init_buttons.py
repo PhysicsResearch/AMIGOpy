@@ -35,9 +35,18 @@ from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd
 from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc, DeleteSeg
 from fcn_display.display_images_seg import undo_brush_seg
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
+from fcn_3Dview.Prepare_data_3D_vtk import display_numpy_volume
 
 
 def initialize_software_buttons(self):
+
+    # test pbutton
+    self.pushButton_test_2.clicked.connect(lambda: display_numpy_volume(self,
+        self.display_data[0],             # your 3D NumPy array
+        voxel_spacing=(1.0, 1.0, 1.0)))
+    self.pushButton_test_2.setStyleSheet("background-color: green; color: white;")
+
+
     # IrIS add row dw table
     self.add_dw_table.clicked.connect(lambda: add_row_dw_table(self))
     self.remove_dw_table.clicked.connect(lambda: remove_row_dw_table(self))
