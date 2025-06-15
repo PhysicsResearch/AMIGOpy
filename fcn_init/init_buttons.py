@@ -35,16 +35,10 @@ from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd
 from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc, DeleteSeg
 from fcn_display.display_images_seg import undo_brush_seg
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
-from fcn_3Dview.Prepare_data_3D_vtk import display_numpy_volume
+from fcn_3Dview.Prepare_data_3D_vtk import play_4D_sequence_3D
 
 
 def initialize_software_buttons(self):
-
-    # test pbutton
-    self.pushButton_test_2.clicked.connect(lambda: display_numpy_volume(self,
-        self.display_data[0],             # your 3D NumPy array
-        voxel_spacing=(1.0, 1.0, 1.0)))
-    self.pushButton_test_2.setStyleSheet("background-color: green; color: white;")
 
 
     # IrIS add row dw table
@@ -126,6 +120,11 @@ def initialize_software_buttons(self):
     # 4D Display
     self.Play4D_Buttom.toggled.connect(lambda: play_4D_sequence(self))
     self.Play4D_Buttom.setStyleSheet("background-color: blue; color: white;")
+
+    # 3D viewer
+    # 4D video
+    self.View3D_play4D.setCheckable(True)
+    self.View3D_play4D.toggled.connect(lambda: play_4D_sequence_3D(self,1))
 
     # DECT
     self.add_coll_table_mat.clicked.connect(lambda: add_coll2table(self))

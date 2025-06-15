@@ -15,6 +15,7 @@ from fcn_display.disp_plan_data import update_plan_tables
 from fcn_RTFiles.process_rt_files import update_structure_list_widget
 from fcn_RTFiles.process_contours import find_matching_series
 from fcn_segmentation.functions_segmentation import plot_hist
+from fcn_3Dview.Prepare_data_3D_vtk import display_numpy_volume
 
 
 
@@ -211,6 +212,15 @@ def on_DataTreeView_clicked(self,index):
                 displaycoronal(self)
                 #    
                 set_vtk_histogran_fig(self)
+            elif currentTabText == "_3Dview":
+                # Matrix to display + spacing
+                Disp_data = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                pixel_spacing = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
+                slice_thickness = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
+                # call 3D funciton
+                display_numpy_volume(self, Disp_data, voxel_spacing=(pixel_spacing[0], pixel_spacing[1], slice_thickness))
+                # stop exectution here
+                return
             elif currentTabText == "Compare":
                 #
                 # Current view
