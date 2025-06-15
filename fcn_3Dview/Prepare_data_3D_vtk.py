@@ -386,12 +386,18 @@ def play_4D_sequence_3D(self, play: bool):
 
             # grab and show the next volume
             t_idx = checked[self._play3D_index][0]
+
+            
             vol = (
                 self.dicom_data[self.patientID]
                              [self.studyID]
                              [self.modality]
                              [t_idx]['3DMatrix']
             )
+
+            # flip coronal axis to match orientation
+            vol = np.flip(vol, axis=1)
+
             update_3d_volume(self,vol)
 
             # advance & wrap
