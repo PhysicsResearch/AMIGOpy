@@ -343,7 +343,7 @@ def _apply_crop(self):
     self.VTK3D_interactor.GetRenderWindow().Render()
 
 def update_3d_volume(self, volume_np: np.ndarray):
-    print("🔄 update_3d_volume called; incoming shape:", volume_np.shape)
+    # print("🔄 update_3d_volume called; incoming shape:", volume_np.shape)
     flat = numpy_to_vtk(
         volume_np.ravel(order='C'),
         deep=True,
