@@ -22,8 +22,9 @@ def calculate_TG43_plan_dose(self):
     # if dwells is not None:
     #     print(dwells)
     #
+    dws = np.array(dwells, copy=True)
     dose, meta = transform_and_sum_dose_matrix_centered_3D(
-        dwells, self.TG43.activesource.DoseMatrix,self.TG43.activesource.DoseMatrix_res_mm,
+        dws, self.TG43.activesource.DoseMatrix,self.TG43.activesource.DoseMatrix_res_mm,
         output_margin_mm=100, output_res_mm=2.0
     )
     # account for Air kerma and h unit
@@ -106,7 +107,7 @@ def get_all_brachy_dwells(self):
         # Extract Time (col 3) and Position + Orientation (cols 4–9)
         # Result: (n, 7) → [X, Y, Z, ThetaX, ThetaY, ThetaZ, Time]
         time     = dwell_info[:, 2:3]  # shape (n, 1)
-        position = dwell_info[:, 3:6]  # shape (n, 3)
+        position = dwell_info[:, 3:6].copy()
         position[:, 1] *= -1           # Invert Y-axis for DICOM compatibility
         angles   = dwell_info[:, 6:9]  # shape (n, 3)
 
