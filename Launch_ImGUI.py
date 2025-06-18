@@ -1,8 +1,9 @@
 import sys
 import os
 import qdarkstyle
-from PyQt5.QtWidgets import QApplication, QMainWindow, QToolBar
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui      import QIcon, QSurfaceFormat
+from PyQt5.QtWidgets  import QApplication, QMainWindow, QToolBar
+from PyQt5 import QtWidgets
 from ImGUI import Ui_AMIGOpy  # Assuming this is the name of your main window class in ImGUI.py
 from fcn_load.sort_dcm import get_data_description
 from fcn_load.org_fol_dcm import organize_files_into_folders
@@ -30,17 +31,30 @@ from fcn_load.load_dcm                import load_all_dcm
 from fcn_segmentation.functions_segmentation import plot_hist
 from fcn_init.init_vtk_3D_display     import init_vtk3d_widget
 import vtk
-from PyQt5.QtGui import QSurfaceFormat
+from PyQt5.QtCore import QEvent, Qt, QTimer
+from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin
 
+# ── constants in module / class scope ─────────────────────────────────────────
+_ORIG_POS = {                     # Designer coordinates
+    "axial":     {"pane": (0, 0), "slider": (1, 0)},
+    "coronal":   {"pane": (0, 1), "slider": (1, 1)},
+    "sagittal":  {"pane": (2, 0), "slider": (3, 0)},
+}
 
-class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
+_VIEW_ATTRS = {
+    "axial":    ("VTK_view_01", "vtkWidgetAxial",    "AxialSlider"),
+    "coronal":  ("VTK_view_03", "vtkWidgetCoronal",  "CoronalSlider"),
+    "sagittal": ("VTK_view_02", "vtkWidgetSagittal", "SagittalSlider"),
+}
+# ──────────────────────────────────────────────────────────────────────────────
+
+class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
     def __init__(self,folder_path=None):
         super(MyApp, self).__init__()
         #
         # Set up the user interface from Designer.
         self.setupUi(self)
         initializeMenuBar(self)
-        
         self.DataType = "None"
         # Create a toolbar
         self.toolbar = QToolBar("My main toolbar")
@@ -69,10 +83,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         self.LeftButtonRuler        = False
         # self.LeftButtonSegDown = False
         #
-        set_fcn_tabModules_changed(self)
-        
 
-        #
         self.layerTab = {}
         self.transTab = {}
         #
@@ -104,7 +115,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         # slice index ... It is important so different element of the GUI can have access to them 
         #
         self.dicom_data   = None            # Initialize the attribute to store DICOM data
-        #self.TG43_Data    = None            # Initialize the attribute to store TG43 data
+        #self.TG43_Data    = None           # Initialize the attribute to store TG43 data
         self.IrIS_data    = None            # Initialize the attribute to store IrIS data
         self.IrIS_corr    = {}              # Initialize the attribute to store IrIS correction data
         self.current_slice_index = [-1,-1,-1]  # axial, sagital and coronal slices
@@ -112,7 +123,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         # information about dwell positions and dwell times
         self.IrIS_Eval = {}
         #
-        
+
+        #
         self.BrCvTab_index = 0
         self.tabWidget_BrCv.currentChanged.connect(lambda: init_BrCv_plot(self))
         self.plotXAxis_BrCv.currentTextChanged.connect(lambda: plotViewData_BrCv_plot(self))
@@ -139,8 +151,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         setup_vtk_comp(self)
         setup_vtk_IrISEval(self)
         setup_vtk_seg(self)
-        # VTK 3D view
-        self.VTK3D_widget, self.VTK3D_renderer, self.VTK3D_interactor = init_vtk3d_widget(self, self.VTK_view_3D)
+
         # Calibration module IrIS
         init_cal_markers_IrIS(self)
         
@@ -170,6 +181,27 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         #     print(folder_path)
         #     load_all_dcm(self,folder_path, progress_callback=None, update_label=None)
         set_transp_slider_fcn(self)
+        #
+        # # Initialize the 3D viewer
+        self.VTK3D_widget, self.VTK3D_renderer, self.VTK3D_interactor = \
+            init_vtk3d_widget(self, self.VTK_view_3D)
+        self.init_3d_viewer()       
+
+        set_fcn_tabModules_changed(self)
+        # state flag: which axis is currently maximised  (None → original layout)
+        self._max_axis = None
+        self._cycle_order = ["axial", "sagittal", "coronal"]
+
+        for axis, (_, vtk_name, _) in _VIEW_ATTRS.items():
+            vtkw = getattr(self, vtk_name)
+            vtkw._axis_name = axis
+            vtkw.installEventFilter(self)
+
+        # Install filter on the parent container for “show all”
+        self.im_display_tab.installEventFilter(self)
+
+
+
 
     def organize_dcm_folder(self):
         self.label.setText("Reading folders")
@@ -248,7 +280,100 @@ class MyApp(QMainWindow, Ui_AMIGOpy):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, 
         if max_ <= self.segThreshMinHU.value():
             self.segThreshMaxHU.setValue(self.segThreshMinHU.value()+1)
         plot_hist(self)
-        
+
+    
+
+
+    def _get_next_axis(self):
+        if self._max_axis is None:
+            return "axial"
+        idx = self._cycle_order.index(self._max_axis)
+        return self._cycle_order[(idx + 1) % len(self._cycle_order)]
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.MouseButtonDblClick and event.button() == Qt.LeftButton:
+            # Double click on background/parent → restore all
+            if watched is self.im_display_tab:
+                self.set_view_mode("all")
+                return True
+
+            # Double click on any axis render widget
+            if hasattr(watched, "_axis_name"):
+                axis = watched._axis_name
+                if self._max_axis != axis:
+                    # If not maximized, maximize this one
+                    self.set_view_mode(axis)
+                else:
+                    # If maximized, go to the next in cycle
+                    next_axis = self._get_next_axis()
+                    self.set_view_mode(next_axis)
+                return True
+
+        return super().eventFilter(watched, event)
+    
+    def set_view_mode(self, mode: str = "all"):
+        """
+        mode = "all" | "axial" | "coronal" | "sagittal"
+        """
+        if mode not in {"all", "axial", "coronal", "sagittal"}:
+            print(f"[set_view_mode] unknown key {mode!r}")
+            return
+
+        gl = self.gridLayout_4
+
+        # ------ FIX: unpack 3-tuple, keep pane & slider -------------------------
+        views = {
+            k: (
+                getattr(self, pane_name),         # placeholder QWidget
+                getattr(self, slider_name)        # its QSlider
+            )
+            for k, (pane_name, _, slider_name) in _VIEW_ATTRS.items()
+        }
+        # ------------------------------------------------------------------------
+
+        # ── 1) hide everything first ────────────────────────────────────────────
+        for vw, sl in views.values():
+            vw.hide(); sl.hide()
+
+        self.tabView01.hide()
+        self.label_2.hide()
+
+        # ── 2) detach all layout items (keeps grid clean) ──────────────────────
+        while gl.count():
+            gl.takeAt(0)
+
+        # ── 3) branch on mode ──────────────────────────────────────────────────
+        if mode == "all":
+            # put every pane + slider back where Designer had them
+            for key, (vw, sl) in views.items():
+                r_pane, c_pane       = _ORIG_POS[key]["pane"]
+                r_slider, c_slider   = _ORIG_POS[key]["slider"]
+
+                gl.addWidget(vw, r_pane,  c_pane, 1, 1)
+                gl.addWidget(sl, r_slider, c_slider, 1, 1)
+                vw.show(); sl.show()
+
+            # bottom-right extras
+            gl.addWidget(self.tabView01, 2, 1, 2, 1)
+            gl.addWidget(self.label_2,   3, 1)
+            self.tabView01.show(); self.label_2.show()
+
+            # original slider row keeps default min-height
+            gl.setRowMinimumHeight(3, 0)
+
+        else:
+            # maximise one pane
+            vw, sl   = views[mode]
+            gl.addWidget(vw, 0, 0, 3, 2)        # rows 0-2, both columns
+            gl.addWidget(sl, 3, 0, 1, 2)        # slider row, both columns
+            vw.show();  sl.show()
+
+            # guarantee slider stays visible even if window shrinks
+            gl.setRowMinimumHeight(3, sl.sizeHint().height())
+
+        self._max_axis = None if mode == "all" else mode
+    
+
 if __name__ == "__main__":
     fmt = QSurfaceFormat()
     fmt.setVersion(3, 2)                   # request at least OpenGL 3.2

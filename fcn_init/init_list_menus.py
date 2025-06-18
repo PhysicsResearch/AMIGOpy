@@ -3,8 +3,23 @@ from fcn_processing.Im_process_list   import on_operation_selected
 from fcn_DECT.DECT_table_disp import on_DECT_list_selection_changed
 from fcn_display.disp_plan_data import update_disp_brachy_plan
 from fcn_display.display_images import update_layer_view
+# from fcn_3Dview.Prepare_data_3D_vtk import _on_colormap_changed
 
 def populate_list_menus(self):
+    # self._imgs = {}        # layer_idx -> vtkImageData
+    # self._ctfs = {}        # layer_idx -> vtkColorTransferFunction
+    # self._otfs = {}        # layer_idx -> vtkPiecewiseFunction
+    # self._vol_props = {}   # layer_idx -> vtkVolumeProperty
+    # self._volumes = {}     # layer_idx -> vtkVolume
+    # self._play3D_index = 0
+    # cmap_list = ['Gray', 'Bone', 'Hot', 'Cool', 'Viridis',
+    #              'Plasma', 'Jet', 'Rainbow', 'Spectral', 'BlueWhiteRed']
+    # self.View3D_CMap = self.findChild(QtWidgets.QComboBox, 'View3D_colormap')
+    # self.View3D_CMap.addItems(cmap_list)
+    # self.View3D_CMap.currentIndexChanged.connect(
+    #     lambda idx: _on_colormap_changed(self)
+    # )
+
     # Populate selection box
     Layers = ["0", "1", "2", "3"]
     self.layer_selection_box = self.findChild(QtWidgets.QComboBox, 'Layer_selection')

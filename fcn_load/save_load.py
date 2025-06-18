@@ -87,8 +87,8 @@ def make_pickle_safe(node):
 # ──────────────────────────────────────────────────────────────
 def _pick_compressor():
     if importlib.util.find_spec("lz4"):
-        return ("lz4", 0)
-    return ("lzma", 0)                   # always works
+        return ("lz4", 3)
+    return ("lzma", 3)                   # always works
 
 
 # ──────────────────────────────────────────────────────────────

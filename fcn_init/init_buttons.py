@@ -41,6 +41,9 @@ from fcn_3Dview.Prepare_data_3D_vtk import play_4D_sequence_3D
 def initialize_software_buttons(self):
 
 
+
+
+
     # IrIS add row dw table
     self.add_dw_table.clicked.connect(lambda: add_row_dw_table(self))
     self.remove_dw_table.clicked.connect(lambda: remove_row_dw_table(self))

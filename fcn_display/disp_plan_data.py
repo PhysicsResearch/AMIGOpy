@@ -334,7 +334,7 @@ def plot_brachy_3D_dwell_channels(self):
         if 0 <= selected_channel < len(channels):
             channel_indices = [selected_channel]
         else:
-            print(f"Selected channel {selected_channel + 1} is out of range.")
+            # print(f"Selected channel {selected_channel + 1} is out of range.")
             return
 
     # Iterate through the selected channels to plot their points

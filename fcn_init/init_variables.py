@@ -67,6 +67,15 @@ def initialize_software_variables(self):
     self.pixel_spac_seg       = np.zeros((4,2))
     self.Im_PatPosition_seg   = np.zeros((4, 3))
     self.Im_Offset_seg        = np.zeros((4, 3))
+    # ----------------------------------------------
+    self.pixel_spacing3Dview    = np.zeros((4,2))
+    self.slice_thickness3Dview  = np.zeros(4)
+    #
+    self.Im_PatPosition3Dview   = np.zeros((4,3))
+    self.display_3D_data        = {} 
+    self.Im_Offset3Dview        = np.zeros((4, 3))
+
+    #
     self.display_seg_data       = {}
     self.seg_brush = 0
     self.seg_erase = 0

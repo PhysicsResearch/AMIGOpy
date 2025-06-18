@@ -15,7 +15,7 @@ from fcn_display.disp_plan_data import update_plan_tables
 from fcn_RTFiles.process_rt_files import update_structure_list_widget
 from fcn_RTFiles.process_contours import find_matching_series
 from fcn_segmentation.functions_segmentation import plot_hist
-from fcn_3Dview.Prepare_data_3D_vtk import display_numpy_volume
+from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin,initialize_3Dsliders, initialize_crop_widgets
 
 
 
@@ -212,13 +212,58 @@ def on_DataTreeView_clicked(self,index):
                 displaycoronal(self)
                 #    
                 set_vtk_histogran_fig(self)
+                #
             elif currentTabText == "_3Dview":
                 # Matrix to display + spacing
-                Disp_data = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
-                pixel_spacing = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
-                slice_thickness = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
-                # call 3D funciton
-                display_numpy_volume(self, Disp_data, voxel_spacing=(pixel_spacing[0], pixel_spacing[1], slice_thickness))
+                idx                                 = self.layer_selection_box.currentIndex()
+                self.display_3D_data[idx]           = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                self.pixel_spacing3Dview[idx]       = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
+                self.slice_thickness3Dview[idx]     = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
+                #
+                self.Im_PatPosition3Dview[idx, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
+                #
+                if idx == 0:
+                    offset = (0.0, 0.0, 0.0)
+                else:
+                    base_pos = self.Im_PatPosition3Dview[0]
+                    curr_pos = self.Im_PatPosition3Dview[idx]
+                    w0 = self.display_3D_data[0].shape[1] * self.pixel_spacing3Dview[0,0]
+                    w1 = self.display_3D_data[idx].shape[1] * self.pixel_spacing3Dview[idx,0]
+                    offset_x = curr_pos[0] - base_pos[0]
+                    offset_y = w0 - w1 - (curr_pos[1] - base_pos[1])
+                    offset_z = curr_pos[2] - base_pos[2]
+                    offset = (offset_x, offset_y, offset_z)
+                    self.Im_Offset3Dview[idx] = offset
+
+                # load into VTK and display
+                self.display_numpy_volume(
+                    self.display_3D_data[idx],
+                    voxel_spacing=(
+                        self.pixel_spacing3Dview[idx,0],
+                        self.pixel_spacing3Dview[idx,1],
+                        self.slice_thickness3Dview[idx]
+                    ),
+                    layer_idx=idx,
+                    offset=offset
+                )
+
+                # ── reset thresholds (and full‐range) for this layer so the sliders jump to the new data
+                # clear any old state
+                self._thresholds.pop(idx, None)
+                self._full_ranges.pop(idx, None)
+                # compute new data range
+                vol = self.display_3D_data[idx]
+                vmin, vmax = float(vol.min()), float(vol.max())
+                # re-initialize the two 3D sliders for this layer
+                initialize_3Dsliders(self, vmin, vmax)
+                # ── now reset the crop‐region sliders for just this layer
+                # clear any old crop state
+                self._crops.pop(idx, None)
+                self._dims .pop(idx, None)
+                # volume_np.shape is (Z, Y, X), but initialize_crop_widgets wants (X, Y, Z)
+                dz, dy, dx = vol.shape
+                initialize_crop_widgets(self, (dx, dy, dz), idx)
+
                 # stop exectution here
                 return
             elif currentTabText == "Compare":
