@@ -227,12 +227,7 @@ def on_DataTreeView_clicked(self,index):
                 else:
                     base_pos = self.Im_PatPosition3Dview[0]
                     curr_pos = self.Im_PatPosition3Dview[idx]
-                    w0 = self.display_3D_data[0].shape[1] * self.pixel_spacing3Dview[0,0]
-                    w1 = self.display_3D_data[idx].shape[1] * self.pixel_spacing3Dview[idx,0]
-                    offset_x = curr_pos[0] - base_pos[0]
-                    offset_y = w0 - w1 - (curr_pos[1] - base_pos[1])
-                    offset_z = curr_pos[2] - base_pos[2]
-                    offset = (offset_x, offset_y, offset_z)
+                    offset   = tuple(np.array(curr_pos) - np.array(base_pos))
                     self.Im_Offset3Dview[idx] = offset
 
                 # load into VTK and display
