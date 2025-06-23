@@ -20,7 +20,7 @@ build:
     - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" run -n $CONDA_ENV pyinstaller Launch_ImGUI.spec'
   artifacts:
     paths:
-      - dist/
+      - dist/Launch_ImGUI/Launch_ImGUI.exe
 
 package:
   stage: package
