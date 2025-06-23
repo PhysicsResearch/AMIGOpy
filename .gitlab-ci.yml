@@ -1,36 +1,30 @@
+# .gitlab-ci.yml
+
 stages:
   - build
-  - package
 
 variables:
+  # Name of the conda environment (must match amigo.yml)
   CONDA_ENV: amigo
+  # Path to your environment specification
   ENV_YML: amigo.yml
 
-build:
+build_and_package:
   stage: build
   tags:
-    - shell
+    - shell       # your Windows runner tag
   before_script:
-    # 1) Update conda itself
+    # 1) Ensure conda itself is up-to-date
     - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" update -n base -c defaults conda --yes'
-    # 2) Create your env from amigo.yml
+    # 2) Create the "amigo" environment from amigo.yml
     - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" env create -f $ENV_YML -n $CONDA_ENV --quiet'
   script:
-    # 3) Run PyInstaller inside the "amigo" env
+    # 3) Build your EXE with PyInstaller inside the conda env
     - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" run -n $CONDA_ENV pyinstaller Launch_ImGUI.spec'
+    # 4) Package into a single installer with Inno Setup
+    - >-
+      & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"
   artifacts:
     paths:
-      - dist/Launch_ImGUI/Launch_ImGUI.exe
-
-package:
-  stage: package
-  tags:
-    - shell
-  dependencies:
-    - build
-  script:
-    # Inno Setup doesn’t need the Python env—just compile.
-    - '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
-  artifacts:
-    paths:
-      - Output/my_setup.exe
+      - Output/my_setup.exe   # only upload your final installer
+    expire_in: 1 week
