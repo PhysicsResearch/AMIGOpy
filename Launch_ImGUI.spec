@@ -1,29 +1,31 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-
+import os
 block_cipher = None
 
-# Force the working directory for PyInstaller
-import os
-os.chdir("C:/AMIGOpy")  # Change working directory to prevent Z: usage
+# ─── 1 ─── Determine the base directory ────────────────────────────────────────
+# Use the GitLab checkout dir if set, otherwise the folder containing this spec
+BASE_DIR = os.getenv('CI_PROJECT_DIR',
+                     os.path.abspath(os.path.dirname(__file__)))
+os.chdir(BASE_DIR)
 
+# ─── 2 ─── Data files (icons) ─────────────────────────────────────────────────
+# We assume your icons live in <repo_root>/icons/
 datas = [
-    ('Z:/AMIGOpy/icons/ruler.png', 'icons'),  
-	('Z:/AMIGOpy/icons/dcm_insp.png', 'icons')
+    (os.path.join(BASE_DIR, 'icons', 'ruler.png'), 'icons'),
+    (os.path.join(BASE_DIR, 'icons', 'dcm_insp.png'), 'icons'),
 ]
 
-# Specify all paths explicitly
-source_script = 'Z:/AMIGOpy/Launch_ImGUI.py'
-build_output_dir = 'C:/AMIGOpy'
+# ─── 3 ─── Source script & pathex ─────────────────────────────────────────────
+script_path = os.path.join(BASE_DIR, 'Launch_ImGUI.py')
 
 a = Analysis(
-    ['Z:/AMIGOpy/Launch_ImGUI.py'],
-    pathex=['Z:/AMIGOpy'],
+    [ script_path ],
+    pathex=[ BASE_DIR ],
     binaries=[],
     datas=datas,
     hiddenimports=[],
-    hookspath=['Z:/AMIGOpy/hooks'],
-    hooksconfig={},
+    hookspath=[ os.path.join(BASE_DIR, 'hooks') ],
     runtime_hooks=[],
     excludes=[],
     win_no_prefer_redirects=False,
@@ -31,6 +33,8 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
+
+# ─── 4 ─── Build the PYZ and EXE objects ──────────────────────────────────────
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
@@ -44,12 +48,9 @@ exe = EXE(
     strip=False,
     upx=True,
     console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
 )
+
+# ─── 5 ─── Collect into a dist folder under the repo ─────────────────────────
 coll = COLLECT(
     exe,
     a.binaries,
@@ -57,10 +58,8 @@ coll = COLLECT(
     a.datas,
     strip=False,
     upx=True,
-    upx_exclude=[],
     name='Launch_ImGUI',
-	# Specify the output folder for the build
-    distpath=os.path.join(build_output_dir, 'dist'),  # Explicit distpath
-    workpath=os.path.join(build_output_dir, 'build'),  # Explicit workpath
-    tempdir=os.path.join(build_output_dir, 'temp')  # Explicit tempdir
+    distpath=os.path.join(BASE_DIR, 'dist'),
+    workpath=os.path.join(BASE_DIR, 'build'),
+    tempdir=os.path.join(BASE_DIR, 'temp'),
 )
