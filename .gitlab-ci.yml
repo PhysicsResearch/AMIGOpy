@@ -3,40 +3,35 @@ stages:
   - package
 
 variables:
-  # name of the conda env you want
   CONDA_ENV: amigo_env
-  # path to your environment spec
   ENV_YML: amigo.yml
 
-# ─── BUILD ─────────────────────────────────────────────────────────────────────
 build:
   stage: build
   tags:
-    - shell        
+    - shell
   before_script:
-    # update conda, then create & activate your env
-    - conda update -n base -c defaults conda --yes
-    - conda env create -f $ENV_YML -n $CONDA_ENV
-    - conda activate $CONDA_ENV
+    # update conda
+    - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" update -n base -c defaults conda --yes'
+    # create & activate env
+    - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" env create -f $ENV_YML -n $CONDA_ENV --quiet'
+    # Activate (use the batch file if needed)
+    - 'C:\ProgramData\Anaconda3\Scripts\activate.bat $CONDA_ENV'
   script:
-    # install PyInstaller into that env, then build your EXE
     - pyinstaller Launch_ImGUI.spec
   artifacts:
     paths:
-      - dist/       # <-- PyInstaller’s output folder
+      - dist/
 
-# ─── PACKAGE ───────────────────────────────────────────────────────────────────
 package:
   stage: package
   tags:
-    - windows
     - shell
   dependencies:
-    - build        # pulls in the dist/ folder from the build job
+    - build
   before_script:
-    - conda activate $CONDA_ENV
+    - 'C:\ProgramData\Anaconda3\Scripts\activate.bat $CONDA_ENV'
   script:
-    # compile your Inno Setup script (compile.iss) into my_setup.exe
     - '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
   artifacts:
     paths:
