@@ -3,7 +3,8 @@ stages:
   - package
 
 variables:
-  CONDA_ENV: amigo_env
+  # the actual name of your env, per amigo.yml
+  CONDA_ENV: amigo
   ENV_YML: amigo.yml
 
 build:
@@ -11,14 +12,12 @@ build:
   tags:
     - shell
   before_script:
-    # update conda
-    - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" update -n base -c defaults conda --yes'
-    # create & activate env
-    - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" env create -f $ENV_YML -n $CONDA_ENV --quiet'
-    # Activate (use the batch file if needed)
-    - 'C:\ProgramData\Anaconda3\Scripts\activate.bat $CONDA_ENV'
+    # make sure conda is up-to-date, then create your env
+    - conda update -n base -c defaults conda --yes
+    - conda env create -f $ENV_YML -n $CONDA_ENV --quiet
   script:
-    - pyinstaller Launch_ImGUI.spec
+    # run pyinstaller inside the "amigo" env
+    - conda run -n $CONDA_ENV pyinstaller Launch_ImGUI.spec
   artifacts:
     paths:
       - dist/
@@ -29,9 +28,8 @@ package:
     - shell
   dependencies:
     - build
-  before_script:
-    - 'C:\ProgramData\Anaconda3\Scripts\activate.bat $CONDA_ENV'
   script:
+    # Inno Setup doesn’t need the Python env—just compile.
     - '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
   artifacts:
     paths:
