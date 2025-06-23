@@ -23,7 +23,7 @@ build_and_package:
     - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" run -n $CONDA_ENV pyinstaller Launch_ImGUI.spec'
     # 4) Package into a single installer with Inno Setup
     - |
-      & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"
+      '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
   artifacts:
     paths:
       - Output/mysetup.exe   # match the filename you defined in compile.iss
