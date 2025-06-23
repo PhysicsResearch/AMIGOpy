@@ -3,20 +3,17 @@
 import os
 block_cipher = None
 
-# ─── 1 ─── Determine the base directory ────────────────────────────────────────
-# Use the GitLab checkout dir if set, otherwise the folder containing this spec
-BASE_DIR = os.getenv('CI_PROJECT_DIR',
-                     os.path.abspath(os.path.dirname(__file__)))
+# ─── Base directory: use the current working folder where the spec is run ─────
+BASE_DIR = os.getcwd()
 os.chdir(BASE_DIR)
 
-# ─── 2 ─── Data files (icons) ─────────────────────────────────────────────────
-# We assume your icons live in <repo_root>/icons/
+# ─── Data files (icons) ───────────────────────────────────────────────────────
 datas = [
-    (os.path.join(BASE_DIR, 'icons', 'ruler.png'), 'icons'),
+    (os.path.join(BASE_DIR, 'icons', 'ruler.png'),    'icons'),
     (os.path.join(BASE_DIR, 'icons', 'dcm_insp.png'), 'icons'),
 ]
 
-# ─── 3 ─── Source script & pathex ─────────────────────────────────────────────
+# ─── Source script & pathex ───────────────────────────────────────────────────
 script_path = os.path.join(BASE_DIR, 'Launch_ImGUI.py')
 
 a = Analysis(
@@ -34,7 +31,7 @@ a = Analysis(
     noarchive=False,
 )
 
-# ─── 4 ─── Build the PYZ and EXE objects ──────────────────────────────────────
+# ─── Build the PYZ and EXE objects ────────────────────────────────────────────
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
@@ -50,7 +47,7 @@ exe = EXE(
     console=False,
 )
 
-# ─── 5 ─── Collect into a dist folder under the repo ─────────────────────────
+# ─── Collect into a dist folder under the repo ────────────────────────────────
 coll = COLLECT(
     exe,
     a.binaries,
