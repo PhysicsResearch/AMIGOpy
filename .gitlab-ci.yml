@@ -12,8 +12,7 @@ variables:
 build:
   stage: build
   tags:
-    - windows      # make sure your runner is tagged “windows”
-    - shell        # …and “shell” (or whatever tag you chose when registering)
+    - shell        
   before_script:
     # update conda, then create & activate your env
     - conda update -n base -c defaults conda --yes
