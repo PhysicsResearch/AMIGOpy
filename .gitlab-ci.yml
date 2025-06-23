@@ -20,7 +20,6 @@ build:
     - conda activate $CONDA_ENV
   script:
     # install PyInstaller into that env, then build your EXE
-    - pip install pyinstaller
     - pyinstaller Launch_ImGUI.spec
   artifacts:
     paths:
