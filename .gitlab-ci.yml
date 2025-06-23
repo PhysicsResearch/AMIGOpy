@@ -3,7 +3,6 @@ stages:
   - package
 
 variables:
-  # the actual name of your env, per amigo.yml
   CONDA_ENV: amigo
   ENV_YML: amigo.yml
 
@@ -12,12 +11,13 @@ build:
   tags:
     - shell
   before_script:
-    # make sure conda is up-to-date, then create your env
-    - conda update -n base -c defaults conda --yes
-    - conda env create -f $ENV_YML -n $CONDA_ENV --quiet
+    # 1) Update conda itself
+    - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" update -n base -c defaults conda --yes'
+    # 2) Create your env from amigo.yml
+    - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" env create -f $ENV_YML -n $CONDA_ENV --quiet'
   script:
-    # run pyinstaller inside the "amigo" env
-    - conda run -n $CONDA_ENV pyinstaller Launch_ImGUI.spec
+    # 3) Run PyInstaller inside the "amigo" env
+    - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" run -n $CONDA_ENV pyinstaller Launch_ImGUI.spec'
   artifacts:
     paths:
       - dist/
