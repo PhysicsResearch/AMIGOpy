@@ -2,8 +2,10 @@
 
 stages:
   - build
+  - release
 
 variables:
+  # your conda env and spec
   CONDA_ENV: amigo
   ENV_YML: amigo.yml
 
@@ -11,32 +13,60 @@ build_and_package:
   stage: build
   tags:
     - shell
-
   before_script:
-    # 1) Update Conda itself
+    # 1) Update Conda
     - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" update -n base -c defaults conda --yes'
-
-    # 2) Remove any stale 'amigo' env
-    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" env remove -n amigo -y'
-
-    # 3) Create a fresh 'amigo' environment from amigo.yml
-    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" env create -f %ENV_YML% -n amigo --quiet'
-
-    # 4) Ensure the persistent artifact directory exists
-    - 'if (!(Test-Path ''C:\ci-artifacts\amigopy'')) { New-Item -ItemType Directory -Path ''C:\ci-artifacts\amigopy'' | Out-Null }'
-
+    # 2) Remove and recreate the env
+    - 'Remove-Item -Recurse -Force "C:\ProgramData\Anaconda3\envs\$Env:CONDA_ENV" -ErrorAction SilentlyContinue'
+    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" env create -f $Env:ENV_YML -n $Env:CONDA_ENV --quiet'
+    # 3) Ensure a persistent output folder
+    - 'if (!(Test-Path "C:\ci-artifacts\amigopy")) { New-Item -ItemType Directory -Path "C:\ci-artifacts\amigopy" | Out-Null }'
   script:
-    # 5) Build the one-dir bundle with PyInstaller inside the "amigo" env
+    # 4) Run PyInstaller
     - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" run -n amigo pyinstaller Launch_ImGUI.spec'
-
-    # 6) Compile your installer with Inno Setup
+    # 5) Build the Inno Setup installer
     - '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"'
-
-    # 7) Copy full dist/ and Output/ to the persistent location
-    - 'Copy-Item -Path dist -Destination ''C:\ci-artifacts\amigopy\dist'' -Recurse -Force'
-    - 'Copy-Item -Path Output -Destination ''C:\ci-artifacts\amigopy\Output'' -Recurse -Force'
-
-    # 8) (Optional) List the persistent folder so you can verify via the job log
+    # 6) Copy the installer into the persistent folder
+    - 'Copy-Item -Path "Output\mysetup.exe" -Destination "C:\ci-artifacts\amigopy\mysetup.exe" -Force'
+    # (optional) list it so you can see it in the job log
     - 'dir C:\ci-artifacts\amigopy'
+  # no artifacts — we’ll pick it up from the runner’s disk in the next stage
 
-  # we don’t upload any artifacts back to GitLab; everything lives on the runner
+publish_release:
+  stage: release
+  tags:
+    - shell
+  needs:
+    - job: build_and_package
+      artifacts: false
+  script:
+    # 1) Upload the installer via the “uploads” endpoint
+    - |
+      $upload = curl --silent --header "PRIVATE-TOKEN: $GITLAB_TOKEN" `
+        --form "file=@C:/ci-artifacts/amigopy/mysetup.exe" `
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/uploads" | ConvertFrom-Json
+
+    # 2) Create or update a nightly release with that file as an asset
+    - |
+      $body = @{
+        name        = "nightly-$CI_PIPELINE_IID"
+        tag_name    = "nightly-$CI_PIPELINE_IID"
+        description = "Automated nightly build of AMIGOpy"
+        released_at = (Get-Date).ToString("o")
+        assets      = @{
+          links = @(
+            @{
+              name = "AMIGOpy Windows Installer"
+              url  = "$CI_PROJECT_URL$($upload.url)"
+            }
+          )
+        }
+      } | ConvertTo-Json -Depth 4
+
+    - |
+      curl --silent --request POST `
+        --header "Content-Type: application/json" `
+        --header "PRIVATE-TOKEN: $GITLAB_TOKEN" `
+        --data $body `
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases"
+  when: on_success
