@@ -4,9 +4,9 @@ stages:
   - build
 
 variables:
-  # Name of the conda environment (must match amigo.yml)
+  # Name of the Conda environment (must match amigo.yml)
   CONDA_ENV: amigo
-  # Path to your environment specification
+  # Path to your environment spec file
   ENV_YML: amigo.yml
 
 build_and_package:
@@ -14,17 +14,23 @@ build_and_package:
   tags:
     - shell       # your Windows runner tag
   before_script:
-    # 1) Ensure conda itself is up-to-date
-    - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" update -n base -c defaults conda --yes'
-    # 2) Create the "amigo" environment from amigo.yml
-    - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" env create -f $ENV_YML -n $CONDA_ENV --quiet'
+    # 1) Remove any existing env to avoid stale or corrupted state
+    - Remove-Item -Recurse -Force "C:\ProgramData\Anaconda3\envs\$Env:CONDA_ENV" -ErrorAction SilentlyContinue
+    # 2) Update Conda itself
+    - & "C:\ProgramData\Anaconda3\condabin\conda.bat" update -n base -c defaults conda --yes
+    # 3) Re-create the env from amigo.yml, forcing a clean install
+    - & "C:\ProgramData\Anaconda3\condabin\conda.bat" env create -f $Env:ENV_YML -n $Env:CONDA_ENV --force --quiet
+
   script:
-    # 3) Build your EXE with PyInstaller inside the conda env
-    - '& "C:\ProgramData\Anaconda3\Scripts\conda.exe" run -n $CONDA_ENV pyinstaller Launch_ImGUI.spec'
-    # 4) Package into a single installer with Inno Setup
-    - |
-      '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
+    # 4) Build your one-dir bundle with PyInstaller inside the "amigo" env
+    - & "C:\ProgramData\Anaconda3\condabin\conda.bat" run -n $Env:CONDA_ENV pyinstaller Launch_ImGUI.spec
+    # 5) Compile your installer with Inno Setup
+    - & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"
+    # 6) (Optional) List the Output folder to verify the artifact name
+    - dir Output\
+
   artifacts:
+    # Collect any .exe under Output/, so it captures your installer regardless of exact name
     paths:
-      - Output/mysetup.exe   # match the filename you defined in compile.iss
+      - Output/*.exe
     expire_in: 1 week
