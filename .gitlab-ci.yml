@@ -5,7 +5,7 @@ stages:
   - release
 
 variables:
-  # your conda env and spec
+  # your conda env name and spec file
   CONDA_ENV: amigo
   ENV_YML: amigo.yml
 
@@ -16,62 +16,49 @@ build_and_package:
   before_script:
     # 1) Update Conda
     - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" update -n base -c defaults conda --yes'
-    # 2) Remove and recreate the env
+    # 2) Remove any stale env and recreate it
     - 'Remove-Item -Recurse -Force "C:\ProgramData\Anaconda3\envs\$Env:CONDA_ENV" -ErrorAction SilentlyContinue'
     - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" env create -f $Env:ENV_YML -n $Env:CONDA_ENV --quiet'
-    # 3) Ensure a persistent output folder
+    # 3) Ensure persistent output directory
     - 'if (!(Test-Path "C:\ci-artifacts\amigopy")) { New-Item -ItemType Directory -Path "C:\ci-artifacts\amigopy" | Out-Null }'
   script:
-    # 4) Run PyInstaller
+    # 4) Build your app (one‐dir bundle)
     - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" run -n amigo pyinstaller Launch_ImGUI.spec'
-    # 5) Build the Inno Setup installer
+    # 5) Produce the installer
     - '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"'
-    # 6) Copy the installer into the persistent folder
+    # 6) Copy the installer into a persistent folder on the runner
     - 'Copy-Item -Path "Output\mysetup.exe" -Destination "C:\ci-artifacts\amigopy\mysetup.exe" -Force'
-    # (optional) list it so you can see it in the job log
-    - 'dir C:\ci-artifacts\amigopy'
-  # no artifacts — we’ll pick it up from the runner’s disk in the next stage
 
 publish_release:
   stage: release
   tags:
     - shell
   needs:
-    - build_and_package
+    - job: build_and_package
+      artifacts: false
   script:
-    # 1) Upload installer via GitLab uploads API
+    # 1) Upload the signed installer via the uploads API
     - |
-      $uploadResponse = Invoke-RestMethod `
-        -Method Post `
-        -Uri "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/uploads" `
-        -Headers @{ "PRIVATE-TOKEN" = $env:GITLAB_TOKEN } `
-        -Form @{ file = Get-Item "C:\ci-artifacts\amigopy\mysetup.exe" }
-      $uploadedUrl = "$env:CI_PROJECT_URL$($uploadResponse.url)"
+      $uploadJson = & curl.exe --silent `
+        --header "PRIVATE-TOKEN: $env:GITLAB_TOKEN" `
+        --upload-file "C:/ci-artifacts/amigopy/mysetup.exe" `
+        "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/uploads"
+      $upload = $uploadJson | ConvertFrom-Json
+      $uploadedUrl = "$env:CI_PROJECT_URL$($upload.url)"
 
-    # 2) Create (or update) the nightly release
+    # 2) Create or update a nightly release asset
     - |
-      $releaseBody = @{
+      $body = @{
         name        = "nightly-$env:CI_PIPELINE_IID"
         tag_name    = "nightly-$env:CI_PIPELINE_IID"
         description = "Automated nightly build of AMIGOpy"
         released_at = (Get-Date).ToString("o")
-        assets      = @{
-          links = @(
-            @{
-              name = "Windows Installer"
-              url  = $uploadedUrl
-            }
-          )
-        }
+        assets      = @{ links = @(@{ name = "AMIGOpy Windows Installer"; url = $uploadedUrl }) }
       } | ConvertTo-Json -Depth 4
 
-      Invoke-RestMethod `
-        -Method Post `
-        -Uri "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/releases" `
-        -Headers @{ 
-          "Content-Type"  = "application/json"
-          "PRIVATE-TOKEN" = $env:GITLAB_TOKEN 
-        } `
-        -Body $releaseBody
-
+      & curl.exe --silent --request POST `
+        --header "Content-Type: application/json" `
+        --header "PRIVATE-TOKEN: $env:GITLAB_TOKEN" `
+        --data "$body" `
+        "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/releases"
   when: on_success
