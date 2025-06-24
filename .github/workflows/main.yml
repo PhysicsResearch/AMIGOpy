@@ -17,7 +17,7 @@ jobs:
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v2
         with:
-          environment-file: minimal-amigo.yml
+          environment-file: amigo.yml
           activate-environment: amigo
 
       - name: Ensure PyInstaller is installed
