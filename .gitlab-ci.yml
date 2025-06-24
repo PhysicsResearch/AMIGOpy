@@ -37,13 +37,10 @@ publish_generic:
     - job: build_and_package
       artifacts: false
   script:
-    # Upload the installer to the Generic Package Registry
-    - >-
-      & curl.exe --silent
-        --header "JOB-TOKEN: $env:CI_JOB_TOKEN"
-        --upload-file "$env:PERSIST_DIR\mysetup.exe"
-        "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/generic/nightly/$env:CI_PIPELINE_IID/mysetup.exe"
-    # Print out the download URL
-    - >-
+    # Upload the installer in one line so PowerShell doesn’t mis-parse the flags
+    - | 
+      & curl.exe --silent --header "JOB-TOKEN: $env:CI_JOB_TOKEN" --upload-file "$env:PERSIST_DIR\mysetup.exe" "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/generic/nightly/$env:CI_PIPELINE_IID/mysetup.exe"
+    # Print the stable download URL
+    - |
       Write-Host "Download URL: $env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/generic/nightly/$env:CI_PIPELINE_IID/mysetup.exe"
   when: on_success
