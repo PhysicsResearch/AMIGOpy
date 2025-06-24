@@ -14,41 +14,29 @@ build_and_package:
 
   before_script:
     # 1) Update Conda itself
-    - >-
-      & "C:\ProgramData\Anaconda3\condabin\conda.bat"
-        update -n base -c defaults conda --yes
+    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" update -n base -c defaults conda --yes'
 
-    # 2) Remove any stale 'amigo' env folder
-    - >-
-      Remove-Item -Recurse -Force "C:\ProgramData\Anaconda3\envs\$Env:CONDA_ENV" `
-        -ErrorAction SilentlyContinue
+    # 2) Remove any stale 'amigo' env
+    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" env remove -n amigo -y'
 
     # 3) Create a fresh 'amigo' environment from amigo.yml
-    - >-
-      & "C:\ProgramData\Anaconda3\condabin\conda.bat"
-        env create -f $Env:ENV_YML -n $Env:CONDA_ENV --quiet
+    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" env create -f %ENV_YML% -n amigo --quiet'
 
     # 4) Ensure the persistent artifact directory exists
-    - >-
-      if (!(Test-Path 'C:\ci-artifacts\amigopy')) {
-        New-Item -ItemType Directory -Path 'C:\ci-artifacts\amigopy' | Out-Null
-      }
+    - 'if (!(Test-Path ''C:\ci-artifacts\amigopy'')) { New-Item -ItemType Directory -Path ''C:\ci-artifacts\amigopy'' | Out-Null }'
 
   script:
-    # 5) Build the one-dir bundle with PyInstaller
-    - >-
-      & "C:\ProgramData\Anaconda3\condabin\conda.bat"
-        run -n $Env:CONDA_ENV pyinstaller Launch_ImGUI.spec
+    # 5) Build the one-dir bundle with PyInstaller inside the "amigo" env
+    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" run -n amigo pyinstaller Launch_ImGUI.spec'
 
     # 6) Compile your installer with Inno Setup
-    - >-
-      & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"
+    - '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"'
 
     # 7) Copy full dist/ and Output/ to the persistent location
-    - >-
-      Copy-Item -Path dist -Destination 'C:\ci-artifacts\amigopy\dist' -Recurse -Force
-    - >-
-      Copy-Item -Path Output -Destination 'C:\ci-artifacts\amigopy\Output' -Recurse -Force
+    - 'Copy-Item -Path dist -Destination ''C:\ci-artifacts\amigopy\dist'' -Recurse -Force'
+    - 'Copy-Item -Path Output -Destination ''C:\ci-artifacts\amigopy\Output'' -Recurse -Force'
 
     # 8) (Optional) List the persistent folder so you can verify via the job log
     - 'dir C:\ci-artifacts\amigopy'
+
+  # we don’t upload any artifacts back to GitLab; everything lives on the runner
