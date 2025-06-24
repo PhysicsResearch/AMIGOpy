@@ -17,9 +17,9 @@ build_and_package:
     - >-
       & "C:\ProgramData\Anaconda3\condabin\conda.bat" update -n base -c defaults conda --yes
 
-    # 2) Remove any existing environment (if present)
+    # 2) Remove any stale environment folder so create will always work
     - >-
-      & "C:\ProgramData\Anaconda3\condabin\conda.bat" env remove -n $Env:CONDA_ENV -y
+      Remove-Item -Recurse -Force "C:\ProgramData\Anaconda3\envs\$Env:CONDA_ENV" -ErrorAction SilentlyContinue
 
     # 3) Create a fresh "amigo" environment from amigo.yml
     - >-
@@ -34,7 +34,7 @@ build_and_package:
     - >-
       & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"
 
-    # 6) (Optional) List the Output folder to verify the artifact name
+    # 6) (Optional) List the Output folder to verify artifact name
     - 'dir Output\'
 
   artifacts:
