@@ -3,7 +3,7 @@
 import os
 block_cipher = None
 
-# ─── Base directory: use the current working folder where the spec is run ─────
+# ─── Base directory: where the spec is run ────────────────────────────────────
 BASE_DIR = os.getcwd()
 os.chdir(BASE_DIR)
 
@@ -13,7 +13,7 @@ datas = [
     (os.path.join(BASE_DIR, 'icons', 'dcm_insp.png'), 'icons'),
 ]
 
-# ─── Source script & pathex ───────────────────────────────────────────────────
+# ─── Entry script & pathex ────────────────────────────────────────────────────
 script_path = os.path.join(BASE_DIR, 'Launch_ImGUI.py')
 
 a = Analysis(
@@ -31,14 +31,15 @@ a = Analysis(
     noarchive=False,
 )
 
-# ─── Build the PYZ and EXE objects ────────────────────────────────────────────
+# ─── Bundle into a PYZ ────────────────────────────────────────────────────────
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+# ─── Create the EXE (onedir mode) ─────────────────────────────────────────────
 exe = EXE(
     pyz,
     a.scripts,
     [],
-    exclude_binaries=True,
+    exclude_binaries=False,      # <— keep your binaries external
     name='Launch_ImGUI',
     debug=False,
     bootloader_ignore_signals=False,
@@ -47,7 +48,7 @@ exe = EXE(
     console=False,
 )
 
-# ─── Collect into a dist folder under the repo ────────────────────────────────
+# ─── Collect everything into dist/Launch_ImGUI ───────────────────────────────
 coll = COLLECT(
     exe,
     a.binaries,
@@ -58,5 +59,4 @@ coll = COLLECT(
     name='Launch_ImGUI',
     distpath=os.path.join(BASE_DIR, 'dist'),
     workpath=os.path.join(BASE_DIR, 'build'),
-    tempdir=os.path.join(BASE_DIR, 'temp'),
 )
