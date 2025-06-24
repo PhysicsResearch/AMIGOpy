@@ -27,14 +27,21 @@ publish_release:
   tags:
     - shell
   needs:
-    - job: build_and_package
+    - build_and_package
       artifacts: false
   script:
-    # 1) Upload installer via uploads API
-    - '$uploadJson = & curl.exe --silent --header "PRIVATE-TOKEN: $env:GITLAB_TOKEN" --form "file=@C:/ci-artifacts/amigopy/mysetup.exe" "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/uploads"'
-    - '$upload = $uploadJson | ConvertFrom-Json'
-    - '$uploadedUrl = "$env:CI_PROJECT_URL$($upload.url)"'
-    # 2) Create or update the Release
+    # 1) Upload installer via the uploads API using -F
+    - |
+      $uploadJson = & curl.exe --silent `
+        --header "PRIVATE-TOKEN: $env:GITLAB_TOKEN" `
+        -F "file=@C:/ci-artifacts/amigopy/mysetup.exe" `
+        "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/uploads"
+    - 'Write-Host "UPLOAD RESPONSE: $uploadJson"'  # debug line
+    - |
+      $upload = $uploadJson | ConvertFrom-Json
+      $uploadedUrl = "$env:CI_PROJECT_URL$($upload.url)"
+
+    # 2) Create or update the nightly release asset
     - |
       $body = @{
         name        = "nightly-$env:CI_PIPELINE_IID"
@@ -43,5 +50,11 @@ publish_release:
         released_at = (Get-Date).ToString("o")
         assets      = @{ links = @(@{ name = "AMIGOpy Windows Installer"; url = $uploadedUrl }) }
       } | ConvertTo-Json -Depth 4
-    - '& curl.exe --silent --request POST --header "Content-Type: application/json" --header "PRIVATE-TOKEN: $env:GITLAB_TOKEN" --data $body "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/releases"'
+
+    - |
+      & curl.exe --silent --request POST `
+        --header "Content-Type: application/json" `
+        --header "PRIVATE-TOKEN: $env:GITLAB_TOKEN" `
+        --data "$body" `
+        "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/releases"
   when: on_success
