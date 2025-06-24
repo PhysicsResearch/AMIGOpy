@@ -1,10 +1,10 @@
-name: CI
+name: Build AMIGOpy installer
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   build-windows:
@@ -12,32 +12,29 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setup Miniconda
-        uses: conda-incubator/setup-miniconda@v2
+      - name: Install Miniconda
+        uses: conda-incubator/setup-miniconda@v3
         with:
+          miniconda-version: "latest"
+          python-version: "3.11"
           environment-file: amigo.yml
           activate-environment: amigo
 
-      - name: Ensure PyInstaller is installed
-        run: |
-          pip install pyinstaller
-
-      - name: Build executable with PyInstaller
+      - name: Run PyInstaller
+        shell: powershell
         run: |
           pyinstaller Launch_ImGUI.spec
 
       - name: Install Inno Setup
-        run: |
-          choco install innosetup -y
+        run: choco install innosetup -y
 
       - name: Build Windows installer
-        run: |
-          '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AMIGOpy-installer
+          name: mysetup-installer
           path: Output/mysetup.exe
