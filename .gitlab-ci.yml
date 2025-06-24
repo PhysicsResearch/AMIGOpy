@@ -1,3 +1,27 @@
+# .gitlab-ci.yml
+
+stages:
+  - build
+  - release
+
+variables:
+  CONDA_ENV: amigo
+  ENV_YML: amigo.yml
+
+build_and_package:
+  stage: build
+  tags:
+    - shell
+  before_script:
+    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" update -n base -c defaults conda --yes'
+    - 'Remove-Item -Recurse -Force "C:\ProgramData\Anaconda3\envs\$Env:CONDA_ENV" -ErrorAction SilentlyContinue'
+    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" env create -f $Env:ENV_YML -n $Env:CONDA_ENV --quiet'
+    - 'if (!(Test-Path "C:\ci-artifacts\amigopy")) { New-Item -ItemType Directory -Path "C:\ci-artifacts\amigopy" | Out-Null }'
+  script:
+    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" run -n amigo pyinstaller Launch_ImGUI.spec'
+    - '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"'
+    - 'Copy-Item -Path "Output\mysetup.exe" -Destination "C:\ci-artifacts\amigopy\mysetup.exe" -Force'
+
 publish_release:
   stage: release
   tags:
@@ -6,12 +30,11 @@ publish_release:
     - job: build_and_package
       artifacts: false
   script:
-    # 1) Upload the installer and capture the JSON response
+    # 1) Upload installer via uploads API
     - '$uploadJson = & curl.exe --silent --header "PRIVATE-TOKEN: $env:GITLAB_TOKEN" --form "file=@C:/ci-artifacts/amigopy/mysetup.exe" "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/uploads"'
     - '$upload = $uploadJson | ConvertFrom-Json'
     - '$uploadedUrl = "$env:CI_PROJECT_URL$($upload.url)"'
-
-    # 2) Build the Release payload
+    # 2) Create or update the Release
     - |
       $body = @{
         name        = "nightly-$env:CI_PIPELINE_IID"
@@ -20,8 +43,5 @@ publish_release:
         released_at = (Get-Date).ToString("o")
         assets      = @{ links = @(@{ name = "AMIGOpy Windows Installer"; url = $uploadedUrl }) }
       } | ConvertTo-Json -Depth 4
-
-    # 3) Create/update the Release with the uploaded asset
     - '& curl.exe --silent --request POST --header "Content-Type: application/json" --header "PRIVATE-TOKEN: $env:GITLAB_TOKEN" --data $body "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/releases"'
-
   when: on_success
