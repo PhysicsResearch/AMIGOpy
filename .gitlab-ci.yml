@@ -13,45 +13,42 @@ build_and_package:
     - shell
 
   before_script:
-    # Update Conda
+    # 1) Update Conda itself
     - >-
       & "C:\ProgramData\Anaconda3\condabin\conda.bat"
         update -n base -c defaults conda --yes
 
-    # Remove old env, then recreate
+    # 2) Remove any stale 'amigo' env folder
     - >-
       Remove-Item -Recurse -Force "C:\ProgramData\Anaconda3\envs\$Env:CONDA_ENV" `
         -ErrorAction SilentlyContinue
+
+    # 3) Create a fresh 'amigo' environment from amigo.yml
     - >-
       & "C:\ProgramData\Anaconda3\condabin\conda.bat"
         env create -f $Env:ENV_YML -n $Env:CONDA_ENV --quiet
 
-    # Ensure our persistent artifact folder exists
+    # 4) Ensure the persistent artifact directory exists
     - >-
       if (!(Test-Path 'C:\ci-artifacts\amigopy')) {
         New-Item -ItemType Directory -Path 'C:\ci-artifacts\amigopy' | Out-Null
       }
 
   script:
-    # Build with PyInstaller
+    # 5) Build the one-dir bundle with PyInstaller
     - >-
       & "C:\ProgramData\Anaconda3\condabin\conda.bat"
         run -n $Env:CONDA_ENV pyinstaller Launch_ImGUI.spec
 
-    # Package with Inno Setup
+    # 6) Compile your installer with Inno Setup
     - >-
       & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"
 
-    # Copy the full dist/ and Output/ into a persistent folder
+    # 7) Copy full dist/ and Output/ to the persistent location
     - >-
       Copy-Item -Path dist -Destination 'C:\ci-artifacts\amigopy\dist' -Recurse -Force
     - >-
       Copy-Item -Path Output -Destination 'C:\ci-artifacts\amigopy\Output' -Recurse -Force
 
-    # (Optional) list the persistent folder so you can see it in the job log
-    - >-
-      dir C:\ci-artifacts\amigopy
-
-  artifacts:
-    # We no longer need GitLab to upload the installer (it’ll live on the runner)
-    when: never
+    # 8) (Optional) List the persistent folder so you can verify via the job log
+    - 'dir C:\ci-artifacts\amigopy'
