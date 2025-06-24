@@ -28,8 +28,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "dist\Launch_ImGUI\Launch_ImGUI.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "dist\Launch_ImGUI*";               DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "icons\AMBpy.ico";                   DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\Launch_ImGUI\*";               DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "AMBpy.ico";                   DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]
 Root: HKCR; Subkey: ".dcm\OpenWithProgids";            ValueType: string; ValueName: "AMIGOpy.dcm"; ValueData: ""; Flags: uninsdeletevalue
