@@ -37,36 +37,41 @@ publish_release:
   tags:
     - shell
   needs:
-    - job: build_and_package
-      artifacts: false
+    - build_and_package
   script:
-    # 1) Upload the installer via the “uploads” endpoint
+    # 1) Upload installer via GitLab uploads API
     - |
-      $upload = curl --silent --header "PRIVATE-TOKEN: $GITLAB_TOKEN" `
-        --form "file=@C:/ci-artifacts/amigopy/mysetup.exe" `
-        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/uploads" | ConvertFrom-Json
+      $uploadResponse = Invoke-RestMethod `
+        -Method Post `
+        -Uri "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/uploads" `
+        -Headers @{ "PRIVATE-TOKEN" = $env:GITLAB_TOKEN } `
+        -Form @{ file = Get-Item "C:\ci-artifacts\amigopy\mysetup.exe" }
+      $uploadedUrl = "$env:CI_PROJECT_URL$($uploadResponse.url)"
 
-    # 2) Create or update a nightly release with that file as an asset
+    # 2) Create (or update) the nightly release
     - |
-      $body = @{
-        name        = "nightly-$CI_PIPELINE_IID"
-        tag_name    = "nightly-$CI_PIPELINE_IID"
+      $releaseBody = @{
+        name        = "nightly-$env:CI_PIPELINE_IID"
+        tag_name    = "nightly-$env:CI_PIPELINE_IID"
         description = "Automated nightly build of AMIGOpy"
         released_at = (Get-Date).ToString("o")
         assets      = @{
           links = @(
             @{
-              name = "AMIGOpy Windows Installer"
-              url  = "$CI_PROJECT_URL$($upload.url)"
+              name = "Windows Installer"
+              url  = $uploadedUrl
             }
           )
         }
       } | ConvertTo-Json -Depth 4
 
-    - |
-      curl --silent --request POST `
-        --header "Content-Type: application/json" `
-        --header "PRIVATE-TOKEN: $GITLAB_TOKEN" `
-        --data $body `
-        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases"
+      Invoke-RestMethod `
+        -Method Post `
+        -Uri "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/releases" `
+        -Headers @{ 
+          "Content-Type"  = "application/json"
+          "PRIVATE-TOKEN" = $env:GITLAB_TOKEN 
+        } `
+        -Body $releaseBody
+
   when: on_success
