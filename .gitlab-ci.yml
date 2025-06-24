@@ -17,20 +17,24 @@ build_and_package:
     - >-
       & "C:\ProgramData\Anaconda3\condabin\conda.bat" update -n base -c defaults conda --yes
 
-    # 2) (Re)create the "amigo" environment from amigo.yml, forcing a clean install
+    # 2) Remove any existing environment (if present)
     - >-
-      & "C:\ProgramData\Anaconda3\condabin\conda.bat" env create -f $Env:ENV_YML -n $Env:CONDA_ENV --force --quiet
+      & "C:\ProgramData\Anaconda3\condabin\conda.bat" env remove -n $Env:CONDA_ENV -y
+
+    # 3) Create a fresh "amigo" environment from amigo.yml
+    - >-
+      & "C:\ProgramData\Anaconda3\condabin\conda.bat" env create -f $Env:ENV_YML -n $Env:CONDA_ENV --quiet
 
   script:
-    # 3) Build your one-dir bundle with PyInstaller inside the "amigo" env
+    # 4) Build your one-dir bundle with PyInstaller inside the "amigo" env
     - >-
       & "C:\ProgramData\Anaconda3\condabin\conda.bat" run -n $Env:CONDA_ENV pyinstaller Launch_ImGUI.spec
 
-    # 4) Compile your installer with Inno Setup
+    # 5) Compile your installer with Inno Setup
     - >-
       & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"
 
-    # 5) (Optional) List the Output folder to verify the artifact name
+    # 6) (Optional) List the Output folder to verify the artifact name
     - 'dir Output\'
 
   artifacts:
