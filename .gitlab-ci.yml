@@ -5,31 +5,29 @@ stages:
   - publish
 
 variables:
-  # must match your amigo.yml
   CONDA_ENV: amigo
   ENV_YML: amigo.yml
+  PERSIST_DIR: C:/ci-artifacts/amigopy
 
 build_and_package:
   stage: build
   tags:
     - shell
   before_script:
-    # 1) Update Conda
+    # Ensure Conda is up-to-date
     - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" update -n base -c defaults conda --yes'
-    # 2) Re-create your env from amigo.yml
+    # Re-create the "amigo" env
     - 'Remove-Item -Recurse -Force "C:\ProgramData\Anaconda3\envs\$Env:CONDA_ENV" -ErrorAction SilentlyContinue'
     - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" env create -f $Env:ENV_YML -n $Env:CONDA_ENV --quiet'
+    # Prepare persistent folder on the runner
+    - 'if (!(Test-Path "$Env:PERSIST_DIR")) { New-Item -ItemType Directory -Path "$Env:PERSIST_DIR" | Out-Null }'
   script:
-    # 3) Build one-dir bundle
+    # Build one-dir bundle
     - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" run -n amigo pyinstaller Launch_ImGUI.spec'
-    # 4) Create the installer
+    # Create the installer
     - '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"'
-    # 5) Bring the final exe into the CI workspace root
-    - 'Copy-Item -Path "Output\mysetup.exe" -Destination "./mysetup.exe" -Force'
-  artifacts:
-    paths:
-      - mysetup.exe
-    expire_in: 1 hour
+    # Copy the final EXE to the persistent location
+    - 'Copy-Item -Path "Output\mysetup.exe" -Destination "$Env:PERSIST_DIR\mysetup.exe" -Force'
 
 publish_generic:
   stage: publish
@@ -37,11 +35,16 @@ publish_generic:
     - shell
   needs:
     - job: build_and_package
-      artifacts: true
+      artifacts: false
   script:
-    # 6) Push to the Generic Package Registry
-    - 'curl.exe --silent --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "./mysetup.exe" "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/nightly/$CI_PIPELINE_IID/mysetup.exe"'
-    # 7) Show the stable download URL
+    # 1) Upload to Generic Package Registry
+    - >
+      curl.exe --silent 
+        --header "JOB-TOKEN: $CI_JOB_TOKEN"
+        --upload-file "$PERSIST_DIR\mysetup.exe"
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/nightly/$CI_PIPELINE_IID/mysetup.exe"
+    # 2) Print the stable download URL
     - 'echo "Download URL:"'
     - 'echo "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/nightly/$CI_PIPELINE_IID/mysetup.exe"'
+
   when: on_success
