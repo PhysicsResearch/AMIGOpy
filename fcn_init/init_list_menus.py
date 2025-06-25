@@ -3,7 +3,8 @@ from fcn_processing.Im_process_list   import on_operation_selected
 from fcn_DECT.DECT_table_disp import on_DECT_list_selection_changed
 from fcn_display.disp_plan_data import update_disp_brachy_plan
 from fcn_display.display_images import update_layer_view
-from fcn_ctcal.ct_cal import update_ct_cal_view
+from fcn_ctcal.ct_cal import update_ct_cal_view,load_ct_cal_curve,update_ct_cal_table
+import os
 # from fcn_3Dview.Prepare_data_3D_vtk import _on_colormap_changed
 
 def populate_list_menus(self):
@@ -171,7 +172,14 @@ def populate_list_menus(self):
     
     #Ct calibration
     self.ct_cal_list.currentTextChanged.connect(lambda: update_ct_cal_view(self))
-    self.ct_cal_list.addItems(['<New...>'])
+    #Initialize a list to store the CT calibration curves
+    self.ct_cal_curves={}
+    ct_cal_files=os.listdir('fcn_ctcal/ct_cal_curves')
+    for file in ct_cal_files:
+        ct_cal_data=load_ct_cal_curve(self,fileName=f'fcn_ctcal/ct_cal_curves/{file}')
+        update_ct_cal_table(self,ct_cal_data)
+        update_ct_cal_view(self)
+    
     
     
     

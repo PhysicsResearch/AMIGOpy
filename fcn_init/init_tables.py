@@ -72,5 +72,3 @@ def initialize_software_tables(self):
     self.ab_table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # Make it read-only
     self.ab_table.resizeColumnsToContents() 
     
-    #initialise ct cal table
-    init_ct_cal_table(self)

@@ -81,12 +81,13 @@ def validate_ct_cal_headers(self, data_ct_cal):
 
     return data_ct_cal
 
-def load_ct_cal_curve(self):
-    options = QFileDialog.Options()
-    fileName, _ = QFileDialog.getOpenFileName(self, "Open the CT calibration curve ", "", "CSV Files (*.csv);;All Files (*)", options=options)
+def load_ct_cal_curve(self,fileName=None):
     if not fileName:
-        return  # user canceled
-
+        options = QFileDialog.Options()
+        fileName, _ = QFileDialog.getOpenFileName(self, "Open the CT calibration curve ", "", "CSV Files (*.csv);;All Files (*)", options=options)
+        if not fileName:
+            return  # user canceled
+    
     # Detect delimiter by reading the first non-header line
     with open(fileName, 'r', encoding='utf-8') as f:
         lines = f.readlines()
@@ -113,6 +114,7 @@ def load_ct_cal_curve(self):
     self.ct_cal_curves[ct_cal_name]=validated_data
     update_ct_cal_list(self)
     self.ct_cal_list.setCurrentText(ct_cal_name)
+    return validated_data
     
     
     
