@@ -47,6 +47,10 @@ def shift_and_split_3D_matrix(self):
         if self.dicom_data[self.patientID][self.studyID][self.modality][i] is not None:
             self.dicom_data[self.patientID][self.studyID][self.modality][i + intervals] = self.dicom_data[self.patientID][self.studyID][self.modality][i]
             self.dicom_data[self.patientID][self.studyID][self.modality][i] = None
+    #
+    # Update the series index to reflect the new series
+    orig_series_str = original_data['SeriesNumber']
+
 
     # Store the split data into new series indices
     for i in range(intervals):
@@ -56,6 +60,7 @@ def shift_and_split_3D_matrix(self):
         self.dicom_data[self.patientID][self.studyID][self.modality][new_series_index]['SliceImageComments'] = split_slice_image_comments[i]
         self.dicom_data[self.patientID][self.studyID][self.modality][new_series_index]['ImagePositionPatients'] = split_image_patient_positions[i]
         self.dicom_data[self.patientID][self.studyID][self.modality][new_series_index]['metadata']['ImageComments'] = split_slice_image_comments[i][0]
+        self.dicom_data[self.patientID][self.studyID][self.modality][new_series_index]['SeriesNumber']= f"{int(orig_series_str)}__{i}"
         image_comment = str(split_slice_image_comments[i][0])
         data_element = DataElement((0x0020, 0x4000), 'LO', image_comment)
         self.dicom_data[self.patientID][self.studyID][self.modality][new_series_index]['metadata']['DCM_Info']['ImageComments'] = data_element

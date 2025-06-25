@@ -390,7 +390,7 @@ def create_and_embed_plot(self, container, data, time=None, plot_type='line', pe
     elif plot_type == 'Peaks':
         ax.plot(time,data)
         ax.plot(time[peaks], data[peaks], "x", color='red')
-        print(self.Dw_pos_info)
+        # print(self.Dw_pos_info)
         for i in range(self.Dw_pos_info.shape[0]):
             if self.Dw_pos_info[i,6] >= time[peaks[0]] and self.Dw_pos_info[i,7] <= time[peaks[-1]+1]:
                 ax.plot([self.Dw_pos_info[i,6], self.Dw_pos_info[i,6]], [data.min(),data.max()], ":", color='red')

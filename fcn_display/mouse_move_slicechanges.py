@@ -7,6 +7,11 @@ from fcn_display.win_level import set_window
 
 
 def onMouseMoveAxial(self, caller, event):
+    # ------------------------------------------------------------------
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0):
+        return   
     idx = self.layer_selection_box.currentIndex()
     
     if self.current_axial_slice_index[idx]==-1:
@@ -130,6 +135,11 @@ def left_button_releaseaxial_event(self, obj, event):
         self.LeftButtonRuler     = False         
         
 def onMouseMoveSagittal(self, caller, event):
+    # ------------------------------------------------------------------
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0):
+        return   
     idx = self.layer_selection_box.currentIndex()
     if self.current_axial_slice_index[idx]==-1:
         return
@@ -203,6 +213,11 @@ def onMouseMoveSagittal(self, caller, event):
     self.vtkWidgetSagittal.GetRenderWindow().Render()
 
 def onMouseMoveCoronal(self, caller, event):
+    # ------------------------------------------------------------------
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0):
+        return   
     idx = self.layer_selection_box.currentIndex()
     if self.current_axial_slice_index[idx]==-1:
         return
@@ -276,6 +291,11 @@ def onMouseMoveCoronal(self, caller, event):
  
     
 def change_sliceAxial(self, delta):
+    # ------------------------------------------------------------------
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0):
+        return   
     idx = self.layer_selection_box.currentIndex()
     # Modify the current slice index
     self.current_axial_slice_index[idx] += delta
@@ -296,6 +316,11 @@ def change_sliceAxial(self, delta):
         
         
 def change_sliceSagittal(self, delta):
+    # ------------------------------------------------------------------
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0):
+        return   
     idx = self.layer_selection_box.currentIndex()
     # Modify the current slice index
     self.current_sagittal_slice_index[idx] += delta
@@ -312,6 +337,11 @@ def change_sliceSagittal(self, delta):
     
     
 def change_sliceCoronal(self, delta):
+    # ------------------------------------------------------------------
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0):
+        return   
     idx = self.layer_selection_box.currentIndex()
     # Modify the current slice index
     self.current_coronal_slice_index[idx] += delta

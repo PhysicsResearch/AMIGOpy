@@ -56,6 +56,7 @@ def processVXP(self, filePath):
     separator   = self.csv_sep_list_BrCv.currentText()
     skip_lines  = int(self.lineSkipCSV_BrCv.value())
     header_line = int(self.lineHeadCSV_BrCv.value())-1
+    scale_factor = 1.0
 
     # Determine the header parameter for pandas read_csv 
     if header_line >= 0:
@@ -64,6 +65,9 @@ def processVXP(self, filePath):
             for i, line in enumerate(file):
                 if i == header_line: 
                     header_param = line.strip().split('=')[1].split(separator)
+                if "Scale_factor" in line:
+                    scale_factor = float(line.split('=')[1].strip())
+                if i == skip_lines:
                     break
     else:
         header_param = None
@@ -89,12 +93,14 @@ def processVXP(self, filePath):
         if header_line == -1:
             dataframe.columns = [f'C{i+1}' for i in range(dataframe.shape[1])]
 
-        # Flip amplitude if needed
+        # Scale and flip amplitude if needed
+        dataframe["amplitude"] = dataframe["amplitude"] * scale_factor
         if self.flipCSV_BrCv.isChecked():
             dataframe["amplitude"] = dataframe["amplitude"] * -1
 
         # Add additional information
         self.curve_origin = "measured"
+        dataframe = dataframe[dataframe.loc[::-1, 'amplitude'].ne(0).cummax()]
         dataframe = addColumns(self, dataframe)
         
         # Update the combo boxes for x and y axis selection
@@ -126,6 +132,11 @@ def processCSV(self, filePath):
     # Load the CSV file into a DataFrame
     try:
         dataframe = pd.read_csv(filePath, sep=separator, skiprows=skip_lines, header=header_param)
+        # Remove columns that are completely NaN
+        dataframe = dataframe.dropna(axis=1, how='all')
+        
+        if 'timestamp' not in dataframe.columns or 'amplitude' not in dataframe.columns:
+            return
         # 
         # If no header, set default column names
         if header_line == -1:
@@ -160,7 +171,7 @@ def processCSV(self, filePath):
 def addColumns(self, dataframe):
 
     # Remove trailing rows with only zero amplitude
-    dataframe = dataframe[dataframe.loc[::-1, 'amplitude'].ne(0).cummax()]
+    # dataframe = dataframe[dataframe.loc[::-1, 'amplitude'].ne(0).cummax()]
 
     # Interpolate amplitude values equal to 0
     if self.curve_origin == "measured":
@@ -172,13 +183,21 @@ def addColumns(self, dataframe):
     dataframe["time"] = dataframe["time"].dt.total_seconds()
     time_step = dataframe.loc[1, "time"] - dataframe.loc[0, "time"]
 
+    # Add local maxima and minima
+    if "mark" in dataframe.columns and self.curve_origin == "measured":
+        idxs = dataframe[dataframe["mark"] == "Z"].index
+
+        for i in range(len(idxs)-1):
+            min_idx = dataframe.loc[idxs[i]:idxs[i+1], "amplitude"].idxmin()
+            dataframe.loc[min_idx, "mark"] = "P_min"
+            dataframe.loc[idxs[i+1]-1, "mark"] = "E"
+
     # Calculate speed and acceleration
     dataframe = calcGrad(self, dataframe)
 
     # If phase information in the CSV/VXP file create separate id per cycle
     # (instance already created in createCv function)
     if "phase" in dataframe.columns and "instance" not in dataframe.columns:
-        dataframe["phase_bin"] = dataframe['phase'].apply(np.floor)
         dataframe["instance"] = 0
 
         for i in range(1, len(dataframe)):
@@ -266,16 +285,12 @@ def createCurve(self):
 
     step = 1e3 / freq      # ms
 
-    timestamps = []
-    amplitudes = []
-    idxs = []
-    ends = []
-
     for row in range(num_cycles):
         amplitude = float(self.tableViewEditParams.item(row, 0).text()) #* np.random.uniform(0.9, 1.1)
         cycle_time_s = float(self.tableViewEditParams.item(row, 1).text()) #* np.random.uniform(0.9, 1.1)
         num_steps = int((cycle_time_s * 1e3) // step)
-        cycle_time_ms = int((num_steps - 1) * step); cycle_time_s = cycle_time_ms / 1e3
+        cycle_time_ms = int((num_steps - 1) * step)
+        cycle_time_s = cycle_time_ms / 1e3
 
         t = np.linspace(0, cycle_time_ms, num_steps)
         x = t / 1e3
@@ -287,21 +302,22 @@ def createCurve(self):
         elif cv_type == "Cosine^6":
             y = amplitude * np.sin(x * np.pi / cycle_time_s) ** 6
 
-        if len(timestamps) == 0:
-            timestamps.extend(t.tolist())
+        if row == 0:
+            timestamps = t
         else:
-            timestamps.extend((t + timestamps[-1] + step).tolist())
+            timestamps = t + dataframe.loc[len(dataframe)-1, "timestamp"] + step
 
-        amplitudes.extend(y.tolist())
-        idxs.extend((np.ones_like(x) * row).tolist())
-        
-        end = np.zeros_like(x)
-        end[0] = 1; end[-1] = 1
-        ends.extend(end.tolist())
-        
+        df_cycle = pd.DataFrame({"timestamp": timestamps, "amplitude": y})
+        df_cycle["instance"] = row
+        df_cycle["mark"] = np.nan
+        df_cycle.loc[df_cycle["amplitude"].idxmax(), "mark"] = "Z"
+        df_cycle.loc[0, "mark"] = "P_min"
+        df_cycle.loc[len(df_cycle)-1, "mark"] = "E"
 
-    dataframe = pd.DataFrame({"timestamp": timestamps, "amplitude": amplitudes,
-                              "instance": idxs, "ends": ends})
+        if row == 0:
+            dataframe = df_cycle.copy()
+        else:
+            dataframe = pd.concat([dataframe, df_cycle], ignore_index=True)
 
     self.curve_origin = "created"
     dataframe = addColumns(self, dataframe)

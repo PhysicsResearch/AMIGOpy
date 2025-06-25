@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 import numpy as np
 # relevant variables
 #
@@ -38,16 +39,56 @@ def initialize_software_variables(self):
     self.Im_Offset_comp      = np.zeros((12,4, 3))
     self.display_comp_data   = {}
     self.left_but_pressed    = np.zeros(2)  
+
+    # TG43 - Brachy
+    # ——— TG43 storage structure ———
+    # create a simple container for TG43
+    self.TG43 = SimpleNamespace()
+    # within it, add an activesource container
+    self.TG43.activesource = SimpleNamespace(
+        airkerma_strength=None,
+        source_model=None, 
+        source_diameter=None,
+        source_length_mm=None,
+        dose_rate_constant=None,
+        radial=None,
+        radial_fit=None,
+        anisotropy=None,
+        along_away_reference=None,
+        along_away_reference_calc=None,
+        DoseMatrix=None,
+        DoseMatrix_res_mm=None,
+        DoseMatrix_size=None
+    )
+    # —————————————————————————— 
+
     
     self.slice_thick_seg      = np.zeros(4)
     self.pixel_spac_seg       = np.zeros((4,2))
     self.Im_PatPosition_seg   = np.zeros((4, 3))
     self.Im_Offset_seg        = np.zeros((4, 3))
+    # ----------------------------------------------
+    self.pixel_spacing3Dview    = np.zeros((4,2))
+    self.slice_thickness3Dview  = np.zeros(4)
+    #
+    self.Im_PatPosition3Dview   = np.zeros((4,3))
+    self.display_3D_data        = {} 
+    self.Im_Offset3Dview        = np.zeros((4, 3))
+
+    #
     self.display_seg_data       = {}
     self.seg_brush = 0
     self.seg_erase = 0
     self.seg_brush_coords = None
     self.seg_init_all_series = True
+    self.seg_win_lev = [None, None]
+    self.seg_curr_extent = [[None, None], [None, None]]
+    self.zoom_scale = None
+    self.zoom_center = (None, None, None)
+    self.camera_pos = (None, None, None)
+    self.seg_init_view = True
+    self.seg_prev_data = {"Orientation": None, "Dimensions": (None, None, None),
+                          "SliceThickness": None, "PixelSpacing": (None, None)}
     # IrIS ################################################################
     # this varibale will be resized depeding on the number of dwell positions
     # the number of colluns should remaing the same and was included here for documentation purposes.

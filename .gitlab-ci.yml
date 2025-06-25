@@ -1,0 +1,46 @@
+# .gitlab-ci.yml
+
+stages:
+  - build
+  - publish
+
+variables:
+  CONDA_ENV: amigo
+  ENV_YML: amigo.yml
+  PERSIST_DIR: C:/ci-artifacts/amigopy
+
+build_and_package:
+  stage: build
+  tags:
+    - shell
+  before_script:
+    # Ensure Conda is up-to-date
+    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" update -n base -c defaults conda --yes'
+    # Re-create the "amigo" env
+    - 'Remove-Item -Recurse -Force "C:\ProgramData\Anaconda3\envs\$Env:CONDA_ENV" -ErrorAction SilentlyContinue'
+    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" env create -f $Env:ENV_YML -n $Env:CONDA_ENV --quiet'
+    # Prepare persistent folder on the runner
+    - 'if (!(Test-Path "$Env:PERSIST_DIR")) { New-Item -ItemType Directory -Path "$Env:PERSIST_DIR" | Out-Null }'
+  script:
+    # Build one-dir bundle
+    - '& "C:\ProgramData\Anaconda3\condabin\conda.bat" run -n amigo pyinstaller Launch_ImGUI.spec'
+    # Create the installer
+    - '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "compile.iss"'
+    # Copy the final EXE to the persistent location
+    - 'Copy-Item -Path "Output\mysetup.exe" -Destination "$Env:PERSIST_DIR\mysetup.exe" -Force'
+
+publish_generic:
+  stage: publish
+  tags:
+    - shell
+  needs:
+    - job: build_and_package
+      artifacts: false
+  script:
+    # Upload the installer in one line so PowerShell doesn’t mis-parse the flags
+    - | 
+      & curl.exe --silent --header "JOB-TOKEN: $env:CI_JOB_TOKEN" --upload-file "$env:PERSIST_DIR\mysetup.exe" "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/generic/nightly/$env:CI_PIPELINE_IID/mysetup.exe"
+    # Print the stable download URL
+    - |
+      Write-Host "Download URL: $env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/generic/nightly/$env:CI_PIPELINE_IID/mysetup.exe"
+  when: on_success

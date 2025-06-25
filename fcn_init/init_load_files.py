@@ -10,7 +10,7 @@ def load_Source_cal_csv_file(self):
     default_csv_path = os.path.join(base_dir, file_name)
     
     # Check if the file exists before proceeding
-    print('Loading source calibration file')
+    # print('Loading source calibration file')
     if os.path.isfile(default_csv_path):
         try:
             with open(default_csv_path, mode='r', newline='', encoding='utf-8') as file:

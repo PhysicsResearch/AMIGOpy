@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>2012</width>
+    <width>1735</width>
     <height>1172</height>
    </rect>
   </property>
@@ -294,36 +294,7 @@
      </widget>
     </item>
     <item row="4" column="0" rowspan="2">
-     <layout class="QGridLayout" name="gridLayout_50">
-      <item row="1" column="1">
-       <widget class="QPushButton" name="pushButton_2">
-        <property name="text">
-         <string>Place holder</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QPushButton" name="LoadAll_Button">
-        <property name="text">
-         <string>Place holder - Delete all</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QPushButton" name="pushButton_10">
-        <property name="text">
-         <string>Place Holder - Duplicate</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QPushButton" name="pushButton_11">
-        <property name="text">
-         <string>Place holder - Delete</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     <layout class="QGridLayout" name="gridLayout_50"/>
     </item>
     <item row="5" column="1" colspan="2">
      <widget class="Line" name="line">
@@ -378,7 +349,7 @@
         <item row="5" column="1">
          <widget class="QLabel" name="label_2">
           <property name="text">
-           <string>TextLabel</string>
+           <string/>
           </property>
          </widget>
         </item>
@@ -390,7 +361,7 @@
            </font>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>2</number>
           </property>
           <widget class="QWidget" name="tab_5">
            <attribute name="title">
@@ -438,9 +409,6 @@
                 <string>Brachy</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_45">
-                <item row="1" column="0">
-                 <widget class="QComboBox" name="brachy_combobox_01"/>
-                </item>
                 <item row="2" column="2">
                  <spacer name="horizontalSpacer_46">
                   <property name="orientation">
@@ -454,36 +422,27 @@
                   </property>
                  </spacer>
                 </item>
-                <item row="1" column="5">
+                <item row="1" column="4">
                  <widget class="QCheckBox" name="display_brachy_channel_overlay">
                   <property name="text">
                    <string>Show channel</string>
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="0" colspan="7">
-                 <widget class="QTableWidget" name="brachy_table_01">
-                  <property name="font">
-                   <font>
-                    <pointsize>12</pointsize>
-                   </font>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="6">
-                 <widget class="QPushButton" name="brachy_export_dw_channels_csv">
-                  <property name="text">
-                   <string>Export</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="6">
+                <item row="1" column="5">
                  <widget class="QCheckBox" name="overlay_all_channels">
                   <property name="text">
                    <string>All channels</string>
                   </property>
                   <property name="checked">
                    <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="3">
+                 <widget class="QCheckBox" name="display_dw_overlay">
+                  <property name="text">
+                   <string>Show dwell</string>
                   </property>
                  </widget>
                 </item>
@@ -502,15 +461,22 @@
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="1">
-                 <widget class="QSpinBox" name="dw_ch_point_size">
+                <item row="1" column="0">
+                 <widget class="QComboBox" name="brachy_combobox_01"/>
+                </item>
+                <item row="0" column="0" colspan="6">
+                 <widget class="QTableWidget" name="brachy_table_01">
                   <property name="font">
                    <font>
-                    <pointsize>10</pointsize>
+                    <pointsize>12</pointsize>
                    </font>
                   </property>
-                  <property name="value">
-                   <number>3</number>
+                 </widget>
+                </item>
+                <item row="2" column="5">
+                 <widget class="QPushButton" name="brachy_export_dw_channels_csv">
+                  <property name="text">
+                   <string>Export</string>
                   </property>
                  </widget>
                 </item>
@@ -523,14 +489,7 @@
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="4">
-                 <widget class="QCheckBox" name="display_dw_overlay">
-                  <property name="text">
-                   <string>Show dwell</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="4" colspan="2">
+                <item row="2" column="3" colspan="2">
                  <spacer name="horizontalSpacer_45">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -543,10 +502,15 @@
                   </property>
                  </spacer>
                 </item>
-                <item row="2" column="3">
-                 <widget class="QPushButton" name="pushButton_test">
-                  <property name="text">
-                   <string>PushButton</string>
+                <item row="2" column="1">
+                 <widget class="QSpinBox" name="dw_ch_point_size">
+                  <property name="font">
+                   <font>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                  <property name="value">
+                   <number>3</number>
                   </property>
                  </widget>
                 </item>
@@ -1382,6 +1346,573 @@
             </item>
            </layout>
           </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="_3Dview">
+       <attribute name="title">
+        <string>_3Dview</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_63">
+        <item row="0" column="3">
+         <widget class="QGroupBox" name="View3DgroupBox_12">
+          <property name="title">
+           <string>Render</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_65">
+           <item row="1" column="0">
+            <widget class="QLineEdit" name="View3D_name_02">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Brightness</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLineEdit" name="View3D_name_04">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Render mode</string>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="2">
+            <widget class="QPushButton" name="View3D_clear_all">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Clear all</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="2">
+            <widget class="QDoubleSpinBox" name="View3D_quality_spin_01">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QSlider" name="View3D_quality_slider">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="1">
+            <widget class="QPushButton" name="View3D_reset_camera">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Reset Camera</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLineEdit" name="View3D_name_05">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Lighting</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QLineEdit" name="View3D_name_01">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Quality (vs speed) </string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QSlider" name="View3D_brightness_slider">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLineEdit" name="View3D_name_03">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Specular power</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QDoubleSpinBox" name="View3D_brightness_spin_01">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1" colspan="2">
+            <widget class="QComboBox" name="iew3D_lighting_options"/>
+           </item>
+           <item row="3" column="1" colspan="2">
+            <widget class="QComboBox" name="View3D_render_options"/>
+           </item>
+           <item row="2" column="2">
+            <widget class="QDoubleSpinBox" name="View3D_specular_spin_01">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QSlider" name="View3D_specular_slider">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="0">
+            <widget class="QCheckBox" name="View3D_shading_checkBox">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Shading</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="1">
+            <widget class="QCheckBox" name="View3D_shoiw_axes_checkBox">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Show axes</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="2">
+            <widget class="QCheckBox" name="View3D_annotation_checkBox">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Annotation</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="3" column="3">
+         <spacer name="View3DhorizontalSpacer_78">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="2" column="0">
+         <spacer name="View3DverticalSpacer_22">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="0" column="0">
+         <spacer name="View3DverticalSpacer_21">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="0" column="1" rowspan="3" colspan="2">
+         <widget class="QWidget" name="VTK_view_3D" native="true"/>
+        </item>
+        <item row="3" column="2">
+         <spacer name="View3DhorizontalSpacer_79">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="3" column="1">
+         <spacer name="View3DhorizontalSpacer_77">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="1" column="3">
+         <widget class="QGroupBox" name="View3DgroupBox_13">
+          <property name="title">
+           <string>3D view</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_67">
+           <item row="15" column="3">
+            <spacer name="View3DhorizontalSpacer_86">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="2" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_Threshold_slider_01">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_coronal_slider_01">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="14" column="5">
+            <spacer name="View3DverticalSpacer_23">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="4" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_axial_slider_01">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="5">
+            <widget class="QSpinBox" name="View3D_axial_spin_02"/>
+           </item>
+           <item row="15" column="0">
+            <spacer name="View3DhorizontalSpacer_80">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="12" column="5">
+            <widget class="QPushButton" name="View3D_Apply">
+             <property name="text">
+              <string>Apply</string>
+             </property>
+            </widget>
+           </item>
+           <item row="10" column="1" colspan="4">
+            <widget class="QComboBox" name="View3D_colormap"/>
+           </item>
+           <item row="4" column="5">
+            <widget class="QSpinBox" name="View3D_axial_spin_01"/>
+           </item>
+           <item row="15" column="4">
+            <spacer name="View3DhorizontalSpacer_82">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="2" column="5">
+            <widget class="QDoubleSpinBox" name="View3D_Threshold_spin_01"/>
+           </item>
+           <item row="15" column="2">
+            <spacer name="View3DhorizontalSpacer_85">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="6" column="5">
+            <widget class="QSpinBox" name="View3D_coronal_spin_01"/>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLineEdit" name="View3D_name_06">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Isovalue </string>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_sagittal_slider_01">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="9" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_sagittal_slider_02">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="5">
+            <widget class="QDoubleSpinBox" name="View3D_Threshold_spin_02"/>
+           </item>
+           <item row="9" column="5">
+            <widget class="QSpinBox" name="View3D_sagittal_spin_02"/>
+           </item>
+           <item row="8" column="5">
+            <widget class="QSpinBox" name="View3D_sagittal_spin_01"/>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLineEdit" name="View3D_name_08">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Axial Limit</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_isovalue_slider">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="0">
+            <widget class="QLineEdit" name="View3D_name_09">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Cor. Limit</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_Threshold_slider_02">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="0">
+            <widget class="QLineEdit" name="View3D_name_10">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Sag. Limit</string>
+             </property>
+            </widget>
+           </item>
+           <item row="15" column="1">
+            <spacer name="View3DhorizontalSpacer_81">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="5" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_axial_slider_02">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="15" column="5">
+            <spacer name="View3DhorizontalSpacer_83">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="0" column="0" colspan="6">
+            <widget class="QWidget" name="View3D_histogram" native="true"/>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLineEdit" name="View3D_name_07">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Threshold</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="5">
+            <widget class="QSpinBox" name="View3D_coronal_spin_02"/>
+           </item>
+           <item row="1" column="5">
+            <widget class="QDoubleSpinBox" name="View3D_isovalue_spin_01"/>
+           </item>
+           <item row="16" column="0" colspan="7">
+            <widget class="QGroupBox" name="View3DgroupBox_14">
+             <property name="title">
+              <string>4D-CT</string>
+             </property>
+             <layout class="QGridLayout" name="gridLayout_66">
+              <item row="0" column="2">
+               <widget class="QSlider" name="View3D_4D_speed_play_slider">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QToolButton" name="View3D_play4D">
+                <property name="text">
+                 <string>Play</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLineEdit" name="View3D_name_12">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
+                <property name="text">
+                 <string>Speed</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="3">
+               <widget class="QDoubleSpinBox" name="View3D_4D_speed_play_spin_01">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item row="10" column="0">
+            <widget class="QLineEdit" name="View3D_name_11">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Colormap</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="1" colspan="4">
+            <widget class="QSlider" name="View3D_coronal_slider_02">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="11" column="5">
+            <widget class="QCheckBox" name="View3D_real_time_checkBox">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Real-time</string>
+             </property>
+            </widget>
+           </item>
+           <item row="10" column="5">
+            <widget class="QCheckBox" name="View3D_update_all_3D">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Sync all</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
        </layout>
@@ -4569,6 +5100,712 @@
             </item>
            </layout>
           </widget>
+          <widget class="QWidget" name="Plan_Evaluation">
+           <attribute name="title">
+            <string>Plan Evaluation </string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_59" columnstretch="1,2,1">
+            <item row="0" column="0">
+             <layout class="QGridLayout" name="plan_eval_grid_left" columnstretch="3,1,3">
+              <item row="18" column="2">
+               <widget class="QCheckBox" name="dose_unit_Gy">
+                <property name="text">
+                 <string>Gy</string>
+                </property>
+               </widget>
+              </item>
+              <item row="17" column="1">
+               <spacer name="HS_6">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="17" column="2">
+               <widget class="QLabel" name="DoseUnit">
+                <property name="text">
+                 <string>Dose Unit</string>
+                </property>
+               </widget>
+              </item>
+              <item row="17" column="0">
+               <widget class="QLabel" name="VolumeUnit">
+                <property name="text">
+                 <string>Volume Unit</string>
+                </property>
+               </widget>
+              </item>
+              <item row="16" column="1">
+               <spacer name="HS_1">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="13" column="0" colspan="3">
+               <widget class="QListWidget" name="struct_list_DVH"/>
+              </item>
+              <item row="20" column="2">
+               <widget class="QPushButton" name="button_calculate_dvhs">
+                <property name="text">
+                 <string>Calculate DVHs</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="select_dose">
+                <property name="text">
+                 <string>Select Dose</string>
+                </property>
+               </widget>
+              </item>
+              <item row="16" column="2">
+               <widget class="QLineEdit" name="box_reference_dose"/>
+              </item>
+              <item row="20" column="0" colspan="2">
+               <spacer name="HS_2">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="19" column="0">
+               <widget class="QCheckBox" name="volume_unit_percentage">
+                <property name="text">
+                 <string>%</string>
+                </property>
+               </widget>
+              </item>
+              <item row="18" column="1">
+               <spacer name="HS_5">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="6" column="1" colspan="2">
+               <spacer name="HS_8">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="19" column="1">
+               <spacer name="HS_4">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="14" column="0" colspan="2">
+               <spacer name="HS_3">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="18" column="0">
+               <widget class="QCheckBox" name="volume_unit_cm3">
+                <property name="text">
+                 <string>cm³</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QLabel" name="Structures">
+                <property name="text">
+                 <string>Structures</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1" colspan="2">
+               <spacer name="HS_7">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="19" column="2">
+               <widget class="QCheckBox" name="dose_unit_percentage">
+                <property name="text">
+                 <string>%</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0" colspan="3">
+               <widget class="QListWidget" name="box_select_dose"/>
+              </item>
+              <item row="16" column="0">
+               <widget class="QLabel" name="reference_dose">
+                <property name="text">
+                 <string>Reference Dose</string>
+                </property>
+               </widget>
+              </item>
+              <item row="14" column="2">
+               <widget class="QPushButton" name="button_update_select_dose">
+                <property name="text">
+                 <string>Update</string>
+                </property>
+               </widget>
+              </item>
+              <item row="15" column="0" colspan="3">
+               <widget class="Line" name="horizontalline_left_grid">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="0" column="1">
+             <layout class="QGridLayout" name="plan_eval_grid_middle" rowstretch="0,4,4,0,0,0,0,0,0,0" columnstretch="1,2,1,0">
+              <item row="0" column="2" colspan="2">
+               <spacer name="HS_11">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="5" column="0">
+               <widget class="QLabel" name="DoseStatistics">
+                <property name="text">
+                 <string>Dose Statistics </string>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="0">
+               <widget class="Line" name="verticalline_middle_grid">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="0">
+               <widget class="QPushButton" name="button_select_all_rows_DST">
+                <property name="text">
+                 <string>Select all</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0" colspan="4">
+               <widget class="QGraphicsView" name="view_dvhs"/>
+              </item>
+              <item row="0" column="0">
+               <widget class="QLabel" name="DVHs">
+                <property name="text">
+                 <string>Dose Volume Histogram</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="Line" name="line_split_planevaluation_2">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="0">
+               <widget class="QPushButton" name="button_update_plot">
+                <property name="text">
+                 <string>Plot</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0" colspan="4">
+               <widget class="QTableWidget" name="table_dose_stats"/>
+              </item>
+              <item row="2" column="0" colspan="4">
+               <widget class="Line" name="line_split_planevaluation_3">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="1">
+               <spacer name="HS_10">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="5" column="2" colspan="2">
+               <widget class="QPushButton" name="button_delete_column">
+                <property name="text">
+                 <string>Delete column</string>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="1">
+               <spacer name="HS_9">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="7" column="1">
+               <spacer name="HS_17">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="8" column="2" colspan="2">
+               <widget class="QPushButton" name="button_export_dose_stats_to_excel">
+                <property name="text">
+                 <string>Export to CSV</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="0" column="2">
+             <layout class="QGridLayout" name="plan_eval_grid_right" rowstretch="4,7,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1" columnstretch="1,1,1,1">
+              <item row="12" column="0">
+               <widget class="QLabel" name="Dxx">
+                <property name="text">
+                 <string>Dx</string>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="1">
+               <widget class="QComboBox" name="vxx_input_dropdown"/>
+              </item>
+              <item row="11" column="2">
+               <widget class="QLabel" name="vxx_t_label">
+                <property name="text">
+                 <string>to</string>
+                </property>
+               </widget>
+              </item>
+              <item row="16" column="0" colspan="3">
+               <spacer name="HS_12">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="15" column="0">
+               <widget class="QLineEdit" name="dxx_input_value"/>
+              </item>
+              <item row="8" column="0" colspan="4">
+               <spacer name="HS_13">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="15" column="1">
+               <widget class="QComboBox" name="dxx_input_dropdown"/>
+              </item>
+              <item row="16" column="3">
+               <widget class="QPushButton" name="button_calculate_vxx_dxx">
+                <property name="text">
+                 <string>Calculate / Add to table</string>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="1" colspan="3">
+               <spacer name="HS_16">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="11" column="0">
+               <widget class="QLineEdit" name="vxx_input_value"/>
+              </item>
+              <item row="10" column="0">
+               <widget class="QLabel" name="Vxx">
+                <property name="text">
+                 <string>Vx</string>
+                </property>
+               </widget>
+              </item>
+              <item row="15" column="3">
+               <widget class="QComboBox" name="dxx_output_dropdown"/>
+              </item>
+              <item row="15" column="2">
+               <widget class="QLabel" name="dxx_to_label">
+                <property name="text">
+                 <string>to</string>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="1" colspan="3">
+               <spacer name="HS_14">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="11" column="3">
+               <widget class="QComboBox" name="vxx_output_dropdown"/>
+              </item>
+              <item row="17" column="0" colspan="4">
+               <spacer name="HS_15">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="7" column="0" colspan="4">
+               <widget class="Line" name="line_grid_right">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0" rowspan="2" colspan="4">
+               <widget class="QTabWidget" name="tab_errors">
+                <property name="currentIndex">
+                 <number>0</number>
+                </property>
+                <widget class="QWidget" name="uncertainty">
+                 <attribute name="title">
+                  <string>Uncertainty</string>
+                 </attribute>
+                 <widget class="QLabel" name="Mean">
+                  <property name="geometry">
+                   <rect>
+                    <x>80</x>
+                    <y>10</y>
+                    <width>69</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>Mean</string>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_Y_std_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>210</x>
+                    <y>80</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="NumberOfInteractions">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>250</y>
+                    <width>171</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>Number of Interactions</string>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="Y">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>80</y>
+                    <width>31</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>Y</string>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_X_std_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>210</x>
+                    <y>40</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_Z_mean_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>70</x>
+                    <y>120</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_X_mean_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>70</x>
+                    <y>40</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="StandardDeviation">
+                  <property name="geometry">
+                   <rect>
+                    <x>210</x>
+                    <y>10</y>
+                    <width>69</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>St. Dev.</string>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="X">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>40</y>
+                    <width>31</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>X</string>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="T">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>160</y>
+                    <width>31</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>T</string>
+                  </property>
+                 </widget>
+                 <widget class="QPushButton" name="button_apply_uncertainty">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>310</y>
+                    <width>89</width>
+                    <height>28</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>Apply</string>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_T_mean_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>70</x>
+                    <y>160</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_Z_std_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>210</x>
+                    <y>120</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_T_std_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>210</x>
+                    <y>160</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_Y_mean_input">
+                  <property name="geometry">
+                   <rect>
+                    <x>70</x>
+                    <y>80</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="Z">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>120</y>
+                    <width>31</width>
+                    <height>20</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>Z</string>
+                  </property>
+                 </widget>
+                 <widget class="QLineEdit" name="box_number_of_interactions">
+                  <property name="geometry">
+                   <rect>
+                    <x>210</x>
+                    <y>250</y>
+                    <width>81</width>
+                    <height>25</height>
+                   </rect>
+                  </property>
+                 </widget>
+                 <widget class="QPushButton" name="button_show_uncertainty_bands">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>360</y>
+                    <width>89</width>
+                    <height>28</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>Show Bands</string>
+                  </property>
+                 </widget>
+                </widget>
+                <widget class="QWidget" name="error_simulation">
+                 <attribute name="title">
+                  <string>Error Simulation</string>
+                 </attribute>
+                </widget>
+               </widget>
+              </item>
+              <item row="9" column="0">
+               <widget class="QLabel" name="Deviation_Metrics">
+                <property name="text">
+                 <string>Deviation Metrics</string>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="1" colspan="3">
+               <spacer name="HS_18">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
          </widget>
         </item>
        </layout>
@@ -6712,138 +7949,172 @@ p, li { white-space: pre-wrap; }
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="seg_tab">
+      <widget class="QWidget" name="tab_seg">
        <attribute name="title">
         <string>Segmentation</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_seg_tab" rowstretch="1,0,0,0,0,2,0" columnstretch="4,1,1,2">
-        <item row="0" column="0" rowspan="6" colspan="2">
-         <widget class="QWidget" name="VTK_SegView" native="true"/>
-        </item>
-        <item row="2" column="3">
-         <widget class="QSlider" name="threshMaxSlider">
-          <property name="minimum">
-           <number>-1024</number>
+       <layout class="QGridLayout" name="gridLayout_62" rowstretch="0,3,2,0,4,0" columnstretch="3,0,1,2">
+        <item row="4" column="3" rowspan="2">
+         <widget class="QToolBox" name="toolBox_seg">
+          <property name="currentIndex">
+           <number>2</number>
           </property>
-          <property name="maximum">
-           <number>3000</number>
-          </property>
-          <property name="value">
-           <number>150</number>
-          </property>
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="0">
-         <widget class="QSlider" name="segViewSlider">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="2" colspan="2">
-         <widget class="QWidget" name="VTK_SegHistView" native="true">
-          <layout class="QGridLayout" name="gridLayout_49"/>
-         </widget>
-        </item>
-        <item row="3" column="2">
-         <widget class="QLineEdit" name="lineEdit_createStructureSeg">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="text">
-           <string>Structure name</string>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="1">
-         <widget class="QComboBox" name="segSelectView"/>
-        </item>
-        <item row="3" column="3">
-         <widget class="QLineEdit" name="segStructureName"/>
-        </item>
-        <item row="4" column="3">
-         <widget class="QPushButton" name="createSegStructure">
-          <property name="text">
-           <string>Create structure</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="3">
-         <widget class="QSlider" name="threshMinSlider">
-          <property name="minimum">
-           <number>-1024</number>
-          </property>
-          <property name="maximum">
-           <number>3000</number>
-          </property>
-          <property name="value">
-           <number>-200</number>
-          </property>
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="tickPosition">
-           <enum>QSlider::NoTicks</enum>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="2">
-         <widget class="QLineEdit" name="threshMaxBox">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>Min. HU threshold: 200 </string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="2">
-         <widget class="QLineEdit" name="threshMinBox">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>Min. HU threshold: -200 </string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="2" rowspan="2" colspan="2">
-         <widget class="QToolBox" name="seg_toolBox">
-          <property name="autoFillBackground">
-           <bool>false</bool>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Plain</enum>
-          </property>
-          <widget class="QWidget" name="seg_toolBoxPage1">
+          <widget class="QWidget" name="seg_manual_contour">
            <property name="geometry">
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>587</width>
-             <height>553</height>
+             <width>242</width>
+             <height>151</height>
+            </rect>
+           </property>
+           <attribute name="label">
+            <string>Manual contouring &amp;&amp; edits</string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_60" rowstretch="0,0,0,0,0,0" columnstretch="1,0,3">
+            <item row="3" column="1">
+             <widget class="QLineEdit" name="undoSegText">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Undo</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QToolButton" name="undoSeg">
+              <property name="text">
+               <string>undo</string>
+              </property>
+              <property name="icon">
+               <iconset>
+                <normaloff>../Downloads/undo.png</normaloff>../Downloads/undo.png</iconset>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QToolButton" name="segBrushButton">
+              <property name="text">
+               <string>Brush</string>
+              </property>
+              <property name="icon">
+               <iconset>
+                <normaloff>../Downloads/brush.png</normaloff>../Downloads/brush.png</iconset>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QToolButton" name="segEraseButton">
+              <property name="text">
+               <string>Eraser</string>
+              </property>
+              <property name="icon">
+               <iconset>
+                <normaloff>../Downloads/eraser.png</normaloff>../Downloads/eraser.png</iconset>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0" colspan="2">
+             <widget class="QLineEdit" name="BrushSizeText">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Brush size</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QCheckBox" name="brushClipHU">
+              <property name="text">
+               <string>Use HU thresholds</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QLineEdit" name="segBrushBox">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>Brush</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="2">
+             <widget class="QSlider" name="BrushSizeSlider">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>25</number>
+              </property>
+              <property name="value">
+               <number>5</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QLineEdit" name="segEraseBox">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>Eraser</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <spacer name="verticalSpacer_20">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="page_thresholding">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>120</width>
+             <height>50</height>
             </rect>
            </property>
            <attribute name="label">
             <string>Thresholding</string>
            </attribute>
-           <layout class="QGridLayout" name="gridLayout_segTools" rowstretch="1,0,0,1,1,1,3" columnstretch="0,0">
-            <item row="0" column="1">
+           <layout class="QGridLayout" name="gridLayout_70" rowstretch="2,0">
+            <item row="0" column="0" rowspan="2">
              <widget class="QPushButton" name="applyThreshSeg">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -6856,178 +8127,21 @@ p, li { white-space: pre-wrap; }
               </property>
              </widget>
             </item>
-            <item row="3" column="1" rowspan="4">
-             <spacer name="spacer_seg2">
-              <property name="orientation">
-               <enum>Qt::Vertical</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>20</width>
-                <height>40</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
            </layout>
           </widget>
-          <widget class="QWidget" name="seg_toolBoxPage2">
+          <widget class="QWidget" name="page">
            <property name="geometry">
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>125</width>
-             <height>189</height>
+             <width>440</width>
+             <height>366</height>
             </rect>
            </property>
            <attribute name="label">
-            <string>Manual edits</string>
+            <string>Export &amp;&amp; analyze</string>
            </attribute>
-           <layout class="QGridLayout" name="gridLayout_48" columnstretch="0,0,0">
-            <item row="3" column="0">
-             <spacer name="spacer_seg3">
-              <property name="orientation">
-               <enum>Qt::Vertical</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>20</width>
-                <height>40</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-            <item row="0" column="0" colspan="3">
-             <widget class="QGroupBox" name="groupBox_SegEditDraw">
-              <property name="title">
-               <string>Drawing</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_SegEditDraw" columnstretch="1,1,0">
-               <item row="1" column="0">
-                <widget class="QToolButton" name="segEraseButton">
-                 <property name="text">
-                  <string>Eraser</string>
-                 </property>
-                 <property name="icon">
-                  <iconset>
-                   <normaloff>../Downloads/eraser.png</normaloff>../Downloads/eraser.png</iconset>
-                 </property>
-                 <property name="checkable">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="0">
-                <widget class="QToolButton" name="undoSeg">
-                 <property name="text">
-                  <string>undo</string>
-                 </property>
-                 <property name="icon">
-                  <iconset>
-                   <normaloff>../Downloads/undo.png</normaloff>../Downloads/undo.png</iconset>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="1" colspan="2">
-                <widget class="QLineEdit" name="undoSegText">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="text">
-                  <string>Undo</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="1" colspan="2">
-                <widget class="QLineEdit" name="segEraseBox">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="text">
-                  <string>Eraser</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="0">
-                <widget class="QToolButton" name="segBrushButton">
-                 <property name="text">
-                  <string>Brush</string>
-                 </property>
-                 <property name="icon">
-                  <iconset>
-                   <normaloff>../Downloads/brush.png</normaloff>../Downloads/brush.png</iconset>
-                 </property>
-                 <property name="checkable">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1" colspan="2">
-                <widget class="QLineEdit" name="segBrushBox">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="text">
-                  <string>Brush</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="0" colspan="3">
-                <widget class="QLineEdit" name="BrushSizeText">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="text">
-                  <string>Brush size</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="0" colspan="3">
-                <widget class="QSlider" name="BrushSizeSlider">
-                 <property name="minimum">
-                  <number>1</number>
-                 </property>
-                 <property name="maximum">
-                  <number>50</number>
-                 </property>
-                 <property name="value">
-                  <number>5</number>
-                 </property>
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="seg_toolBoxPage5">
-           <property name="geometry">
-            <rect>
-             <x>0</x>
-             <y>0</y>
-             <width>206</width>
-             <height>147</height>
-            </rect>
-           </property>
-           <attribute name="label">
-            <string>Analysis</string>
-           </attribute>
-           <layout class="QGridLayout" name="gridLayout_SegToolBox3">
+           <layout class="QGridLayout" name="gridLayout_61">
             <item row="0" column="0">
              <widget class="QPushButton" name="calcSegStatsButton">
               <property name="text">
@@ -7042,6 +8156,9 @@ p, li { white-space: pre-wrap; }
               </property>
              </widget>
             </item>
+            <item row="1" column="0" colspan="2">
+             <widget class="QTableWidget" name="tableSegStrucStats"/>
+            </item>
             <item row="2" column="0">
              <widget class="QPushButton" name="exportSegStrucButton">
               <property name="text">
@@ -7049,20 +8166,128 @@ p, li { white-space: pre-wrap; }
               </property>
              </widget>
             </item>
-            <item row="1" column="0" colspan="2">
-             <widget class="QTableWidget" name="tableSegStrucStats"/>
-            </item>
            </layout>
           </widget>
          </widget>
         </item>
-        <item row="4" column="2">
-         <widget class="QCheckBox" name="initStrucCheck">
-          <property name="layoutDirection">
-           <enum>Qt::RightToLeft</enum>
+        <item row="5" column="2">
+         <widget class="QComboBox" name="segSelectView"/>
+        </item>
+        <item row="2" column="3">
+         <widget class="QWidget" name="VTK_SegHistView" native="true"/>
+        </item>
+        <item row="1" column="3">
+         <widget class="QGroupBox" name="groupBox_segStruct">
+          <property name="title">
+           <string>Structures overview</string>
           </property>
-          <property name="text">
-           <string>All series</string>
+          <layout class="QGridLayout" name="gridLayout_64" rowstretch="1,0,0" columnstretch="1,1,1">
+           <item row="2" column="1">
+            <widget class="QPushButton" name="createSegStruct">
+             <property name="text">
+              <string>Create structure</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLineEdit" name="lineEdit_createStructSeg">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Structure name</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1" colspan="2">
+            <widget class="QLineEdit" name="segStructName"/>
+           </item>
+           <item row="2" column="0">
+            <widget class="QCheckBox" name="initStructCheck">
+             <property name="layoutDirection">
+              <enum>Qt::RightToLeft</enum>
+             </property>
+             <property name="text">
+              <string>All series</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="2">
+            <widget class="QPushButton" name="deleteSegStruct">
+             <property name="text">
+              <string>Delete structure</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0" colspan="3">
+            <widget class="QListWidget" name="segStructList"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="3" column="3">
+         <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="2,1,2,1">
+          <item>
+           <widget class="QLineEdit" name="threshMinBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Min. HU threshold</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="segThreshMinHU">
+            <property name="minimum">
+             <number>-1024</number>
+            </property>
+            <property name="maximum">
+             <number>3072</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="threshMaxBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Max. HU threshold</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="segThreshMaxHU">
+            <property name="minimum">
+             <number>-1024</number>
+            </property>
+            <property name="maximum">
+             <number>3072</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="1" column="0" rowspan="4" colspan="3">
+         <widget class="QWidget" name="VTK_SegView" native="true"/>
+        </item>
+        <item row="5" column="0" colspan="2">
+         <widget class="QSlider" name="segViewSlider">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
           </property>
          </widget>
         </item>
@@ -7337,38 +8562,6 @@ p, li { white-space: pre-wrap; }
       </property>
      </widget>
     </item>
-    <item row="4" column="0" rowspan="2">
-     <layout class="QGridLayout" name="gridLayout_5">
-      <item row="1" column="1">
-       <widget class="QPushButton" name="pushButton_2">
-        <property name="text">
-         <string>Place holder</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QPushButton" name="LoadAll_Button">
-        <property name="text">
-         <string>Place holder - Delete all</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QPushButton" name="pushButton_10">
-        <property name="text">
-         <string>Place Holder - Duplicate</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QPushButton" name="pushButton_11">
-        <property name="text">
-         <string>Place holder - Delete</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
    </layout>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -7422,13 +8615,9 @@ p, li { white-space: pre-wrap; }
   <tabstop>I_value_b_coeff_calc</tabstop>
   <tabstop>tabWidget_5</tabstop>
   <tabstop>DataTreeView</tabstop>
-  <tabstop>pushButton_2</tabstop>
-  <tabstop>LoadAll_Button</tabstop>
   <tabstop>Process_list</tabstop>
   <tabstop>Func_description</tabstop>
   <tabstop>reset_table_mat</tabstop>
-  <tabstop>pushButton_10</tabstop>
-  <tabstop>pushButton_11</tabstop>
   <tabstop>tabModules</tabstop>
   <tabstop>Proces_label_01</tabstop>
   <tabstop>Proces_label_02</tabstop>

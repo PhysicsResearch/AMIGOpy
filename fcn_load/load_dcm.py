@@ -322,6 +322,7 @@ def load_all_dcm(self,folder_path=None, progress_callback=None, update_label=Non
         dicom_data (dict): Hierarchical representation of DICOM data.
     """
     detailed_files_info, unique_files_info = get_data_description(folder_path, self.progressBar.setValue, update_label)
+    self.files_info = detailed_files_info
     if detailed_files_info is None:
         # user cacled or folder does not exist
         return
@@ -331,10 +332,13 @@ def load_all_dcm(self,folder_path=None, progress_callback=None, update_label=Non
         update_label.setText(f"Loading {total_steps} files")
         
     self.dicom_data, non_im_files = load_images(self,detailed_files_info, self.progressBar.setValue, total_steps)
+    # Clear the lists of segmentation structures 
+    self.segStructList.clear()
+
     populate_DICOM_tree(self)
     
-    for index, file_info in enumerate(non_im_files):
-        print(f"{file_info['FilePath']} {file_info['Modality']}")
+    # for index, file_info in enumerate(non_im_files):
+    #     print(f"{file_info['FilePath']} {file_info['Modality']}")
     #return dicom_data
 
 

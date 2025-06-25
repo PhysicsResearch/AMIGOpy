@@ -280,5 +280,5 @@ def on_DECT_list_selection_changed(self,index):
     if index in self.series_info_dict:
         series_label, patient_id, study_id, modality, item = self.series_info_dict[index]
         # Do something with the information
-        print(f"Selected: {series_label}, Patient ID: {patient_id}, Study ID: {study_id}, Modality: {modality}")
-        print(self.dicom_data[patient_id][study_id][modality][item])
+        # print(f"Selected: {series_label}, Patient ID: {patient_id}, Study ID: {study_id}, Modality: {modality}")
+        # print(self.dicom_data[patient_id][study_id][modality][item])

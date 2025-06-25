@@ -97,9 +97,10 @@ def update_structure_list_widget(self, structure_names, structure_keys):
 
 def process_rt_struct(self, rtstruct, structured_data):
     """
-    Process the RTStruct and update the structures and list widget.
+    Corrected function to process RTSTRUCT data ensuring
+    structures_names and structures_keys always match explicitly.
     """
-    # Extract identifiers for navigation.
+
     patient_id   = rtstruct['patient_id']
     study_id     = rtstruct['study_id']
     modality     = rtstruct['modality']
@@ -108,110 +109,65 @@ def process_rt_struct(self, rtstruct, structured_data):
     try:
         series_data = structured_data[patient_id][study_id][modality][series_index]
     except KeyError:
-        print("Error: The specified series could not be found. Please check rtstruct identifiers.")
+        print("Error: Series not found, check identifiers.")
         return
 
     metadata = series_data.get('metadata')
     if metadata is None:
-        print("Error: No metadata found in the series data.")
+        print("Error: No metadata found.")
         return
 
-    # Retrieve the two sequences.
     rt_roi_obs_seq  = metadata.get('RTROIObservationsSequence')
     roi_contour_seq = metadata.get('ROIContourSequence')
-    structure_set_roi_seq = metadata.get('StructureSetROISequence')  # New sequence for ROI names
+    structure_set_roi_seq = metadata.get('StructureSetROISequence')
 
-    if rt_roi_obs_seq is None:
-        print("Error: RTROIObservationsSequence not found in metadata.")
-        return
-    if roi_contour_seq is None:
-        print("Error: ROIContourSequence not found in metadata.")
+    if rt_roi_obs_seq is None or roi_contour_seq is None:
+        print("Error: Required sequences missing in metadata.")
         return
 
-    # Ensure a 'structures' dictionary exists.
     structures = series_data.setdefault('structures', {})
-
-    # This list will hold ROIObservationLabel for each included observation.
     structures_names = []
     structures_keys  = []
 
     for idx, obs_item in enumerate(rt_roi_obs_seq):
         key = f"Item_{idx+1}"
-        if hasattr(obs_item, 'RTROIInterpretedType') and obs_item.RTROIInterpretedType == 'BRACHY_CHANNEL':
+
+        if getattr(obs_item, 'RTROIInterpretedType', '') == 'BRACHY_CHANNEL':
             continue
 
-        copied_obs = copy.deepcopy(obs_item)
-        structures[key] = copied_obs
-
-        try:
-            ref_roi_number = obs_item.ReferencedROINumber
-        except AttributeError:
-            print(f"{key} does not have a ReferencedROINumber; skipping ROIContour matching for this item.")
+        ref_roi_number = getattr(obs_item, 'ReferencedROINumber', None)
+        if ref_roi_number is None:
+            print(f"{key}: ReferencedROINumber missing; skipping.")
             continue
 
-        # Determine the structure name.
-        roi_name = None
-        if hasattr(obs_item, 'ROIObservationLabel'):
-            roi_name = obs_item.ROIObservationLabel
-        elif structure_set_roi_seq is not None:
-            # Search the StructureSetROISequence for a matching ROINumber.
-            if hasattr(structure_set_roi_seq, 'keys'):
-                for roi_key, roi_item in structure_set_roi_seq.items():
-                    try:
-                        if roi_item.ROINumber == ref_roi_number:
-                            roi_name = roi_item.ROIName
-                            break
-                    except AttributeError:
-                        continue
-            else:
-                for roi_item in structure_set_roi_seq:
-                    try:
-                        if roi_item.ROINumber == ref_roi_number:
-                            roi_name = roi_item.ROIName
-                            break
-                    except AttributeError:
-                        continue
+        roi_name = getattr(obs_item, 'ROIObservationLabel', None)
+        if roi_name is None and structure_set_roi_seq:
+            roi_name = next(
+                (roi_item.ROIName for roi_item in structure_set_roi_seq
+                 if getattr(roi_item, 'ROINumber', None) == ref_roi_number), None)
+
         if roi_name is None:
             roi_name = key
 
-        structures_names.append(roi_name)
-        match_found = False
-        if hasattr(roi_contour_seq, 'keys'):
-            for ckey, contour_item in roi_contour_seq.items():
-                try:
-                    contour_ref_roi_number = contour_item.ReferencedROINumber
-                except AttributeError:
-                    continue
-                if contour_ref_roi_number == ref_roi_number:
-                    if hasattr(contour_item, 'ContourSequence'):
-                        copied_contour_seq = copy.deepcopy(contour_item.ContourSequence)
-                        structures[key].ContourSequence        = copied_contour_seq
-                    else:
-                        print(f"Matching ROIContourSequence for ReferencedROINumber {ref_roi_number} has no ContourSequence.")
-                    match_found = True
-                    break
-        else:
-            for contour_item in roi_contour_seq:
-                try:
-                    contour_ref_roi_number = contour_item.ReferencedROINumber
-                except AttributeError:
-                    continue
-                if contour_ref_roi_number == ref_roi_number:
-                    if hasattr(contour_item, 'ContourSequence'):
-                        copied_contour_seq               = copy.deepcopy(contour_item.ContourSequence)
-                        structures[key].ContourSequence  = copied_contour_seq
-                        structures_keys.append(key)
-                    else:
-                        print(f"Matching ROIContourSequence for ReferencedROINumber {ref_roi_number} has no ContourSequence.")
-                    match_found = True
-                    break
-        if not match_found:
-            print(f"No matching ROIContourSequence found for {key} with ReferencedROINumber {ref_roi_number}.")
+        # Match ROIContour explicitly by ReferencedROINumber
+        matched_contour = next(
+            (contour_item for contour_item in roi_contour_seq
+             if getattr(contour_item, 'ReferencedROINumber', None) == ref_roi_number), None)
 
-    # Update the structured_data with new fields.
-    structured_data[patient_id][study_id][modality][series_index]['structures']        = structures
-    structured_data[patient_id][study_id][modality][series_index]['structures_names']  = structures_names
-    structured_data[patient_id][study_id][modality][series_index]['structures_keys']   = structures_keys
+        if matched_contour and hasattr(matched_contour, 'ContourSequence'):
+            copied_obs = copy.deepcopy(obs_item)
+            copied_obs.ContourSequence = copy.deepcopy(matched_contour.ContourSequence)
+
+            structures[key] = copied_obs
+            structures_names.append(roi_name)
+            structures_keys.append(key)
+        else:
+            print(f"No valid contours for '{roi_name}' (ROI {ref_roi_number}); skipping.")
+
+    # Explicitly update structured_data
+    series_data['structures'] = structures
+    series_data['structures_names'] = structures_names
+    series_data['structures_keys'] = structures_keys
 
 
 
@@ -352,6 +308,7 @@ def read_brachy_plan(plan,ref_str,structured_data):
         channel_info.append(info)
         #
         structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['Plan_Brachy_Channels'] = channel_info
+        structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['ReferenceAirKermaRate']= structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['SourceSequence'][0]['ReferenceAirKermaRate']
 
 
 

@@ -1,150 +1,255 @@
 import numpy as np
-import vtk
 from skimage.draw import polygon
 from skimage.measure import find_contours
 from fcn_load.populate_dcm_list import populate_DICOM_tree
 from PyQt5.QtWidgets import QMessageBox
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
+import vtk
+
+
+from PyQt5.QtCore import QObject, QThread, pyqtSignal, Qt
+from PyQt5.QtWidgets import QProgressDialog, QMessageBox
+
+
+def find_matching_series(self, Ref):
+    """Search through all studies, modalities, and series for the given SeriesInstanceUID (Ref). 
+       Returns a list of all matches found.
+    """
+    matches = []
+
+    # Make sure this patientID is in dicom_data
+    if self.patientID not in self.dicom_data:
+        print(f"No data found for patientID={self.patientID}")
+        return matches
+
+    # Loop over all studies for this patient
+    for studyID, study_data in self.dicom_data[self.patientID].items():
+        # Loop over all modalities in each study
+        for modality, modality_data in study_data.items():
+            # If the next level is a list, iterate accordingly
+            if isinstance(modality_data, list):
+                for series_index, series_data in enumerate(modality_data):
+                    # Extract the UID, compare to Ref
+                    metadata = series_data.get('metadata', {})
+                    dcm_info = metadata.get('DCM_Info', {})
+                    series_uid = dcm_info.get('SeriesInstanceUID')
+
+                    if series_uid == Ref:
+                        Acq_number   = metadata.get('AcquisitionNumber')
+                        matches={
+                            'studyID'      : studyID,
+                            'modality'     : modality,
+                            'series_index' : series_index,
+                            'series_label' : f"Acq_{Acq_number}_Series: {series_data.get('SeriesNumber')}"
+                        }
+                        self.StructRefSeries.setText(f"Acq_{Acq_number}_Series: {series_data.get('SeriesNumber')}")
+                        break
+            else:
+                # Unexpected structure; handle or ignore
+                print(f"Unexpected structure at modality '{modality}' in study '{studyID}'. "
+                      f"Expected dict or list, got {type(modality_data)}.")
+                continue
+
+    return matches
+
+class ContourWorker(QObject):
+    progress = pyqtSignal(int)
+    message  = pyqtSignal(str)
+    finished = pyqtSignal()
+    canceled = pyqtSignal()
+
+    def __init__(self, parent, data_dict, target_series_dict,
+                 structures_keys, structures_names,
+                 mask_shape, spacing, origin, start_index):
+        super().__init__()
+        self.parent = parent
+        self.data_dict = data_dict
+        self.target = target_series_dict
+        self.keys = structures_keys
+        self.names = structures_names
+        self.mask_shape = mask_shape
+        self.spacing = spacing
+        self.origin = origin
+        self.current_index = start_index
+        self._is_cancelled = False
+
+    def cancel(self):
+        self._is_cancelled = True
+
+    def run(self):
+        total = len(self.keys)
+        for idx, key in enumerate(self.keys):
+            if self._is_cancelled:
+                self.canceled.emit()
+                return
+
+            name = self.names[idx]
+            self.message.emit(f"Loading “{name}”…")
+            self.progress.emit(int((idx / total) * 100))
+
+            structure = self.data_dict['structures'][key]
+            contour_seq = getattr(structure, 'ContourSequence', None)
+
+            if not contour_seq:
+                mask = np.zeros(self.mask_shape, dtype=np.uint8)
+            else:
+                mask = create_3d_mask_for_structure_simple(
+                    self.parent, structure,
+                    self.mask_shape, self.spacing, self.origin
+                )
+                if not mask.any():
+                    mask = np.zeros(self.mask_shape, dtype=np.uint8)
+
+            new_key = f"Structure_{self.current_index:03d}"
+            entry = {
+                'Mask3D':    mask,
+                'Name':      name,
+                'Modified':  0,
+                'Contours2D': {'axial':{}, 'sagittal':{}, 'coronal':{}},
+            }
+            self.target['structures'][new_key] = entry
+            self.target['structures_names'].append(name)
+            self.target['structures_keys'].append(new_key)
+            self.current_index += 1
+
+        self.progress.emit(100)
+        self.finished.emit()
+
 
 def create_contour_masks(self):
-    data_dict = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    # ─── 1) gather data ●────────────────────────────────────────────
+    data_dict = self.dicom_data[self.patientID_struct][
+        self.studyID_struct][self.modality_struct][self.series_index_struct]
+    target = self.dicom_data[self.patientID][
+        self.studyID][self.modality][self.series_index]
 
-    volume_3d = target_series_dict.get('3DMatrix', None)
+    volume_3d = target.get('3DMatrix', None)
+
+    
     if volume_3d is None:
-        msg_box = QMessageBox()
-        msg_box.setIcon(QMessageBox.Warning)
-        msg_box.setWindowTitle("Select a image series")
-        msg_box.setText("Did you select the correct image series ? No image data found")
-        msg_box.exec()
+        QMessageBox.warning(self, "Select an image series",
+                            "No image data found—did you select the correct series?")
         return
-    
-    # Check if structures already exist clearly:
-    existing_structures = target_series_dict.get('structures', {})
-    existing_structure_count = len(existing_structures)
 
-    # Progress bar - not accurate but gives a sense of progress
-    self.progressBar.setValue(5)
-    
-    if existing_structures:
-        msg_box = QMessageBox()
-        msg_box.setIcon(QMessageBox.Question)
-        msg_box.setWindowTitle("Structures Exist")
-        msg_box.setText("Structures already exist. What would you like to do?")
-        replace_button = msg_box.addButton("Replace", QMessageBox.AcceptRole)
-        append_button = msg_box.addButton("Append", QMessageBox.RejectRole)
-        msg_box.exec()
+    # ─── 2) Replace vs. Append ●────────────────────────────────────
+    existing = target.get('structures', {})
+    count_existing = len(existing)
+    if existing:
+        dlg = QMessageBox(self)
+        dlg.setIcon(QMessageBox.Question)
+        dlg.setWindowTitle("Structures Exist")
+        dlg.setText("Structures already exist. What would you like to do?")
+        btn_replace = dlg.addButton("Replace", QMessageBox.AcceptRole)
+        btn_append  = dlg.addButton("Append",  QMessageBox.RejectRole)
+        dlg.exec_()
 
-        if msg_box.clickedButton() == replace_button:
-            # Replace: clear existing structures
-            target_series_dict['structures'] = {}
-            target_series_dict['structures_keys'] = []
-            target_series_dict['structures_names'] = []
-            current_structure_index = 1
+        if dlg.clickedButton() == btn_replace:
+            target['structures']        = {}
+            target['structures_keys']   = []
+            target['structures_names']  = []
+            start_index = 1
         else:
-            # Append: continue counting after existing structures
-            current_structure_index = existing_structure_count + 1
+            start_index = count_existing + 1
     else:
-        # No structures exist yet
-        target_series_dict['structures'] = {}
-        target_series_dict['structures_keys'] = []
-        target_series_dict['structures_names'] = []
-        current_structure_index = 1
+        target['structures']        = {}
+        target['structures_keys']   = []
+        target['structures_names']  = []
+        start_index = 1
 
-
-
+    # ─── 3) geometry ●───────────────────────────────────────────────
     mask_shape = volume_3d.shape
-    z_spacing = self.slice_thick[0]
-    y_spacing, x_spacing = self.pixel_spac[0, :2]
-    origin_x, origin_y, origin_z = self.Im_PatPosition[0, :3]
+    z_sp, yx_sp = self.slice_thick[0], self.pixel_spac[0, :2]
+    spacing = (z_sp, *yx_sp)
+    origin  = tuple(self.Im_PatPosition[0, :3])
 
-    spacing = (z_spacing, y_spacing, x_spacing)
-    origin  = (origin_x, origin_y, origin_z)
+    # ─── 4) filter by checkbox ●────────────────────────────────────
+    all_keys  = data_dict.get('structures_keys', [])
+    all_names = data_dict.get('structures_names', [])
+    sel_keys, sel_names = [], []
+    for idx, key in enumerate(all_keys):
+        item   = self.STRUCTlist.item(idx)
+        widget = self.STRUCTlist.itemWidget(item)
+        if widget.checkbox.isChecked():
+            sel_keys.append(key)
+            sel_names.append(all_names[idx])
 
-    structures_keys  = data_dict.get('structures_keys', [])
-    structures_dict  = data_dict.get('structures', {})
-    structures_names = data_dict.get('structures_names', [])
+    if not sel_keys:
+        QMessageBox.information(self, "No Structures Selected",
+                                "Please check at least one structure to import.")
+        return
 
-    struc_names = target_series_dict['structures_names']
-    struc_keys  = target_series_dict['structures_keys']
+    # ─── 5) progress dialog ●────────────────────────────────────────
+    prog_dlg = QProgressDialog("Starting…", "Cancel", 0, 100, self)
+    prog_dlg.setWindowModality(Qt.WindowModal)
+    prog_dlg.setAutoClose(False)
+    prog_dlg.setAutoReset(False)
+    prog_dlg.setMinimumDuration(0)
+    prog_dlg.setValue(0)
 
-    #
-    self.progressBar.setValue(10)
+    # ─── 6) worker + thread ●────────────────────────────────────────
+    worker = ContourWorker(self, data_dict, target,
+                           sel_keys, sel_names,
+                           mask_shape, spacing, origin,
+                           start_index)
+    thread = QThread(self)
+    worker.moveToThread(thread)
 
-    for idx, s_key in enumerate(structures_keys):
-        structure = structures_dict.get(s_key)        
+    # ─── 7) wire signals ●───────────────────────────────────────────
+    worker.progress.connect(self.progressBar.setValue)
+    worker.progress.connect(prog_dlg.setValue)
+    worker.message.connect(prog_dlg.setLabelText)
+    prog_dlg.canceled.connect(worker.cancel)
 
-        # Progress bar
-        self.progressBar.setValue(int((idx / len(structures_keys)) * 100))
+    worker.finished.connect(thread.quit)
+    worker.finished.connect(prog_dlg.close)
+    worker.finished.connect(lambda: populate_DICOM_tree(self))
 
-        if not structure:
-            continue
+    worker.canceled.connect(thread.quit)
+    worker.canceled.connect(prog_dlg.close)
+    worker.canceled.connect(lambda:
+        QMessageBox.information(self, "Cancelled", "Contour generation cancelled.")
+    )
 
-        widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(idx))
-        if not widget.checkbox.isChecked():
-            continue
+    thread.started.connect(worker.run)
+    thread.finished.connect(worker.deleteLater)
+    thread.finished.connect(thread.deleteLater)
 
-        mask_3d = create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, origin)
-        name = structures_names[idx] if idx < len(structures_names) else f"Structure_{current_structure_index}"
-
-        # Create a new unique key for the structure clearly:
-        new_s_key = f"Structure_{current_structure_index:03d}"
-
-        struc_names.append(name)
-        struc_keys.append(new_s_key)
-
-        target_series_dict['structures'][new_s_key] = {
-            'Mask3D': mask_3d,
-            'Name': name
-        }
-
-        vtk_actors_2d = {'axial': {}, 'sagittal': {}, 'coronal': {}}
-
-        for z_idx in range(mask_shape[0]):  # Iterate over all axial slices
-            slice_2d = mask_3d[z_idx, :, :]
-            
-            contours = extract_contours_from_binary_slice(slice_2d)
-            if not contours:
-                continue  # Skip empty slices
-
-            vtk_poly = contours_to_vtk_polydata(contours, (y_spacing, x_spacing))
-            actor = create_actor_2d(vtk_poly)
-
-            # Store the actor with the correct index
-            vtk_actors_2d['axial'][z_idx] = actor  # Ensure index matches later retrieval
-
-        # **Sagittal slices**
-        for x_idx in range(mask_shape[2]):  
-            slice_2d = mask_3d[:, :, x_idx]
-            contours = extract_contours_from_binary_slice(slice_2d)
-            if contours:
-                vtk_poly = contours_to_vtk_polydata(contours, (z_spacing, y_spacing))
-                vtk_actors_2d['sagittal'][x_idx] = create_actor_2d(vtk_poly)
-
-        # **Coronal slices**
-        for y_idx in range(mask_shape[1]):  
-            slice_2d = mask_3d[:, y_idx, :]
-            contours = extract_contours_from_binary_slice(slice_2d)
-            if contours:
-                vtk_poly = contours_to_vtk_polydata(contours, (z_spacing, x_spacing))
-                vtk_actors_2d['coronal'][y_idx] = create_actor_2d(vtk_poly)
-
-        target_series_dict['structures'][new_s_key]['VTKActors2D'] = vtk_actors_2d
-
-        # Increment counter clearly
-        current_structure_index += 1
-
-    # Update lists clearly:
-    target_series_dict['structures_keys']  = struc_keys
-    target_series_dict['structures_names'] = struc_names
-
-    # Final progress bar clearly set
-    self.progressBar.setValue(100)
-
+    # ─── 8) start! ●──────────────────────────────────────────────────
+    thread.start()
+    prog_dlg.exec_()
+    # """Uncheck every checkbox in the STRUCTlist."""
+    for i in range(self.STRUCTlist.count()):
+        item = self.STRUCTlist.item(i)
+        widget = self.STRUCTlist.itemWidget(item)
+        # assume widget.checkbox is your QCheckBox
+        if hasattr(widget, 'checkbox'):
+            widget.checkbox.setChecked(False)
     populate_DICOM_tree(self)
 
 
+def build_contours_for_structure(mask_3d):
+    contours = {'axial': {}, 'sagittal': {}, 'coronal': {}}
+
+    # axial slices
+    for z, slice_ in enumerate(mask_3d):
+        c = extract_contours_from_binary_slice(slice_)
+        if c:
+            contours['axial'][z] = c
+
+    # sagittal slices
+    for x in range(mask_3d.shape[2]):
+        c = extract_contours_from_binary_slice(mask_3d[:, :, x])
+        if c:
+            contours['sagittal'][x] = c
+
+    # coronal slices
+    for y in range(mask_3d.shape[1]):
+        c = extract_contours_from_binary_slice(mask_3d[:, y, :])
+        if c:
+            contours['coronal'][y] = c
+
+    return contours
 
 def create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, origin):
     mask_3d     = np.zeros(mask_shape, dtype=np.uint8)
@@ -245,6 +350,18 @@ def smooth_contours(contours, method="savgol", window_length=5, polyorder=2, sig
     
     return smoothed_contours
 
+
+
+def actors_from_contours(contours_by_slice, pixel_spacing, line_width=2, color=(1,0,0)):
+    """
+    Convert {sliceIdx: [np.ndarray, …]} → {sliceIdx: vtkActor}
+    Returned dict is ready to be cached under entry['VTKActors2D'].
+    """
+    actors = {}
+    for slice_idx, contours in contours_by_slice.items():
+        poly = contours_to_vtk_polydata(contours, pixel_spacing)
+        actors[slice_idx] = create_actor_2d(poly, color=color, line_width=line_width)
+    return actors
 
 def contours_to_vtk_polydata(contours, pixel_spacing):
     """

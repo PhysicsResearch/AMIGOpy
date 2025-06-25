@@ -24,6 +24,7 @@ from fcn_DECT.create_process_dect import creat_DECT_derived_maps, c_roi_scatter_
 from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwell_channels, export_all_brachy_channels_to_csv
 from fcn_brachy_sources.process_brachy_database import (on_brachy_load_sources, on_brachy_source_selection, select_Radial_file2load, plot_brachy_radial_fit, plot_brachy_ani,
                                                         select_Anisotropy_file2load)
+from fcn_brachy_sources.process_brachy_database import dose_along_away_Disp_eval
 from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
 from fcn_display.meta_viewer import on_metadata_search_text_changed
 from fcn_RTFiles.process_contours import create_contour_masks
@@ -31,11 +32,19 @@ from fcn_breathing_curves.functions_import import openCSVFile_BrCv, setParams, c
 from fcn_breathing_curves.functions_plot import calcStats, plotViewData_BrCv_plot, exportPlot
 from fcn_breathing_curves.functions_edit import applyOperations, undoOperations, exportData, plotViewData_BrCv_edit, cropRange_BrCv_edit, exportGCODE#, cropCurve_BrCv_edit
 from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, update_doses_list, update_structure_list, eqd2_calc
-from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc
+from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc, DeleteSeg
 from fcn_display.display_images_seg import undo_brush_seg
 from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes,add_row_to_ct_table, export_ct_cal_to_csv
+from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
+from fcn_3Dview.Prepare_data_3D_vtk import play_4D_sequence_3D
+
 
 def initialize_software_buttons(self):
+
+
+
+
+
     # IrIS add row dw table
     self.add_dw_table.clicked.connect(lambda: add_row_dw_table(self))
     self.remove_dw_table.clicked.connect(lambda: remove_row_dw_table(self))
@@ -77,10 +86,12 @@ def initialize_software_buttons(self):
     self.segBrushButton.clicked.connect(lambda: on_brush_click(self))
     self.segEraseButton.clicked.connect(lambda: on_erase_click(self))
     self.undoSeg.clicked.connect(lambda: undo_brush_seg(self))
-    self.createSegStructure.clicked.connect(lambda: InitSeg(self))
-    self.createSegStructure.setStyleSheet("background-color: green; color:white")
+    self.createSegStruct.clicked.connect(lambda: InitSeg(self))
+    self.createSegStruct.setStyleSheet("background-color: green; color:white")
     self.calcSegStatsButton.clicked.connect(lambda: calcStrucStats(self))
     self.calcSegStatsButton.setStyleSheet("background-color: green; color:white")
+    self.deleteSegStruct.clicked.connect(lambda: DeleteSeg(self))
+    self.deleteSegStruct.setStyleSheet("background-color: red; color:white")
     self.exportSegStatsButton.clicked.connect(lambda: exportStrucStats(self))
     self.exportSegStatsButton.setStyleSheet("background-color: blue; color:white")
     self.exportSegStrucButton.clicked.connect(lambda: exportSegStruc(self))
@@ -113,6 +124,11 @@ def initialize_software_buttons(self):
     # 4D Display
     self.Play4D_Buttom.toggled.connect(lambda: play_4D_sequence(self))
     self.Play4D_Buttom.setStyleSheet("background-color: blue; color: white;")
+
+    # 3D viewer
+    # 4D video
+    self.View3D_play4D.setCheckable(True)
+    self.View3D_play4D.toggled.connect(lambda: play_4D_sequence_3D(self,1))
 
     # DECT
     self.add_coll_table_mat.clicked.connect(lambda: add_coll2table(self))
@@ -211,9 +227,12 @@ def initialize_software_buttons(self):
     self.brachy_export_dw_channels_csv.clicked.connect(lambda: export_all_brachy_channels_to_csv(self))
     #
     self.Brachy_load_sources.clicked.connect(lambda: on_brachy_load_sources(self))
+    self.Brachy_load_sources.setStyleSheet("background-color: blue; color: white;")
+    self.Brachy_load_sources.clicked.connect(lambda: plot_brachy_ani(self))
     self.brachy_source_list.currentIndexChanged.connect(lambda: on_brachy_source_selection(self))
+    self.comboBox_tg43_along_away.currentIndexChanged.connect(lambda: dose_along_away_Disp_eval(self))
     #
-    # TG43 radial
+    # TG43 
     self.Brachy_Radial_load.setStyleSheet("background-color: blue; color: white;")
     self.Brachy_Radial_load.clicked.connect(lambda: select_Radial_file2load(self))
     self.Brachy_Radial_table.itemChanged.connect(lambda: plot_brachy_radial_fit(self))
@@ -222,7 +241,9 @@ def initialize_software_buttons(self):
     self.Brachy_load_ani.setStyleSheet("background-color: blue; color: white;")
     self.Brachy_load_ani.clicked.connect(lambda: select_Anisotropy_file2load(self))
 
-
+    # using a place holder button for testing
+    self.Brachy_Calcualte_TG43.clicked.connect(lambda: calculate_TG43_plan_dose(self))
+    self.Brachy_Calcualte_TG43.setStyleSheet("background-color: blue; color: white;")
     #EQD2
     self.calc_eqd2.clicked.connect(lambda: generate_eqd2_dose(self))
     self.add_to_ab_list.clicked.connect(lambda: add_ab(self))

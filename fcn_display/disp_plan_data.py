@@ -67,6 +67,9 @@ def update_disp_brachy_plan(self):
     else:
         populate_brachy_table(self, current_ch.get('ChPos'))
 
+    # Display air kerma strength
+    AirKerma = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['ReferenceAirKermaRate']
+    self.brachy_plan_Ac.setText(str(AirKerma.value))
     apply_alternating_row_colors(self)
     plot_brachy_dwell_channels(self)
     calculate_total_time(self)
@@ -331,7 +334,7 @@ def plot_brachy_3D_dwell_channels(self):
         if 0 <= selected_channel < len(channels):
             channel_indices = [selected_channel]
         else:
-            print(f"Selected channel {selected_channel + 1} is out of range.")
+            # print(f"Selected channel {selected_channel + 1} is out of range.")
             return
 
     # Iterate through the selected channels to plot their points

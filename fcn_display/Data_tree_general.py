@@ -13,7 +13,9 @@ from fcn_display.colormap_set import set_color_map
 from fcn_display.win_level import set_window
 from fcn_display.disp_plan_data import update_plan_tables
 from fcn_RTFiles.process_rt_files import update_structure_list_widget
+from fcn_RTFiles.process_contours import find_matching_series
 from fcn_segmentation.functions_segmentation import plot_hist
+from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin,initialize_3Dsliders, initialize_crop_widgets
 
 
 
@@ -72,7 +74,7 @@ def on_DataTreeView_clicked(self,index):
                 update_meta_view_table_dicom(self,self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info'])
                 update_structure_list_widget(self,
                                              self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'],
-                                             self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys']
+                                             self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys'],
                                             )
                 # find reference series
                 Ref = None
@@ -142,7 +144,9 @@ def on_DataTreeView_clicked(self,index):
                 #
     
                 # update_metadata_table
-                update_meta_view_table_dicom(self,self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'])
+                meta_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
+                if 'DCM_Info' in meta_dict:
+                    update_meta_view_table_dicom(self, meta_dict['DCM_Info'])
                 self.modality_metadata = self.modality
                 # display info
                 display_dicom_info(self)
@@ -208,6 +212,55 @@ def on_DataTreeView_clicked(self,index):
                 displaycoronal(self)
                 #    
                 set_vtk_histogran_fig(self)
+                #
+            elif currentTabText == "_3Dview":
+                # Matrix to display + spacing
+                idx                                 = self.layer_selection_box.currentIndex()
+                self.display_3D_data[idx]           = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                self.pixel_spacing3Dview[idx]       = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
+                self.slice_thickness3Dview[idx]     = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
+                #
+                self.Im_PatPosition3Dview[idx, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
+                #
+                if idx == 0:
+                    offset = (0.0, 0.0, 0.0)
+                else:
+                    base_pos = self.Im_PatPosition3Dview[0]
+                    curr_pos = self.Im_PatPosition3Dview[idx]
+                    offset   = tuple(np.array(curr_pos) - np.array(base_pos))
+                    self.Im_Offset3Dview[idx] = offset
+
+                # load into VTK and display
+                self.display_numpy_volume(
+                    self.display_3D_data[idx],
+                    voxel_spacing=(
+                        self.pixel_spacing3Dview[idx,0],
+                        self.pixel_spacing3Dview[idx,1],
+                        self.slice_thickness3Dview[idx]
+                    ),
+                    layer_idx=idx,
+                    offset=offset
+                )
+
+                # ── reset thresholds (and full‐range) for this layer so the sliders jump to the new data
+                # clear any old state
+                self._thresholds.pop(idx, None)
+                self._full_ranges.pop(idx, None)
+                # compute new data range
+                vol = self.display_3D_data[idx]
+                vmin, vmax = float(vol.min()), float(vol.max())
+                # re-initialize the two 3D sliders for this layer
+                initialize_3Dsliders(self, vmin, vmax)
+                # ── now reset the crop‐region sliders for just this layer
+                # clear any old crop state
+                self._crops.pop(idx, None)
+                self._dims .pop(idx, None)
+                # volume_np.shape is (Z, Y, X), but initialize_crop_widgets wants (X, Y, Z)
+                dz, dy, dx = vol.shape
+                initialize_crop_widgets(self, (dx, dy, dz), idx)
+
+                # stop exectution here
+                return
             elif currentTabText == "Compare":
                 #
                 # Current view
@@ -269,8 +322,6 @@ def on_DataTreeView_clicked(self,index):
                     self.renAxComp[i].GetRenderWindow().Render() 
                 #
             if currentTabText == "Segmentation":
-                self.LayerAlpha[1] = 0.6
-                self.Layer_1_alpha_sli.setValue(int(self.LayerAlpha[1]*100))
 
                 if len(hierarchy) >= 6 and hierarchy[5] == "Structures": 
                     # structures withing a SERIES
@@ -278,42 +329,49 @@ def on_DataTreeView_clicked(self,index):
                                 self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'],
                                 self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys']
                             )
+                    
+                if self.seg_win_lev[0] is not None and self.seg_win_lev[1] is not None:
+                    Window = self.seg_win_lev[0]
+                    Level = self.seg_win_lev[1]
+                    
+                self.windowLevelSeg[0].SetWindow(Window)
+                self.windowLevelSeg[0].SetLevel(Level)
+                
                 # Accessing the values
-                for i in range(2):
+                for i in range(3):
                     self.slice_thick_seg[i]         = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
                     self.pixel_spac_seg[i, :2]      = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
                     self.Im_PatPosition_seg[i, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
                 #
                 if len(hierarchy) == 5: # Series
                     self.display_seg_data = {}
-                    self.curr_struc_available = False
+                    self.curr_struc_key = None
+                    self.curr_struc_name = None
+
                     # Get and store the selected series volume
                     self.display_seg_data[0] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
-                    plot_hist(self)
-                    Window = 2000; Level = 100
-                    self.windowLevelSeg[0].SetWindow(Window)
-                    self.windowLevelSeg[0].SetLevel(Level)
                     adjust_data_type_seg_input(self,0)
+                    plot_hist(self)
 
                     self.display_seg_data[1] = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
                     adjust_data_type_seg_input(self,1)
                     
                 if len(hierarchy) == 7: # binary mask contour
                     self.display_seg_data = {}
-                    self.curr_struc_available = True
-                    # Get and store the selected structure 
-                    s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
-                    self.seg_curr_struc = s_key
-                    self.display_seg_data[1] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
-                    adjust_data_type_seg_input(self,1)
 
                     # Get and store the corresponding series volume
                     self.display_seg_data[0] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
-                    plot_hist(self)
-                    Window = 2000; Level = 100
-                    self.windowLevelSeg[0].SetWindow(Window)
-                    self.windowLevelSeg[0].SetLevel(Level)
                     adjust_data_type_seg_input(self,0)
+                    plot_hist(self)
+
+                    # Get and store the selected structure 
+                    s_key  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
+                    s_name = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'][hierarchy_indices[6].row()]
+                    self.curr_struc_key = s_key
+                    self.curr_struc_name = s_name
+
+                    self.display_seg_data[1] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+                    adjust_data_type_seg_input(self,1)
 
                     self.Im_Offset_seg[1,0]    = (self.Im_PatPosition_seg[1,0]-self.Im_PatPosition_seg[0,0])
                     self.Im_Offset_seg[1,1]    = (self.display_seg_data[0].shape[1]*self.pixel_spac_seg[0,0]-self.display_seg_data[1].shape[1]*self.pixel_spac_seg[1,0])-(self.Im_PatPosition_seg[1,1]-self.Im_PatPosition[0,1])
@@ -324,38 +382,69 @@ def on_DataTreeView_clicked(self,index):
                     self.pixel_spac_seg[1, :2]      = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
                     self.Im_PatPosition_seg[1, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
 
+                self.curr_series_no = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['SeriesNumber']
+
+                # Check if view needs to be initialized
+                self.seg_curr_data = {"Orientation": self.segSelectView.currentText(), 
+                                      "Dimensions": self.display_seg_data[0].shape,
+                                      "SliceThickness": self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness'],
+                                      "PixelSpacing": self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']}
+
+                if self.seg_prev_data["Orientation"] is None:
+                    self.seg_init_view = True
+                else:
+                    if self.seg_curr_data != self.seg_prev_data:
+                        self.seg_init_view = True
+                    else:
+                        self.seg_init_view = False
+                self.seg_prev_data = self.seg_curr_data
+
                 # check the selected view
                 if self.segSelectView.currentText() == "Axial":
                     self.im_ori_seg = 0
-                    self.current_seg_slice_index   = int(self.display_seg_data[0].shape[0]/2)
-                    Ax_s = self.current_seg_slice_index
-                    self.segViewSlider.setMaximum(self.display_seg_data[0].shape[0] - 1)
-                    self.segViewSlider.setValue(int(Ax_s))        
+                    if self.seg_init_view == True:
+                        self.current_seg_slice_index   = int(self.display_seg_data[0].shape[0]/2)
+                        Ax_s = self.current_seg_slice_index
+                        self.segViewSlider.setMaximum(self.display_seg_data[0].shape[0] - 1)
+                        self.segViewSlider.setValue(int(Ax_s))   
                 elif self.segSelectView.currentText() == "Sagittal":
                     self.im_ori_seg = 1
-                    self.current_seg_slice_index   = int(self.display_seg_data[0].shape[2]/2)
-                    Ax_s = self.current_seg_slice_index
-                    self.segViewSlider.setMaximum(self.display_seg_data[0].shape[2] - 1)
-                    self.segViewSlider.setValue(int(Ax_s))     
+                    if self.seg_init_view == True:
+                        self.current_seg_slice_index   = int(self.display_seg_data[0].shape[2]/2)
+                        Ax_s = self.current_seg_slice_index
+                        self.segViewSlider.setMaximum(self.display_seg_data[0].shape[2] - 1)  
+                        self.segViewSlider.setValue(int(Ax_s))   
                 elif self.segSelectView.currentText() == "Coronal":
                     self.im_ori_seg = 2
-                    self.current_seg_slice_index   = int(self.display_seg_data[0].shape[1]/2)
-                    Ax_s = self.current_seg_slice_index
-                    self.segViewSlider.setMaximum(self.display_seg_data[0].shape[1] - 1)
-                    self.segViewSlider.setValue(int(Ax_s))        
-                #
+                    if self.seg_init_view == True:
+                        self.current_seg_slice_index   = int(self.display_seg_data[0].shape[1]/2)
+                        Ax_s = self.current_seg_slice_index
+                        self.segViewSlider.setMaximum(self.display_seg_data[0].shape[1] - 1)  
+                        self.segViewSlider.setValue(int(Ax_s))      
                 #
                 # Add ID 
                 self.textActorSeg[0].SetInput(f"{self.modality} / {hierarchy[4]}")
                 disp_seg_image_slice(self) 
-                #
-                Window = self.windowLevelSeg[0].GetWindow()
-                Level  = self.windowLevelSeg[0].GetLevel()
                 
                 self.textActorSeg[1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
                 layer = self.layer_selection_box.currentIndex()
-                self.renSeg.ResetCamera()
-                self.renSeg.GetRenderWindow().Render() 
+
+                if self.seg_init_view == True:
+                    self.renSeg.ResetCamera()
+                    self.renSeg.GetRenderWindow().Render() 
+                    self.seg_init_view = False
+                    self.zoom_scale = None
+                    self.zoom_center = (None, None, None)
+                    self.camera_pos = (None, None, None)
+
+                if self.zoom_scale is not None:
+                    renderer = self.renSeg.GetRenderWindow().GetRenderers().GetFirstRenderer()
+                    camera = renderer.GetActiveCamera()
+                    camera.SetParallelScale(self.zoom_scale)  # Smaller = more zoomed in
+                    camera.SetFocalPoint(self.zoom_center)  # World-space center of zoom
+                    camera.SetPosition(self.camera_pos)  # Also useful
+                    renderer.ResetCameraClippingRange()
+                    self.renSeg.GetRenderWindow().Render()
                 #
                 
     elif hierarchy[0] == "IrIS_Cor":    
@@ -686,8 +775,6 @@ def update_coronal_image(self,  Im = None):
         if self.slice_thick[i] ==0:
             continue   
         
-        
-        
         Offset = (self.display_data[idx].shape[1]*self.pixel_spac[idx,0]-self.display_data[i].shape[1]*self.pixel_spac[i,0]-(self.Im_PatPosition[i,1]-self.Im_PatPosition[idx,1]))/self.pixel_spac[i,0]
         self.current_coronal_slice_index[i] = int((self.current_coronal_slice_index[idx]*(self.pixel_spac[idx,0]/self.pixel_spac[i,0]))-Offset)
         #
@@ -784,43 +871,3 @@ def update_sagittal_image(self,  Im = None):
             imageProperty.SetOpacity(0)
             self.dataImporterSagittal[i].Modified() 
         #    
-def find_matching_series(self, Ref):
-    """Search through all studies, modalities, and series for the given SeriesInstanceUID (Ref). 
-       Returns a list of all matches found.
-    """
-    matches = []
-
-    # Make sure this patientID is in dicom_data
-    if self.patientID not in self.dicom_data:
-        print(f"No data found for patientID={self.patientID}")
-        return matches
-
-    # Loop over all studies for this patient
-    for studyID, study_data in self.dicom_data[self.patientID].items():
-        # Loop over all modalities in each study
-        for modality, modality_data in study_data.items():
-            # If the next level is a list, iterate accordingly
-            if isinstance(modality_data, list):
-                for series_index, series_data in enumerate(modality_data):
-                    # Extract the UID, compare to Ref
-                    metadata = series_data.get('metadata', {})
-                    dcm_info = metadata.get('DCM_Info', {})
-                    series_uid = dcm_info.get('SeriesInstanceUID')
-
-                    if series_uid == Ref:
-                        Acq_number   = metadata.get('AcquisitionNumber')
-                        matches={
-                            'studyID'      : studyID,
-                            'modality'     : modality,
-                            'series_index' : series_index,
-                            'series_label' : f"Acq_{Acq_number}_Series: {series_data.get('SeriesNumber')}"
-                        }
-                        self.StructRefSeries.setText(f"Acq_{Acq_number}_Series: {series_data.get('SeriesNumber')}")
-                        break
-            else:
-                # Unexpected structure; handle or ignore
-                print(f"Unexpected structure at modality '{modality}' in study '{studyID}'. "
-                      f"Expected dict or list, got {type(modality_data)}.")
-                continue
-
-    return matches
