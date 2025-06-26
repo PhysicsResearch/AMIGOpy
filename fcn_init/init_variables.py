@@ -5,6 +5,8 @@ import numpy as np
 
 def initialize_software_variables(self):
     #
+    self.rulers = [] 
+    #
     self.patientID         = None
     self.studyID           = None
     self.modality_metadata = None

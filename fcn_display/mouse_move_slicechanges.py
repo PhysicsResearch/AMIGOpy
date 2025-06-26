@@ -88,7 +88,7 @@ def onMouseMoveAxial(self, caller, event):
                                                  
 #        self.textActorAxialRuller.SetInput(f"({p1[0]:.0f}, {p1[1]:.0f})\n\n({p2[0]:.0f}, {p2[1]:.0f})\n\n{distance:.2f} px\n\n{d_mm:.2f} mm")
         
-    if self.LeftButtonAxialDown == True and self.LeftButtonRuler == False:
+    if self.LeftButtonAxialDown == True and self.LeftButtonRuler == False and self._text_dragging == False:
         idx = self.layer_selection_box.currentIndex()
         current_window = self.windowLevelAxial[idx].GetWindow()
         current_level  = self.windowLevelAxial[idx].GetLevel()
@@ -151,7 +151,7 @@ def onMouseMoveSagittal(self, caller, event):
     # Get previous event position
     x0, y0 = caller.GetLastEventPosition()
     idx = self.layer_selection_box.currentIndex()
-    if self.LeftButtonSagittalDown:
+    if self.LeftButtonSagittalDown == True and self.LeftButtonRuler == False and self._text_dragging == False:
         current_window = self.windowLevelSagittal[idx].GetWindow()
         current_level  = self.windowLevelSagittal[idx].GetLevel()
         # Data can be in the range of 1 (RED and SPR) or 10 (Zeff)
@@ -230,7 +230,7 @@ def onMouseMoveCoronal(self, caller, event):
     #
     idx = self.layer_selection_box.currentIndex()
     #
-    if self.LeftButtonCoronalDown:
+    if self.LeftButtonCoronalDown == True and self.LeftButtonRuler == False and self._text_dragging == False:
         current_window = self.windowLevelCoronal[idx].GetWindow()
         current_level  = self.windowLevelCoronal[idx].GetLevel()
         # Data can be in the range of 1 (RED and SPR) or 10 (Zeff)
