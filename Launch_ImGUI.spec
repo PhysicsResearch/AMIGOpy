@@ -10,6 +10,7 @@ os.chdir(BASE_DIR)
 # ─── Data files (icons) ───────────────────────────────────────────────────────
 datas = [
     (os.path.join(BASE_DIR, 'icons', 'ruler.png'),    'icons'),
+    (os.path.join(BASE_DIR, 'icons', 'ruler_remove.png'),    'icons'),
     (os.path.join(BASE_DIR, 'icons', 'dcm_insp.png'), 'icons'),
 ]
 
