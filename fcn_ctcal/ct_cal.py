@@ -307,8 +307,9 @@ def save_changes(self):
     return table_name, validate_df #used for export
 
 
+    
 
-def export_ct_cal_to_csv(self):
+def export_ct_cal_to_csv(self,export=True): #If export True, the user choose where to export it (EXPORT BUtton), otherwise saves it in the folder with the all the ct_cal (save button)
     # Save changes and get the table name and DataFrame
     table_name, data = save_changes(self)  # Assuming data is a pandas DataFrame
     # Get current date and time
@@ -323,81 +324,13 @@ def export_ct_cal_to_csv(self):
     # Following rows: data (as rows without header)
     output_rows.extend(data.values.tolist())
     export_df = pd.DataFrame(output_rows)
-
-    # Ask user where to save the file
-    filepath, _ = QFileDialog.getSaveFileName(self, "Save CSV", f"{table_name}.csv", "CSV Files (*.csv)")
-    if filepath:
+    if export:
+        filepath, _ = QFileDialog.getSaveFileName(self, "Save CSV", f"{table_name}.csv", "CSV Files (*.csv)")
+        if filepath: #Extra check needed in case users cancel the operation.
+            export_df.to_csv(filepath, index=False, header=False)
+        else:
+            return
+    else:
+        filepath=f'fcn_ctcal/ct_cal_curves/{table_name}.csv'
         export_df.to_csv(filepath, index=False, header=False)
     
-    
-# def plot_ct_cal(self,ct_cal_data):
-#     #cleaning all figures to free up memory
-    
-#     # Close the previous figure if it exists
-#     if hasattr(self, 'fig_ct_cal') and self.fig_ct_cal:
-#         plt.close(self.fig_ct_cal)  # Close the previous figure to release memory
-#     # Check if previous canvas exists, and delete it
-#     if hasattr(self, 'canvas_ct_cal') and self.canvas_ct_cal:
-#         self.canvas_ct_cal.deleteLater()  # Delete the previous canvas
-    
-#     # Check if previous toolbar exists, and delete it
-#     if hasattr(self, 'toolbar_ct_cal') and self.toolbar_ct_cal:
-#         self.toolbar_ct_cal.deleteLater()  # Delete the previous toolbar
-        
-
-    
-#     self.fig_ct_cal,self.ax_ct_cal=plt.subplots()
-#     if self.selected_background == "Transparent":
-#         # Set plot background to transparent
-#         self.ax_ct_cal.patch.set_alpha(0.0)
-#         self.fig_ct_cal.set_alpha(0.0)
-        
-#         # Customize text and axes properties
-#         self.ax_ct_cal.tick_params(colors='white', labelsize=self.selected_font_size-2)  # White ticks with larger text
-#         self.ax_ct_cal.xaxis.label.set_color('white')
-#         self.ax_ct_cal.yaxis.label.set_color('white')
-#         self.ax_ct_cal.spines['bottom'].set_color('white')
-#         self.ax_ct_cal.spines['top'].set_color('white')
-#         self.ax_ct_cal.spines['left'].set_color('white')
-#         self.ax_ct_cal.spines['right'].set_color('white')
-#     else:
-#         self.ax_ct_cal.tick_params(labelsize=self.selected_font_size-2)  # White ticks with larger text
-        
-#     #plot the data
-#     headers=ct_cal_data.columns.tolist()
-#     HU=ct_cal_data['HU']
-#     density=ct_cal_data[headers[1]]
-#     self.ax_ct_cal.plot(HU,density)
-#     self.ax_ct_cal.set_xlabel('HU', fontsize=self.selected_font_size)
-#     self.ax_ct_cal.set_ylabel(headers[1], fontsize=self.selected_font_size)
-    
-#     if self.selected_background == "Transparent":
-#         self.fig_ct_cal.suptitle(f"HU vs {headers[1]}", 
-#                                fontsize=self.selected_font_size + 4,
-#                                color="white")
-#     else:
-#         self.fig_ct_cal.suptitle(f"HU vs {headers[1]}", 
-#                                fontsize=self.selected_font_size + 4)
-    
-
-#     # Create a canvas and toolbar
-#     self.canvas_ct_cal = FigureCanvas(self.fig_ct_cal)
-#     self.canvas_ct_cal.setStyleSheet(f"background-color:{self.selected_background};")
-#     self.toolbar_ct_cal = NavigationToolbar(self.canvas_ct_cal, self)
-
-#     # Check if the container has a layout, set one if not
-#     container = self.ct_cal_plot
-#     if container.layout() is None:
-#         layout = QVBoxLayout(container)
-#         container.setLayout(layout)
-#     else:
-#         # Clear existing content in the container, if any
-#         while container.layout().count():
-#             child = container.layout().takeAt(0)
-#             if child.widget() and not isinstance(child.widget(), NavigationToolbar):
-#                 child.widget().deleteLater()
-
-#     # Add the canvas and toolbar to the container
-#     container.layout().addWidget(self.toolbar_ct_cal)
-#     container.layout().addWidget(self.canvas_ct_cal)
-#     self.canvas_ct_cal.draw()

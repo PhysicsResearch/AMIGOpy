@@ -257,6 +257,7 @@ def initialize_software_buttons(self):
     self.save_changes_ct_cal.clicked.connect(lambda: save_changes(self))
     self.ct_cal_add_row.clicked.connect(lambda: add_row_to_ct_table(self))
     self.Export_ct_cal.clicked.connect(lambda: export_ct_cal_to_csv(self))
+    self.ct_cal_save_copy.clicked.connect(lambda:export_ct_cal_to_csv(self,export=False))
     
     # Circle ROI -----------------------------------------------------------------------------------
     # display (or not) ROI
