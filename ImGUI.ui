@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1735</width>
-    <height>1172</height>
+    <width>1739</width>
+    <height>1181</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -361,7 +361,7 @@
            </font>
           </property>
           <property name="currentIndex">
-           <number>2</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="tab_5">
            <attribute name="title">
@@ -7964,8 +7964,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>242</width>
-             <height>151</height>
+             <width>261</width>
+             <height>152</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8106,7 +8106,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>120</width>
+             <width>119</width>
              <height>50</height>
             </rect>
            </property>
@@ -8135,7 +8135,7 @@ p, li { white-space: pre-wrap; }
              <x>0</x>
              <y>0</y>
              <width>440</width>
-             <height>366</height>
+             <height>384</height>
             </rect>
            </property>
            <attribute name="label">
