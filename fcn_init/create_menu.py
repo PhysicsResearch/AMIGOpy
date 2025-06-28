@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QMenuBar, QAction, QActionGroup
+from PyQt5.QtGui import QFont
 from fcn_load.read_IrIS import load_IrIS_folder
 from fcn_load.load_dcm  import load_all_dcm
 from fcn_load.save_load import load_amigo_bundle, save_amigo_bundle
@@ -9,8 +10,12 @@ from fcn_processing.split_dcm_series import shift_and_split_3D_matrix
 from fcn_3Dprint.split_gcode_file import  split_gcode
 
 def initializeMenuBar(self):
+    # define fontsize
+    f = QFont()
+    f.setPointSize(11)  
     # Create a menu bar
     menu_bar = QMenuBar(self)
+    menu_bar.setFont(f)
     self.setMenuBar(menu_bar)
     fileMenu = self.menuBar().addMenu("File")
     # ------------------------------------------------------------
@@ -277,25 +282,31 @@ def initializeMenuBar(self):
         lg_pColorMenu.addAction(action)
         lg_pColor.addAction(action)
 
-    # 3D print menu 
-    # intended for scripts supporting 3D printing
+    # Layout menu
+    # intended to adjust the view
     #
-    styleMenu = self.menuBar().addMenu("3DPrint")
+    styleMenu = self.menuBar().addMenu("Layout")
     # Gcode submenu
-    GCODEMenu = styleMenu.addMenu("GCODE")
-    GCODEGroup = QActionGroup(self)
+    ViewMenu = styleMenu.addMenu("View_Tab")
+    ViewGroup = QActionGroup(self)
     # Add items 
-    items = ["Split","2STL"]
+    items = ["All","Axial", "Sagittal", "Coronal"]
     for item in items:
         action = QAction(item, self)
         # Connect the Folder action to the load_dcm function
-        if item == "Split":
-            action.triggered.connect(lambda: split_gcode(self))
-        # elif item == "Frames2Dw":
-        #     action.triggered.connect(lambda: export_dw_np(self))
-            
-        GCODEMenu.addAction(action)
+        if item == "All":
+            action.triggered.connect(lambda: self.set_view_mode("all"))
+        elif item == "Axial":
+            action.triggered.connect(lambda: self.set_view_mode("axial"))
+        elif item == "Sagittal":
+            action.triggered.connect(lambda: self.set_view_mode("sagittal"))
+        elif item == "Coronal":
+            action.triggered.connect(lambda: self.set_view_mode("coronal"))
+
+        ViewMenu.addAction(action)
     
+    # adjust font size:
+    apply_font_recursively(menu_bar, f)
 
 
         
@@ -325,3 +336,11 @@ def set_p_color(self, color):
 
 def set_point_color(self, color):
     self.selected_point_color = color
+
+
+def apply_font_recursively(menu: QMenuBar, font: QFont):
+    menu.setFont(font)
+    for act in menu.actions():
+        sub = act.menu()
+        if sub is not None:
+            apply_font_recursively(sub, font)

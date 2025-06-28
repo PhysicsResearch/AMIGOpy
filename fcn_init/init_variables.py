@@ -6,11 +6,14 @@ import numpy as np
 def initialize_software_variables(self):
     #
     self.rulers = [] 
+    self.circle = [] 
+    self.ellipses = []
     #
     self.patientID         = None
     self.studyID           = None
     self.modality_metadata = None
     self.series_index      = None
+    self._text_dragging    = False
     #
     self.CmapIDX     = np.zeros(4)
     self.LayerAlpha  = np.zeros(4)

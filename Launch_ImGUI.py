@@ -52,12 +52,10 @@ _VIEW_ATTRS = {
 class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
     def __init__(self,folder_path=None):
         super(MyApp, self).__init__()
-        #
+        
         # Set up the user interface from Designer.
         self.setupUi(self)
-
-
-
+        self.setWindowTitle("AMIGOpy")
         # populate the list menus
         populate_list_menus(self)
         # initialize variables
@@ -106,7 +104,6 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # slice index ... It is important so different element of the GUI can have access to them 
         #
         self.dicom_data   = None            # Initialize the attribute to store DICOM data
-        #self.TG43_Data    = None           # Initialize the attribute to store TG43 data
         self.IrIS_data    = None            # Initialize the attribute to store IrIS data
         self.IrIS_corr    = {}              # Initialize the attribute to store IrIS correction data
         self.current_slice_index = [-1,-1,-1]  # axial, sagital and coronal slices
@@ -168,9 +165,6 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.DataTreeView.clicked.connect(lambda index: on_DataTreeView_clicked(self, index))
         #
         vtk.vtkObject.GlobalWarningDisplayOff()
-        # if folder_path is not None:
-        #     print(folder_path)
-        #     load_all_dcm(self,folder_path, progress_callback=None, update_label=None)
         set_transp_slider_fcn(self)
         #
         # # Initialize the 3D viewer
