@@ -8,6 +8,9 @@ from fcn_display.colormap_set import set_color_map
 
 def window_auto(self):
     idx = self.layer_selection_box.currentIndex()
+    data = self.display_data.get(idx)
+    if data is None or (hasattr(data, 'size') and data.size == 0):
+        return
     currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
     if currentTabText == "Segmentation":
         slice_data = self.display_seg_data[0][self.current_slice_index[0], :, :]
@@ -21,6 +24,9 @@ def set_window(self,Window,Level):
     # check which tab is selecgted to apply it to the correct axes
     currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
     layer = self.layer_selection_box.currentIndex()
+    data = self.display_data.get(layer)
+    if data is None or (hasattr(data, 'size') and data.size == 0):
+        return
     if currentTabText == "View":
         self.windowLevelAxial[layer].SetWindow(Window)
         self.windowLevelAxial[layer].SetLevel(Level)
