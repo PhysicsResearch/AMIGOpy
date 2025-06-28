@@ -1,4 +1,5 @@
 # fcn_display/roi_additional_plots.py
+
 from PyQt5 import QtWidgets, QtCore
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,7 +24,7 @@ def show_roi_plots(
     """
     Pops up a Qt dialog with Matplotlib plots:
      - circle/ellipse → N rows × 3 cols (histogram, vertical+bounds, horizontal+bounds)
-     - square (rectangle) → N rows × 4 cols + sliders over ROI-local indices
+     - square (rectangle)   → N rows × 4 cols + sliders over ROI-local indices
     """
     cx_mm, cy_mm, _ = center
 
@@ -35,12 +36,12 @@ def show_roi_plots(
     if roi_type == 'square':
         rx_mm, ry_mm = radii
 
-    # -- collect ROI on each layer --
+    # — collect ROI on each layer —
     for idx, data in display_data.items():
         if data is None or not hasattr(data, 'ndim'):
             continue
 
-        ### 1) extract the 2D slice ###
+        # 1) extract the 2D slice
         try:
             if data.ndim == 2:
                 slc = data
@@ -59,7 +60,7 @@ def show_roi_plots(
 
         h, w = slc.shape
 
-        ### 2) map world‐center → pixel (px,py) ###
+        # 2) map world-center → pixel (px,py)
         if orientation == 'axial':
             px = (cx_mm - Im_Offset[idx,0]) / pixel_spac[idx,0]
             py = (cy_mm - Im_Offset[idx,1]) / pixel_spac[idx,1]
@@ -75,7 +76,7 @@ def show_roi_plots(
         py = np.clip(py, 0, h-1)
 
         if roi_type in ('circle','ellipse'):
-            ### 3a) circle/ellipse → store for later plotting ###
+            # 3a) circle/ellipse → store for later plotting
             rx_mm, ry_mm = radii
             if orientation == 'axial':
                 rpx = int(round(rx_mm / pixel_spac[idx,0]))
@@ -89,8 +90,7 @@ def show_roi_plots(
             entries.append((slc, px, py, idx, rpx, rpy))
 
         else:
-            ### 3b) rectangle → mask out a sub-array ###
-            # compute rpx,rpy in pixels exactly like circle’s radii:
+            # 3b) rectangle → mask out a sub-array
             if orientation == 'axial':
                 rpx = int(round(rx_mm / pixel_spac[idx,0]))
                 rpy = int(round(ry_mm / pixel_spac[idx,1]))
@@ -101,7 +101,6 @@ def show_roi_plots(
                 rpx = int(round(rx_mm / pixel_spac[idx,1]))
                 rpy = int(round(ry_mm / slice_thick[idx]))
 
-            # mask + bounding box
             yy, xx = np.ogrid[:h, :w]
             mask = (np.abs(xx - px) <= rpx) & (np.abs(yy - py) <= rpy)
             rows = np.any(mask, axis=1)
@@ -114,7 +113,7 @@ def show_roi_plots(
             if sub.size:
                 subs.append({'idx': idx, 'sub': sub, 'x0': x0, 'y0': y0})
 
-    # no data guard
+    # guard no-data cases
     if roi_type in ('circle','ellipse') and not entries:
         QtWidgets.QMessageBox.information(parent, window_title, "No data in ROI.")
         return
@@ -122,7 +121,7 @@ def show_roi_plots(
         QtWidgets.QMessageBox.information(parent, window_title, "ROI does not overlap any layer.")
         return
 
-    # -- create the dialog & figure --
+    # — create dialog & figure —
     dlg = QtWidgets.QDialog(parent)
     dlg.setWindowTitle(window_title)
     dlg.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -157,7 +156,7 @@ def show_roi_plots(
         # rectangle mode: N × 4
         n = len(subs)
         fig, axes = plt.subplots(n, 4, figsize=(16, 4*n), squeeze=False)
-        # determine common local dims for slider ranges
+        # common local dims for slider ranges
         common_w = min(info['sub'].shape[1] for info in subs)
         common_h = min(info['sub'].shape[0] for info in subs)
         col0, row0 = common_w//2, common_h//2
@@ -181,7 +180,7 @@ def show_roi_plots(
             ax3.plot(sub[row0, :])
             ax3.set_title(f"Layer {idx} Horz idx={row0}")
 
-    # embed
+    # embed canvas
     canvas = FigureCanvas(fig)
     toolbar = NavigationToolbar(canvas, dlg)
     vlay = QtWidgets.QVBoxLayout(dlg)
@@ -190,19 +189,19 @@ def show_roi_plots(
 
     # ─── sliders for rectangle mode ────────────────────────────────
     if roi_type == 'square':
-        # compute combined world extents in X and Y
+        # compute combined world extents
         world_x0, world_x1, world_y0, world_y1 = [], [], [], []
         for info in subs:
             idx, sub, x0, y0 = info['idx'], info['sub'], info['x0'], info['y0']
-            # world X extents from global pixel x0…x0+width-1
+            # X extents in mm
             wx0 = Im_Offset[idx,0] + x0 * pixel_spac[idx,0]
             wx1 = Im_Offset[idx,0] + (x0 + sub.shape[1] - 1) * pixel_spac[idx,0]
             world_x0.append(wx0); world_x1.append(wx1)
-            # world Y extents differ by orientation
+            # Y extents in mm (axial uses pixel_spac, else slice_thick)
             if orientation == 'axial':
                 wy0 = Im_Offset[idx,1] + y0 * pixel_spac[idx,1]
                 wy1 = Im_Offset[idx,1] + (y0 + sub.shape[0] - 1) * pixel_spac[idx,1]
-            else:  # coronal or sagittal, Y ↔ slice_thick
+            else:
                 wy0 = Im_Offset[idx,2] + y0 * slice_thick[idx]
                 wy1 = Im_Offset[idx,2] + (y0 + sub.shape[0] - 1) * slice_thick[idx]
             world_y0.append(wy0); world_y1.append(wy1)
@@ -222,14 +221,15 @@ def show_roi_plots(
             lbl_x.setText(f"X={val} mm")
             for r, info in enumerate(subs):
                 idx, sub, x0 = info['idx'], info['sub'], info['x0']
-                # global pixel = (world – offset) / spacing
+                # global pixel
                 gx = (val - Im_Offset[idx,0]) / pixel_spac[idx,0]
-                local_col = int(round(gx)) - x0
+                gxi = int(round(gx))
+                local_col = gxi - x0
                 ax = axes[r][2]
                 ax.clear()
                 if 0 <= local_col < sub.shape[1]:
                     ax.plot(sub[:, local_col])
-                ax.set_title(f"Layer {idx} Vert @ X={val} mm")
+                ax.set_title(f"Layer {idx} Vert @ X={val}mm (col={gxi})")
             canvas.draw()
         sld_x.valueChanged.connect(on_x)
 
@@ -247,16 +247,16 @@ def show_roi_plots(
                     gy = (val - Im_Offset[idx,1]) / pixel_spac[idx,1]
                 else:
                     gy = (val - Im_Offset[idx,2]) / slice_thick[idx]
-                local_row = int(round(gy)) - y0
+                gyi = int(round(gy))
+                local_row = gyi - y0
                 ax = axes[r][3]
                 ax.clear()
                 if 0 <= local_row < sub.shape[0]:
                     ax.plot(sub[local_row, :])
-                ax.set_title(f"Layer {idx} Horz @ Y={val} mm")
+                ax.set_title(f"Layer {idx} Horz @ Y={val}mm (row={gyi})")
             canvas.draw()
         sld_y.valueChanged.connect(on_y)
 
-        # lay out
         col_box = QtWidgets.QVBoxLayout(); col_box.addWidget(lbl_x); col_box.addWidget(sld_x)
         row_box = QtWidgets.QVBoxLayout(); row_box.addWidget(lbl_y); row_box.addWidget(sld_y)
         hbox.addLayout(col_box); hbox.addLayout(row_box)
