@@ -96,7 +96,7 @@ class CircleRoiWidget:
         # --- stats text actor ---
         self.statsActor = vtk.vtkTextActor()
         tp = self.statsActor.GetTextProperty()
-        tp.SetFontSize(12)
+        tp.SetFontSize(self.parent.selected_font_size)
         tp.SetColor(1, 1, 0)
         # give it a semi-transparent black background
         tp.SetBackgroundColor(0, 0, 0)
@@ -426,7 +426,7 @@ class EllipsoidRoiWidget:
         # stats text
         self.statsActor = vtk.vtkTextActor()
         tp = self.statsActor.GetTextProperty()
-        tp.SetFontSize(12)
+        tp.SetFontSize(self.parent.selected_font_size)
         tp.SetColor(1,1,0)
         tp.SetBackgroundColor(0, 0, 0)
         tp.SetBackgroundOpacity(0.5)
@@ -710,7 +710,7 @@ class SquareRoiWidget:
         # stats text
         self.statsActor = vtk.vtkTextActor()
         tp = self.statsActor.GetTextProperty()
-        tp.SetFontSize(12)
+        tp.SetFontSize(self.parent.selected_font_size)
         tp.SetColor(1,1,0)
         tp.SetBackgroundColor(0, 0, 0)
         tp.SetBackgroundOpacity(0.5)

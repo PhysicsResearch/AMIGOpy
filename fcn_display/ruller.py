@@ -87,8 +87,10 @@ class RulerWidget:
         # measurement text
         self.textActor = vtk.vtkTextActor()
         tp = self.textActor.GetTextProperty()
-        tp.SetFontSize(14)
+        tp.SetFontSize(self.parent.selected_font_size)
         tp.SetColor(1, 1, 0)
+        tp.SetBackgroundColor(0, 0, 0)
+        tp.SetBackgroundOpacity(0.5)
         self.textActor.GetPositionCoordinate().SetCoordinateSystemToNormalizedDisplay()
         self.textActor.SetPosition(0.05, 0.90)
         self.textActor.SetInput("0.00 mm")

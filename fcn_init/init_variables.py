@@ -8,6 +8,7 @@ def initialize_software_variables(self):
     self.rulers = [] 
     self.circle = [] 
     self.ellipses = []
+    self.squares = []
     #
     self.patientID         = None
     self.studyID           = None
