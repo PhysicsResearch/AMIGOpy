@@ -98,6 +98,9 @@ class CircleRoiWidget:
         tp = self.statsActor.GetTextProperty()
         tp.SetFontSize(12)
         tp.SetColor(1, 1, 0)
+        # give it a semi-transparent black background
+        tp.SetBackgroundColor(0, 0, 0)
+        tp.SetBackgroundOpacity(0.5)
         self.statsActor.GetPositionCoordinate().SetCoordinateSystemToNormalizedDisplay()
         self.statsActor.SetPosition(0.70, 0.10)
         self.renderer.AddActor(self.statsActor)
@@ -273,7 +276,7 @@ class CircleRoiWidget:
             vals = slc[mask]
             if vals.size:
                 μ, σ = vals.mean(), vals.std()
-                lines.append(f"Layer {idx}: μ= {μ:.1f} σ= {σ:.1f}")
+                lines.append(f"Layer {idx}: Mean {μ:.1f} STD {σ:.1f}")
             else:
                 lines.append(f"Layer {idx}: ∅")
 
@@ -406,6 +409,12 @@ class EllipsoidRoiWidget:
             rep = vtk.vtkPointHandleRepresentation3D()
             rep.SetHandleSize(12)
             rep.GetProperty().SetColor(1,0,0)
+                # if this is the center handle, hide it:
+            if name == 'center':
+                rep.GetProperty().SetOpacity(0.0)     # invisible
+                rep.SetPickable(True)     # still respond to clicks
+            else:
+                rep.GetProperty().SetOpacity(1.0)     # visible
             widget = vtk.vtkHandleWidget()
             widget.SetRepresentation(rep)
             widget.SetInteractor(self.interactor)
@@ -419,6 +428,8 @@ class EllipsoidRoiWidget:
         tp = self.statsActor.GetTextProperty()
         tp.SetFontSize(12)
         tp.SetColor(1,1,0)
+        tp.SetBackgroundColor(0, 0, 0)
+        tp.SetBackgroundOpacity(0.5)
         self.statsActor.GetPositionCoordinate().SetCoordinateSystemToNormalizedDisplay()
         self.statsActor.SetPosition(0.70,0.10)
         self.renderer.AddActor(self.statsActor)
@@ -570,7 +581,7 @@ class EllipsoidRoiWidget:
 
             if vals.size:
                 μ,σ = vals.mean(), vals.std()
-                lines.append(f"Layer {idx}: μ={μ:.1f} σ={σ:.1f}")
+                lines.append(f"Layer {idx}: Mean {μ:.1f} STD {σ:.1f}")
             else:
                 lines.append(f"Layer {idx}: ∅")
 
@@ -701,6 +712,8 @@ class SquareRoiWidget:
         tp = self.statsActor.GetTextProperty()
         tp.SetFontSize(12)
         tp.SetColor(1,1,0)
+        tp.SetBackgroundColor(0, 0, 0)
+        tp.SetBackgroundOpacity(0.5)
         self.statsActor.GetPositionCoordinate().SetCoordinateSystemToNormalizedDisplay()
         self.statsActor.SetPosition(0.70,0.10)
         self.renderer.AddActor(self.statsActor)
@@ -858,7 +871,7 @@ class SquareRoiWidget:
             vals = slc[mask]
             if vals.size:
                 μ,σ = vals.mean(), vals.std()
-                lines.append(f"Layer {idx}: μ={μ:.1f} σ={σ:.1f}")
+                lines.append(f"Layer {idx}: Mean {μ:.1f} STD {σ:.1f}")
             else:
                 lines.append(f"Layer {idx}: ∅")
 

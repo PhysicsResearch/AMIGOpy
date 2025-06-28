@@ -7,6 +7,8 @@ from fcn_display.ruller import RulerWidget
 from fcn_display.dicom_info import open_dicom_tag_viewer
 from fcn_display.circ_ell_roi import CircleRoiWidget, EllipsoidRoiWidget, SquareRoiWidget
 
+
+
 def menu_bar_icon_actions(self, base_path):
 # ruler       """Add actions to the menu bar with icons."""
 # keep adding and remove ruler  (two buttoms)
@@ -153,9 +155,40 @@ def menu_bar_icon_actions(self, base_path):
     self.toolbar.addWidget(tb)
     self.toolbar.addSeparator()
 
-# Add interacgtive ROI widgets to the menu bar
-# (e.g. CircleRoiWidget, EllipseRoiWidget, etc.)
+# Layout change ----------------------------------
+    icon = QIcon(os.path.join(base_path, "icons", "layout.png"))
 
+    tb = QToolButton(self)
+    tb.setIcon(icon)
+    # 2) Use HTML for a 2-line tooltip and inline font sizing
+    tb.setToolTip(
+        "<div style='font-size:12pt; text-align:left;'>"
+        "Left-click to <b>maximize</b> and change view<br/>"
+        "Right-click to <b>restore</b> all views"
+        "</div>"
+    )
+    tb.setIconSize(QSize(50,50))
+
+    # left-click change maximized view
+    tb.clicked.connect(lambda:on_cycle_view_button_clicked(self))
+
+    # right-click = restore orginal view
+    def on_right_click(pos):
+        # directly remove, no menu needed
+        self.set_view_mode("all")
+
+    # we only care about the button press, not a menu
+    tb.setContextMenuPolicy(Qt.CustomContextMenu)
+    tb.customContextMenuRequested.connect(on_right_click)
+
+    # put it in the toolbar
+    self.toolbar.addWidget(tb)
+
+def on_cycle_view_button_clicked(self):
+    # figure out what the next axis is…
+    next_mode = self._get_next_axis()
+    # …and switch to it
+    self.set_view_mode(next_mode)
 
 def add_ruler(self):
     """Create & show a new ruler in the current view."""
@@ -170,6 +203,7 @@ def add_ruler(self):
     ruler = RulerWidget(self.vtkWidgetSagittal, self.renSagittal, self, self.imageActorSagittal[0])
     ruler.toggle()            # show it immediately
     self.rulers.append(ruler)
+
 
 
 
