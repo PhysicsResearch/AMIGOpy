@@ -12,6 +12,13 @@ datas = [
     (os.path.join(BASE_DIR, 'icons', 'ruler.png'),    'icons'),
     (os.path.join(BASE_DIR, 'icons', 'ruler_remove.png'),    'icons'),
     (os.path.join(BASE_DIR, 'icons', 'dcm_insp.png'), 'icons'),
+	(os.path.join(BASE_DIR, 'icons', 'brush.png'), 'icons'),
+	(os.path.join(BASE_DIR, 'icons', 'eraser.png'), 'icons'),
+	(os.path.join(BASE_DIR, 'icons', 'layout.png'), 'icons'),
+	(os.path.join(BASE_DIR, 'icons', 'roi_circle.png'), 'icons'),
+	(os.path.join(BASE_DIR, 'icons', 'roi_ellipse.png'), 'icons'),
+	(os.path.join(BASE_DIR, 'icons', 'roi_square.png'), 'icons'),
+	(os.path.join(BASE_DIR, 'icons', 'undo.png'), 'icons'),
 ]
 
 # ─── Entry script & pathex ────────────────────────────────────────────────────

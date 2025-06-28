@@ -33,6 +33,7 @@ from fcn_init.init_vtk_3D_display     import init_vtk3d_widget
 import vtk
 from PyQt5.QtCore import QEvent, Qt, QTimer
 from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin
+from fcn_init.init_tool_tip import set_tooltip
 
 
 # ── constants in module / class scope ─────────────────────────────────────────
@@ -197,6 +198,9 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
 
         # Set the progress bar value to 0
         self.progressBar.setValue(0)
+
+        # set tooltip 
+        set_tooltip(self)
 
 
 
