@@ -132,142 +132,220 @@ def show_roi_plots(
         # N × 3 layout
         n = len(entries)
         fig, axes = plt.subplots(n, 3, figsize=(12, 4*n), squeeze=False)
+
+        # --- NEW: compute global profile limits across all layers ---
+        # for vertical profiles (Y axis)
+        all_ys = []
+        # for horizontal profiles (X axis)
+        all_xs = []
+        for slc, px, py, idx, rpx, rpy in entries:
+            # build full-world Y
+            if orientation == 'axial':
+                y_world = Im_Offset[idx,1] + np.arange(slc.shape[0]) * pixel_spac[idx,1]
+            else:
+                y_world = Im_Offset[idx,2] + np.arange(slc.shape[0]) * slice_thick[idx]
+            all_ys.append((y_world.min(), y_world.max()))
+            # build full-world X
+            if orientation in ('axial','coronal'):
+                x_world = Im_Offset[idx,0] + np.arange(slc.shape[1]) * pixel_spac[idx,0]
+            else:
+                x_world = Im_Offset[idx,1] + np.arange(slc.shape[1]) * pixel_spac[idx,1]
+            all_xs.append((x_world.min(), x_world.max()))
+
+        # global min/max
+        y_min, y_max = min(y0 for y0,y1 in all_ys), max(y1 for y0,y1 in all_ys)
+        x_min, x_max = min(x0 for x0,x1 in all_xs), max(x1 for x0,x1 in all_xs)
+        # ------------------------------------------------------------
+
         for r,(slc,px,py,idx,rpx,rpy) in enumerate(entries):
             axh, axv, axH = axes[r]
             # histogram
             yy,xx = np.ogrid[:slc.shape[0], :slc.shape[1]]
             mask = ((xx-px)**2)/(rpx**2) + ((yy-py)**2)/(rpy**2) <= 1
-            axh.hist(slc[mask].ravel(), bins='auto')
+            axh.hist(slc[mask].ravel(), bins='auto', density=True)
             axh.set_title(f"Layer {idx} Histogram")
-            # vertical
-            vert = slc[:,px]
-            axv.plot(vert)
-            axv.axvline(py-rpy, color='r', linestyle='--')
-            axv.axvline(py+rpy, color='r', linestyle='--')
-            axv.set_title(f"Layer {idx} Vertical (col={px})")
-            # horizontal
-            horz = slc[py,:]
-            axH.plot(horz)
-            axH.axvline(px-rpx, color='r', linestyle='--')
-            axH.axvline(px+rpx, color='r', linestyle='--')
-            axH.set_title(f"Layer {idx} Horizontal (row={py})")
+            # vertical profile in absolute Y
+            row_start = max(0, py-rpy)
+            row_end   = min(slc.shape[0]-1, py+rpy)
+            if orientation=='axial':
+                ys = Im_Offset[idx,1] + np.arange(slc.shape[0]) * pixel_spac[idx,1]
+            else:
+                ys = Im_Offset[idx,2] + np.arange(slc.shape[0]) * slice_thick[idx]
+            axv.plot(ys, slc[:,px])
+            axv.axvline(ys[row_start], color='r', linestyle='--')
+            axv.axvline(ys[row_end],   color='r', linestyle='--')
+            axv.set_xlabel('Y (mm)')
+            axv.set_title(f"Vertical (col={py})")
+            axv.set_xlim(y_min, y_max)
+            # 
+            # horizontal profile in absolute X
+            col_start = max(0, px-rpx)
+            col_end   = min(slc.shape[1]-1, px+rpx)
+            if orientation in ('axial','coronal'):
+                xs = Im_Offset[idx,0] + np.arange(slc.shape[1]) * pixel_spac[idx,0]
+            else:
+                xs = Im_Offset[idx,1] + np.arange(slc.shape[1]) * pixel_spac[idx,1]
+            axH.plot(xs, slc[py,:])
+            axH.axvline(xs[col_start], color='r', linestyle='--')
+            axH.axvline(xs[col_end],   color='r', linestyle='--')
+            axH.set_xlabel('X (mm)')
+            axH.set_title(f"Horizontal (row={py})")
+            axH.set_xlim(x_min, x_max)
+
+        # ─── embed canvas & toolbar ─────────────────────────────
+        canvas = FigureCanvas(fig)
+        toolbar = NavigationToolbar(canvas, dlg)
+        vlay = QtWidgets.QVBoxLayout(dlg)
+        vlay.addWidget(toolbar)
+        vlay.addWidget(canvas)
 
     else:
-        # rectangle mode: N × 4
+        # rectangle mode: N × 3 (hist, vert, horz)
         n = len(subs)
-        fig, axes = plt.subplots(n, 4, figsize=(16, 4*n), squeeze=False)
-        # common local dims for slider ranges
-        common_w = min(info['sub'].shape[1] for info in subs)
-        common_h = min(info['sub'].shape[0] for info in subs)
-        col0, row0 = common_w//2, common_h//2
+        fig, axes = plt.subplots(n, 3, figsize=(15, 4*n), squeeze=False)
 
-        for r,info in enumerate(subs):
+        # draw each row: histogram, vertical, horizontal
+        for r, info in enumerate(subs):
             sub, idx = info['sub'], info['idx']
-            ax0, ax1, ax2, ax3 = axes[r]
-            # histogram
-            ax0.hist(sub.ravel(), bins='auto', alpha=0.7)
-            ax0.set_title(f"Layer {idx} Histogram")
-            # mean rows/cols
-            mr, mc = sub.mean(axis=1), sub.mean(axis=0)
-            ax1.plot(mr, label='Row mean')
-            ax1.plot(mc, label='Col mean')
-            ax1.legend()
-            ax1.set_title(f"Layer {idx} Mean")
-            # center vertical
-            ax2.plot(sub[:, col0])
-            ax2.set_title(f"Layer {idx} Vert idx={col0}")
-            # center horizontal
-            ax3.plot(sub[row0, :])
-            ax3.set_title(f"Layer {idx} Horz idx={row0}")
+            x0, y0 = info['x0'], info['y0']
+            axh, axv, axH = axes[r]
 
-    # embed canvas
-    canvas = FigureCanvas(fig)
-    toolbar = NavigationToolbar(canvas, dlg)
-    vlay = QtWidgets.QVBoxLayout(dlg)
-    vlay.addWidget(toolbar)
-    vlay.addWidget(canvas)
+            # 1) normalized histogram
+            axh.hist(sub.ravel(), bins='auto', density=True)
+            axh.set_title(f"Layer {idx} Histogram")
 
-    # ─── sliders for rectangle mode ────────────────────────────────
-    if roi_type == 'square':
-        # compute combined world extents
+            # 2) central vertical profile
+            col0 = sub.shape[1] // 2
+            if orientation == 'axial':
+                xs0 = Im_Offset[idx,0] + (x0 + col0) * pixel_spac[idx,0]
+                ys = Im_Offset[idx,1] + (y0 + np.arange(sub.shape[0])) * pixel_spac[idx,1]
+            elif orientation == 'coronal':
+                xs0 = Im_Offset[idx,0] + (x0 + col0) * pixel_spac[idx,0]
+                ys = Im_Offset[idx,2] + (y0 + np.arange(sub.shape[0])) * slice_thick[idx]
+            else:  # sagittal
+                xs0 = Im_Offset[idx,1] + (x0 + col0) * pixel_spac[idx,1]
+                ys = Im_Offset[idx,2] + (y0 + np.arange(sub.shape[0])) * slice_thick[idx]
+
+            axv.plot(ys, sub[:, col0])
+            axv.set_xlabel('Y (mm)')
+            axv.set_title(f"Vert @ X={xs0:.1f} mm")
+
+            # 3) central horizontal profile
+            row0 = sub.shape[0] // 2
+            if orientation in ('axial','coronal'):
+                xs = Im_Offset[idx,0] + (x0 + np.arange(sub.shape[1])) * pixel_spac[idx,0]
+            else:
+                xs = Im_Offset[idx,1] + (x0 + np.arange(sub.shape[1])) * pixel_spac[idx,1]
+            axH.plot(xs, sub[row0, :])
+            axH.set_xlabel('X (mm)')
+            axH.set_title(f"Horz @ Y={ys[row0]:.1f} mm")
+
+        # ─── embed canvas & toolbar ─────────────────────────────
+        canvas = FigureCanvas(fig)
+        toolbar = NavigationToolbar(canvas, dlg)
+        vlay = QtWidgets.QVBoxLayout(dlg)     # <— make sure to create this!
+        vlay.addWidget(toolbar)
+        vlay.addWidget(canvas)
+
+        # ─── sliders for rectangle mode ───────────────────────────
+        # compute world extents just as before...
         world_x0, world_x1, world_y0, world_y1 = [], [], [], []
         for info in subs:
             idx, sub, x0, y0 = info['idx'], info['sub'], info['x0'], info['y0']
             # X extents in mm
             if orientation == 'axial':
-                wx0 = Im_Offset[idx,0] + x0 * pixel_spac[idx,0]
-                wx1 = Im_Offset[idx,0] + (x0 + sub.shape[1] - 1) * pixel_spac[idx,0]
+                wx = Im_Offset[idx,0]
+                world_x0.append(wx + x0 * pixel_spac[idx,0])
+                world_x1.append(wx + (x0 + sub.shape[1] - 1) * pixel_spac[idx,0])
             elif orientation == 'sagittal':
-                wx0 = Im_Offset[idx,1] + x0 * pixel_spac[idx,0]
-                wx1 = Im_Offset[idx,1] + (x0 + sub.shape[1] - 1) * pixel_spac[idx,0]
-            elif orientation == 'coronal':
-                wx0 = Im_Offset[idx,0] + x0 * pixel_spac[idx,0]
-                wx1 = Im_Offset[idx,0] + (x0 + sub.shape[1] - 1) * pixel_spac[idx,0]
+                wy = Im_Offset[idx,1]
+                world_x0.append(wy + x0 * pixel_spac[idx,1])
+                world_x1.append(wy + (x0 + sub.shape[1] - 1) * pixel_spac[idx,1])
+            else:  # coronal
+                wx = Im_Offset[idx,0]
+                world_x0.append(wx + x0 * pixel_spac[idx,0])
+                world_x1.append(wx + (x0 + sub.shape[1] - 1) * pixel_spac[idx,0])
 
-            world_x0.append(wx0); world_x1.append(wx1)
-            # Y extents in mm (axial uses pixel_spac, else slice_thick)
+            # Y extents in mm
             if orientation == 'axial':
-                wy0 = Im_Offset[idx,1] + y0 * pixel_spac[idx,1]
-                wy1 = Im_Offset[idx,1] + (y0 + sub.shape[0] - 1) * pixel_spac[idx,1]
+                wy = Im_Offset[idx,1]
+                world_y0.append(wy + y0 * pixel_spac[idx,1])
+                world_y1.append(wy + (y0 + sub.shape[0] - 1) * pixel_spac[idx,1])
             else:
-                wy0 = Im_Offset[idx,2] + y0 * slice_thick[idx]
-                wy1 = Im_Offset[idx,2] + (y0 + sub.shape[0] - 1) * slice_thick[idx]
-            world_y0.append(wy0); world_y1.append(wy1)
+                wz = Im_Offset[idx,2]
+                world_y0.append(wz + y0 * slice_thick[idx])
+                world_y1.append(wz + (y0 + sub.shape[0] - 1) * slice_thick[idx])
 
         col_min = int(np.floor(min(world_x0))); col_max = int(np.ceil(max(world_x1)))
         row_min = int(np.floor(min(world_y0))); row_max = int(np.ceil(max(world_y1)))
 
         hbox = QtWidgets.QHBoxLayout()
 
-        # — X slider (world mm) —
+        # X slider
         sld_x = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         sld_x.setRange(col_min, col_max)
-        init_x = int(round(cx_mm))
-        sld_x.setValue(init_x)
-        lbl_x = QtWidgets.QLabel(f"X={init_x} mm")
+        sld_x.setValue(int(round(cx_mm)))
+        lbl_x = QtWidgets.QLabel(f"X={cx_mm:.1f} mm")
         def on_x(val):
             lbl_x.setText(f"X={val} mm")
             for r, info in enumerate(subs):
-                idx, sub, x0 = info['idx'], info['sub'], info['x0']
-                # global pixel (use sagittal‐mode offset/spacings if needed)
+                idx, sub, x0, y0 = (
+                    info['idx'],
+                    info['sub'],
+                    info['x0'],
+                    info['y0'],   # <— pull y0 here
+                )
                 if orientation == 'sagittal':
-                    # in sagittal, slider X actually moves along patient Y
                     gx = (val - Im_Offset[idx,1]) / pixel_spac[idx,1]
-                elif orientation == 'axial':
+                else:
                     gx = (val - Im_Offset[idx,0]) / pixel_spac[idx,0]
-                elif orientation == 'coronal':
-                    gx = (val - Im_Offset[idx,0]) / pixel_spac[idx,0]
-                gxi = int(round(gx))
-                local_col = gxi - x0
-                ax = axes[r][2]
-                ax.clear()
+                gxi = int(round(gx)); local_col = gxi - x0
+
+                # recalc Y axis for this SAME layer
+                if orientation == 'axial':
+                    ys = Im_Offset[idx,1] + (y0 + np.arange(sub.shape[0])) * pixel_spac[idx,1]
+                else:
+                    ys = Im_Offset[idx,2] + (y0 + np.arange(sub.shape[0])) * slice_thick[idx]
+
+                axv = axes[r][1]
+                axv.clear()
                 if 0 <= local_col < sub.shape[1]:
-                    ax.plot(sub[:, local_col])
-                ax.set_title(f"Layer {idx} Vert @ X={val}mm (col={gxi})")
+                    axv.plot(ys, sub[:, local_col])
+                axv.set_title(f"Vert @ X={val} mm")
             canvas.draw()
         sld_x.valueChanged.connect(on_x)
 
-        # — Y slider (world mm) —
+        # Y slider
         sld_y = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         sld_y.setRange(row_min, row_max)
-        init_y = int(round(cy_mm))
-        sld_y.setValue(init_y)
-        lbl_y = QtWidgets.QLabel(f"Y={init_y} mm")
+        sld_y.setValue(int(round(cy_mm)))
+        lbl_y = QtWidgets.QLabel(f"Y={cy_mm:.1f} mm")
         def on_y(val):
             lbl_y.setText(f"Y={val} mm")
             for r, info in enumerate(subs):
-                idx, sub, y0 = info['idx'], info['sub'], info['y0']
+                idx, sub, x0, y0 = (
+                   info['idx'],
+                   info['sub'],
+                   info['x0'],   # <— grab x0 here too
+                   info['y0'],
+                )
                 if orientation == 'axial':
                     gy = (val - Im_Offset[idx,1]) / pixel_spac[idx,1]
                 else:
                     gy = (val - Im_Offset[idx,2]) / slice_thick[idx]
-                gyi = int(round(gy))
-                local_row = gyi - y0
-                ax = axes[r][3]
-                ax.clear()
+                gyi = int(round(gy)); local_row = gyi - y0
+
+                # now x0 refers to THIS layer’s column offset
+                if orientation in ('axial','coronal'):
+                    xs = Im_Offset[idx,0] + (x0 + np.arange(sub.shape[1])) * pixel_spac[idx,0]
+                else:
+                    xs = Im_Offset[idx,1] + (x0 + np.arange(sub.shape[1])) * pixel_spac[idx,1]
+
+                axH = axes[r][2]
+                axH.clear()
                 if 0 <= local_row < sub.shape[0]:
-                    ax.plot(sub[local_row, :])
-                ax.set_title(f"Layer {idx} Horz @ Y={val}mm (row={gyi})")
+                    axH.plot(xs, sub[local_row, :])
+                axH.set_title(f"Horz @ Y={val} mm")
             canvas.draw()
         sld_y.valueChanged.connect(on_y)
 

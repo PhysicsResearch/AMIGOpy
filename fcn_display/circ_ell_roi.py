@@ -957,8 +957,60 @@ class SquareRoiWidget(QtCore.QObject):
         rx, ry = self._last_rx, self._last_ry
         area = (2*rx)*(2*ry)
         lines = [f"W={2*rx:.1f} H={2*ry:.1f} A={area:.1f} mm²"]
-        # ... stats per layer omitted for brevity but same as before ...
-        self.statsActor.SetInput("\n".join(lines)); self.statsActor.Modified(); self.statsActor.SetVisibility(True)
+        for idx, data in self.parent.display_data.items():
+            if data is None or not hasattr(data, 'ndim'):
+                lines.append(f"Layer {idx}: ∅")
+                continue
+
+            # pick correct slice
+            if data.ndim == 2:
+                slc = data
+            else:
+                if self.orientation == 'axial':
+                    si = self.parent.current_axial_slice_index[idx]
+                    slc = data[si, :, :]
+                elif self.orientation == 'coronal':
+                    si = self.parent.current_coronal_slice_index[idx]
+                    slc = data[:, si, :]
+                else:  # sagittal
+                    si = self.parent.current_sagittal_slice_index[idx]
+                    slc = data[:, :, si]
+
+            h, w = slc.shape
+            ox, oy, _ = self._last_center
+
+            # world→pixel mapping
+            if self.orientation == 'axial':
+                px = (ox - self.parent.Im_Offset[idx,0]) / self.parent.pixel_spac[idx,0]
+                py = (oy - self.parent.Im_Offset[idx,1]) / self.parent.pixel_spac[idx,1]
+            elif self.orientation == 'coronal':
+                px = (ox - self.parent.Im_Offset[idx,0]) / self.parent.pixel_spac[idx,0]
+                py = (oy - self.parent.Im_Offset[idx,2]) / self.parent.slice_thick[idx]
+            else:
+                px = (ox - self.parent.Im_Offset[idx,1]) / self.parent.pixel_spac[idx,1]
+                py = (oy - self.parent.Im_Offset[idx,2]) / self.parent.slice_thick[idx]
+
+            px = int(round(np.clip(px, 0, w-1)))
+            py = int(round(np.clip(py, 0, h-1)))
+
+            # convert radii to pixel
+            rpx = int(round(rx / self.parent.pixel_spac[idx,0]))
+            rpy = int(round(ry / self.parent.pixel_spac[idx,1]))
+
+            yy, xx = np.ogrid[:h, :w]
+            mask = ((xx - px)/rpx)**2 + ((yy - py)/rpy)**2 <= 1.0
+            vals = slc[mask]
+
+            if vals.size:
+                μ, σ = vals.mean(), vals.std()
+                lines.append(f"Layer {idx}: Mean {μ:.1f} STD {σ:.1f}")
+            else:
+                lines.append(f"Layer {idx}: ∅")
+
+        # finally:
+        self.statsActor.SetInput("\n".join(lines))
+        self.statsActor.Modified()
+        self.statsActor.SetVisibility(True)
 
     def toggle(self):
         if not self.squareSrc:
