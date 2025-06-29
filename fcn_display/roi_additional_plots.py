@@ -194,8 +194,16 @@ def show_roi_plots(
         for info in subs:
             idx, sub, x0, y0 = info['idx'], info['sub'], info['x0'], info['y0']
             # X extents in mm
-            wx0 = Im_Offset[idx,0] + x0 * pixel_spac[idx,0]
-            wx1 = Im_Offset[idx,0] + (x0 + sub.shape[1] - 1) * pixel_spac[idx,0]
+            if orientation == 'axial':
+                wx0 = Im_Offset[idx,0] + x0 * pixel_spac[idx,0]
+                wx1 = Im_Offset[idx,0] + (x0 + sub.shape[1] - 1) * pixel_spac[idx,0]
+            elif orientation == 'sagittal':
+                wx0 = Im_Offset[idx,1] + x0 * pixel_spac[idx,0]
+                wx1 = Im_Offset[idx,1] + (x0 + sub.shape[1] - 1) * pixel_spac[idx,0]
+            elif orientation == 'coronal':
+                wx0 = Im_Offset[idx,0] + x0 * pixel_spac[idx,0]
+                wx1 = Im_Offset[idx,0] + (x0 + sub.shape[1] - 1) * pixel_spac[idx,0]
+
             world_x0.append(wx0); world_x1.append(wx1)
             # Y extents in mm (axial uses pixel_spac, else slice_thick)
             if orientation == 'axial':
@@ -221,8 +229,14 @@ def show_roi_plots(
             lbl_x.setText(f"X={val} mm")
             for r, info in enumerate(subs):
                 idx, sub, x0 = info['idx'], info['sub'], info['x0']
-                # global pixel
-                gx = (val - Im_Offset[idx,0]) / pixel_spac[idx,0]
+                # global pixel (use sagittal‐mode offset/spacings if needed)
+                if orientation == 'sagittal':
+                    # in sagittal, slider X actually moves along patient Y
+                    gx = (val - Im_Offset[idx,1]) / pixel_spac[idx,1]
+                elif orientation == 'axial':
+                    gx = (val - Im_Offset[idx,0]) / pixel_spac[idx,0]
+                elif orientation == 'coronal':
+                    gx = (val - Im_Offset[idx,0]) / pixel_spac[idx,0]
                 gxi = int(round(gx))
                 local_col = gxi - x0
                 ax = axes[r][2]
