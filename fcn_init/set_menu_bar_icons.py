@@ -77,6 +77,7 @@ def menu_bar_icon_actions(self, base_path):
         "<div style='font-size:12pt; text-align:left;'>"
         "Left-click to <b>add</b> a circle<br/>"
         "Right-click to <b>remove</b> all circles"
+        "Double-click on the <b>ROI - image</b> for profile plot"
         "</div>"
     )
     tb.setIconSize(QSize(50,50))
@@ -106,6 +107,7 @@ def menu_bar_icon_actions(self, base_path):
         "<div style='font-size:12pt; text-align:left;'>"
         "Left-click to <b>add</b> an ellipse<br/>"
         "Right-click to <b>remove</b> all ellipses"
+        "Double-click on the <b>ROI - image</b> for profile plot"
         "</div>"
     )
     tb.setIconSize(QSize(50,50))
@@ -133,8 +135,9 @@ def menu_bar_icon_actions(self, base_path):
     # 2) Use HTML for a 2-line tooltip and inline font sizing
     tb.setToolTip(
         "<div style='font-size:12pt; text-align:left;'>"
-        "Left-click to <b>add</b> a square<br/>"
-        "Right-click to <b>remove</b> all squares"
+        "Left-click to <b>add</b> a rectangle<br/>"
+        "Right-click to <b>remove</b> all rectangles"
+        "Double-click on the <b>ROI-image</b> for profile plot"
         "</div>"
     )
     tb.setIconSize(QSize(50,50))
