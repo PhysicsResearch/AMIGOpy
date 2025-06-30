@@ -12,6 +12,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pandas as pd
+from fcn_load.populate_dcm_list import populate_DICOM_tree
 
 
 
@@ -48,13 +49,35 @@ def create_density_map(self):
     ct_cal = ct_cal.apply(pd.to_numeric, errors='ignore')
     ct_cal=ct_cal.dropna()
     
+
     if ct_cal.size<4:
         print('the CT calibraion curve needs to have at least two rows!')
         return
 
     denisty_matrix=compute_density(ct_matrix, ct_cal)
 
+    #Retriving the type of map (density, spr, RED)
+    headers = []
+    for col in range(col_count):
+        item = self.ct_cal_table.item(0, col)
+        headers.append(item.text() if item else f"Column{col}")
+        
+    map_type=headers[1]
     
+    #Checking if there are already any maps
+    target=target_dict['CT'][self.series_index]
+    existing = target.get('density_maps', {})
+    if not existing:
+        target['density_maps']={}
+    #Creating the density map dict to store the information
+    entry={'3DMatrix':denisty_matrix,
+           'type':map_type}
+    
+    target['density_maps'][f'map_{map_type}_{len(existing)}']=entry
+    print(target.keys())
+    populate_DICOM_tree(self)
+    print(np.max(denisty_matrix))
+        
     
     
 
@@ -76,5 +99,3 @@ def compute_density(ct_matrix,ct_cal_curve):
     
     return density_map
 
-def get_ct_cal_curve():
-    pass

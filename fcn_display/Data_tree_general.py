@@ -132,9 +132,15 @@ def on_DataTreeView_clicked(self,index):
                 #
                 if len(hierarchy) == 5: # Series
                     self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
-                if len(hierarchy) == 7: # binary mask contour
-                    s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
-                    self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+                if len(hierarchy) == 7: # binary mask contour or density map
+                    
+                    if hierarchy[5]=='Structures':
+                        s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
+                        self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+                    elif hierarchy[5]=='Density maps':
+                       self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['density_maps'][hierarchy[6]]['3DMatrix']
+                        
+                    
 
                 adjust_data_type_input(self,idx)
                 #
