@@ -314,7 +314,7 @@ def export_ct_cal_to_csv(self,export=True): #If export True, the user choose whe
     table_name, data = save_changes(self)  # Assuming data is a pandas DataFrame
     # Get current date and time
     current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    first_row=f'Exported from AMIGOpy {current_datetime}'
+    first_row=f'#Exported from AMIGOpy {current_datetime}'
     output_rows = []
     output_rows.append([first_row] + [''])
 

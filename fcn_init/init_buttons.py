@@ -38,7 +38,7 @@ from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes,add_row_to_ct_table,
 from fcn_densitymap.density_map import create_density_map
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
 from fcn_3Dview.Prepare_data_3D_vtk import play_4D_sequence_3D
-
+from fcn_materialassignment.material_assignment_properties import add_mat_row,del_mat_row,add_element,del_element,save_mat_db
 
 def initialize_software_buttons(self):
 
@@ -260,6 +260,13 @@ def initialize_software_buttons(self):
     self.Export_ct_cal.clicked.connect(lambda: export_ct_cal_to_csv(self))
     self.ct_cal_save_copy.clicked.connect(lambda:export_ct_cal_to_csv(self,export=False))
     self.create_density_map.clicked.connect(lambda:create_density_map(self))
+    
+    #Material assignment
+    self.Add_mat.clicked.connect(lambda: add_mat_row(self))
+    self.add_element.clicked.connect(lambda:add_element(self))
+    self.del_element.clicked.connect(lambda:del_element(self))
+    self.del_mat.clicked.connect(lambda:del_mat_row(self))
+    self.save_mat_table.clicked.connect(lambda:save_mat_db(self))
     
     # Circle ROI -----------------------------------------------------------------------------------
     # display (or not) ROI
