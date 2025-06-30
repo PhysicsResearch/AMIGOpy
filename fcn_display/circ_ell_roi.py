@@ -44,6 +44,12 @@ class CircleRoiWidget(QtCore.QObject):
         self._stats_start    = (0, 0)
         self._stats_orig_pix = (0.0, 0.0)
         self.parent._text_dragging = False
+        self.parent.sliceChanged.connect(self._onSliceChanged)
+    
+    def _onSliceChanged(self, orientation, indices):
+        # indices is [idx0, idx1, idx2, idx3]
+        # just recompute your stats/plots against the new slice positions:
+        self._update_stats()
 
         # install event filter for double-click
         self.vtkWidget.installEventFilter(self)
@@ -422,6 +428,12 @@ class EllipsoidRoiWidget(QtCore.QObject):
 
         # install event filter for double-clicks
         self.vtkWidget.installEventFilter(self)
+        self.parent.sliceChanged.connect(self._onSliceChanged)
+    
+    def _onSliceChanged(self, orientation, indices):
+        # indices is [idx0, idx1, idx2, idx3]
+        # just recompute your stats/plots against the new slice positions:
+        self._update_stats()
     
     def eventFilter(self, obj, event):
         if obj is self.vtkWidget and event.type() == QtCore.QEvent.MouseButtonDblClick:
@@ -771,6 +783,13 @@ class SquareRoiWidget(QtCore.QObject):
         self.interactor.AddObserver("LeftButtonPressEvent",   self._on_stats_press,   1)
         self.interactor.AddObserver("MouseMoveEvent",         self._on_stats_drag,    1)
         self.interactor.AddObserver("LeftButtonReleaseEvent", self._on_stats_release, 1)
+        #
+        self.parent.sliceChanged.connect(self._onSliceChanged)
+    
+    def _onSliceChanged(self, orientation, indices):
+        # indices is [idx0, idx1, idx2, idx3]
+        # just recompute your stats/plots against the new slice positions:
+        self._update_stats()
 
     def _setup_square(self):
         if self.squareSrc:

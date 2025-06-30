@@ -31,7 +31,7 @@ from fcn_load.load_dcm                import load_all_dcm
 from fcn_segmentation.functions_segmentation import plot_hist
 from fcn_init.init_vtk_3D_display     import init_vtk3d_widget
 import vtk
-from PyQt5.QtCore import QEvent, Qt, QTimer
+from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal, QObject
 from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin
 from fcn_init.init_tool_tip import set_tooltip
 
@@ -51,12 +51,18 @@ _VIEW_ATTRS = {
 # ──────────────────────────────────────────────────────────────────────────────
 
 class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
+        # emmit signal when the slice changes
+        # This signal can be connected to other functions to update the display when the slice changes.
+    sliceChanged = pyqtSignal(str, list)
+
     def __init__(self,folder_path=None):
         super(MyApp, self).__init__()
         
         # Set up the user interface from Designer.
         self.setupUi(self)
         self.setWindowTitle("AMIGOpy")
+        #
+        #
         # populate the list menus
         populate_list_menus(self)
         # initialize variables

@@ -86,6 +86,7 @@ def displayaxial(self, Im = None):
         self.vtkWidgetAxial.GetRenderWindow().Render()
         self.vtkWidgetSagittal.GetRenderWindow().Render()
         self.vtkWidgetCoronal.GetRenderWindow().Render()
+        self.sliceChanged.emit("axial", self.current_axial_slice_index)
 
 def disp_structure_overlay_axial(self):
     """
