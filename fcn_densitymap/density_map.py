@@ -14,7 +14,12 @@ from datetime import datetime
 import pandas as pd
 from fcn_load.populate_dcm_list import populate_DICOM_tree
 
-
+def display_message_box(msg):
+    msg_box = QMessageBox()
+    msg_box.setIcon(QMessageBox.Warning)
+    msg_box.setWindowTitle('Error')
+    msg_box.setText(msg)
+    msg_box.exec()
 
 def create_density_map(self):
     
@@ -22,13 +27,13 @@ def create_density_map(self):
     if self.patientID:
         target_dict=self.dicom_data[self.patientID][self.studyID]
     else:
-        print('No ct selected')
+        display_message_box('No patient selected')
         return
     try:
         ct_matrix=target_dict['CT'][self.series_index]['3DMatrix']
-        print('ok')
+
     except:
-        print('no ct found')
+        display_message_box('No ct Found')
         return
     
     #Retrive CT_cal
@@ -51,7 +56,8 @@ def create_density_map(self):
     
 
     if ct_cal.size<4:
-        print('the CT calibraion curve needs to have at least two rows!')
+        display_message_box('the CT calibraion curve needs to have at least two rows!')
+
         return
 
     denisty_matrix=compute_density(ct_matrix, ct_cal)
@@ -74,9 +80,8 @@ def create_density_map(self):
            'type':map_type}
     
     target['density_maps'][f'map_{map_type}_{len(existing)}']=entry
-    print(target.keys())
     populate_DICOM_tree(self)
-    print(np.max(denisty_matrix))
+
         
     
     
