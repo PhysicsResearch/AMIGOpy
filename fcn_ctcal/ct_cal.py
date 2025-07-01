@@ -165,33 +165,42 @@ def plot_ct_cal(self, ct_cal_data):
 
     # Create new figure and axes
     self.fig_ct_cal, self.ax_ct_cal = plt.subplots()
+    try:
+        selected_background=self.selected_background
+    except:
+        selected_background="Transparent"
+        
+    try:
+        selected_font_size=self.selected_font_size
+    except:
+        selected_font_size=14
 
     # Apply transparency settings to Matplotlib figure
-    if self.selected_background == "Transparent":
+    if selected_background == "Transparent":
         self.ax_ct_cal.patch.set_alpha(0.0)
         self.fig_ct_cal.patch.set_alpha(0.0)
 
-        self.ax_ct_cal.tick_params(colors='white', labelsize=self.selected_font_size - 2)
+        self.ax_ct_cal.tick_params(colors='white', labelsize=selected_font_size - 2)
         self.ax_ct_cal.xaxis.label.set_color('white')
         self.ax_ct_cal.yaxis.label.set_color('white')
         for spine in self.ax_ct_cal.spines.values():
             spine.set_color('white')
     else:
-        self.ax_ct_cal.tick_params(labelsize=self.selected_font_size - 2)
+        self.ax_ct_cal.tick_params(labelsize=selected_font_size - 2)
 
     # Plot data
     headers = ct_cal_data.columns.tolist()
     HU = ct_cal_data['HU']
     density = ct_cal_data[headers[1]]
     self.ax_ct_cal.plot(HU, density)
-    self.ax_ct_cal.set_xlabel('HU', fontsize=self.selected_font_size)
+    self.ax_ct_cal.set_xlabel('HU', fontsize=selected_font_size)
     y_label=headers[1]
     if y_label=='DENSITY':
         y_label=f'{y_label} (g/$cm^3$)'
-    self.ax_ct_cal.set_ylabel(y_label, fontsize=self.selected_font_size)
+    self.ax_ct_cal.set_ylabel(y_label, fontsize=selected_font_size)
 
-    title_kwargs = {'fontsize': self.selected_font_size + 4}
-    if self.selected_background == "Transparent":
+    title_kwargs = {'fontsize': selected_font_size + 4}
+    if selected_background == "Transparent":
         title_kwargs['color'] = 'white'
     self.fig_ct_cal.suptitle(f"HU vs {headers[1]}", **title_kwargs)
 
@@ -200,13 +209,13 @@ def plot_ct_cal(self, ct_cal_data):
     self.toolbar_ct_cal = NavigationToolbar(self.canvas_ct_cal, self)
 
     # Apply transparency to canvas and container
-    if self.selected_background == "Transparent":
+    if selected_background == "Transparent":
         for widget in [self.canvas_ct_cal, self.ct_cal_plot]:
             widget.setAttribute(Qt.WA_TranslucentBackground)
             widget.setAutoFillBackground(False)
             widget.setStyleSheet("background-color: transparent;")
     else:
-        self.canvas_ct_cal.setStyleSheet(f"background-color:{self.selected_background};")
+        self.canvas_ct_cal.setStyleSheet(f"background-color:{selected_background};")
 
     # Ensure container has a layout
     container = self.ct_cal_plot
