@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
 import csv, math
 from PyQt5.QtGui         import QColor, QBrush
 from PyQt5.QtCore        import Qt
+from fcn_load.populate_dcm_list import populate_DICOM_tree
 
 def update_material_list(self):
     
@@ -114,4 +115,47 @@ def del_mat2HU(self):
         update_mat2HU_table(self)
                 
 def generate_mat_map(self):
-    pass
+
+    #Retrive CT_info
+    if self.patientID:
+        target_dict=self.dicom_data[self.patientID][self.studyID]
+    else:
+        QMessageBox.critical(self, 'Error', 'No Patient selected')
+        return
+    try:
+        ct_matrix=target_dict['CT'][self.series_index]['3DMatrix']
+
+    except:
+        QMessageBox.critical(self, 'Error', 'No CT found')
+        return
+
+    mat_used={}
+    mat_map=np.full(ct_matrix.shape,-1,dtype=np.int16)
+    
+    #Assigning materials using HU ranges
+    if hasattr(self,'mat_HU'):
+        for mat in self.mat_HU.keys():
+            min_val=self.mat_HU[mat]['min']
+            max_val=self.mat_HU[mat]['max']
+            ID= np.int16(self.mat_HU[mat]['key'])
+            mat_map[(ct_matrix>=min_val) & (ct_matrix<max_val)]=ID
+            mat_used[ID]=mat
+    #Assign mat to structures: TBD
+    #assigned unspecified voxels to water
+    if len(mat_map[mat_map==-1])!=0:
+        #Retriving index for water
+        water_ID = np.int16(self.Mat_df.index[self.Mat_df['Name'] == 'Water'][0])
+        mat_map[mat_map==-1]=water_ID
+        mat_used[water_ID]='Water'
+        QMessageBox.information(self,'Warning' ,'Unassigned voxels will be assigned to Water')
+    
+    #Store the material map
+    target=target_dict['CT'][self.series_index]
+    existing = target.get('mat_maps', {})
+    if not existing:
+        target['mat_maps']={}
+    
+    entry={'3DMatrix':mat_map,'Material_used':mat_used}
+    target['mat_maps'][f'mat_map_{len(existing)}']=entry
+    populate_DICOM_tree(self)
+    

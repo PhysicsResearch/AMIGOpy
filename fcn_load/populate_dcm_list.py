@@ -87,6 +87,17 @@ def populate_DICOM_tree(self):
                                 for name in density_maps_names:
                                     density_item = QStandardItem(name)
                                     density_parent_item.appendRow(density_item)
+                                    
+                         #If material maps exists, add them as sublevels
+                        mat_maps = series_data.get('mat_maps')
+                        if mat_maps:
+                            mat_maps_names=mat_maps.keys()
+                            if mat_maps_names:
+                                mat_parent_item = QStandardItem("Material maps")
+                                series_item.appendRow(mat_parent_item)
+                                for name in mat_maps_names:
+                                    mat_item = QStandardItem(name)
+                                    mat_parent_item.appendRow(mat_item)
                                 
                             
 

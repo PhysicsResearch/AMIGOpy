@@ -139,6 +139,8 @@ def on_DataTreeView_clicked(self,index):
                         self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
                     elif hierarchy[5]=='Density maps':
                        self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['density_maps'][hierarchy[6]]['3DMatrix']
+                    elif hierarchy[5]=='Material maps':
+                       self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['mat_maps'][hierarchy[6]]['3DMatrix']
                         
                     
                 adjust_data_type_input(self,idx)
