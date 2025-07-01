@@ -13,7 +13,12 @@ from PyQt5.QtGui         import QColor, QBrush
 from PyQt5.QtCore        import Qt
 
 def update_material_list(self):
-    pass
+    
+    mat_names=self.Mat_df['Name'].to_numpy().tolist()
+    self.Select_mat.clear()
+    self.Select_mat.addItem('...Select material...')
+    self.Select_mat.addItems(mat_names)
+    
 
 
 def mat2HU(self):

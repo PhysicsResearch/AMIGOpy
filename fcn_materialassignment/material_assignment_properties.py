@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
 import csv, math
 from PyQt5.QtGui         import QColor, QBrush
 from PyQt5.QtCore        import Qt
-
+from fcn_materialassignment.material_map import update_material_list
 
 SYMBOL_TO_ATOMIC_NUMBER = {v: k for k, v in ATOMIC_NUMBER_TO_SYMBOL.items()}
 
@@ -102,7 +102,8 @@ def update_mat_properties_table(self,df):
             item = str(self.Mat_df.iloc[i, j])
             tableWidgetItem = QTableWidgetItem(item) 
             self.mat_table.setItem(i, j, tableWidgetItem)
-            
+    update_material_list(self)   
+    
 def add_mat_row(self):
     # Getting the current row count
     currentRowCount = self.mat_table.rowCount()
