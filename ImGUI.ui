@@ -3361,7 +3361,7 @@
         <item row="0" column="0">
          <widget class="QTabWidget" name="Plan_tabs">
           <property name="currentIndex">
-           <number>3</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="Brachy_plan_tab">
            <attribute name="title">
@@ -5892,29 +5892,18 @@
               <property name="title">
                <string>Materials to HU ranges</string>
               </property>
-              <widget class="QTableWidget" name="tableWidget">
-               <property name="geometry">
-                <rect>
-                 <x>15</x>
-                 <y>30</y>
-                 <width>241</width>
-                 <height>751</height>
-                </rect>
-               </property>
-              </widget>
-              <widget class="QPushButton" name="remove_mat_fromhu">
-               <property name="geometry">
-                <rect>
-                 <x>20</x>
-                 <y>790</y>
-                 <width>221</width>
-                 <height>23</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>Remove material</string>
-               </property>
-              </widget>
+              <layout class="QGridLayout" name="gridLayout_71">
+               <item row="0" column="0">
+                <widget class="QTableWidget" name="tableWidget"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QPushButton" name="remove_mat_fromhu">
+                 <property name="text">
+                  <string>Remove material</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
             </item>
             <item row="1" column="1">
@@ -5922,29 +5911,18 @@
               <property name="title">
                <string>Materials to structures</string>
               </property>
-              <widget class="QPushButton" name="remove_mat_from_struct">
-               <property name="geometry">
-                <rect>
-                 <x>30</x>
-                 <y>790</y>
-                 <width>221</width>
-                 <height>23</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>Remove material</string>
-               </property>
-              </widget>
-              <widget class="QTableWidget" name="mat_to_struct_tab">
-               <property name="geometry">
-                <rect>
-                 <x>10</x>
-                 <y>40</y>
-                 <width>241</width>
-                 <height>751</height>
-                </rect>
-               </property>
-              </widget>
+              <layout class="QGridLayout" name="gridLayout_72">
+               <item row="0" column="0">
+                <widget class="QTableWidget" name="mat_to_struct_tab"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QPushButton" name="remove_mat_from_struct">
+                 <property name="text">
+                  <string>Remove material</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
             </item>
            </layout>
