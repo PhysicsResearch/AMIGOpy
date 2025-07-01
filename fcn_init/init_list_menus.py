@@ -4,6 +4,7 @@ from fcn_DECT.DECT_table_disp import on_DECT_list_selection_changed
 from fcn_display.disp_plan_data import update_disp_brachy_plan
 from fcn_display.display_images import update_layer_view
 from fcn_ctcal.ct_cal import update_ct_cal_view,load_ct_cal_curve,update_ct_cal_table
+from fcn_materialassignment.material_map import on_material_change
 import os
 
 # from fcn_3Dview.Prepare_data_3D_vtk import _on_colormap_changed
@@ -182,6 +183,8 @@ def populate_list_menus(self):
         update_ct_cal_table(self,ct_cal_data)
         update_ct_cal_view(self)
     
-
+    
+    #Material assignment
+    self.Select_mat.currentTextChanged.connect(lambda: on_material_change(self))
     
     

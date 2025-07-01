@@ -1,9 +1,9 @@
 #Materials DB
 # Material Name, Atomic Number, Mass Fraction, Den, RED, SPR, HUlow, Tissue
-Air, Den,      0.0012, RED,      0, SPR,      0, Tissue,      0
-Water, 1, 0.112, 8, 88.8, Den,     1, RED,      0, SPR,      0, Tissue,      0
-Prostate-TG186, 1, 0.105, 6, 0.089, 7, 0.025, 8, 0.774, 11, 0.002, 15, 0.001, 16, 0.002, 19, 0.002, Den,    1.04, RED,      0, SPR,      0, Tissue,    1
-Mean adipose-TG186, 1, 0.114, 6, 0.089, 7, 0.007, 8, 0.278, 11, 0.001, 16, 0.001, 17, 0.001, Den,    0.95, RED,      0, SPR,      0, Tissue,    1
-Mean gland-TG186, 1, 0.106, 6, 0.332, 7, 0.03, 8, 0.527, 11, 0.001, 15, 0.001, 16, 0.002, 17, 0.001, Den,    1.02, RED,    0, SPR,    0, Tissue,    1
-Mean male soft tissue-TG186, 1, 0.105, 6, 0.256, 7, 0.027, 8, 0.602, 11, 0.001, 15, 0.002, 16, 0.003, 17, 0.002, 19, 0.02, Den,   1.02, RED,   0, SPR,   0, Tissue,   1
-Mean female soft tissue-TG186, 1, 0.106, 6, 0.315, 7, 0.024, 8, 0.547, 11, 0.001, 15, 0.002, 16, 0.002, 17, 0.003, 19, 0.001, Den,   1.02, RED,   0, SPR,   0, Tissue,   1
+Air, Den,             0.0012, RED,             0, SPR,             0, Tissue,             0
+Water, 1, 0.112, 8, 88.8, Den,            1, RED,             0, SPR,             0, Tissue,             0
+Prostate-TG186, 1, 0.105, 6, 0.089, 7, 0.025, 8, 0.774, 11, 0.002, 15, 0.001, 16, 0.002, 19, 0.002, Den,           1.04, RED,             0, SPR,             0, Tissue,           1
+Mean adipose-TG186, 1, 0.114, 6, 0.089, 7, 0.007, 8, 0.278, 11, 0.001, 16, 0.001, 17, 0.001, Den,           0.95, RED,             0, SPR,             0, Tissue,           1
+Mean gland-TG186, 1, 0.106, 6, 0.332, 7, 0.03, 8, 0.527, 11, 0.001, 15, 0.001, 16, 0.002, 17, 0.001, Den,           1.02, RED,           0, SPR,           0, Tissue,           1
+Mean male soft tissue-TG186, 1, 0.105, 6, 0.256, 7, 0.027, 8, 0.602, 11, 0.001, 15, 0.002, 16, 0.003, 17, 0.002, 19, 0.02, Den,          1.02, RED,          0, SPR,          0, Tissue,          1
+Mean female soft tissue-TG186, 1, 0.106, 6, 0.315, 7, 0.024, 8, 0.547, 11, 0.001, 15, 0.002, 16, 0.002, 17, 0.003, 19, 0.001, Den,          1.02, RED,          0, SPR,          0, Tissue,          1

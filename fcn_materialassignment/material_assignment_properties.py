@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
 import csv, math
 from PyQt5.QtGui         import QColor, QBrush
 from PyQt5.QtCore        import Qt
-from fcn_materialassignment.material_map import update_material_list
+from fcn_materialassignment.material_map import update_material_list,check_mat2HU
 
 SYMBOL_TO_ATOMIC_NUMBER = {v: k for k, v in ATOMIC_NUMBER_TO_SYMBOL.items()}
 
@@ -56,7 +56,6 @@ def create_dataframe_materials(self):
 
     df = pd.DataFrame(rows_list, columns=column_order)
     df.fillna(0, inplace=True)
-    print(df)
     return df
 
 
@@ -103,6 +102,7 @@ def update_mat_properties_table(self,df):
             tableWidgetItem = QTableWidgetItem(item) 
             self.mat_table.setItem(i, j, tableWidgetItem)
     update_material_list(self)   
+    check_mat2HU(self)
     
 def add_mat_row(self):
     # Getting the current row count
@@ -290,7 +290,7 @@ def save_mat_db(self):
         update_mat_properties_table(self,df)
         update_mat_table_style(self)
         QMessageBox.information(self, "Success", "Data saved")
-        print(self.Mat_df)
+        
     except Exception as e:
         QMessageBox.critical(self, "Error", f"Failed to save data: {str(e)}")
         

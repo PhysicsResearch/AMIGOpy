@@ -78,5 +78,7 @@ def initialize_software_tables(self):
     df=create_dataframe_materials(self)
     update_mat_properties_table(self,df)
     update_mat_table_style(self)
+    self.tableMatToHU.setColumnCount(4)
+    self.tableMatToHU.setHorizontalHeaderLabels(['Material', 'ID', 'From ', 'To'])
 
 
