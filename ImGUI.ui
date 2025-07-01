@@ -8164,9 +8164,12 @@ p, li { white-space: pre-wrap; }
                <layout class="QGridLayout" name="gridLayout_DuetWebControl">
                 <item row="0" column="0">
                  <widget class="QWebEngineView" name="DuetControlView">
+                  <property name="focusPolicy">
+                   <enum>Qt::WheelFocus</enum>
+                  </property>
                   <property name="url">
                    <url>
-                    <string>about:blank</string>
+                    <string>http://192.168.0.1/</string>
                    </url>
                   </property>
                  </widget>
@@ -8177,14 +8180,60 @@ p, li { white-space: pre-wrap; }
                <attribute name="title">
                 <string>Motion Verification</string>
                </attribute>
-               <layout class="QGridLayout" name="gridLayout_MotionVerification">
-                <item row="0" column="0">
-                 <widget class="QWidget" name="MoVeView" native="true"/>
-                </item>
-                <item row="1" column="0">
+               <layout class="QGridLayout" name="gridLayout_MotionVerification" columnstretch="1,1,4">
+                <item row="1" column="1">
                  <widget class="QSlider" name="MoVeOffsetSlider">
+                  <property name="minimum">
+                   <number>-50</number>
+                  </property>
+                  <property name="maximum">
+                   <number>50</number>
+                  </property>
+                  <property name="singleStep">
+                   <number>1</number>
+                  </property>
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLineEdit" name="lineEdit_MoVeOffset">
+                  <property name="text">
+                   <string>Offset</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <spacer name="horizontalSpacer_77">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="0" column="0" colspan="3">
+                 <widget class="QWidget" name="MoVeView" native="true"/>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLineEdit" name="lineEdit_MoVeSF">
+                  <property name="text">
+                   <string>Speed factor</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QSpinBox" name="MoVeSpeedFactor">
+                  <property name="maximum">
+                   <number>200</number>
+                  </property>
+                  <property name="value">
+                   <number>100</number>
                   </property>
                  </widget>
                 </item>
@@ -8213,8 +8262,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>277</width>
-             <height>142</height>
+             <width>213</width>
+             <height>127</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8355,8 +8404,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>138</width>
-             <height>45</height>
+             <width>102</width>
+             <height>41</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8383,8 +8432,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>484</width>
-             <height>365</height>
+             <width>444</width>
+             <height>385</height>
             </rect>
            </property>
            <attribute name="label">
