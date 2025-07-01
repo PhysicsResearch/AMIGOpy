@@ -5,7 +5,7 @@ from PyQt5.QtGui import   QIcon, QFont
 from PyQt5.QtWidgets import QToolButton, QToolTip
 from fcn_display.ruller import RulerWidget
 from fcn_display.dicom_info import open_dicom_tag_viewer
-from fcn_display.circ_ell_roi import CircleRoiWidget, EllipsoidRoiWidget, SquareRoiWidget
+from fcn_display.circ_ell_roi import CircleRoiWidget, EllipsoidRoiWidget, SquareRoiWidget, PointRoiWidget
 
 
 
@@ -65,6 +65,35 @@ def menu_bar_icon_actions(self, base_path):
 
     # put it in the toolbar
     self.toolbar.addSeparator()
+    self.toolbar.addWidget(tb)
+
+# Point ----------------------------------
+    icon = QIcon(os.path.join(base_path, "icons", "roi_point.png"))
+
+    tb = QToolButton(self)
+    tb.setIcon(icon)
+    # 2) Use HTML for a 2-line tooltip and inline font sizing
+    tb.setToolTip(
+        "<div style='font-size:12pt; text-align:left;'>"
+        "Left-click to <b>add</b> a point<br/>"
+        "Right-click to <b>remove</b> all points"
+        "</div>"
+    )
+    tb.setIconSize(QSize(50,50))
+
+    # left-click = add another ruler
+    tb.clicked.connect(lambda: add_point(self))
+
+    # right-click = remove all rulers
+    def on_right_click(pos):
+        # directly remove, no menu needed
+        remove_points(self)
+
+    # we only care about the button press, not a menu
+    tb.setContextMenuPolicy(Qt.CustomContextMenu)
+    tb.customContextMenuRequested.connect(on_right_click)
+
+    # put it in the toolbar
     self.toolbar.addWidget(tb)
 
 # Circle ----------------------------------
@@ -232,6 +261,70 @@ def remove_rulers(self):
     # trigger a re-render on each view
     for w in (self.vtkWidgetAxial, self.vtkWidgetSagittal, self.vtkWidgetCoronal):
         w.GetRenderWindow().Render()
+
+
+def add_point(self):
+    """Create & show a new draggable point in each view."""
+    # ensure we have a list to hold them
+    if not hasattr(self, 'points'):
+        self.points = []
+
+    # Axial
+    pt = PointRoiWidget(
+        self.vtkWidgetAxial, self.renAxial,
+        self, self.imageActorAxial[0],
+        orientation='axial'
+    )
+    pt.toggle()               # show it immediately
+    self.points.append(pt)
+
+    # Coronal
+    pt = PointRoiWidget(
+        self.vtkWidgetCoronal, self.renCoronal,
+        self, self.imageActorCoronal[0],
+        orientation='coronal'
+    )
+    pt.toggle()
+    self.points.append(pt)
+
+    # Sagittal
+    pt = PointRoiWidget(
+        self.vtkWidgetSagittal, self.renSagittal,
+        self, self.imageActorSagittal[0],
+        orientation='sagittal'
+    )
+    pt.toggle()
+    self.points.append(pt)
+
+
+def remove_points(self):
+    """Hide, remove and delete *all* existing point ROIs."""
+    for roi in getattr(self, 'points', []):
+        # 1) hide it if it’s visible
+        if roi.is_visible:
+            roi.toggle()
+
+        # 2) remove crosshair actors
+        for actor in roi.crossActors:
+            roi.renderer.RemoveActor(actor)
+
+        # 3) remove stats text actor
+        if getattr(roi, 'statsActor', None):
+            roi.renderer.RemoveActor(roi.statsActor)
+
+        # 4) disable its handle widget
+        if getattr(roi, 'handleWidget', None):
+            roi.handleWidget.Off()
+
+    # 5) clear list
+    self.points.clear()
+
+    # 6) redraw each view
+    for w in (self.vtkWidgetAxial,
+              self.vtkWidgetCoronal,
+              self.vtkWidgetSagittal):
+        w.GetRenderWindow().Render()
+
 
 def add_circle(self):
     """Create & show a new ruler in the current view."""
