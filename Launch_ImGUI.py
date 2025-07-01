@@ -31,8 +31,10 @@ from fcn_load.load_dcm                import load_all_dcm
 from fcn_segmentation.functions_segmentation import plot_hist
 from fcn_init.init_vtk_3D_display     import init_vtk3d_widget
 import vtk
-from PyQt5.QtCore import QEvent, Qt, QTimer
+from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal, QObject
 from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin
+from fcn_init.init_tool_tip import set_tooltip
+
 
 # ── constants in module / class scope ─────────────────────────────────────────
 _ORIG_POS = {                     # Designer coordinates
@@ -49,21 +51,18 @@ _VIEW_ATTRS = {
 # ──────────────────────────────────────────────────────────────────────────────
 
 class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
+        # emmit signal when the slice changes
+        # This signal can be connected to other functions to update the display when the slice changes.
+    sliceChanged = pyqtSignal(str, list)
+
     def __init__(self,folder_path=None):
         super(MyApp, self).__init__()
-        #
+        
         # Set up the user interface from Designer.
         self.setupUi(self)
-        initializeMenuBar(self)
-        self.DataType = "None"
-        # Create a toolbar
-        self.toolbar = QToolBar("My main toolbar")
-        self.addToolBar(self.toolbar)
-
-        # Set the progress bar value to 0
-        self.progressBar.setValue(0)
-
-
+        self.setWindowTitle("AMIGOpy")
+        #
+        #
         # populate the list menus
         populate_list_menus(self)
         # initialize variables
@@ -106,16 +105,12 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.layerTab['Segmentation']       = 0
         self.transTab['Segmentation']       = [1,0.99,0.99,0]
         #
-        # Set the path relative to the executable's location
-        base_path = os.path.dirname(os.path.abspath(__file__))     # Location of the script or the executable
-        menu_bar_icon_actions(self,base_path)
-        #
+
 
         # This section initialize variables related to images dimentions, currentl displaying set
         # slice index ... It is important so different element of the GUI can have access to them 
         #
         self.dicom_data   = None            # Initialize the attribute to store DICOM data
-        #self.TG43_Data    = None           # Initialize the attribute to store TG43 data
         self.IrIS_data    = None            # Initialize the attribute to store IrIS data
         self.IrIS_corr    = {}              # Initialize the attribute to store IrIS correction data
         self.current_slice_index = [-1,-1,-1]  # axial, sagital and coronal slices
@@ -177,9 +172,6 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.DataTreeView.clicked.connect(lambda index: on_DataTreeView_clicked(self, index))
         #
         vtk.vtkObject.GlobalWarningDisplayOff()
-        # if folder_path is not None:
-        #     print(folder_path)
-        #     load_all_dcm(self,folder_path, progress_callback=None, update_label=None)
         set_transp_slider_fcn(self)
         #
         # # Initialize the 3D viewer
@@ -199,7 +191,22 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
 
         # Install filter on the parent container for “show all”
         self.im_display_tab.installEventFilter(self)
+        #
+        initializeMenuBar(self)
+        self.DataType = "None"
+        # Create a toolbar
+        self.toolbar = QToolBar("My main toolbar")
+        self.addToolBar(self.toolbar)
+                # Set the path relative to the executable's location
+        base_path = os.path.dirname(os.path.abspath(__file__))     # Location of the script or the executable
+        menu_bar_icon_actions(self,base_path)
+        #
 
+        # Set the progress bar value to 0
+        self.progressBar.setValue(0)
+
+        # set tooltip 
+        set_tooltip(self)
 
 
 

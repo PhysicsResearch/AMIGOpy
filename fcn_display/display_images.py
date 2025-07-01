@@ -86,6 +86,7 @@ def displayaxial(self, Im = None):
         self.vtkWidgetAxial.GetRenderWindow().Render()
         self.vtkWidgetSagittal.GetRenderWindow().Render()
         self.vtkWidgetCoronal.GetRenderWindow().Render()
+        self.sliceChanged.emit("axial", self.current_axial_slice_index)
 
 def disp_structure_overlay_axial(self):
     """
@@ -560,7 +561,7 @@ def displaycoronal(self, Im = None):
     # Render the updated data
     self.vtkWidgetCoronal.GetRenderWindow().Render()
     self.vtkWidgetAxial.GetRenderWindow().Render()
-    self.vtkWidgetSagittal.GetRenderWindow().Render()
+    self.sliceChanged.emit("coronal", self.current_coronal_slice_index)
 
 def disp_structure_overlay_coronal(self):
     """
@@ -1040,6 +1041,7 @@ def displaysagittal(self,Im = None):
     self.vtkWidgetSagittal.GetRenderWindow().Render()
     self.vtkWidgetCoronal.GetRenderWindow().Render()
     self.vtkWidgetAxial.GetRenderWindow().Render()
+    self.sliceChanged.emit("coronal", self.current_sagittal_slice_index)
     
 
 def disp_structure_overlay_sagittal(self):

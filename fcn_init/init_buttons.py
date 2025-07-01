@@ -39,6 +39,10 @@ from fcn_densitymap.density_map import create_density_map
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
 from fcn_3Dview.Prepare_data_3D_vtk import play_4D_sequence_3D
 from fcn_materialassignment.material_assignment_properties import add_mat_row,del_mat_row,add_element,del_element,save_mat_db
+from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
+from fcn_3Dview.Prepare_data_3D_vtk import play_4D_sequence_3D
+
+
 
 def initialize_software_buttons(self):
 
@@ -252,7 +256,7 @@ def initialize_software_buttons(self):
     self.eqd2_update_dose_list.clicked.connect(lambda: update_doses_list(self))
     self.eqd2_update_structure_list.clicked.connect(lambda: update_structure_list(self))
     self.calc_eqd2_2.clicked.connect(lambda: eqd2_calc(self))
-    
+
     #CT CALIBRATION--------------------------------------------------------------------------
     self.load_ct_cal.clicked.connect(lambda: load_ct_cal_curve(self))
     self.save_changes_ct_cal.clicked.connect(lambda: save_changes(self))
@@ -267,7 +271,9 @@ def initialize_software_buttons(self):
     self.del_element.clicked.connect(lambda:del_element(self))
     self.del_mat.clicked.connect(lambda:del_mat_row(self))
     self.save_mat_table.clicked.connect(lambda:save_mat_db(self))
-    
+
+
+ 
     # Circle ROI -----------------------------------------------------------------------------------
     # display (or not) ROI
     self.checkBox_circ_roi_data_2.clicked.connect(lambda: toggle_rois(self)) 
@@ -285,7 +291,6 @@ def initialize_software_buttons(self):
     self.exp_csv_roi_c_values.clicked.connect(lambda: export_roi_circ_values_to_csv(self))
     self.exp_csv_roi_c_values.setStyleSheet("background-color: blue; color: white;")
     
-
     
 def on_display_dw_overlay_clicked(self):
     """

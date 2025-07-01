@@ -141,7 +141,6 @@ def on_DataTreeView_clicked(self,index):
                        self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['density_maps'][hierarchy[6]]['3DMatrix']
                         
                     
-
                 adjust_data_type_input(self,idx)
                 #
                 self.current_axial_slice_index[idx]    = round(self.display_data[idx].shape[0]/2)

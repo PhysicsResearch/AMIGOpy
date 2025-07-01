@@ -5,6 +5,7 @@ from fcn_display.disp_plan_data import update_disp_brachy_plan
 from fcn_display.display_images import update_layer_view
 from fcn_ctcal.ct_cal import update_ct_cal_view,load_ct_cal_curve,update_ct_cal_table
 import os
+
 # from fcn_3Dview.Prepare_data_3D_vtk import _on_colormap_changed
 
 def populate_list_menus(self):
@@ -170,6 +171,7 @@ def populate_list_menus(self):
     self.dose_list.addItems(['None'])
     self.eqd2_struct_list.addItems(['None'])
     
+
     #Ct calibration
     self.ct_cal_list.currentTextChanged.connect(lambda: update_ct_cal_view(self))
     #Initialize a list to store the CT calibration curves
@@ -180,7 +182,6 @@ def populate_list_menus(self):
         update_ct_cal_table(self,ct_cal_data)
         update_ct_cal_view(self)
     
-    
-    
+
     
     

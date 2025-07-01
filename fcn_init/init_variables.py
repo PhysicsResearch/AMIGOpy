@@ -5,10 +5,16 @@ import numpy as np
 
 def initialize_software_variables(self):
     #
+    self.rulers = [] 
+    self.circle = [] 
+    self.ellipses = []
+    self.squares = []
+    #
     self.patientID         = None
     self.studyID           = None
     self.modality_metadata = None
     self.series_index      = None
+    self._text_dragging    = False
     #
     self.CmapIDX     = np.zeros(4)
     self.LayerAlpha  = np.zeros(4)
@@ -128,6 +134,5 @@ def initialize_software_variables(self):
     self.circle_actors_ax = []
     self.circle_actors_co = []
     self.circle_actors_sa = []
-
    
         
