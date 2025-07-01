@@ -9,6 +9,279 @@ from matplotlib.backends.backend_qt5agg import (
     NavigationToolbar2QT as NavigationToolbar
 )
 
+
+class PointRoiWidget(QtCore.QObject):
+    def __init__(self, vtk_widget, renderer, parent, image_actor, orientation):
+        super().__init__(parent)
+        self.vtkWidget   = vtk_widget
+        self.renderer    = renderer
+        self.renWin      = vtk_widget.GetRenderWindow()
+        self.interactor  = self.renWin.GetInteractor()
+        self.parent      = parent
+        self.imageActor  = image_actor
+        self.orientation = orientation
+
+        # stats-dragging picker & flags
+        self._stats_picker   = vtk.vtkPropPicker()
+        self._dragging_stats = False
+        self._stats_start    = (0, 0)
+        self._stats_orig_pix = (0.0, 0.0)
+
+        # geometry + state
+        self.crossSources = []    # two vtkLineSource
+        self.crossActors  = []    # two vtkActor
+        self.handleWidget = None
+        self.is_visible   = False
+        self._last_point  = (0.0,0.0,0.0)
+        self._cross_half_length = 0.0
+
+        # stats text
+        self.statsActor = None
+
+        # connect slice changes and mouse events
+        self.parent.sliceChanged.connect(self._update_stats)
+        self.vtkWidget.installEventFilter(self)
+                # --- stats text (after self.renderer.AddActor) ---
+        self.statsActor = vtk.vtkTextActor()
+        tp = self.statsActor.GetTextProperty()
+        tp.SetFontSize(self.parent.selected_font_size)
+        tp.SetColor(1,1,0)
+        tp.SetBackgroundColor(0,0,0)
+        tp.SetBackgroundOpacity(0.5)
+        self.statsActor.GetPositionCoordinate()\
+             .SetCoordinateSystemToNormalizedDisplay()
+        self.statsActor.SetPosition(0.70,0.10)
+        self.renderer.AddActor(self.statsActor)
+
+        # now hook the stats‐drag observers (priority=1 so before others)
+        self.interactor.AddObserver("LeftButtonPressEvent",   self._on_stats_press,   1)
+        self.interactor.AddObserver("MouseMoveEvent",         self._on_stats_drag,    1)
+        self.interactor.AddObserver("LeftButtonReleaseEvent", self._on_stats_release, 1)
+
+        self._picker_right = vtk.vtkPropPicker()
+        self.interactor.AddObserver(
+            "RightButtonPressEvent",
+            self._on_right_click,
+            1
+        )
+
+        # initial render
+        self._update_stats()
+        self.renWin.Render()
+
+    def _on_right_click(self, caller, event):
+        x, y = self.interactor.GetEventPosition()
+        # pick 3D actors
+        self._picker_right.Pick(x, y, 0, self.renderer)
+        picked_actor = self._picker_right.GetActor()
+        # pick 2D text
+        self._stats_picker.Pick(x, y, 0, self.renderer)
+        picked_text = (self._stats_picker.GetActor2D() is self.statsActor)
+
+        # if they clicked the crosshair lines or the stats box, delete
+        if (picked_actor in self.crossActors) or picked_text:
+            self.delete()
+
+    def delete(self):
+        # hide if visible
+        if self.is_visible:
+            self.toggle()
+        # remove crosshair actors
+        for actor in self.crossActors:
+            self.renderer.RemoveActor(actor)
+        # remove stats text
+        if self.statsActor:
+            self.renderer.RemoveActor(self.statsActor)
+        # turn off the handle widget
+        if self.handleWidget:
+            self.handleWidget.Off()
+        # re-render
+        self.renWin.Render()
+        # unregister from parent list
+        if hasattr(self.parent, 'points') and self in self.parent.points:
+            self.parent.points.remove(self)
+
+    # — stats‐drag handlers —    
+    def _on_stats_press(self, caller, event):
+        x, y = self.interactor.GetEventPosition()
+        self._stats_picker.Pick(x, y, 0, self.renderer)
+        if self._stats_picker.GetActor2D() is self.statsActor:
+            self._dragging_stats = True
+            self.parent._text_dragging = True
+            self._stats_start     = (x, y)
+            disp = self.statsActor.GetPositionCoordinate()\
+                         .GetComputedDisplayValue(self.renderer)
+            self._stats_orig_pix = (disp[0], disp[1])
+
+    def _on_stats_drag(self, caller, event):
+        if not self._dragging_stats:
+            return
+        x, y = self.interactor.GetEventPosition()
+        dx, dy = x - self._stats_start[0], y - self._stats_start[1]
+        w, h = self.renWin.GetSize()
+        new_x = (self._stats_orig_pix[0] + dx) / w
+        new_y = (self._stats_orig_pix[1] + dy) / h
+        self.statsActor.GetPositionCoordinate().SetValue(new_x, new_y)
+        self.renWin.Render()
+
+    def _on_stats_release(self, caller, event):
+        self._dragging_stats = False
+        self.parent._text_dragging = False
+
+    def _get_view_center_world(self):
+        w,h = self.renWin.GetSize()
+        cx, cy = w/2, h/2
+        self.renderer.SetDisplayPoint(cx, cy, 0)
+        self.renderer.DisplayToWorld()
+        x,y,z,w4 = self.renderer.GetWorldPoint()
+        if w4:
+            x,y = x/w4, y/w4
+        z = self.imageActor.GetCenter()[2] + 1.0
+        return x,y,z
+
+    def _setup_point(self):
+        if self.crossActors:
+            return
+
+        # initial center & cross size (10% of smaller image-dimension)
+        cx, cy, cz = self._get_view_center_world()
+        self._last_point = (cx,cy,cz)
+        xmin,xmax,ymin,ymax,_,_ = self.imageActor.GetBounds()
+        base = min(xmax-xmin, ymax-ymin)
+        half = base * 0.02
+        self._cross_half_length = half
+
+        # --- build two perpendicular lines ---
+        for dx,dy in [(half,0),(0,half)]:
+            src = vtk.vtkLineSource()
+            src.SetPoint1(cx-dx, cy-dy, cz)
+            src.SetPoint2(cx+dx, cy+dy, cz)
+            mapper = vtk.vtkPolyDataMapper()
+            mapper.SetInputConnection(src.GetOutputPort())
+            actor = vtk.vtkActor()
+            actor.SetMapper(mapper)
+            actor.GetProperty().SetColor(1,0,0)
+            actor.GetProperty().SetLineWidth(2)
+            self.renderer.AddActor(actor)
+            self.crossSources.append(src)
+            self.crossActors .append(actor)
+
+        # --- handle widget for dragging the point ---
+        rep = vtk.vtkPointHandleRepresentation3D()
+        rep.SetHandleSize(10)
+        rep.GetProperty().SetColor(1,1,0)
+        rep.SetWorldPosition(self._last_point)
+        hw = vtk.vtkHandleWidget()
+        hw.SetInteractor(self.interactor)
+        hw.SetRepresentation(rep)
+        hw.AddObserver('InteractionEvent', self._on_handle_move)
+        hw.On()
+        self.handleWidget = hw
+
+        # --- stats text ---
+        self.statsActor = vtk.vtkTextActor()
+        tp = self.statsActor.GetTextProperty()
+        tp.SetFontSize(self.parent.selected_font_size)
+        tp.SetColor(1,1,0)
+        tp.SetBackgroundColor(0,0,0)
+        tp.SetBackgroundOpacity(0.5)
+        self.statsActor.GetPositionCoordinate()\
+             .SetCoordinateSystemToNormalizedDisplay()
+        self.statsActor.SetPosition(0.70,0.10)
+        self.renderer.AddActor(self.statsActor)
+
+        # initial render
+        self._update_stats()
+        self.renWin.Render()
+
+    def _on_handle_move(self, caller, event):
+        # get new point, update cross + stats
+        new_pt = self.handleWidget.GetRepresentation().GetWorldPosition()
+        self._last_point = new_pt
+        self._update_cross()
+        self._update_stats()
+        self.renWin.Render()
+
+    def _update_cross(self):
+        cx,cy,cz = self._last_point
+        half = self._cross_half_length
+        # horizontal line
+        self.crossSources[0].SetPoint1(cx-half, cy, cz)
+        self.crossSources[0].SetPoint2(cx+half, cy, cz)
+        # vertical line
+        self.crossSources[1].SetPoint1(cx, cy-half, cz)
+        self.crossSources[1].SetPoint2(cx, cy+half, cz)
+        for src in self.crossSources:
+            src.Modified()
+
+    def _update_stats(self):
+        # very similar to circle widget, but just sample the single pixel
+        cx, cy, cz = self._last_point
+        lines = [f"X={cx:.1f}  Y={cy:.1f}"]
+        for idx, data in self.parent.display_data.items():
+            if data is None or not hasattr(data, 'ndim'):
+                lines.append(f"Layer {idx}: ∅")
+                continue
+
+            # select correct slice
+            if data.ndim == 2:
+                slc = data
+            else:
+                if self.orientation == 'axial':
+                    si = self.parent.current_axial_slice_index[idx]
+                    slc = data[si,:,:]
+                elif self.orientation == 'coronal':
+                    si = self.parent.current_coronal_slice_index[idx]
+                    slc = data[:,si,:]
+                else:
+                    si = self.parent.current_sagittal_slice_index[idx]
+                    slc = data[:,:,si]
+
+            h,w = slc.shape
+
+            # map world→pixel
+            if self.orientation == 'axial':
+                px = (cx - self.parent.Im_Offset[idx,0]) / self.parent.pixel_spac[idx,0]
+                py = (cy - self.parent.Im_Offset[idx,1]) / self.parent.pixel_spac[idx,1]
+            elif self.orientation == 'coronal':
+                px = (cx - self.parent.Im_Offset[idx,0]) / self.parent.pixel_spac[idx,0]
+                py = (cy - self.parent.Im_Offset[idx,2]) / self.parent.slice_thick[idx]
+            else:
+                px = (cx - self.parent.Im_Offset[idx,1]) / self.parent.pixel_spac[idx,1]
+                py = (cy - self.parent.Im_Offset[idx,2]) / self.parent.slice_thick[idx]
+
+            px = int(round(np.clip(px,0,w-1)))
+            py = int(round(np.clip(py,0,h-1)))
+            val = slc[py,px]
+            lines.append(f"Layer {idx}: {val:.1f}")
+
+        txt = "\n".join(lines)
+        self.statsActor.SetInput(txt)
+        self.statsActor.Modified()
+        self.statsActor.SetVisibility(self.is_visible)
+        self.renWin.Render()
+
+    def toggle(self):
+        # build on first show
+        if not self.crossActors:
+            self._setup_point()
+            if not self.crossActors:
+                return
+
+        # flip visibility
+        self.is_visible = not self.is_visible
+        for actor in self.crossActors:
+            actor.SetVisibility(self.is_visible)
+        if self.handleWidget:
+            if self.is_visible:
+                self.handleWidget.On()
+            else:
+                self.handleWidget.Off()
+        if self.statsActor:
+            self.statsActor.SetVisibility(self.is_visible)
+            self.statsActor.Modified()
+        self.renWin.Render()
+
 class CircleRoiWidget(QtCore.QObject):
 
     def __init__(self, vtk_widget, renderer, parent, image_actor, orientation):
@@ -45,21 +318,26 @@ class CircleRoiWidget(QtCore.QObject):
         self._stats_orig_pix = (0.0, 0.0)
         self.parent._text_dragging = False
         self.parent.sliceChanged.connect(self._onSliceChanged)
+        self.vtkWidget.installEventFilter(self)
+
+        self._picker_right = vtk.vtkPropPicker()
+        self.interactor.AddObserver(
+            "RightButtonPressEvent",
+            self._on_right_click,
+            1
+        )
     
     def _onSliceChanged(self, orientation, indices):
         # indices is [idx0, idx1, idx2, idx3]
         # just recompute your stats/plots against the new slice positions:
         self._update_stats()
 
-        # install event filter for double-click
-        self.vtkWidget.installEventFilter(self)
-
     def eventFilter(self, obj, event):
         if obj is self.vtkWidget and event.type() == QtCore.QEvent.MouseButtonDblClick:
             # only proceed if ROI exists and is visible
-            if not (self.circleSrc and self.is_visible):
+            if self.circleSrc is None:
                 return False
-
+            print("test")
             # compute display-space center and radius of ROI
             cx, cy, cz = self._last_center
             r_world = self._last_radius
@@ -389,7 +667,37 @@ class CircleRoiWidget(QtCore.QObject):
         p.SetEdgeColor(r, g, b)
         p.EdgeVisibilityOn()
         self.renWin.Render()
+        
+    def _on_right_click(self, caller, event):
+        x, y = self.interactor.GetEventPosition()
+        # test circle actor
+        self._picker_right.Pick(x, y, 0, self.renderer)
+        picked = self._picker_right.GetActor()
+        # test stats text
+        self._stats_picker.Pick(x, y, 0, self.renderer)
+        picked_text = (self._stats_picker.GetActor2D() is self.statsActor)
 
+        if picked is self.circleActor or picked_text:
+            self.delete()
+
+    def delete(self):
+        # hide
+        if self.is_visible:
+            self.toggle()
+        # remove the circle actor
+        if self.circleActor:
+            self.renderer.RemoveActor(self.circleActor)
+        # remove the text actor
+        if self.statsActor:
+            self.renderer.RemoveActor(self.statsActor)
+        # disable all resize handles
+        for hw in self.handles.values():
+            hw.Off()
+        # re-render
+        self.renWin.Render()
+        # unregister from parent list
+        if hasattr(self.parent, 'circle') and self in self.parent.circle:
+            self.parent.circle.remove(self)
 
 class EllipsoidRoiWidget(QtCore.QObject):
     def __init__(self, vtk_widget, renderer, parent, image_actor, orientation):
@@ -426,6 +734,13 @@ class EllipsoidRoiWidget(QtCore.QObject):
         self._stats_orig_pix  = (0, 0)
         self.parent._text_dragging = False
 
+        # picker for right-click deletion
+        self._picker_right = vtk.vtkPropPicker()
+        self.interactor.AddObserver(
+            "RightButtonPressEvent",
+            self._on_right_click,
+            1
+        )
         # install event filter for double-clicks
         self.vtkWidget.installEventFilter(self)
         self.parent.sliceChanged.connect(self._onSliceChanged)
@@ -475,7 +790,8 @@ class EllipsoidRoiWidget(QtCore.QObject):
                     center=self._last_center,
                     radii=(self._last_rx, self._last_ry),  # approximate
                     roi_type='ellipse',
-                    window_title="Ellipsoid ROI Histogram"
+                    window_title="Ellipsoid ROI Histogram",
+                    return_dialog = False  
                 )
                 return True
             return False
@@ -734,7 +1050,41 @@ class EllipsoidRoiWidget(QtCore.QObject):
     def set_edge_color(self, r,g,b):
         p = self.actor.GetProperty(); p.SetEdgeColor(r,g,b); p.EdgeVisibilityOn(); self.renWin.Render()
 
+    def _on_right_click(self, caller, event):
+        x, y = self.interactor.GetEventPosition()
+        # pick the 3D ROI actor
+        self._picker_right.Pick(x, y, 0, self.renderer)
+        picked_3d = self._picker_right.GetActor()
+        # pick the 2D stats box
+        self._stats_picker.Pick(x, y, 0, self.renderer)
+        picked_text = (self._stats_picker.GetActor2D() is self.statsActor)
 
+        # if they hit either, delete this ROI
+        if picked_3d is self.actor or picked_3d is self.polySrc_actor or picked_text:
+            self.delete()
+
+    def delete(self):
+        # 1) hide if visible
+        if self.is_visible:
+            self.toggle()
+        # 2) remove the main actor
+        if hasattr(self, 'actor') and self.actor:
+            self.renderer.RemoveActor(self.actor)
+        if hasattr(self, 'squareActor') and self.squareActor:
+            self.renderer.RemoveActor(self.squareActor)
+        # 3) remove stats text
+        if self.statsActor:
+            self.renderer.RemoveActor(self.statsActor)
+        # 4) disable all handle-widgets
+        for hw in self.handles.values():
+            hw.Off()
+        # 5) re-render
+        self.renWin.Render()
+        # 6) unregister from parent list
+        if hasattr(self.parent, 'ellipses') and self in self.parent.ellipses:
+            self.parent.ellipses.remove(self)
+        if hasattr(self.parent, 'squares')  and self in self.parent.squares:
+            self.parent.squares.remove(self)
 
 
 
@@ -777,6 +1127,29 @@ class SquareRoiWidget(QtCore.QObject):
         self._stats_picker = vtk.vtkPropPicker()
         self._picker       = vtk.vtkPropPicker()
 
+
+        # vertical line (world Y extents will be set on update)
+        self._vline_src = vtk.vtkLineSource()
+        self._vline_mapper = vtk.vtkPolyDataMapper()
+        self._vline_mapper.SetInputConnection(self._vline_src.GetOutputPort())
+        self._vline_actor = vtk.vtkActor()
+        self._vline_actor.SetMapper(self._vline_mapper)
+        self._vline_actor.GetProperty().SetColor(1,0,0)
+        self._vline_actor.SetVisibility(False)
+        self._vline_actor.GetProperty().SetLineWidth(3)
+        self.renderer.AddActor(self._vline_actor)
+
+        # horizontal line
+        self._hline_src = vtk.vtkLineSource()
+        self._hline_mapper = vtk.vtkPolyDataMapper()
+        self._hline_mapper.SetInputConnection(self._hline_src.GetOutputPort())
+        self._hline_actor = vtk.vtkActor()
+        self._hline_actor.SetMapper(self._hline_mapper)
+        self._hline_actor.GetProperty().SetColor(1,0,0)
+        self._hline_actor.SetVisibility(False)
+        self._vline_actor.GetProperty().SetLineWidth(3)
+        self.renderer.AddActor(self._hline_actor)
+
         # install event filter for double-click on ROI
         self.vtkWidget.installEventFilter(self)
         # register stats-drag events at init
@@ -794,6 +1167,9 @@ class SquareRoiWidget(QtCore.QObject):
     def _setup_square(self):
         if self.squareSrc:
             return
+        #
+        # —————— profile‐line actors ——————
+
         # initialize center & half-sizes to 10% of image bbox
         cx, cy, cz = self._get_view_center_world()
         self._last_center = (cx, cy, cz)
@@ -840,6 +1216,13 @@ class SquareRoiWidget(QtCore.QObject):
         self.interactor.AddObserver('MouseMoveEvent',         self._on_drag)
         self.interactor.AddObserver('LeftButtonReleaseEvent', self._on_release)
 
+        # picker for right-click deletion
+        self._picker_right = vtk.vtkPropPicker()
+        self.interactor.AddObserver(
+            "RightButtonPressEvent",
+            self._on_right_click,
+            1
+        )
         # initial draw
         self._update_handles()
         self._update_stats()
@@ -875,7 +1258,8 @@ class SquareRoiWidget(QtCore.QObject):
             x, y = event.pos().x(), event.pos().y()
             y = self.renWin.GetSize()[1] - y
             if abs(x-dc[0])<=drx and abs(y-dc[1])<=dry:
-                show_roi_plots(
+                # 1) create & show the ROI‐plots dialog *but do not exec it yet*
+                dlg = show_roi_plots(
                     parent=self.parent,
                     display_data=self.parent.display_data,
                     Im_Offset=self.parent.Im_Offset,
@@ -885,11 +1269,55 @@ class SquareRoiWidget(QtCore.QObject):
                     center=self._last_center,
                     radii=(self._last_rx, self._last_ry),
                     roi_type='square',
-                    window_title='Rectangle ROI Analysis'
+                    window_title='Rectangle ROI Analysis',
+                    return_dialog = True     # ← new flag
                 )
+
+                # 2) turn on our cross‐hair lines
+                self._vline_actor.SetVisibility(True)
+                self._hline_actor.SetVisibility(True)
+                self.renWin.Render()
+
+                # 3) hook the sliders up to our line‐move methods
+                dlg.sld_x.valueChanged.connect(self._onProfileXChanged)
+                dlg.sld_y.valueChanged.connect(self._onProfileYChanged)
+
+                # 4) when the dialog closes, hide the lines again
+                dlg.finished.connect(self._hideProfileLines)
+
+                # 5) now exec
+                dlg.exec_()
                 return True
             return False
         return super().eventFilter(obj, event)
+    
+
+    def _onProfileXChanged(self, x_mm: int):
+        """Move vertical line to world-X = x_mm, spanning current ROI Y extents."""
+        cx, cy, cz = self._last_center
+        ry = self._last_ry
+        # line from (x_mm, cy-ry) to (x_mm, cy+ry)
+        self._vline_src.SetPoint1(x_mm, cy-ry, cz)
+        self._vline_src.SetPoint2(x_mm, cy+ry, cz)
+        self._vline_src.Update()
+        self.renWin.Render()
+
+    def _onProfileYChanged(self, y_mm: int):
+        """Move horizontal line to world-Y = y_mm, spanning current ROI X extents."""
+        cx, cy, cz = self._last_center
+        rx = self._last_rx
+        # line from (cx-rx, y_mm) to (cx+rx, y_mm)
+        self._hline_src.SetPoint1(cx-rx, y_mm, cz)
+        self._hline_src.SetPoint2(cx+rx, y_mm, cz)
+        self._hline_src.Update()
+        self.renWin.Render()
+
+    def _hideProfileLines(self):
+        """Hide both profile lines."""
+        self._vline_actor.SetVisibility(False)
+        self._hline_actor.SetVisibility(False)
+        self.renWin.Render()
+
 
     # stats dragging handlers
     def _on_stats_press(self, caller, event):
@@ -1038,3 +1466,34 @@ class SquareRoiWidget(QtCore.QObject):
         self.squareActor.SetVisibility(self.is_visible)
         for h in self.handles.values(): h.On() if self.is_visible else h.Off()
         self.statsActor.SetVisibility(self.is_visible); self.statsActor.Modified(); self.renWin.Render()
+
+    def _on_right_click(self, caller, event):
+        x, y = self.interactor.GetEventPosition()
+        # 3D pick on the rectangle actor
+        self._picker_right.Pick(x, y, 0, self.renderer)
+        picked = self._picker_right.GetActor()
+        # 2D pick on the stats text
+        self._stats_picker.Pick(x, y, 0, self.renderer)
+        picked_text = (self._stats_picker.GetActor2D() is self.statsActor)
+
+        if picked is self.squareActor or picked_text:
+            self.delete()
+
+    def delete(self):
+        # hide if visible
+        if self.is_visible:
+            self.toggle()
+        # remove the rectangle actor
+        if self.squareActor:
+            self.renderer.RemoveActor(self.squareActor)
+        # remove the stats text
+        if self.statsActor:
+            self.renderer.RemoveActor(self.statsActor)
+        # turn off all handles
+        for hw in self.handles.values():
+            hw.Off()
+        # re-render
+        self.renWin.Render()
+        # unregister from parent list
+        if hasattr(self.parent, 'squares') and self in self.parent.squares:
+            self.parent.squares.remove(self)

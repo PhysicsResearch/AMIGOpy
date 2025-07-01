@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1735</width>
-    <height>1172</height>
+    <width>1739</width>
+    <height>1181</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -361,7 +361,7 @@
            </font>
           </property>
           <property name="currentIndex">
-           <number>2</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="tab_5">
            <attribute name="title">
@@ -3361,7 +3361,7 @@
         <item row="0" column="0">
          <widget class="QTabWidget" name="Plan_tabs">
           <property name="currentIndex">
-           <number>3</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="Brachy_plan_tab">
            <attribute name="title">
@@ -5892,29 +5892,18 @@
               <property name="title">
                <string>Materials to HU ranges</string>
               </property>
-              <widget class="QTableWidget" name="tableWidget">
-               <property name="geometry">
-                <rect>
-                 <x>15</x>
-                 <y>30</y>
-                 <width>241</width>
-                 <height>751</height>
-                </rect>
-               </property>
-              </widget>
-              <widget class="QPushButton" name="remove_mat_fromhu">
-               <property name="geometry">
-                <rect>
-                 <x>20</x>
-                 <y>790</y>
-                 <width>221</width>
-                 <height>23</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>Remove material</string>
-               </property>
-              </widget>
+              <layout class="QGridLayout" name="gridLayout_71">
+               <item row="0" column="0">
+                <widget class="QTableWidget" name="tableMatToHU"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QPushButton" name="remove_mat_fromhu">
+                 <property name="text">
+                  <string>Remove material</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
             </item>
             <item row="1" column="1">
@@ -5922,29 +5911,18 @@
               <property name="title">
                <string>Materials to structures</string>
               </property>
-              <widget class="QPushButton" name="remove_mat_from_struct">
-               <property name="geometry">
-                <rect>
-                 <x>30</x>
-                 <y>790</y>
-                 <width>221</width>
-                 <height>23</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>Remove material</string>
-               </property>
-              </widget>
-              <widget class="QTableWidget" name="mat_to_struct_tab">
-               <property name="geometry">
-                <rect>
-                 <x>10</x>
-                 <y>40</y>
-                 <width>241</width>
-                 <height>751</height>
-                </rect>
-               </property>
-              </widget>
+              <layout class="QGridLayout" name="gridLayout_72">
+               <item row="0" column="0">
+                <widget class="QTableWidget" name="mat_to_struct_tab"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QPushButton" name="remove_mat_from_struct">
+                 <property name="text">
+                  <string>Remove material</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
             </item>
            </layout>
@@ -8169,6 +8147,102 @@ p, li { white-space: pre-wrap; }
             </item>
            </layout>
           </widget>
+          <widget class="QWidget" name="tab_PhOper">
+           <attribute name="title">
+            <string>Phantom operation</string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_73" rowstretch="0,0">
+            <item row="0" column="0" rowspan="2">
+             <widget class="QTabWidget" name="BrCv_PhOperWidget">
+              <property name="currentIndex">
+               <number>0</number>
+              </property>
+              <widget class="QWidget" name="tab_DuetControl">
+               <attribute name="title">
+                <string>Duet Web Control</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_DuetWebControl">
+                <item row="0" column="0">
+                 <widget class="QWebEngineView" name="DuetControlView">
+                  <property name="focusPolicy">
+                   <enum>Qt::WheelFocus</enum>
+                  </property>
+                  <property name="url">
+                   <url>
+                    <string>http://192.168.0.1/</string>
+                   </url>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="tab_MoVe">
+               <attribute name="title">
+                <string>Motion Verification</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_MotionVerification" columnstretch="1,1,4">
+                <item row="1" column="1">
+                 <widget class="QSlider" name="MoVeOffsetSlider">
+                  <property name="minimum">
+                   <number>-50</number>
+                  </property>
+                  <property name="maximum">
+                   <number>50</number>
+                  </property>
+                  <property name="singleStep">
+                   <number>1</number>
+                  </property>
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLineEdit" name="lineEdit_MoVeOffset">
+                  <property name="text">
+                   <string>Offset</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <spacer name="horizontalSpacer_77">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="0" column="0" colspan="3">
+                 <widget class="QWidget" name="MoVeView" native="true"/>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLineEdit" name="lineEdit_MoVeSF">
+                  <property name="text">
+                   <string>Speed factor</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QSpinBox" name="MoVeSpeedFactor">
+                  <property name="maximum">
+                   <number>200</number>
+                  </property>
+                  <property name="value">
+                   <number>100</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </widget>
+            </item>
+           </layout>
+          </widget>
          </widget>
         </item>
        </layout>
@@ -8188,8 +8262,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>222</width>
-             <height>130</height>
+             <width>213</width>
+             <height>127</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8330,7 +8404,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>101</width>
+             <width>102</width>
              <height>41</height>
             </rect>
            </property>
@@ -8358,7 +8432,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>443</width>
+             <width>444</width>
              <height>385</height>
             </rect>
            </property>
@@ -8790,6 +8864,13 @@ p, li { white-space: pre-wrap; }
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QWebEngineView</class>
+   <extends>QWidget</extends>
+   <header location="global">QtWebEngineWidgets/QWebEngineView</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>Proces_spinbox_01</tabstop>
   <tabstop>Proces_spinbox_02</tabstop>
