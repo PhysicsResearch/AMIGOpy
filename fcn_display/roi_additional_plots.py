@@ -19,7 +19,8 @@ def show_roi_plots(
     center: tuple,
     radii: tuple,
     roi_type: str = 'circle',
-    window_title: str = 'ROI Analysis'
+    window_title: str = 'ROI Analysis',
+    return_dialog: bool = False
 ):
     """
     Pops up a Qt dialog with Matplotlib plots:
@@ -199,6 +200,14 @@ def show_roi_plots(
         vlay.addWidget(toolbar)
         vlay.addWidget(canvas)
 
+        # if someone wanted to hook the dialog, return it
+        if return_dialog:
+            return dlg
+
+        # otherwise just show it
+        dlg.exec_()
+        return None
+
     else:
         # rectangle mode: N × 3 (hist, vert, horz)
         n = len(subs)
@@ -354,4 +363,13 @@ def show_roi_plots(
         hbox.addLayout(col_box); hbox.addLayout(row_box)
         vlay.addLayout(hbox)
 
-    dlg.exec_()
+        # expose sliders for external hooking
+        dlg.sld_x = sld_x
+        dlg.sld_y = sld_y
+
+        if return_dialog:
+            return dlg
+
+        # default behavior:
+        dlg.exec_()
+        return None

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1735</width>
-    <height>1172</height>
+    <width>1739</width>
+    <height>1181</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -361,7 +361,7 @@
            </font>
           </property>
           <property name="currentIndex">
-           <number>2</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="tab_5">
            <attribute name="title">
@@ -5894,7 +5894,7 @@
               </property>
               <layout class="QGridLayout" name="gridLayout_71">
                <item row="0" column="0">
-                <widget class="QTableWidget" name="tableWidget"/>
+                <widget class="QTableWidget" name="tableMatToHU"/>
                </item>
                <item row="1" column="0">
                 <widget class="QPushButton" name="remove_mat_fromhu">
@@ -8147,6 +8147,53 @@ p, li { white-space: pre-wrap; }
             </item>
            </layout>
           </widget>
+          <widget class="QWidget" name="tab_PhOper">
+           <attribute name="title">
+            <string>Phantom operation</string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_73" rowstretch="0,0">
+            <item row="0" column="0" rowspan="2">
+             <widget class="QTabWidget" name="BrCv_PhOperWidget">
+              <property name="currentIndex">
+               <number>0</number>
+              </property>
+              <widget class="QWidget" name="tab_DuetControl">
+               <attribute name="title">
+                <string>Duet Web Control</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_DuetWebControl">
+                <item row="0" column="0">
+                 <widget class="QWebEngineView" name="DuetControlView">
+                  <property name="url">
+                   <url>
+                    <string>about:blank</string>
+                   </url>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="tab_MoVe">
+               <attribute name="title">
+                <string>Motion Verification</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_MotionVerification">
+                <item row="0" column="0">
+                 <widget class="QWidget" name="MoVeView" native="true"/>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QSlider" name="MoVeOffsetSlider">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </widget>
+            </item>
+           </layout>
+          </widget>
          </widget>
         </item>
        </layout>
@@ -8166,8 +8213,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>222</width>
-             <height>130</height>
+             <width>277</width>
+             <height>142</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8308,8 +8355,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>101</width>
-             <height>41</height>
+             <width>138</width>
+             <height>45</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8336,8 +8383,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>443</width>
-             <height>385</height>
+             <width>484</width>
+             <height>365</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8768,6 +8815,13 @@ p, li { white-space: pre-wrap; }
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QWebEngineView</class>
+   <extends>QWidget</extends>
+   <header location="global">QtWebEngineWidgets/QWebEngineView</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>Proces_spinbox_01</tabstop>
   <tabstop>Proces_spinbox_02</tabstop>
