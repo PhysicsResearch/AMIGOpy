@@ -58,9 +58,48 @@ class PointRoiWidget(QtCore.QObject):
         self.interactor.AddObserver("MouseMoveEvent",         self._on_stats_drag,    1)
         self.interactor.AddObserver("LeftButtonReleaseEvent", self._on_stats_release, 1)
 
+        self._picker_right = vtk.vtkPropPicker()
+        self.interactor.AddObserver(
+            "RightButtonPressEvent",
+            self._on_right_click,
+            1
+        )
+
         # initial render
         self._update_stats()
         self.renWin.Render()
+
+    def _on_right_click(self, caller, event):
+        x, y = self.interactor.GetEventPosition()
+        # pick 3D actors
+        self._picker_right.Pick(x, y, 0, self.renderer)
+        picked_actor = self._picker_right.GetActor()
+        # pick 2D text
+        self._stats_picker.Pick(x, y, 0, self.renderer)
+        picked_text = (self._stats_picker.GetActor2D() is self.statsActor)
+
+        # if they clicked the crosshair lines or the stats box, delete
+        if (picked_actor in self.crossActors) or picked_text:
+            self.delete()
+
+    def delete(self):
+        # hide if visible
+        if self.is_visible:
+            self.toggle()
+        # remove crosshair actors
+        for actor in self.crossActors:
+            self.renderer.RemoveActor(actor)
+        # remove stats text
+        if self.statsActor:
+            self.renderer.RemoveActor(self.statsActor)
+        # turn off the handle widget
+        if self.handleWidget:
+            self.handleWidget.Off()
+        # re-render
+        self.renWin.Render()
+        # unregister from parent list
+        if hasattr(self.parent, 'points') and self in self.parent.points:
+            self.parent.points.remove(self)
 
     # — stats‐drag handlers —    
     def _on_stats_press(self, caller, event):
@@ -280,13 +319,18 @@ class CircleRoiWidget(QtCore.QObject):
         self.parent._text_dragging = False
         self.parent.sliceChanged.connect(self._onSliceChanged)
         self.vtkWidget.installEventFilter(self)
+
+        self._picker_right = vtk.vtkPropPicker()
+        self.interactor.AddObserver(
+            "RightButtonPressEvent",
+            self._on_right_click,
+            1
+        )
     
     def _onSliceChanged(self, orientation, indices):
         # indices is [idx0, idx1, idx2, idx3]
         # just recompute your stats/plots against the new slice positions:
         self._update_stats()
-
-
 
     def eventFilter(self, obj, event):
         if obj is self.vtkWidget and event.type() == QtCore.QEvent.MouseButtonDblClick:
@@ -623,7 +667,37 @@ class CircleRoiWidget(QtCore.QObject):
         p.SetEdgeColor(r, g, b)
         p.EdgeVisibilityOn()
         self.renWin.Render()
+        
+    def _on_right_click(self, caller, event):
+        x, y = self.interactor.GetEventPosition()
+        # test circle actor
+        self._picker_right.Pick(x, y, 0, self.renderer)
+        picked = self._picker_right.GetActor()
+        # test stats text
+        self._stats_picker.Pick(x, y, 0, self.renderer)
+        picked_text = (self._stats_picker.GetActor2D() is self.statsActor)
 
+        if picked is self.circleActor or picked_text:
+            self.delete()
+
+    def delete(self):
+        # hide
+        if self.is_visible:
+            self.toggle()
+        # remove the circle actor
+        if self.circleActor:
+            self.renderer.RemoveActor(self.circleActor)
+        # remove the text actor
+        if self.statsActor:
+            self.renderer.RemoveActor(self.statsActor)
+        # disable all resize handles
+        for hw in self.handles.values():
+            hw.Off()
+        # re-render
+        self.renWin.Render()
+        # unregister from parent list
+        if hasattr(self.parent, 'circle') and self in self.parent.circle:
+            self.parent.circle.remove(self)
 
 class EllipsoidRoiWidget(QtCore.QObject):
     def __init__(self, vtk_widget, renderer, parent, image_actor, orientation):
@@ -660,6 +734,13 @@ class EllipsoidRoiWidget(QtCore.QObject):
         self._stats_orig_pix  = (0, 0)
         self.parent._text_dragging = False
 
+        # picker for right-click deletion
+        self._picker_right = vtk.vtkPropPicker()
+        self.interactor.AddObserver(
+            "RightButtonPressEvent",
+            self._on_right_click,
+            1
+        )
         # install event filter for double-clicks
         self.vtkWidget.installEventFilter(self)
         self.parent.sliceChanged.connect(self._onSliceChanged)
@@ -969,7 +1050,41 @@ class EllipsoidRoiWidget(QtCore.QObject):
     def set_edge_color(self, r,g,b):
         p = self.actor.GetProperty(); p.SetEdgeColor(r,g,b); p.EdgeVisibilityOn(); self.renWin.Render()
 
+    def _on_right_click(self, caller, event):
+        x, y = self.interactor.GetEventPosition()
+        # pick the 3D ROI actor
+        self._picker_right.Pick(x, y, 0, self.renderer)
+        picked_3d = self._picker_right.GetActor()
+        # pick the 2D stats box
+        self._stats_picker.Pick(x, y, 0, self.renderer)
+        picked_text = (self._stats_picker.GetActor2D() is self.statsActor)
 
+        # if they hit either, delete this ROI
+        if picked_3d is self.actor or picked_3d is self.polySrc_actor or picked_text:
+            self.delete()
+
+    def delete(self):
+        # 1) hide if visible
+        if self.is_visible:
+            self.toggle()
+        # 2) remove the main actor
+        if hasattr(self, 'actor') and self.actor:
+            self.renderer.RemoveActor(self.actor)
+        if hasattr(self, 'squareActor') and self.squareActor:
+            self.renderer.RemoveActor(self.squareActor)
+        # 3) remove stats text
+        if self.statsActor:
+            self.renderer.RemoveActor(self.statsActor)
+        # 4) disable all handle-widgets
+        for hw in self.handles.values():
+            hw.Off()
+        # 5) re-render
+        self.renWin.Render()
+        # 6) unregister from parent list
+        if hasattr(self.parent, 'ellipses') and self in self.parent.ellipses:
+            self.parent.ellipses.remove(self)
+        if hasattr(self.parent, 'squares')  and self in self.parent.squares:
+            self.parent.squares.remove(self)
 
 
 
@@ -1101,6 +1216,13 @@ class SquareRoiWidget(QtCore.QObject):
         self.interactor.AddObserver('MouseMoveEvent',         self._on_drag)
         self.interactor.AddObserver('LeftButtonReleaseEvent', self._on_release)
 
+        # picker for right-click deletion
+        self._picker_right = vtk.vtkPropPicker()
+        self.interactor.AddObserver(
+            "RightButtonPressEvent",
+            self._on_right_click,
+            1
+        )
         # initial draw
         self._update_handles()
         self._update_stats()
@@ -1344,3 +1466,34 @@ class SquareRoiWidget(QtCore.QObject):
         self.squareActor.SetVisibility(self.is_visible)
         for h in self.handles.values(): h.On() if self.is_visible else h.Off()
         self.statsActor.SetVisibility(self.is_visible); self.statsActor.Modified(); self.renWin.Render()
+
+    def _on_right_click(self, caller, event):
+        x, y = self.interactor.GetEventPosition()
+        # 3D pick on the rectangle actor
+        self._picker_right.Pick(x, y, 0, self.renderer)
+        picked = self._picker_right.GetActor()
+        # 2D pick on the stats text
+        self._stats_picker.Pick(x, y, 0, self.renderer)
+        picked_text = (self._stats_picker.GetActor2D() is self.statsActor)
+
+        if picked is self.squareActor or picked_text:
+            self.delete()
+
+    def delete(self):
+        # hide if visible
+        if self.is_visible:
+            self.toggle()
+        # remove the rectangle actor
+        if self.squareActor:
+            self.renderer.RemoveActor(self.squareActor)
+        # remove the stats text
+        if self.statsActor:
+            self.renderer.RemoveActor(self.statsActor)
+        # turn off all handles
+        for hw in self.handles.values():
+            hw.Off()
+        # re-render
+        self.renWin.Render()
+        # unregister from parent list
+        if hasattr(self.parent, 'squares') and self in self.parent.squares:
+            self.parent.squares.remove(self)
