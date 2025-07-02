@@ -108,10 +108,12 @@ def create_density_map(self,use_mat_map=False):
                     for mat_key in mat_used.keys():
                         material=mat_used[mat_key]  
                         mat_info=self.Mat_df[self.Mat_df['Name']==material]
+                        print(mat_info['Tissue'].values[0])
                         if not len(mat_info):
                             QMessageBox.warning(self, 'Warning', f'Material {material} not found in the material database. Skipping')
                             continue 
-                        if mat_info['Tissue']:
+                        if  float(mat_info['Tissue'].values[0])==0:
+                            print(material)
                             if map_type=='DENSITY':
                                 value=mat_info['Den'].values[0]
                             else:
