@@ -75,7 +75,7 @@ def update_mat_table_style(self):
             # Set background color based on column index
             if j >= num_columns - 2:
                 tableWidgetItem.setBackground(QBrush(QColor(0, 128, 255)) if j % 2 == 0 else QBrush(QColor(102, 0, 204)))
-            elif j >= num_columns - 7:
+            elif j >= num_columns - 4:
                 tableWidgetItem.setBackground(QBrush(QColor(255, 51, 153)) if j % 2 == 0 else QBrush(QColor(255, 102, 178)))
             elif j == 0:
                 tableWidgetItem.setBackground(QBrush(QColor(255, 0, 127)))
