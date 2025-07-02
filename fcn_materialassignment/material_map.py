@@ -12,6 +12,7 @@ import csv, math
 from PyQt5.QtGui         import QColor, QBrush
 from PyQt5.QtCore        import Qt
 from fcn_load.populate_dcm_list import populate_DICOM_tree
+from PyQt5.QtWidgets import QInputDialog, QMessageBox
 
 def update_material_list(self):
     
@@ -175,3 +176,33 @@ def update_mat_struct_list(self):
         self.Struct_list_mat.addItems(structure_names)
     else:
         return
+    
+
+def delete_mat_map(self):
+    if self.patientID:
+        target_dict=self.dicom_data[self.patientID][self.studyID]
+    else:
+        QMessageBox.critical(self, 'Error', 'No Patient selected')
+        return
+    try:
+        target=target_dict['CT'][self.series_index]
+
+    except:
+        QMessageBox.critical(self, 'Error', 'No CT found')
+        return
+    mat_maps=target.get('mat_maps',{})
+    if not mat_maps:
+        QMessageBox.critical(self, 'Error', 'No material maps found for this CT')
+        return
+    items = list(mat_maps.keys())
+    item, ok = QInputDialog.getItem(self, "Delete Material Map", "Select the material map to delete:", items, 0, False)
+    if ok and item:
+    # Remove from dict or list
+        target['mat_maps'].pop(item)
+        
+        populate_DICOM_tree(self)
+        
+        QMessageBox.information(self, "Deleted", f"Material map '{item}' has been deleted.")
+
+
+
