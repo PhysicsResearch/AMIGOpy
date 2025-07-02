@@ -89,7 +89,7 @@ def InitSeg(self):
 
         current_structure_index = existing_structure_count + 1
         
-        if len(self.segStructName.text()) > 1:
+        if len(self.segStructName.text()) > 0:
             name = self.segStructName.text()
         else:
             name = "structure"
@@ -454,6 +454,10 @@ def update_seg_struct_list(self, structures_keys=None, delete=False):
 def threshSeg(self):
     if 0 not in self.display_seg_data or not hasattr(self, 'curr_struc_key'):
         return
+    if self.curr_struc_key == None:
+        QMessageBox.warning(None, "Warning", "No structure was selected.\nPlease select a structure.")
+        return
+
     min_, max_ = self.segThreshMinHU.value(), self.segThreshMaxHU.value()
     target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
 

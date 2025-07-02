@@ -4,7 +4,7 @@ from fcn_display.colormap_set import set_color_map
 from fcn_display.win_level import set_window
 import time
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QMessageBox
 
 def left_button_pressseg_event(self, caller, event):
     Caller_id = self.interactor_to_index.get(caller)
@@ -14,7 +14,7 @@ def left_button_pressseg_event(self, caller, event):
         if self.seg_brush or self.seg_erase:
             self.seg_brush_coords = None
             QApplication.setOverrideCursor(Qt.CrossCursor)
-            if 1 not in self.display_seg_data:
+            if 1 not in self.display_seg_data or self.curr_struc_key is None:
                 return
             self.slice_data_copy = self.display_seg_data[1].copy()
            
@@ -24,6 +24,8 @@ def left_button_releaseseg_event(self, caller, event):
     if self.seg_brush or self.seg_erase:
         self.seg_brush_coords = None
         QApplication.restoreOverrideCursor()
+        if 1 not in self.display_seg_data or self.curr_struc_key is None:
+            QMessageBox.warning(None, "Warning", "No structure was selected.\nPlease select a structure.")
 
         
 def on_scroll_backwardseg(self, caller, event):
@@ -91,7 +93,7 @@ def onMouseMoveseg(self, caller, event):
     #
     if self.left_but_pressed[0] == 1:
         if self.seg_brush or self.seg_erase:
-            if 1 not in self.display_seg_data:
+            if 1 not in self.display_seg_data or self.curr_struc_key is None:
                 return
             self.seg_brush_coords = image_coord_vox
             disp_seg_image_slice(self)
