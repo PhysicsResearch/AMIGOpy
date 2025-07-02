@@ -5743,7 +5743,7 @@
            <attribute name="title">
             <string>Material Assignment</string>
            </attribute>
-           <layout class="QGridLayout" name="gridLayout_69" rowstretch="1,10,1" columnstretch="1,1,4">
+           <layout class="QGridLayout" name="gridLayout_69" rowstretch="1,10,1,0" columnstretch="1,1,4">
             <item row="0" column="0" colspan="2">
              <widget class="QGroupBox" name="assign_mat">
               <property name="title">
@@ -5800,64 +5800,7 @@
               </layout>
              </widget>
             </item>
-            <item row="1" column="0">
-             <widget class="QGroupBox" name="mat_to_HU_box">
-              <property name="title">
-               <string>Materials to HU ranges</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_71">
-               <item row="0" column="0">
-                <widget class="QTableWidget" name="tableMatToHU"/>
-               </item>
-               <item row="1" column="0">
-                <widget class="QPushButton" name="remove_mat_fromhu">
-                 <property name="text">
-                  <string>Remove material</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QGroupBox" name="groupBox_mat_to_struct">
-              <property name="title">
-               <string>Materials to structures</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_72">
-               <item row="0" column="0">
-                <widget class="QTableWidget" name="mat_to_struct_tab"/>
-               </item>
-               <item row="1" column="0">
-                <widget class="QPushButton" name="remove_mat_from_struct">
-                 <property name="text">
-                  <string>Remove material</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item row="2" column="0" colspan="2">
-             <widget class="QGroupBox" name="del_mat_map_qbox">
-              <property name="title">
-               <string>Delete material map</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_74">
-               <item row="0" column="0">
-                <widget class="QComboBox" name="mat_map_list"/>
-               </item>
-               <item row="0" column="1">
-                <widget class="QPushButton" name="del_mat_map">
-                 <property name="text">
-                  <string>Delete</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item row="0" column="2" rowspan="3">
+            <item row="0" column="2" rowspan="4">
              <widget class="QGroupBox" name="groupBox_mat_properties">
               <property name="title">
                <string>Properties</string>
@@ -5929,6 +5872,51 @@
                 </widget>
                </item>
               </layout>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QGroupBox" name="groupBox_mat_to_struct">
+              <property name="title">
+               <string>Materials to structures</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_72">
+               <item row="0" column="0">
+                <widget class="QTableWidget" name="mat_to_struct_tab"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QPushButton" name="remove_mat_from_struct">
+                 <property name="text">
+                  <string>Remove material</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QGroupBox" name="mat_to_HU_box">
+              <property name="title">
+               <string>Materials to HU ranges</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_71">
+               <item row="0" column="0">
+                <widget class="QTableWidget" name="tableMatToHU"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QPushButton" name="remove_mat_fromhu">
+                 <property name="text">
+                  <string>Remove material</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="2" column="0" colspan="2">
+             <widget class="QPushButton" name="del_mat_map">
+              <property name="text">
+               <string>Delete Material Map</string>
+              </property>
              </widget>
             </item>
            </layout>
