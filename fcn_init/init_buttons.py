@@ -35,7 +35,7 @@ from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd
 from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc, DeleteSeg
 from fcn_display.display_images_seg import undo_brush_seg
 from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes,add_row_to_ct_table, export_ct_cal_to_csv
-from fcn_densitymap.density_map import create_density_map
+from fcn_densitymap.density_map import create_density_map,del_density_map
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
 from fcn_3Dview.Prepare_data_3D_vtk import play_4D_sequence_3D
 from fcn_materialassignment.material_assignment_properties import add_mat_row,del_mat_row,add_element,del_element,save_mat_db,undo_changes
@@ -264,6 +264,11 @@ def initialize_software_buttons(self):
     self.Export_ct_cal.clicked.connect(lambda: export_ct_cal_to_csv(self))
     self.ct_cal_save_copy.clicked.connect(lambda:export_ct_cal_to_csv(self,export=False))
     self.create_density_map.clicked.connect(lambda:create_density_map(self))
+    self.create_density_map.setStyleSheet("background-color: green; color: white;")
+    self.create_density_map__from_mat_map.clicked.connect(lambda:create_density_map(self,use_mat_map=True))
+    self.create_density_map__from_mat_map.setStyleSheet("background-color: green; color: white;")
+    self.delete_density_map.clicked.connect(lambda:del_density_map(self))
+    self.delete_density_map.setStyleSheet("background-color: red; color: white;")
     
     #Material assignment
     self.Add_mat.clicked.connect(lambda: add_mat_row(self))
@@ -281,6 +286,7 @@ def initialize_software_buttons(self):
     self.mat_to_struct.clicked.connect(lambda:struct2mat(self))
     self.remove_mat_from_struct.clicked.connect(lambda: del_stuct2mat(self))
     self.update_mat_struct_list.clicked.connect(lambda: update_mat_struct_list(self))
+    
 
 
  
