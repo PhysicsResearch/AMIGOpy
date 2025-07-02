@@ -46,7 +46,7 @@ def InitSeg(self):
 
             current_structure_index = existing_structure_count + 1
             
-            if len(self.segStructName.text()) > 1:
+            if len(self.segStructName.text()) > 0:
                 name = self.segStructName.text()
             else:
                 name = "structure"
