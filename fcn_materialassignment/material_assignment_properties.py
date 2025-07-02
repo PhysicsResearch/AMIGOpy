@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
 import csv, math
 from PyQt5.QtGui         import QColor, QBrush
 from PyQt5.QtCore        import Qt
-from fcn_materialassignment.material_map import update_material_list,check_mat2HU
+from fcn_materialassignment.material_map import update_material_list,check_mat2HU,check_struct2mat
 
 SYMBOL_TO_ATOMIC_NUMBER = {v: k for k, v in ATOMIC_NUMBER_TO_SYMBOL.items()}
 
@@ -105,6 +105,7 @@ def update_mat_properties_table(self,df):
             self.mat_table.setItem(i, j, tableWidgetItem)
     update_material_list(self)   
     check_mat2HU(self)
+    check_struct2mat(self)
     
 def add_mat_row(self):
     # Getting the current row count
@@ -132,7 +133,7 @@ def del_mat_row(self):
             row = index.row()
             mat = self.mat_table.item(row, 0).text()
             if mat=='Water':
-                QMessageBox.information(self, "Warning", 'The material Water cannot be removed!')
+                QMessageBox.warning(self, "Warning", 'The material Water cannot be removed!')
                 continue
             self.mat_table.removeRow(index.row())
     else:  # if no row is selected, remove the last row
@@ -140,7 +141,7 @@ def del_mat_row(self):
         if last_row >= 0:  # checking if there are any rows to remove
             mat = self.mat_table.item(last_row, 0).text()
             if mat=='Water':
-                QMessageBox.information(self, "Warning", 'The material Water cannot be removed!')
+                QMessageBox.warning(self, "Warning", 'The material Water cannot be removed!')
             else:
                 self.mat_table.removeRow(last_row)
     update_mat_table_style(self)  # Update the table style after removing the column  
@@ -232,9 +233,13 @@ def del_element(self):
          self.mat_table.removeColumn(position)
          update_mat_table_style(self)  # Update the table style after removing the column
 
-def save_mat_db(self):
-    # Prompt user to select a folder
 
+    
+     
+def save_mat_db(self):
+
+    message='The materials ID might change with this operation. Therefore, the old material maps might no longer be linked to the correct materials'
+    QMessageBox.warning(self,'Warning',message)
     # Get the data from the table
     row_count = self.mat_table.rowCount()
     column_count = self.mat_table.columnCount()

@@ -80,5 +80,7 @@ def initialize_software_tables(self):
     update_mat_table_style(self)
     self.tableMatToHU.setColumnCount(4)
     self.tableMatToHU.setHorizontalHeaderLabels(['Material', 'ID', 'From ', 'To'])
+    self.mat_to_struct_tab.setColumnCount(3)
+    self.mat_to_struct_tab.setHorizontalHeaderLabels(['Structure', 'Material', 'ID '])
 
 

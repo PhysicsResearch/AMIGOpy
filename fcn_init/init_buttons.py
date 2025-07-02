@@ -41,7 +41,7 @@ from fcn_3Dview.Prepare_data_3D_vtk import play_4D_sequence_3D
 from fcn_materialassignment.material_assignment_properties import add_mat_row,del_mat_row,add_element,del_element,save_mat_db,undo_changes
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
 from fcn_3Dview.Prepare_data_3D_vtk import play_4D_sequence_3D
-from fcn_materialassignment.material_map import mat2HU,del_mat2HU,generate_mat_map,delete_mat_map
+from fcn_materialassignment.material_map import mat2HU,del_mat2HU,generate_mat_map,delete_mat_map,struct2mat,del_stuct2mat
 
 
 def initialize_software_buttons(self):
@@ -276,6 +276,9 @@ def initialize_software_buttons(self):
     self.create_mat_map.clicked.connect(lambda:generate_mat_map(self))
     self.undo_mat_tab.clicked.connect(lambda:undo_changes(self))
     self.del_mat_map.clicked.connect(lambda:delete_mat_map(self))
+    self.del_mat_map.setStyleSheet("background-color: red; color: white;")
+    self.mat_to_struct.clicked.connect(lambda:struct2mat(self))
+    self.remove_mat_from_struct.clicked.connect(lambda: del_stuct2mat(self))
 
 
  

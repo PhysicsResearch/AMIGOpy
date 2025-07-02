@@ -120,7 +120,94 @@ def del_mat2HU(self):
                 self.mat_HU.pop(mat, None)
 
         update_mat2HU_table(self)
-                
+        
+def update_mat_struct_list(self):
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    structure_names = target_series_dict.get('structures_names', [])
+    if structure_names:
+        self.Struct_list_mat.clear()
+        self.Struct_list_mat.addItem('...Select Structure...')
+        self.Struct_list_mat.addItems(structure_names)
+    else:
+        return
+    
+
+def struct2mat(self):
+    #Retrive the selected material
+    mat_selected = self.Select_mat.currentText()
+    if mat_selected == '...Select material...':
+        QMessageBox.critical(self, 'Error', 'Select material')
+        return
+        
+    #Retrive the selected structure
+    struct_selected=self.Struct_list_mat.currentText()
+    if struct_selected=='...Select Structure...':
+        QMessageBox.critical(self, 'Error', 'Select structure')
+        return
+    if not hasattr(self, 'mat_struct'):
+        self.mat_struct={}
+    try:
+        key = self.Mat_df.index[self.Mat_df['Name'] == mat_selected][0]
+    except IndexError:
+        print('Material not found in dataframe')
+        return
+    self.mat_struct[struct_selected] = {'material': mat_selected, 'key': key}
+    update_struct2mat_table(self)
+    
+def update_struct2mat_table(self):
+    self.mat_to_struct_tab.setRowCount(0)
+    
+    for row_idx, struct_name in enumerate(self.mat_struct.keys()):
+        self.mat_to_struct_tab.insertRow(row_idx)
+
+        items = [
+            QTableWidgetItem(struct_name),
+            QTableWidgetItem(str(self.mat_struct[struct_name]['material'])),
+            QTableWidgetItem(str(self.mat_struct[struct_name]['key']))
+        ]
+
+        for col_idx, item in enumerate(items):
+            # Make all cells non-editable
+            item.setTextAlignment(Qt.AlignCenter)
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self.mat_to_struct_tab.setItem(row_idx, col_idx, item)
+
+    self.mat_to_struct_tab.resizeColumnsToContents()
+    self.mat_to_struct_tab.resizeRowsToContents()
+    
+
+def del_stuct2mat(self):
+    if hasattr(self, 'mat_struct'):
+        selected_indexes = self.mat_to_struct_tab.selectionModel().selectedRows()
+        if selected_indexes:  # if any row is selected
+            for index in sorted(selected_indexes, reverse=True):
+                row = index.row()
+                mat = self.mat_to_struct_tab.item(row, 0).text()
+                self.mat_struct.pop(mat, None)  # safer pop with default None
+        else:  # if no row is selected, remove the last row
+            last_row = self.mat_to_struct_tab.rowCount() - 1
+            if last_row >= 0:  # checking if there are any rows to remove
+                mat = self.mat_to_struct_tab.item(last_row, 0).text()
+                self.mat_struct.pop(mat, None)
+
+        update_struct2mat_table(self)
+    
+def check_struct2mat(self):
+    if hasattr(self, 'mat_struct'):
+        #Get backups
+        keys_struct2HU = [d['material'] for d in self.mat_struct.values()]
+        keys_mat_tab=self.Mat_df['Name'].to_numpy()
+        
+        for mat in keys_struct2HU:
+            struct_key=[k for k, v in self.mat_struct.items() if v.get('material') == mat][0]
+            if mat in keys_mat_tab:
+                self.mat_struct[struct_key]['key']=np.where(keys_mat_tab==mat)[0].item()
+            else:
+                self.mat_struct.pop(struct_key)
+                QMessageBox.information(self, "Warning", f'The material {mat} is no longer in the material table. Removing from assigned ranges')
+        update_struct2mat_table(self)
+
+
 def generate_mat_map(self):
 
     #Retrive CT_info
@@ -167,15 +254,6 @@ def generate_mat_map(self):
     populate_DICOM_tree(self)
     
 
-def update_mat_struct_list(self):
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    structure_names = target_series_dict.get('structures_names', [])
-    if structure_names:
-        self.Struct_list_mat.clear()
-        self.Struct_list_mat.addItem('...Select Structure...')
-        self.Struct_list_mat.addItems(structure_names)
-    else:
-        return
     
 
 def delete_mat_map(self):
@@ -195,10 +273,14 @@ def delete_mat_map(self):
         QMessageBox.critical(self, 'Error', 'No material maps found for this CT')
         return
     items = list(mat_maps.keys())
+    items.append('All')
     item, ok = QInputDialog.getItem(self, "Delete Material Map", "Select the material map to delete:", items, 0, False)
     if ok and item:
     # Remove from dict or list
-        target['mat_maps'].pop(item)
+        if item=='All':
+            target['mat_maps'].clear()
+        else:
+            target['mat_maps'].pop(item)
         
         populate_DICOM_tree(self)
         
