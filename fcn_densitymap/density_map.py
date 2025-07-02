@@ -56,7 +56,7 @@ def create_density_map(self,use_mat_map=False):
                         QMessageBox.warning(self, 'Warning', f'Material {material} not found in the material database. Skipping')
                         continue 
                     if map_type=='Density':
-                        value=float(mat_info['Den'])
+                        value=mat_info['Den'].values[0]
                     else:
                         value=mat_info[map_type].values[0]
                     density_matrix[mat_map_matrix==mat_key]=value
