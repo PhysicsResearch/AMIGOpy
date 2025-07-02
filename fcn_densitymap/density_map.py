@@ -95,7 +95,32 @@ def create_density_map(self,use_mat_map=False):
             headers.append(item.text() if item else f"Column{col}")
             
         map_type=headers[1]
-    
+        
+        #check if the override density is checked
+        if self.override_no_tissue.isChecked():
+            #check if material maps exists
+            mat_maps=mat_maps=target_dict['CT'][self.series_index].get('mat_maps',{})
+            if mat_maps:
+                item, ok = QInputDialog.getItem(self, "Choose Material Map", "Select the material map:", list(mat_maps.keys()), 0, False)
+                if item and ok:
+                    mat_map_matrix= target_dict['CT'][self.series_index]['mat_maps'][item]['3DMatrix']
+                    mat_used=target_dict['CT'][self.series_index]['mat_maps'][item]['Material_used']
+                    for mat_key in mat_used.keys():
+                        material=mat_used[mat_key]  
+                        mat_info=self.Mat_df[self.Mat_df['Name']==material]
+                        if not len(mat_info):
+                            QMessageBox.warning(self, 'Warning', f'Material {material} not found in the material database. Skipping')
+                            continue 
+                        if mat_info['Tissue']:
+                            if map_type=='DENSITY':
+                                value=mat_info['Den'].values[0]
+                            else:
+                                value=mat_info[map_type].values[0]
+                            density_matrix[mat_map_matrix==mat_key]=value
+                            
+            else:
+                QMessageBox.critical(self, 'Error', 'No material maps found for this CT')
+                
     #Checking if there are already any maps
     target=target_dict['CT'][self.series_index]
     existing = target.get('density_maps', {})
