@@ -122,13 +122,32 @@ def del_mat2HU(self):
         update_mat2HU_table(self)
         
 def update_mat_struct_list(self):
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    structure_names = target_series_dict.get('structures_names', [])
+    try:
+        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        structure_names = target_series_dict.get('structures_names', [])
+    except:
+        QMessageBox.critical(self,'No valid set selected', 'Your current selection has no associated structures!')
+        return
+    if hasattr(self, 'mat_struct'):
+        #Clearing previous material assignment table: Structures ID might have changed
+        #Ask if you want to delete them
+        reply = QMessageBox.question(
+            self,
+            'Structures already assigned',
+            ('Some structures have already been assigned to a material.\n'
+             'If you generated new structures, the material assignment might be incorrect.\n'
+             'Do you want to delete the old pairs?'),
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply==QMessageBox.Yes:  
+            self.mat_struct.clear()
+            update_struct2mat_table()
     if structure_names:
         self.Struct_list_mat.clear()
         self.Struct_list_mat.addItem('...Select Structure...')
         self.Struct_list_mat.addItems(structure_names)
     else:
+        QMessageBox.information(self, 'No structures', 'No structures found for the selected series.')
         return
     
 
@@ -234,7 +253,32 @@ def generate_mat_map(self):
             ID= np.int16(self.mat_HU[mat]['key'])
             mat_map[(ct_matrix>=min_val) & (ct_matrix<max_val)]=ID
             mat_used[ID]=mat
-    #Assign mat to structures: TBD
+    
+    #Assign mat to structures
+    if hasattr(self,'mat_struct'):
+        struct_names=[k for k in self.mat_struct.keys()]
+        mats=[d['material'] for d in self.mat_struct.values()]
+        IDs=[d['key'] for d in self.mat_struct.values()]
+        struct_dict=target_dict['CT'][self.series_index]['structures']
+        
+        struct_present = [s.get('Name') for s in struct_dict.values()]
+
+        # Find missing structure names
+        missing_structs = [name for name in struct_names if name not in struct_present]
+        
+        if missing_structs:
+            missing_list = ', '.join(missing_structs)
+            QMessageBox.warning(
+                self,
+                'Missing Structures',
+                f"The following structures are not found in CT structures and will be ignored:\n{missing_list}"
+            )
+        struct_masks=[s['Mask3D'] for s in struct_dict.values() if s.get('Name') in struct_names]
+        
+        for mask,mat,ID in zip(struct_masks,mats,IDs):
+            mat_map[mask!=0]=ID
+            if ID not in mat_used.keys():
+                mat_used[ID]=mat
     #assigned unspecified voxels to water
     if len(mat_map[mat_map==-1])!=0:
         #Retriving index for water
