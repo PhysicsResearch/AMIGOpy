@@ -5743,13 +5743,13 @@
            <attribute name="title">
             <string>Material Assignment</string>
            </attribute>
-           <layout class="QGridLayout" name="gridLayout_69" rowstretch="1,6">
+           <layout class="QGridLayout" name="gridLayout_69" rowstretch="1,10,1,0" columnstretch="1,1,4">
             <item row="0" column="0" colspan="2">
              <widget class="QGroupBox" name="assign_mat">
               <property name="title">
                <string>Assign</string>
               </property>
-              <layout class="QGridLayout" name="gridLayout_5" columnstretch="8,1,1,1,1,1,1">
+              <layout class="QGridLayout" name="gridLayout_5" columnstretch="10,1,1,1,1,1,1">
                <item row="0" column="6">
                 <widget class="QPushButton" name="mat_to_hu">
                  <property name="text">
@@ -5783,21 +5783,14 @@
                <item row="2" column="0" colspan="2">
                 <widget class="QComboBox" name="Struct_list_mat"/>
                </item>
-               <item row="2" column="2" colspan="2">
-                <widget class="QPushButton" name="update_struct_list_mat">
-                 <property name="text">
-                  <string>Update </string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="4" colspan="2">
+               <item row="2" column="2" colspan="3">
                 <widget class="QPushButton" name="mat_to_struct">
                  <property name="text">
                   <string>Assign to structure</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="6">
+               <item row="2" column="5" colspan="2">
                 <widget class="QPushButton" name="create_mat_map">
                  <property name="text">
                   <string>Create map</string>
@@ -5807,16 +5800,23 @@
               </layout>
              </widget>
             </item>
-            <item row="0" column="2" rowspan="2">
+            <item row="0" column="2" rowspan="4">
              <widget class="QGroupBox" name="groupBox_mat_properties">
               <property name="title">
                <string>Properties</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_68">
-               <item row="1" column="4">
-                <widget class="QPushButton" name="save_mat_table">
+               <item row="2" column="0" colspan="2">
+                <widget class="QLineEdit" name="element">
                  <property name="text">
-                  <string>Save</string>
+                  <string>Column Name</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QPushButton" name="Add_mat">
+                 <property name="text">
+                  <string>Add Material</string>
                  </property>
                 </widget>
                </item>
@@ -5824,6 +5824,13 @@
                 <widget class="QPushButton" name="add_element">
                  <property name="text">
                   <string>Add Element</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="3">
+                <widget class="QPushButton" name="del_element">
+                 <property name="text">
+                  <string>Delete Element</string>
                  </property>
                 </widget>
                </item>
@@ -5847,59 +5854,20 @@
                  </property>
                 </widget>
                </item>
-               <item row="2" column="0" colspan="2">
-                <widget class="QLineEdit" name="element">
-                 <property name="text">
-                  <string>Column Name</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="4">
-                <spacer name="hs_mat_1">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item row="2" column="3">
-                <widget class="QPushButton" name="del_element">
-                 <property name="text">
-                  <string>Delete Element</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="0">
-                <widget class="QPushButton" name="Add_mat">
-                 <property name="text">
-                  <string>Add Material</string>
-                 </property>
-                </widget>
-               </item>
                <item row="0" column="0" colspan="6">
                 <widget class="QTableWidget" name="mat_table"/>
                </item>
-              </layout>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QGroupBox" name="mat_to_HU_box">
-              <property name="title">
-               <string>Materials to HU ranges</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_71">
-               <item row="0" column="0">
-                <widget class="QTableWidget" name="tableMatToHU"/>
-               </item>
-               <item row="1" column="0">
-                <widget class="QPushButton" name="remove_mat_fromhu">
+               <item row="1" column="4" colspan="2">
+                <widget class="QPushButton" name="save_mat_table">
                  <property name="text">
-                  <string>Remove material</string>
+                  <string>Save</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="4" colspan="2">
+                <widget class="QPushButton" name="undo_mat_tab">
+                 <property name="text">
+                  <string>Reset</string>
                  </property>
                 </widget>
                </item>
@@ -5925,22 +5893,51 @@
               </layout>
              </widget>
             </item>
+            <item row="1" column="0">
+             <widget class="QGroupBox" name="mat_to_HU_box">
+              <property name="title">
+               <string>Materials to HU ranges</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_71">
+               <item row="0" column="0">
+                <widget class="QTableWidget" name="tableMatToHU"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QPushButton" name="remove_mat_fromhu">
+                 <property name="text">
+                  <string>Remove material</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="2" column="0" colspan="2">
+             <widget class="QPushButton" name="del_mat_map">
+              <property name="text">
+               <string>Delete Material Map</string>
+              </property>
+             </widget>
+            </item>
            </layout>
           </widget>
           <widget class="QWidget" name="density_map_tab">
            <attribute name="title">
             <string>Density Map</string>
            </attribute>
-           <layout class="QGridLayout" name="gridLayout_58" rowstretch="3,1" columnstretch="1,4">
-            <item row="0" column="0">
+           <layout class="QGridLayout" name="gridLayout_58" rowstretch="6,2,2,0" columnstretch="1,1,6">
+            <item row="0" column="0" colspan="2">
              <widget class="QWidget" name="ct_cal_input" native="true">
               <layout class="QGridLayout" name="gridLayout_57">
-               <item row="0" column="1">
-                <widget class="QPushButton" name="load_ct_cal">
+               <item row="1" column="0">
+                <widget class="QPushButton" name="save_changes_ct_cal">
                  <property name="text">
-                  <string>Load</string>
+                  <string>Update</string>
                  </property>
                 </widget>
+               </item>
+               <item row="2" column="0" colspan="2">
+                <widget class="QTableWidget" name="ct_cal_table"/>
                </item>
                <item row="1" column="1">
                 <widget class="QPushButton" name="Export_ct_cal">
@@ -5949,27 +5946,10 @@
                  </property>
                 </widget>
                </item>
-               <item row="1" column="0">
-                <widget class="QPushButton" name="save_changes_ct_cal">
+               <item row="0" column="1">
+                <widget class="QPushButton" name="load_ct_cal">
                  <property name="text">
-                  <string>Update</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="0">
-                <widget class="QComboBox" name="ct_cal_list">
-                 <property name="editable">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="0" colspan="2">
-                <widget class="QTableWidget" name="ct_cal_table"/>
-               </item>
-               <item row="3" column="0">
-                <widget class="QPushButton" name="ct_cal_add_row">
-                 <property name="text">
-                  <string>Add row</string>
+                  <string>Load</string>
                  </property>
                 </widget>
                </item>
@@ -5980,21 +5960,42 @@
                  </property>
                 </widget>
                </item>
-               <item row="4" column="0" colspan="2">
-                <widget class="QPushButton" name="create_density_map">
+               <item row="0" column="0">
+                <widget class="QComboBox" name="ct_cal_list">
+                 <property name="editable">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0">
+                <widget class="QPushButton" name="ct_cal_add_row">
                  <property name="text">
-                  <string>Create density map</string>
+                  <string>Add row</string>
                  </property>
                 </widget>
                </item>
               </layout>
              </widget>
             </item>
-            <item row="0" column="1">
+            <item row="0" column="2">
              <widget class="QWidget" name="ct_cal_plot" native="true"/>
             </item>
             <item row="1" column="0">
-             <spacer name="verticalSpacer_19">
+             <widget class="QPushButton" name="create_density_map">
+              <property name="text">
+               <string>Create density map</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QPushButton" name="create_density_map__from_mat_map">
+              <property name="text">
+               <string>Create density map from material map</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <spacer name="vspacer_ct_cal">
               <property name="orientation">
                <enum>Qt::Vertical</enum>
               </property>
@@ -6005,6 +6006,20 @@
                </size>
               </property>
              </spacer>
+            </item>
+            <item row="2" column="1">
+             <widget class="QPushButton" name="delete_density_map">
+              <property name="text">
+               <string>Delete density map</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QCheckBox" name="override_no_tissue">
+              <property name="text">
+               <string>Override non tissue materials densities</string>
+              </property>
+             </widget>
             </item>
            </layout>
           </widget>
@@ -8262,8 +8277,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>213</width>
-             <height>127</height>
+             <width>222</width>
+             <height>130</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8404,7 +8419,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>102</width>
+             <width>101</width>
              <height>41</height>
             </rect>
            </property>
@@ -8433,7 +8448,7 @@ p, li { white-space: pre-wrap; }
              <x>0</x>
              <y>0</y>
              <width>444</width>
-             <height>385</height>
+             <height>389</height>
             </rect>
            </property>
            <attribute name="label">
