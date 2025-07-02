@@ -100,6 +100,8 @@ def update_mat_properties_table(self,df):
         for j in range(num_columns):
             item = str(self.Mat_df.iloc[i, j])
             tableWidgetItem = QTableWidgetItem(item) 
+            if item=='Water':
+                tableWidgetItem.setFlags(tableWidgetItem.flags() & ~Qt.ItemIsEditable)
             self.mat_table.setItem(i, j, tableWidgetItem)
     update_material_list(self)   
     check_mat2HU(self)
@@ -127,11 +129,20 @@ def del_mat_row(self):
 
     if selected_indexes:  # if any row is selected
         for index in sorted(selected_indexes, reverse=True):
+            row = index.row()
+            mat = self.mat_table.item(row, 0).text()
+            if mat=='Water':
+                QMessageBox.information(self, "Warning", 'The material Water cannot be removed!')
+                continue
             self.mat_table.removeRow(index.row())
     else:  # if no row is selected, remove the last row
         last_row = self.mat_table.rowCount() - 1
         if last_row >= 0:  # checking if there are any rows to remove
-            self.mat_table.removeRow(last_row)
+            mat = self.mat_table.item(last_row, 0).text()
+            if mat=='Water':
+                QMessageBox.information(self, "Warning", 'The material Water cannot be removed!')
+            else:
+                self.mat_table.removeRow(last_row)
     update_mat_table_style(self)  # Update the table style after removing the column  
 
 def add_element(self):
@@ -295,4 +306,8 @@ def save_mat_db(self):
         QMessageBox.critical(self, "Error", f"Failed to save data: {str(e)}")
         
 
-            
+def undo_changes(self):
+    if hasattr(self, 'Mat_df'):
+        update_mat_properties_table(self,self.Mat_df)
+        update_mat_table_style(self)
+                

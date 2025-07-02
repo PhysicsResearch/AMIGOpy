@@ -80,7 +80,13 @@ def on_material_change(self):
         if current_text in self.mat_HU.keys():
             self.HU_high.setText(str(self.mat_HU[current_text]['max']))
             self.HU_low.setText(str(self.mat_HU[current_text]['min']))
-
+        else:
+            self.HU_high.clear()
+            self.HU_low.clear()
+    else:
+        self.HU_high.clear()
+        self.HU_low.clear()
+        
 def check_mat2HU(self):
     #Sinc material assigned to HU values and Table
     #Check if materials have already been assigned
