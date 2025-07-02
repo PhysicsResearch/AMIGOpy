@@ -128,7 +128,7 @@ def update_mat_struct_list(self):
     except:
         QMessageBox.critical(self,'No valid set selected', 'Your current selection has no associated structures!')
         return
-    if hasattr(self, 'mat_struct'):
+    if hasattr(self, 'mat_struct') and self.mat_struct:
         #Clearing previous material assignment table: Structures ID might have changed
         #Ask if you want to delete them
         reply = QMessageBox.question(
@@ -141,7 +141,7 @@ def update_mat_struct_list(self):
         )
         if reply==QMessageBox.Yes:  
             self.mat_struct.clear()
-            update_struct2mat_table()
+            update_struct2mat_table(self)
     if structure_names:
         self.Struct_list_mat.clear()
         self.Struct_list_mat.addItem('...Select Structure...')
