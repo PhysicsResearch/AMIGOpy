@@ -165,3 +165,13 @@ def generate_mat_map(self):
     target['mat_maps'][f'mat_map_{len(existing)}']=entry
     populate_DICOM_tree(self)
     
+
+def update_mat_struct_list(self):
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    structure_names = target_series_dict.get('structures_names', [])
+    if structure_names:
+        self.Struct_list_mat.clear()
+        self.Struct_list_mat.addItem('...Select Structure...')
+        self.Struct_list_mat.addItems(structure_names)
+    else:
+        return

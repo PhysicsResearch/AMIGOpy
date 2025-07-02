@@ -186,5 +186,7 @@ def populate_list_menus(self):
     
     #Material assignment
     self.Select_mat.currentTextChanged.connect(lambda: on_material_change(self))
+    self.Struct_list_mat.clear()
+    self.Struct_list_mat.addItem('...Select Structure...')
     
     
