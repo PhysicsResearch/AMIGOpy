@@ -9,6 +9,7 @@ from fcn_load.sort_dcm import get_data_description
 from fcn_load.org_fol_dcm import organize_files_into_folders
 from fcn_breathing_curves.functions_plot import init_BrCv_plot, plotViewData_BrCv_plot
 from fcn_breathing_curves.functions_edit import initXRange, init_BrCv_edit, plotViewData_BrCv_edit
+from fcn_breathing_curves.functions_phantom_operation import set_fcn_MoVeTab_changed
 from fcn_display.mouse_move_slicechanges import change_sliceAxial, change_sliceSagittal, change_sliceCoronal
 from fcn_display.Data_tree_general import on_DataTreeView_clicked
 from fcn_init.create_menu import initializeMenuBar
@@ -128,6 +129,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.editXMinSlider_BrCv.valueChanged.connect(lambda: plotViewData_BrCv_edit(self))
         self.editXMaxSlider_BrCv.valueChanged.connect(lambda: plotViewData_BrCv_edit(self))
         self.editXAxis_BrCv.currentTextChanged.connect(lambda: initXRange(self))
+
+        set_fcn_MoVeTab_changed(self)
         #
         self.LeftButtonAxialDown     = False
         self.LeftButtonSagittalDown  = False

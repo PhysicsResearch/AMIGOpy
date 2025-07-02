@@ -448,7 +448,7 @@ def exportData(self):
     # Reset the dataframe to one copy
     undoOperations(self)
     
-    
+from scipy.ndimage import median_filter 
     
 def exportGCODE(self):
     # Prompt user to select a folder
@@ -491,7 +491,13 @@ def exportGCODE(self):
 
     # Write G-code file
     for col in df.columns[1:]:
+        # df[col] = median_filter(df[col], 9)
+        df["diff"] = df[col].diff().shift(-1)
+        for i in range(len(df[col]) - 1):
+            if df.loc[i, "diff"] < 1e-1:
+                df.loc[i, col] += np.random.choice([1, 1], 1) * np.random.choice(list(range(1, 1000)), 1) * 1e-5
         results[col] = df[col]
+
         # Calculate average speed
         vel = df[col].diff().shift(-1) / df[time_col].diff().shift(-1).dt.total_seconds()
         vel.iloc[-1] = vel.iloc[-2]  # Copy the second last value to the last element
@@ -517,14 +523,14 @@ def exportGCODE(self):
         if i == 0:
             continue  # Skip the first row for G-code generation
         # Calculate speed in mm per minute
-        speed = row[f'{df.columns[1]}_speed'] 
+        speed = row[f'{df.columns[1]}_speed'] * np.sqrt(len(axis_labels))
         # Prepare G-code line
-        gcode_line = f"G0 F{speed:.6f}"
+        gcode_line = f"G0 F{speed:.8f}"
         for j, col in enumerate(axis_labels):
             if j < len(axis_labels):
-                gcode_line += f" {axis_labels[j]}{row[f'{df.columns[1]}']:.6f}"  # X, Y, Z, U, W
+                gcode_line += f" {axis_labels[j]}{row[f'{df.columns[1]}']:.8f}"  # X, Y, Z, U, W
             else:
-                gcode_line += f" {chr(85 + j)}{row[f'{df.columns[1]}']:.6f}"  # Continue with U, V, W, etc. if more than 5 columns
+                gcode_line += f" {chr(85 + j)}{row[f'{df.columns[1]}']:.8f}"  # Continue with U, V, W, etc. if more than 5 columns
         gcode_lines.append(gcode_line)
 
     # Write G-code lines to the file
