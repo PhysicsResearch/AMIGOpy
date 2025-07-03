@@ -1,6 +1,7 @@
 name: amigo
 channels:
   - conda-forge
+  - anaconda
   - defaults
 dependencies:
   - alabaster=0.7.12=pyhd3eb1b0_0
@@ -150,7 +151,6 @@ dependencies:
   - pexpect=4.8.0=pyhd3eb1b0_3
   - pickleshare=0.7.5=pyhd3eb1b0_1003
   - pillow=10.0.1=py311h045eedc_0
-  - pip=23.3.1=py311haa95532_0
   - platformdirs=3.10.0=py311haa95532_0
   - pluggy=1.0.0=py311haa95532_1
   - ply=3.11=py311haa95532_0
@@ -177,7 +177,7 @@ dependencies:
   - pyqtwebengine=5.15.7=py311hd77b12b_0
   - pyserial=3.5=py311haa95532_0
   - pysocks=1.7.1=py311haa95532_0
-  - python=3.11
+  - python=3.11.5=he1021f5_0
   - python-dateutil=2.8.2=pyhd3eb1b0_0
   - python-fastjsonschema=2.16.2=py311haa95532_0
   - python-lsp-black=1.2.1=py311haa95532_0
@@ -268,8 +268,10 @@ dependencies:
       - kiwisolver==1.4.5
       - matplotlib==3.8.0
       - mplcursors==0.5.3
+      - pip==25.1.1
       - pyparsing==3.1.1
       - python-gdcm==3.0.24.1
+      - simpleitk==2.5.2
       - typing-extensions==4.14.0
       - vtk==9.2.6
 prefix: C:\Users\gabriel.paivafonseca\AppData\Local\anaconda3\envs\amigo
