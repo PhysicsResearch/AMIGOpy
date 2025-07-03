@@ -8564,7 +8564,7 @@ p, li { white-space: pre-wrap; }
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="lineEdit_65"/>
+           <widget class="QLineEdit" name="threshMinHU"/>
           </item>
           <item>
            <widget class="QLineEdit" name="threshMaxBox">
@@ -8583,7 +8583,7 @@ p, li { white-space: pre-wrap; }
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="lineEdit_75"/>
+           <widget class="QLineEdit" name="threshMaxHU"/>
           </item>
          </layout>
         </item>
