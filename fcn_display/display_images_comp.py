@@ -16,12 +16,8 @@ def disp_comp_image_slice(self):
     for Ax_idx in range (r_1,r_2):
         if not ((Ax_idx, layer) in self.display_comp_data and int(self.current_AxComp_slice_index[Ax_idx, layer]) in self.display_comp_data[Ax_idx, layer]):
              continue
-        #end_time = time.time()
-        #print(f": P1 {end_time - start_time} seconds")
         self.current_AxComp_slice_index[Ax_idx,layer] = self.SliderCompareView.value()
         #
-        #end_time = time.time()
-        #print(f": P2 {end_time - start_time} seconds {Ax_idx}")
         if self.im_ori_comp[Ax_idx] ==0: #Axial
             slice_data = self.display_comp_data[Ax_idx, layer][int(self.current_AxComp_slice_index[Ax_idx,layer]), :, :]
             self.imageActorAxComp[Ax_idx,layer].SetPosition(self.Im_Offset_comp[Ax_idx,layer,0], self.Im_Offset_comp[Ax_idx,layer,1], 0)

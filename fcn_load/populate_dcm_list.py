@@ -76,6 +76,30 @@ def populate_DICOM_tree(self):
                                 for name in structures_names:
                                     structure_item = QStandardItem(name)
                                     structures_parent_item.appendRow(structure_item)
+                    
+                        #If density maps exists, add them as sublevels
+                        density_maps = series_data.get('density_maps')
+                        if density_maps:
+                            density_maps_names=density_maps.keys()
+                            if density_maps_names:
+                                density_parent_item = QStandardItem("Density maps")
+                                series_item.appendRow(density_parent_item)
+                                for name in density_maps_names:
+                                    density_item = QStandardItem(name)
+                                    density_parent_item.appendRow(density_item)
+                                    
+                         #If material maps exists, add them as sublevels
+                        mat_maps = series_data.get('mat_maps')
+                        if mat_maps:
+                            mat_maps_names=mat_maps.keys()
+                            if mat_maps_names:
+                                mat_parent_item = QStandardItem("Material maps")
+                                series_item.appendRow(mat_parent_item)
+                                for name in mat_maps_names:
+                                    mat_item = QStandardItem(name)
+                                    mat_parent_item.appendRow(mat_item)
+                                
+                            
 
                     # Add to comboBox
                     self.DECT_list_01.addItem(series_label)

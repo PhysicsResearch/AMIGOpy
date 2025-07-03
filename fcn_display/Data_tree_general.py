@@ -16,6 +16,7 @@ from fcn_RTFiles.process_rt_files import update_structure_list_widget
 from fcn_RTFiles.process_contours import find_matching_series
 from fcn_segmentation.functions_segmentation import plot_hist
 from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin,initialize_3Dsliders, initialize_crop_widgets
+from fcn_materialassignment.material_map import update_mat_struct_list
 
 
 
@@ -95,16 +96,18 @@ def on_DataTreeView_clicked(self,index):
             Window = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowWidth']
             Level  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowCenter']
             # For Window
-            if isinstance(Window, MultiValue):
-                Window = float(Window[0])  # Take the first value and convert to float
+            if Window in ('N/A', None) or Level in ('N/A', None):
+                Window = 100
+                Level = 0
             else:
-                Window = float(Window)     # If it's not MultiValue, directly convert to float
-            # For Level
-            if isinstance(Level, MultiValue):
-                Level = float(Level[0])    # Take the first value and convert to float
-            else:
-                Level = float(Level)       # If it's not MultiValue, directly convert to float
-            #    
+                if isinstance(Window, MultiValue):
+                    Window = float(Window[0])
+                else:
+                    Window = float(Window)
+                if isinstance(Level, MultiValue):
+                    Level = float(Level[0])
+                else:
+                    Level = float(Level) 
             #
             if idx == 0:
                 self.LayerAlpha[0] = 1.0
@@ -132,10 +135,17 @@ def on_DataTreeView_clicked(self,index):
                 #
                 if len(hierarchy) == 5: # Series
                     self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
-                if len(hierarchy) == 7: # binary mask contour
-                    s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
-                    self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
-
+                if len(hierarchy) == 7: # binary mask contour or density map
+                    
+                    if hierarchy[5]=='Structures':
+                        s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
+                        self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+                    elif hierarchy[5]=='Density maps':
+                       self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['density_maps'][hierarchy[6]]['3DMatrix']
+                    elif hierarchy[5]=='Material maps':
+                       self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['mat_maps'][hierarchy[6]]['3DMatrix']
+                        
+                    
                 adjust_data_type_input(self,idx)
                 #
                 self.current_axial_slice_index[idx]    = round(self.display_data[idx].shape[0]/2)
@@ -446,6 +456,13 @@ def on_DataTreeView_clicked(self,index):
                     renderer.ResetCameraClippingRange()
                     self.renSeg.GetRenderWindow().Render()
                 #
+            if currentTabText=='Plan':
+                currentSubTabText = self.Plan_tabs.tabText(self.Plan_tabs.currentIndex())
+                if currentSubTabText=='Material Assignment':
+                    if len(hierarchy) == 5:
+                        update_mat_struct_list(self)
+                    
+                
                 
     elif hierarchy[0] == "IrIS_Cor":    
         # Extract hierarchy information based on the clicked index

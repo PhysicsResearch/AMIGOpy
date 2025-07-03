@@ -20,14 +20,16 @@ def window_auto(self):
     Level  = np.mean(slice_data)
     set_window(self,Window,Level)
     
+    
 def set_window(self,Window,Level):
     # check which tab is selecgted to apply it to the correct axes
     currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
-    layer = self.layer_selection_box.currentIndex()
-    data = self.display_data.get(layer)
-    if data is None or (hasattr(data, 'size') and data.size == 0):
-        return
+    #
+    layer          = self.layer_selection_box.currentIndex()
     if currentTabText == "View":
+        data           = self.display_data.get(layer)
+        if data is None or (hasattr(data, 'size') and data.size == 0):
+            return
         self.windowLevelAxial[layer].SetWindow(Window)
         self.windowLevelAxial[layer].SetLevel(Level)
         self.windowLevelSagittal[layer].SetWindow(Window)
@@ -63,8 +65,7 @@ def set_window(self,Window,Level):
                 continue
             self.windowLevelAxComp[Ax_idx,layer].SetWindow(Window)
             self.windowLevelAxComp[Ax_idx,layer].SetLevel(Level)
-            self.textActorAxCom[Ax_idx,1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
-            
+            self.textActorAxCom[Ax_idx,1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")     
     elif currentTabText == "Segmentation":
         self.seg_win_lev = [Window, Level]
         self.windowLevelSeg[layer].SetWindow(Window)

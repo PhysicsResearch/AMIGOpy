@@ -1,4 +1,4 @@
-from fcn_segmentation.functions_segmentation import update_seg_struct_list
+from fcn_segmentation.functions_segmentation import update_seg_struct_list, disp_seg_image_slice
 def set_fcn_tabModules_changed(self):
     # Connect the currentChanged signal to the onTabChanged slot
     self.tabModules.currentChanged.connect(lambda: onTabChanged(self))
@@ -16,4 +16,4 @@ def onTabChanged(self):
 #    if tabName == "View":
     if tabName == "Segmentation":
         update_seg_struct_list(self)
-
+        disp_seg_image_slice(self)

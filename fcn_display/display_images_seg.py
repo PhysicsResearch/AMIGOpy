@@ -1,5 +1,6 @@
 import vtk 
 import numpy as np
+from PyQt5.QtWidgets import QMessageBox
 
 def sliderSegView_change(self):
     disp_seg_image_slice(self)
@@ -113,14 +114,40 @@ def disp_seg_image_slice(self):
             mask = dist_from_center <= self.brush_size 
             if self.seg_erase == 1: # Eraser 
                 if self.brushClipHU.isChecked():
-                    mask_hu = (slice_data_im >= self.segThreshMinHU.value()) * (slice_data_im <= self.segThreshMaxHU.value())
+                    try:
+                        min_hu = int(self.threshMinHU.text())
+                    except:
+                        QMessageBox.warning(None, "Warning", "No integer value was provided for min. HU")
+                        return
+                    try:
+                        max_hu = int(self.threshMaxHU.text())
+                    except:
+                        QMessageBox.warning(None, "Warning", "No integer value was provided for max. HU")
+                        return
+                    if min_hu >= max_hu:
+                        QMessageBox.warning(None, "Warning", "No valid HU was provided (ensure min HU < max HU)")
+                        return  
+                    mask_hu = (slice_data_im >= min_hu) * (slice_data_im <= max_hu)
                     slice_data[mask * mask_hu] = 0
                 else:
                     slice_data[mask] = 0
             
             if self.seg_brush == 1: # Brush
                 if self.brushClipHU.isChecked():
-                    mask_hu = (slice_data_im >= self.segThreshMinHU.value()) * (slice_data_im <= self.segThreshMaxHU.value())
+                    try:
+                        min_hu = int(self.threshMinHU.text())
+                    except:
+                        QMessageBox.warning(None, "Warning", "No integer value was provided for min. HU")
+                        return
+                    try:
+                        max_hu = int(self.threshMaxHU.text())
+                    except:
+                        QMessageBox.warning(None, "Warning", "No integer value was provided for max. HU")
+                        return
+                    if min_hu >= max_hu:
+                        QMessageBox.warning(None, "Warning", "No valid HU was provided (ensure min HU < max HU)")
+                        return  
+                    mask_hu = (slice_data_im >= min_hu) * (slice_data_im <= max_hu)
                     slice_data[mask * mask_hu] = 1
                 else:
                     slice_data[mask] = 1

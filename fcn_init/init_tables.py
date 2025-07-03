@@ -1,6 +1,8 @@
 from PyQt5.QtWidgets import QHeaderView
 from fcn_processing.roi_circle import on_roitable_item_changed
 from PyQt5.QtWidgets import QHeaderView, QAbstractItemView
+from fcn_ctcal.ct_cal import init_ct_cal_table
+from fcn_materialassignment.material_assignment_properties import create_dataframe_materials,update_mat_properties_table,update_mat_table_style
 
 
 def initialize_software_tables(self):
@@ -70,3 +72,15 @@ def initialize_software_tables(self):
     self.ab_table.setHorizontalHeaderLabels(["Structure Name", "α/β"])
     self.ab_table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # Make it read-only
     self.ab_table.resizeColumnsToContents() 
+    self.ab_table.resizeColumnsToContents() 
+    
+    #Material assignment table
+    df=create_dataframe_materials(self)
+    update_mat_properties_table(self,df)
+    update_mat_table_style(self)
+    self.tableMatToHU.setColumnCount(4)
+    self.tableMatToHU.setHorizontalHeaderLabels(['Material', 'ID', 'From ', 'To'])
+    self.mat_to_struct_tab.setColumnCount(3)
+    self.mat_to_struct_tab.setHorizontalHeaderLabels(['Structure', 'Material', 'ID '])
+
+

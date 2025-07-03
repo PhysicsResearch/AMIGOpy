@@ -5743,7 +5743,26 @@
            <attribute name="title">
             <string>Material Assignment</string>
            </attribute>
-           <layout class="QGridLayout" name="gridLayout_69" rowstretch="1,10,1,0" columnstretch="1,1,4">
+           <layout class="QGridLayout" name="gridLayout_69" rowstretch="1,10,1,0,0" columnstretch="1,1,4">
+            <item row="1" column="1">
+             <widget class="QGroupBox" name="groupBox_mat_to_struct">
+              <property name="title">
+               <string>Materials to structures</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_72">
+               <item row="0" column="0">
+                <widget class="QTableWidget" name="mat_to_struct_tab"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QPushButton" name="remove_mat_from_struct">
+                 <property name="text">
+                  <string>Remove material</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
             <item row="0" column="0" colspan="2">
              <widget class="QGroupBox" name="assign_mat">
               <property name="title">
@@ -5791,16 +5810,16 @@
                 </widget>
                </item>
                <item row="2" column="5" colspan="2">
-                <widget class="QPushButton" name="create_mat_map">
+                <widget class="QPushButton" name="update_mat_struct_list">
                  <property name="text">
-                  <string>Create map</string>
+                  <string>Update list</string>
                  </property>
                 </widget>
                </item>
               </layout>
              </widget>
             </item>
-            <item row="0" column="2" rowspan="4">
+            <item row="0" column="2" rowspan="5">
              <widget class="QGroupBox" name="groupBox_mat_properties">
               <property name="title">
                <string>Properties</string>
@@ -5874,25 +5893,6 @@
               </layout>
              </widget>
             </item>
-            <item row="1" column="1">
-             <widget class="QGroupBox" name="groupBox_mat_to_struct">
-              <property name="title">
-               <string>Materials to structures</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_72">
-               <item row="0" column="0">
-                <widget class="QTableWidget" name="mat_to_struct_tab"/>
-               </item>
-               <item row="1" column="0">
-                <widget class="QPushButton" name="remove_mat_from_struct">
-                 <property name="text">
-                  <string>Remove material</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
             <item row="1" column="0">
              <widget class="QGroupBox" name="mat_to_HU_box">
               <property name="title">
@@ -5912,10 +5912,17 @@
               </layout>
              </widget>
             </item>
-            <item row="2" column="0" colspan="2">
+            <item row="2" column="1">
              <widget class="QPushButton" name="del_mat_map">
               <property name="text">
                <string>Delete Material Map</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QPushButton" name="create_mat_map">
+              <property name="text">
+               <string>Create Material Map</string>
               </property>
              </widget>
             </item>
@@ -8539,7 +8546,7 @@ p, li { white-space: pre-wrap; }
          </widget>
         </item>
         <item row="3" column="3">
-         <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="2,1,2,1">
+         <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="2,0,2,0">
           <item>
            <widget class="QLineEdit" name="threshMinBox">
             <property name="enabled">
@@ -8557,14 +8564,7 @@ p, li { white-space: pre-wrap; }
            </widget>
           </item>
           <item>
-           <widget class="QSpinBox" name="segThreshMinHU">
-            <property name="minimum">
-             <number>-1024</number>
-            </property>
-            <property name="maximum">
-             <number>3072</number>
-            </property>
-           </widget>
+           <widget class="QLineEdit" name="threshMinHU"/>
           </item>
           <item>
            <widget class="QLineEdit" name="threshMaxBox">
@@ -8583,14 +8583,7 @@ p, li { white-space: pre-wrap; }
            </widget>
           </item>
           <item>
-           <widget class="QSpinBox" name="segThreshMaxHU">
-            <property name="minimum">
-             <number>-1024</number>
-            </property>
-            <property name="maximum">
-             <number>3072</number>
-            </property>
-           </widget>
+           <widget class="QLineEdit" name="threshMaxHU"/>
           </item>
          </layout>
         </item>

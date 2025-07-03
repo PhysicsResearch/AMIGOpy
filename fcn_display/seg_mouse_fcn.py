@@ -4,28 +4,44 @@ from fcn_display.colormap_set import set_color_map
 from fcn_display.win_level import set_window
 import time
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QMessageBox
 
 def left_button_pressseg_event(self, caller, event):
-    Caller_id = self.interactor_to_index.get(caller)
-    if Caller_id is not None:
-        self.left_but_pressed[0] = 1
-        self.left_but_pressed[1] = Caller_id
-        if self.seg_brush or self.seg_erase:
-            self.seg_brush_coords = None
-            QApplication.setOverrideCursor(Qt.CrossCursor)
-            if 1 not in self.display_seg_data:
+    self.left_but_pressed[0] = 1
+    if self.seg_brush or self.seg_erase:
+        self.seg_brush_coords = None
+        if 1 not in self.display_seg_data or self.curr_struc_key is None:
+            return
+        if self.brushClipHU.isChecked():
+            try:
+                min_hu = int(self.threshMinHU.text())
+            except:
+                QMessageBox.warning(None, "Warning", "No integer value was provided for min. HU")
+                self.left_but_pressed[0] = 0
                 return
-            self.slice_data_copy = self.display_seg_data[1].copy()
-           
+            try:
+                max_hu = int(self.threshMaxHU.text())
+            except:
+                QMessageBox.warning(None, "Warning", "No integer value was provided for max. HU")
+                self.left_but_pressed[0] = 0
+                return
+            if min_hu >= max_hu:
+                QMessageBox.warning(None, "Warning", "No valid HU was provided (ensure min HU < max HU)")
+                self.left_but_pressed[0] = 0
+                return  
+        QApplication.setOverrideCursor(Qt.CrossCursor)
+        self.slice_data_copy = self.display_seg_data[1].copy()
+    
     
 def left_button_releaseseg_event(self, caller, event):
     self.left_but_pressed[0] = 0
     if self.seg_brush or self.seg_erase:
         self.seg_brush_coords = None
         QApplication.restoreOverrideCursor()
-
+        if 1 not in self.display_seg_data or self.curr_struc_key is None:
+            QMessageBox.warning(None, "Warning", "No structure was selected.\nPlease select a structure.")
         
+      
 def on_scroll_backwardseg(self, caller, event):
     Caller_id = self.interactor_to_index.get(caller)
     if Caller_id is not None:
@@ -91,7 +107,7 @@ def onMouseMoveseg(self, caller, event):
     #
     if self.left_but_pressed[0] == 1:
         if self.seg_brush or self.seg_erase:
-            if 1 not in self.display_seg_data:
+            if 1 not in self.display_seg_data or self.curr_struc_key is None:
                 return
             self.seg_brush_coords = image_coord_vox
             disp_seg_image_slice(self)

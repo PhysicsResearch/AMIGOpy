@@ -1147,7 +1147,7 @@ class SquareRoiWidget(QtCore.QObject):
         self._hline_actor.SetMapper(self._hline_mapper)
         self._hline_actor.GetProperty().SetColor(1,0,0)
         self._hline_actor.SetVisibility(False)
-        self._vline_actor.GetProperty().SetLineWidth(3)
+        self._hline_actor.GetProperty().SetLineWidth(3)
         self.renderer.AddActor(self._hline_actor)
 
         # install event filter for double-click on ROI

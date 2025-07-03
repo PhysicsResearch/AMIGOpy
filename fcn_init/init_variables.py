@@ -5,10 +5,11 @@ import numpy as np
 
 def initialize_software_variables(self):
     #
-    self.rulers = [] 
-    self.circle = [] 
+    self.rulers   = [] 
+    self.circle   = [] 
     self.ellipses = []
-    self.squares = []
+    self.squares  = []
+    self.points   = []
     #
     self.patientID         = None
     self.studyID           = None
