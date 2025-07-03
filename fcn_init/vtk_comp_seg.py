@@ -3,7 +3,7 @@ import numpy as np
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from PyQt5.QtWidgets import QVBoxLayout
 from PyQt5.QtCore import QRegExp
-from PyQt5.QtGui import QRegExpValidator
+from PyQt5.QtGui import QRegExpValidator, QIntValidator
 from fcn_display.seg_mouse_fcn import left_button_pressseg_event, left_button_releaseseg_event, on_scroll_backwardseg, on_scroll_forwardseg, onMouseMoveseg, on_right_click_move_pan
 
 def setup_vtk_seg(self):
@@ -99,16 +99,15 @@ def setup_vtk_seg(self):
     interactor_styleSeg.OnLeftButtonDown = lambda: None
     interactor_styleSeg.OnLeftButtonUp = lambda: None
     #
-    self.vtkWidgetSeg.AddObserver("LeftButtonPressEvent", lambda caller, event: left_button_pressseg_event(self, caller, event),0)
-    self.vtkWidgetSeg.AddObserver("LeftButtonReleaseEvent",lambda caller, event:left_button_releaseseg_event(self, caller, event),0)
-    self.vtkWidgetSeg.AddObserver("MouseWheelForwardEvent", lambda caller, event: on_scroll_forwardseg(self, caller, event))
-    self.vtkWidgetSeg.AddObserver("MouseWheelBackwardEvent", lambda caller, event: on_scroll_backwardseg(self, caller, event))
-    self.vtkWidgetSeg.AddObserver("RightButtonReleaseEvent", lambda caller, event:on_right_click_move_pan(self, caller, event))
-    self.vtkWidgetSeg.AddObserver("MiddleButtonReleaseEvent", lambda caller, event:on_right_click_move_pan(self, caller, event))
-    #
     self.vtkWidgetSeg.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event:onMouseMoveseg(self, caller, event))
 
     # Limit the naming of structures to letters and digits
     reg_ex = QRegExp("[a-zA-Z][a-zA-Z0-9]{0,15}")
     input_validator = QRegExpValidator(reg_ex, self.segStructName)
     self.segStructName.setValidator(input_validator)
+
+    minHU_validator = QIntValidator(-1024, 3000, self.threshMinHU)
+    self.threshMinHU.setValidator(minHU_validator)
+    maxHU_validator = QIntValidator(-1024, 3000, self.threshMaxHU)
+    self.threshMaxHU.setValidator(maxHU_validator)
+

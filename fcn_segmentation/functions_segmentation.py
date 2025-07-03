@@ -243,16 +243,22 @@ def plot_hist(self):
         ax.spines['left'].set_color('white')
         ax.spines['right'].set_color('white')
     
-    x_min = self.segThreshMinHU.value()
-    x_max = self.segThreshMaxHU.value()
+    try:
+        x_min = int(self.threshMinHU.text())
+    except:
+        x_min = -200
+    try:
+        x_max = int(self.threshMaxHU.text())
+    except:
+        x_max = 200
     
     v, x = np.histogram(self.display_seg_data[0], range=(-1000, 1000), bins=2000)
     
     min_lim = -500; max_lim = 500
-    if self.segThreshMinHU.value() < -500:
-        min_lim = self.segThreshMinHU.value() - 100
-    if self.segThreshMaxHU.value() > 500:
-        max_lim = self.segThreshMaxHU.value() + 100
+    if x_min < -500:
+        min_lim = x_min - 100
+    if x_max > 500:
+        max_lim = x_max + 100
     max_counts = (v * (x[:-1] >= min_lim) * (x[:-1] <= max_lim)).max()
 
     ax.tick_params(
@@ -459,7 +465,21 @@ def threshSeg(self):
         QMessageBox.warning(None, "Warning", "No structure was selected.\nPlease select a structure.")
         return
 
-    min_, max_ = self.segThreshMinHU.value(), self.segThreshMaxHU.value()
+    try:
+        min_ = int(self.threshMinHU.text())
+    except:
+        QMessageBox.warning(None, "Warning", "No integer value was provided for min. HU")
+        return
+    try:
+        max_ = int(self.threshMaxHU.text())
+    except:
+        QMessageBox.warning(None, "Warning", "No integer value was provided for max. HU")
+        return
+    
+    if min_ >= max_:
+        QMessageBox.warning(None, "Warning", "No valid HU was provided (ensure min HU < max HU)")
+        return       
+    
     target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
 
     existing_structures = target_series_dict.get('structures', {})

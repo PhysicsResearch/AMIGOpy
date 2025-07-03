@@ -150,10 +150,10 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # Calibration module IrIS
         init_cal_markers_IrIS(self)
         
-        self.segThreshMinHU.setValue(-200)
-        self.segThreshMaxHU.setValue(200)
-        self.segThreshMinHU.valueChanged.connect(self.on_seg_hu_min_change)
-        self.segThreshMaxHU.valueChanged.connect(self.on_seg_hu_max_change)
+        self.threshMinHU.setText("-200")
+        self.threshMaxHU.setText("200")
+        self.threshMinHU.textChanged.connect(lambda: plot_hist(self))
+        self.threshMaxHU.textChanged.connect(lambda: plot_hist(self))
         self.segSelectView.currentTextChanged.connect(lambda: update_seg_slider(self))
         self.segViewSlider.valueChanged.connect(lambda: disp_seg_image_slice(self))
 
