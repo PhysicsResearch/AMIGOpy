@@ -281,13 +281,16 @@ def save_mat_db(self):
                 atomic_number = get_atomic_number(column_label)
                 if atomic_number is not None:
                     if float(cell_value) !=0:
-                        row_data.append(f"{atomic_number}, {cell_value}")
+                        row_data.append(f"{atomic_number},{cell_value}")
                     else:
                         continue
                 else:
                     row_data.append(cell_value)
             elif column_label in keep_as_is:
-                row_data.append(f"{column_label}, {cell_value}")
+                if column_label=='Tissue' and (float(cell_value)not in [0,1]):
+                    QMessageBox.critical(self, "Error", "Failed to save data: The value of tissue can obly be 0 (Not a tissue) or 1 (Tissue)")
+                    return
+                row_data.append(f"{column_label},{cell_value}")
             else:
                 row_data.append(cell_value)
 

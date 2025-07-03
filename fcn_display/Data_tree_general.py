@@ -457,7 +457,8 @@ def on_DataTreeView_clicked(self,index):
             if currentTabText=='Plan':
                 currentSubTabText = self.Plan_tabs.tabText(self.Plan_tabs.currentIndex())
                 if currentSubTabText=='Material Assignment':
-                    update_mat_struct_list(self)
+                    if len(hierarchy) == 5:
+                        update_mat_struct_list(self)
                     
                 
                 

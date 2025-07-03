@@ -147,7 +147,7 @@ def update_mat_struct_list(self):
         self.Struct_list_mat.addItem('...Select Structure...')
         self.Struct_list_mat.addItems(structure_names)
     else:
-        QMessageBox.information(self, 'No structures', 'No structures found for the selected series.')
+        
         return
     
 
