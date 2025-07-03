@@ -46,7 +46,7 @@ def mat2HU(self):
     try:
         key = self.Mat_df.index[self.Mat_df['Name'] == mat_selected][0]
     except IndexError:
-        print('Material not found in dataframe')
+        QMessageBox.critical(self, 'Error','Material not found in dataframe')
         return
     self.mat_HU[mat_selected] = {'key': key, 'min': min_HU, 'max': max_HU}
     # Update the table after adding new data
@@ -168,7 +168,7 @@ def struct2mat(self):
     try:
         key = self.Mat_df.index[self.Mat_df['Name'] == mat_selected][0]
     except IndexError:
-        print('Material not found in dataframe')
+        QMessageBox.critical(self, 'Error','Material not found in dataframe')
         return
     self.mat_struct[struct_selected] = {'material': mat_selected, 'key': key}
     update_struct2mat_table(self)
@@ -259,7 +259,12 @@ def generate_mat_map(self):
         struct_names=[k for k in self.mat_struct.keys()]
         mats=[d['material'] for d in self.mat_struct.values()]
         IDs=[d['key'] for d in self.mat_struct.values()]
-        struct_dict=target_dict['CT'][self.series_index]['structures']
+        try:
+            struct_dict=target_dict['CT'][self.series_index]['structures']
+        except:
+            QMessageBox.critical(self, 'Error','Structures missing. Are you selecting the correct CT set?')
+            return
+
         
         struct_present = [s.get('Name') for s in struct_dict.values()]
 
@@ -273,13 +278,24 @@ def generate_mat_map(self):
                 'Missing Structures',
                 f"The following structures are not found in CT structures and will be ignored:\n{missing_list}"
             )
-        struct_masks=[s['Mask3D'] for s in struct_dict.values() if s.get('Name') in struct_names]
+        final_struct_masks = []
+        final_mats = []
+        final_IDs = []
+            
+        for name, mat, ID in zip(struct_names, mats, IDs):
+            struct = next((s for s in struct_dict.values() if s.get('Name') == name), None)
+            if struct:
+                final_struct_masks.append(struct['Mask3D'])
+                final_mats.append(mat)
+                final_IDs.append(ID)
+            # else: name is missing; already warned above
         
-        for mask,mat,ID in zip(struct_masks,mats,IDs):
-            mat_map[mask!=0]=ID
-            if ID not in mat_used.keys():
-                mat_used[ID]=mat
-    #assigned unspecified voxels to water
+        # Use the filtered lists
+        for mask, mat, ID in zip(final_struct_masks, final_mats, final_IDs):
+            mat_map[mask != 0] = ID
+            if ID not in mat_used:
+                mat_used[ID] = mat
+            #assigned unspecified voxels to water
     if len(mat_map[mat_map==-1])!=0:
         #Retriving index for water
         water_ID = np.int16(self.Mat_df.index[self.Mat_df['Name'] == 'Water'][0])
