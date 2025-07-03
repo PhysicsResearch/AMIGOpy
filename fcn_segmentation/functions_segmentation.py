@@ -26,6 +26,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 def InitSeg(self):
     if len(self.display_seg_data) == 0:
+        QMessageBox.warning(None, "Warning", "No image volume was selected.\nPlease select the one for which to create structure.")
         return
     
     structures_keys = []
