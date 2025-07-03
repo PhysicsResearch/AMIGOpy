@@ -227,7 +227,7 @@ def create_contour_masks(self):
         if hasattr(widget, 'checkbox'):
             widget.checkbox.setChecked(False)
     populate_DICOM_tree(self)
-    update_mat_struct_list(self)
+    #update_mat_struct_list(self)
 
 
 def build_contours_for_structure(mask_3d):

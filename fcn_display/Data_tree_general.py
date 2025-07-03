@@ -16,6 +16,7 @@ from fcn_RTFiles.process_rt_files import update_structure_list_widget
 from fcn_RTFiles.process_contours import find_matching_series
 from fcn_segmentation.functions_segmentation import plot_hist
 from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin,initialize_3Dsliders, initialize_crop_widgets
+from fcn_materialassignment.material_map import update_mat_struct_list
 
 
 
@@ -453,6 +454,12 @@ def on_DataTreeView_clicked(self,index):
                     renderer.ResetCameraClippingRange()
                     self.renSeg.GetRenderWindow().Render()
                 #
+            if currentTabText=='Plan':
+                currentSubTabText = self.Plan_tabs.tabText(self.Plan_tabs.currentIndex())
+                if currentSubTabText=='Material Assignment':
+                    update_mat_struct_list(self)
+                    
+                
                 
     elif hierarchy[0] == "IrIS_Cor":    
         # Extract hierarchy information based on the clicked index

@@ -126,7 +126,7 @@ def update_mat_struct_list(self):
         target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
         structure_names = target_series_dict.get('structures_names', [])
     except:
-        QMessageBox.critical(self,'No valid set selected', 'Your current selection has no associated structures!')
+        #QMessageBox.critical(self,'No valid set selected', 'Your current selection has no associated structures!')
         return
     if hasattr(self, 'mat_struct') and self.mat_struct:
         #Clearing previous material assignment table: Structures ID might have changed
