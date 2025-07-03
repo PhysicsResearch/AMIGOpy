@@ -96,16 +96,18 @@ def on_DataTreeView_clicked(self,index):
             Window = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowWidth']
             Level  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowCenter']
             # For Window
-            if isinstance(Window, MultiValue):
-                Window = float(Window[0])  # Take the first value and convert to float
+            if Window in ('N/A', None) or Level in ('N/A', None):
+                Window = 100
+                Level = 0
             else:
-                Window = float(Window)     # If it's not MultiValue, directly convert to float
-            # For Level
-            if isinstance(Level, MultiValue):
-                Level = float(Level[0])    # Take the first value and convert to float
-            else:
-                Level = float(Level)       # If it's not MultiValue, directly convert to float
-            #    
+                if isinstance(Window, MultiValue):
+                    Window = float(Window[0])
+                else:
+                    Window = float(Window)
+                if isinstance(Level, MultiValue):
+                    Level = float(Level[0])
+                else:
+                    Level = float(Level) 
             #
             if idx == 0:
                 self.LayerAlpha[0] = 1.0
