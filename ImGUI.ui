@@ -8183,16 +8183,70 @@ p, li { white-space: pre-wrap; }
                <attribute name="title">
                 <string>Duet Web Control</string>
                </attribute>
-               <layout class="QGridLayout" name="gridLayout_DuetWebControl">
+               <layout class="QGridLayout" name="gridLayout_DuetWebControl" columnstretch="1,2,1,2,7" columnminimumwidth="0,0,0,0,0">
                 <item row="0" column="0">
+                 <widget class="QLineEdit" name="lineEdit_65">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string>IP address</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QPushButton" name="loadDuetPage">
+                  <property name="text">
+                   <string>Load Duet Web Control</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2" rowspan="2">
+                 <widget class="Line" name="line_25">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLineEdit" name="DuetIPAddress"/>
+                </item>
+                <item row="0" column="4">
+                 <spacer name="horizontalSpacer_78">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="2" column="0" colspan="5">
                  <widget class="QWebEngineView" name="DuetControlView">
                   <property name="focusPolicy">
                    <enum>Qt::WheelFocus</enum>
                   </property>
                   <property name="url">
                    <url>
-                    <string>http://192.168.0.1/</string>
+                    <string>http://192.168.0.1/Job/Status</string>
                    </url>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="3">
+                 <widget class="QPushButton" name="definePhOperFolder">
+                  <property name="text">
+                   <string>Define Input Folder</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="3">
+                 <widget class="QLineEdit" name="PhOperFolder">
+                  <property name="enabled">
+                   <bool>false</bool>
                   </property>
                  </widget>
                 </item>
@@ -8284,8 +8338,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>222</width>
-             <height>130</height>
+             <width>213</width>
+             <height>127</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8426,7 +8480,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>101</width>
+             <width>102</width>
              <height>41</height>
             </rect>
            </property>
@@ -8455,7 +8509,7 @@ p, li { white-space: pre-wrap; }
              <x>0</x>
              <y>0</y>
              <width>444</width>
-             <height>389</height>
+             <height>385</height>
             </rect>
            </property>
            <attribute name="label">
