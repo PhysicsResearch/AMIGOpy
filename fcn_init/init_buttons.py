@@ -31,6 +31,7 @@ from fcn_RTFiles.process_contours import create_contour_masks
 from fcn_breathing_curves.functions_import import openCSVFile_BrCv, setParams, createCurve
 from fcn_breathing_curves.functions_plot import calcStats, plotViewData_BrCv_plot, exportPlot
 from fcn_breathing_curves.functions_edit import applyOperations, undoOperations, exportData, plotViewData_BrCv_edit, cropRange_BrCv_edit, exportGCODE#, cropCurve_BrCv_edit
+from fcn_breathing_curves.functions_phantom_operation import setDuetIP, defineInputFolder
 from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, update_doses_list, update_structure_list, eqd2_calc
 from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc, DeleteSeg
 from fcn_display.display_images_seg import undo_brush_seg
@@ -84,6 +85,10 @@ def initialize_software_buttons(self):
     self.exportGCODE_BrCv.setStyleSheet("background-color: blue; color: white")
     self.cropRangeEdit_BrCv.clicked.connect(lambda: cropRange_BrCv_edit(self))
     self.cropRangeEdit_BrCv.setStyleSheet("background-color: blue; color:white")
+    self.loadDuetPage.clicked.connect(lambda: setDuetIP(self))
+    self.loadDuetPage.setStyleSheet("background-color: blue; color:white")
+    self.definePhOperFolder.clicked.connect(lambda: defineInputFolder(self))
+    self.definePhOperFolder.setStyleSheet("background-color: blue; color:white")
 
     # Segmentation
     self.applyThreshSeg.clicked.connect(lambda: threshSeg(self))

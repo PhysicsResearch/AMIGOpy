@@ -8,7 +8,7 @@ from matplotlib.figure import Figure
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
 
 DUET_IP = '192.168.0.1'  # Replace with your Duet's IP
 UPDATE_INTERVAL = 0.1    # seconds between polls
@@ -26,9 +26,20 @@ def onTabChanged(self):
     init_MoVeTab(self)
 
 
+def setDuetIP(self):
+    self.duet_ip = self.DuetIPAddress.text()
+    self.DuetControlView.setEnabled(True)
+
+
+def defineInputFolder(self):
+    options = QFileDialog.Options()
+    folder = QFileDialog.getExistingDirectory(self, options=options)
+    self.PhOperFolder.setText(folder)
+
+
 def set_GCODE_speed(self):
     speed_factor = self.MoVeSpeedFactor.value()
-    url = f'http://{DUET_IP}/rr_gcode'
+    url = f'http://{self.duet_ip}/rr_gcode'
     code = f"M220 S{speed_factor}"
     r = requests.get(url, {'gcode': code})
 
@@ -38,6 +49,8 @@ def init_MoVeTab(self):
     if filename is None:
         return
     import_planned_curve(self, filename)
+    if self.orig_data is None:
+        return
 
     self.MoVeOffsetSlider.setRange(-150, 150)
 
@@ -75,7 +88,7 @@ def init_MoVeTab(self):
 
 
 def get_curr_file(self):
-    url = f'http://{DUET_IP}/rr_fileinfo'
+    url = f'http://{self.duet_ip}/rr_fileinfo'
     try:
         response = requests.get(url)
         if response.status_code == 200:
@@ -91,13 +104,17 @@ def get_curr_file(self):
 
 
 def import_planned_curve(self, filename):
-    csv_root = fr"C:\Users\lars.daenen\Downloads\phantom verification"
+    csv_root = self.PhOperFolder.text()
     filepath = os.path.join(csv_root, filename.replace("gcode", "csv"))
+    if not os.path.exists(filepath):
+        self.orig_data = None
+        QMessageBox.warning(None, "Warning", "Provide valid input folder and ensure that it contains a\ncsv file with the same name as the breathing curve being executed.")
+        return
     self.orig_data = pd.read_csv(filepath)
 
 
 def get_duet_status(self):
-    url = f'http://{DUET_IP}/rr_status?type=3'
+    url = f'http://{self.duet_ip}/rr_status?type=3'
     try:
         response = requests.get(url)
         if response.status_code == 200:

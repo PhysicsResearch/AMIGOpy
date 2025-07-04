@@ -129,6 +129,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.editXMinSlider_BrCv.valueChanged.connect(lambda: plotViewData_BrCv_edit(self))
         self.editXMaxSlider_BrCv.valueChanged.connect(lambda: plotViewData_BrCv_edit(self))
         self.editXAxis_BrCv.currentTextChanged.connect(lambda: initXRange(self))
+        self.DuetIPAddress.setText("192.168.0.1")
+        self.DuetControlView.setEnabled(False)
 
         set_fcn_MoVeTab_changed(self)
         #
