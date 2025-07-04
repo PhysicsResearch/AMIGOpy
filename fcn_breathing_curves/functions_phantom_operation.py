@@ -9,8 +9,8 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
 from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
+from PyQt5 import QtCore
 
-DUET_IP = '192.168.0.1'  # Replace with your Duet's IP
 UPDATE_INTERVAL = 0.1    # seconds between polls
 WINDOW_DURATION = 10     # seconds to show on the plot
 
@@ -23,12 +23,11 @@ def onTabChanged(self):
     if self.BrCv_PhOperWidget.currentIndex() == 1:
         self.MoVeSpeedFactor.setValue(100)
         self.MoVeSpeedFactor.valueChanged.connect(lambda: set_GCODE_speed(self))
-    init_MoVeTab(self)
+        init_MoVeTab(self)
 
 
 def setDuetIP(self):
     self.duet_ip = self.DuetIPAddress.text()
-    self.DuetControlView.setEnabled(True)
 
 
 def defineInputFolder(self):
@@ -45,6 +44,7 @@ def set_GCODE_speed(self):
 
 
 def init_MoVeTab(self):
+    self.duet_ip = self.DuetIPAddress.text()
     filename = get_curr_file(self)
     if filename is None:
         return
@@ -89,26 +89,33 @@ def init_MoVeTab(self):
 
 def get_curr_file(self):
     url = f'http://{self.duet_ip}/rr_fileinfo'
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
-            if data['err'] == 1:
-                return None
-            filepath = data['fileName']
-            self.tprint = data['printDuration']
-            _, filename = os.path.split(filepath)
-            return filename
-    except:
-        None
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        if data['err'] == 1:
+            return None
+        filepath = data['fileName']
+        self.tprint = data['printDuration']
+        _, filename = os.path.split(filepath)
+        return filename
+    else:
+        QMessageBox.warning(None, "Warning", "No valid Duet IP provided.")
+        return None
+
+
+
 
 
 def import_planned_curve(self, filename):
     csv_root = self.PhOperFolder.text()
+    if not os.path.exists(csv_root):
+        self.orig_data = None
+        QMessageBox.warning(None, "Warning", "No valid input folder was provided.")
+        return
     filepath = os.path.join(csv_root, filename.replace("gcode", "csv"))
     if not os.path.exists(filepath):
         self.orig_data = None
-        QMessageBox.warning(None, "Warning", "Provide valid input folder and ensure that it contains a\ncsv file with the same name as the breathing curve being executed.")
+        QMessageBox.warning(None, "Warning", "The input folder does not contain a csv file corresponding to the GCODE being executed.")
         return
     self.orig_data = pd.read_csv(filepath)
 
