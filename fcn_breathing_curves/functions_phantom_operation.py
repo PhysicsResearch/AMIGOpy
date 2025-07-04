@@ -39,6 +39,8 @@ def init_MoVeTab(self):
         return
     import_planned_curve(self, filename)
 
+    self.MoVeOffsetSlider.setRange(-150, 150)
+
     self.t0 = time.time() 
     # self.MoVeData = []
 
