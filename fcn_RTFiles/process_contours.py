@@ -95,12 +95,13 @@ class ContourWorker(QObject):
             if not contour_seq:
                 mask = np.zeros(self.mask_shape, dtype=np.uint8)
             else:
-                mask = create_3d_mask_for_structure_simple(
+                mask, all_points = create_3d_mask_for_structure_simple(
                     self.parent, structure,
                     self.mask_shape, self.spacing, self.origin
                 )
                 if not mask.any():
                     mask = np.zeros(self.mask_shape, dtype=np.uint8)
+                    all_points = np.empty((0, 3), dtype=float)
 
             new_key = f"Structure_{self.current_index:03d}"
             entry = {
@@ -108,6 +109,7 @@ class ContourWorker(QObject):
                 'Name':      name,
                 'Modified':  0,
                 'Contours2D': {'axial':{}, 'sagittal':{}, 'coronal':{}},
+                'Contours3D': all_points
             }
             self.target['structures'][new_key] = entry
             self.target['structures_names'].append(name)
@@ -256,16 +258,20 @@ def build_contours_for_structure(mask_3d):
 def create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, origin):
     mask_3d     = np.zeros(mask_shape, dtype=np.uint8)
     contour_seq = getattr(structure, 'ContourSequence', [])
+    # Collect ALL original DICOM points in a list
+    all_original_points = []
 
     if not contour_seq:
         print("No contour sequence found in structure.")
-        return mask_3d
+        return mask_3d, np.empty((0, 3), dtype=float)
 
     z_spacing, y_spacing, x_spacing = spacing
     origin_x, origin_y, origin_z = origin
 
     # flip coordinate to match Y 
     origin_y = -origin_y
+
+
 
     for contour in contour_seq:
         geom_type = getattr(contour, 'ContourGeometricType', '').upper()
@@ -277,7 +283,8 @@ def create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, or
             continue
 
         points = np.array(contour_data).reshape(-1, 3)
-
+        # Append all points to the big list
+        all_original_points.append(points)
         # Need to flip y to match
         points[:, 1] = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - points[:, 1]  # Y coordinate
 
@@ -294,8 +301,18 @@ def create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, or
         rr, cc = polygon(y_coords, x_coords, shape=mask_shape[1:])
         mask_3d[slice_idx, rr, cc] += 1
 
+    # Combine all to single [N, 3] array (if there were any contours)
+    if all_original_points:
+        all_original_points_array = np.vstack(all_original_points)
+    else:
+        all_original_points_array = np.empty((0, 3), dtype=float)
+
+
     mask_3d = np.mod(mask_3d, 2).astype(np.uint8)
-    return mask_3d
+
+
+
+    return mask_3d, all_original_points_array
 
 
 

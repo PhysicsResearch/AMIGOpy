@@ -2,6 +2,7 @@ from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin,initialize_3Dsliders, i
 import numpy as np
 import vtkmodules.all as vtk
 from vtkmodules.util.numpy_support import numpy_to_vtk, get_vtk_array_type
+from fcn_3Dview.structures_3D_table import add_cloud_to_table
 
 def set_3DViewer_data(self, hierarchy,hierarchy_indices):
     modality  = hierarchy[3].replace("Modality: ", "")     
@@ -18,28 +19,32 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
         index = hierarchy_indices[6].row()
         # print(index)
         name = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'][index]
-        # print(self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys'][index])
         key  = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys'][index]
         Points3D = create_3d_points(self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures'][key])
         if Points3D is not None and Points3D.size > 0:
             Points3D = Points3D.reshape(-1, 3)
-            VTK3DViewerMixin.add_3d_point_cloud(self,points=Points3D, name=name)
+            if Points3D.shape[1] == 3:
+                # Subtract position from all rows
+                Points3D = Points3D - self.Im_PatPosition3Dview[0, :3]
+                cloud_name = self.add_3d_point_cloud(points=Points3D, name=name)
+                add_cloud_to_table(self, name=cloud_name, color=(1,0,0), size=4)
+        return
 
 
-
-    if len(hierarchy) == 7: # binary mask contour or density map
+    if len(hierarchy) == 7: # binary mask contour linked to an image
         if hierarchy[5]=='Structures' and modality != 'RTSTRUCT':
             index = hierarchy_indices[6].row()
             name = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'][index]
-            s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
-            mask3d = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
-            surface_polydata = mask3d_to_surface(mask3d, spacing=(1,1,1))
-            if surface_polydata.GetNumberOfPoints() > 0:
-                print(f"Adding surface for structure: {name} with {surface_polydata.GetNumberOfPoints()} points")
-                self.add_surface_actor(surface_polydata, color=(0,1,0), opacity=0.4, name=name)
-            return
-            # self.display_3D_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
-            
+            s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][index]
+            Points3D = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Contours3D']
+            if Points3D is not None and Points3D.size > 0:
+                Points3D = Points3D.reshape(-1, 3)
+                if Points3D.shape[1] == 3:
+                    # Subtract position from all rows
+                    Points3D = Points3D - self.Im_PatPosition3Dview[0, :3]
+                    cloud_name = self.add_3d_point_cloud(points=Points3D, name=name)
+                    add_cloud_to_table(self, name=cloud_name, color=(1,0,0), size=4)
+            return            
     else:
         self.display_3D_data[idx]           = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
 

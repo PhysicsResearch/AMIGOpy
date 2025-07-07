@@ -346,8 +346,7 @@ class VTK3DViewerMixin:
         - size: point size in pixels
         - name: optional unique string, else uses len(self._clouds)
         """
-        import vtkmodules.all as vtk
-
+  
         # Prepare VTK points
         vtk_points = vtk.vtkPoints()
         for pt in points:
@@ -371,7 +370,12 @@ class VTK3DViewerMixin:
         # Store in clouds dict
         if name is None:
             name = f"cloud_{len(self._clouds)}"
-        self._clouds[name] = actor
+        self._clouds[name] = {
+            'actor': actor,
+            'color': color,
+            'size': size,
+            'points': points
+        }
         self.VTK3D_renderer.AddActor(actor)
         self.VTK3D_interactor.GetRenderWindow().Render()
         return name
