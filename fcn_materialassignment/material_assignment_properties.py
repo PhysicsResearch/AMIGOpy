@@ -307,22 +307,22 @@ def save_mat_db(self):
 
         data.append(", ".join(row_data))
 
-    # Construct the file path
-    file_path =  'fcn_materialassignment/materials_db.csv'
+    # # Construct the file path
+    # file_path =  'fcn_materialassignment/materials_db.csv'
 
-    try:
-        # Write the data to a CSV file manually to avoid quotes
-        with open(file_path, mode='w', newline='') as file:
-            for row in data:
-                file.write(row + '\n')
-        #Reload updated db and update material df
-        df=create_dataframe_materials(self)
-        update_mat_properties_table(self,df)
-        update_mat_table_style(self)
-        QMessageBox.information(self, "Success", "Data saved")
+    # try:
+    #     # Write the data to a CSV file manually to avoid quotes
+    #     with open(file_path, mode='w', newline='') as file:
+    #         for row in data:
+    #             file.write(row + '\n')
+    #     #Reload updated db and update material df
+    #     df=create_dataframe_materials(self)
+    #     update_mat_properties_table(self,df)
+    #     update_mat_table_style(self)
+    #     QMessageBox.information(self, "Success", "Data saved")
         
-    except Exception as e:
-        QMessageBox.critical(self, "Error", f"Failed to save data: {str(e)}")
+    # except Exception as e:
+    #     QMessageBox.critical(self, "Error", f"Failed to save data: {str(e)}")
         
 
 def undo_changes(self):
