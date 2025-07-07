@@ -177,9 +177,11 @@ def populate_list_menus(self):
     self.ct_cal_list.currentTextChanged.connect(lambda: update_ct_cal_view(self))
     #Initialize a list to store the CT calibration curves
     self.ct_cal_curves={}
-    ct_cal_files=os.listdir('fcn_ctcal/ct_cal_curves')
+    ct_cal_dir = resource_path('fcn_ctcal/ct_cal_curves')
+    ct_cal_files = os.listdir(ct_cal_dir)
     for file in ct_cal_files:
-        ct_cal_data=load_ct_cal_curve(self,fileName=f'fcn_ctcal/ct_cal_curves/{file}')
+        file_path = os.path.join(ct_cal_dir, file)
+        ct_cal_data = load_ct_cal_curve(self, fileName=file_path)
         update_ct_cal_table(self,ct_cal_data)
         update_ct_cal_view(self)
     
@@ -190,3 +192,13 @@ def populate_list_menus(self):
     self.Struct_list_mat.addItem('...Select Structure...')
     
     
+
+    def resource_path(relative_path):
+        """ Get absolute path to resource, works for dev and for PyInstaller """
+        if hasattr(sys, '_MEIPASS'):
+            # PyInstaller stores data files in _MEIPASS
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.abspath(".")
+
+        return os.path.join(base_path, relative_path)
