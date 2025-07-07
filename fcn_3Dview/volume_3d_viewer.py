@@ -309,35 +309,6 @@ class VTK3DViewerMixin:
             getattr(self, f'View3D_{axis}_spin_02').valueChanged.connect(
                 partial(_crop_from_spin, self, axis, 2))
 
-    def add_surface_actor(self, polydata, color=(0, 1, 0), opacity=0.4, name=None):
-        """
-        Add a surface (vtkPolyData) to the 3D renderer as a semi-transparent mesh.
-        Stores actor with name for later removal.
-        """
-        print("Number of points:", polydata.GetNumberOfPoints())
-        print("Number of polygons:", polydata.GetNumberOfPolys())
-        print("Number of triangles:", polydata.GetNumberOfCells())
-
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(polydata)
-        actor = vtk.vtkActor()
-        actor.SetMapper(mapper)
-        actor.GetProperty().SetColor(color)
-        actor.GetProperty().SetOpacity(opacity)
-        actor.GetProperty().SetInterpolationToPhong()
-        actor.GetProperty().SetSpecular(0.2)
-        actor.GetProperty().SetSpecularPower(10.0)
-        if name is None:
-            name = f"surface_{len(getattr(self, '_surfaces', {}))}"
-
-        # Store actors in a dictionary for easy removal
-        if not hasattr(self, '_surfaces'):
-            self._surfaces = {}
-        self._surfaces[name] = actor
-
-        self.VTK3D_renderer.AddActor(actor)
-        self.VTK3D_interactor.GetRenderWindow().Render()
-        return name
     
     def add_3d_point_cloud(self, points, color=(1, 0, 0), size=3.0, name=None):
         """

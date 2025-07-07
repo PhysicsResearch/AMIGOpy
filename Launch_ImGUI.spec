@@ -18,7 +18,7 @@ datas = [
 	(os.path.join(BASE_DIR, 'icons', 'roi_circle.png'), 'icons'),
 	(os.path.join(BASE_DIR, 'icons', 'roi_ellipse.png'), 'icons'),
 	(os.path.join(BASE_DIR, 'icons', 'roi_square.png'), 'icons'),
-	(os.path.join(BASE_DIR, 'icons', 'undo.png'), 'icons')
+	(os.path.join(BASE_DIR, 'icons', 'undo.png'), 'icons'),
     ('fcn_ctcal/ct_cal_curves', 'fcn_ctcal/ct_cal_curves'),
 ]
 
