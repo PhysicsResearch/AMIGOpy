@@ -3,6 +3,8 @@ import numpy as np
 import vtkmodules.all as vtk
 from vtkmodules.util.numpy_support import numpy_to_vtk, get_vtk_array_type
 from fcn_3Dview.structures_3D_table import add_cloud_to_table
+from skimage.measure import find_contours
+import math
 
 def set_3DViewer_data(self, hierarchy,hierarchy_indices):
     modality  = hierarchy[3].replace("Modality: ", "")     
@@ -17,7 +19,6 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
         self.series_index_struct  = self.series_index
         # 
         index = hierarchy_indices[6].row()
-        # print(index)
         name = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'][index]
         key  = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys'][index]
         Points3D = create_3d_points(self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures'][key])
@@ -27,23 +28,69 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
                 # Subtract position from all rows
                 Points3D = Points3D - self.Im_PatPosition3Dview[0, :3]
                 cloud_name = self.add_3d_point_cloud(points=Points3D, name=name)
-                add_cloud_to_table(self, name=cloud_name, color=(1,0,0), size=4)
+                add_cloud_to_table(self, name=cloud_name, color=(1,0,0), size=4,transparency=1.0)
         return
 
 
     if len(hierarchy) == 7: # binary mask contour linked to an image
         if hierarchy[5]=='Structures' and modality != 'RTSTRUCT':
             index = hierarchy_indices[6].row()
-            name = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'][index]
+            name = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'][index]
             s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][index]
-            Points3D = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Contours3D']
+
+            struct_entry = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]
+
+            # Check if Contours3D already exists           
+            if 'Contours3D' in struct_entry:
+                Points3D = struct_entry['Contours3D']
+            else:
+                # Need to generate Contours3D from Mask3D
+                mask = struct_entry['Mask3D']
+
+                # DICOM spatial information
+                spacing = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']  # [row, col] (y, x)
+                slice_thickness = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
+                origin = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']  # [x, y, z] or [z, y, x] (should be DICOM order, check yours!)
+
+                # Convert to full spacing (z, y, x)
+                spacing_full = (slice_thickness, spacing[0], spacing[1])
+                origin = np.array(origin)
+
+                # Prepare to collect all 3D contour points
+                all_pts = []
+                n_slices = mask.shape[0]
+                last_progress = -1  # To ensure first update is called
+                for z in range(mask.shape[0]):
+                    # Flip the mask in Y before extracting contours
+                    flipped_slice = np.flipud(mask[z, :, :])
+                    contours2d = find_contours(flipped_slice, level=0.5)
+                    for contour in contours2d:
+                        rows, cols = contour[:, 0], contour[:, 1]
+                        xs = origin[0] + cols * spacing_full[2]
+                        ys = origin[1] + rows * spacing_full[1]
+                        zs = np.full_like(cols, origin[2] + z * spacing_full[0], dtype=float)
+                        pts = np.stack([xs, ys, zs], axis=1)  # N x 3
+                        all_pts.append(pts)     
+                    # --- Progress update every 5% ---
+                    progress = int(((z + 1) / n_slices) * 100)
+                    if progress % 5 == 0 and progress != last_progress:
+                        self.progressBar.setValue(progress)
+                        last_progress = progress
+
+                if all_pts:
+                    Points3D = np.vstack(all_pts)  # [N,3]
+                else:
+                    Points3D = np.zeros((0,3), dtype=float)
+                # Save to the structure
+                struct_entry['Contours3D'] = Points3D
+
             if Points3D is not None and Points3D.size > 0:
                 Points3D = Points3D.reshape(-1, 3)
                 if Points3D.shape[1] == 3:
                     # Subtract position from all rows
                     Points3D = Points3D - self.Im_PatPosition3Dview[0, :3]
                     cloud_name = self.add_3d_point_cloud(points=Points3D, name=name)
-                    add_cloud_to_table(self, name=cloud_name, color=(1,0,0), size=4)
+                    add_cloud_to_table(self, name=cloud_name, color=(1,0,0), size=4,transparency=1.0)
             return            
     else:
         self.display_3D_data[idx]           = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
@@ -120,16 +167,3 @@ def create_3d_points(structure):
 
     return all_points
 
-
-
-def mask3d_to_surface(mask3d, spacing=(1,1,1)):
-    arr = numpy_to_vtk(mask3d.astype(np.uint8).ravel(), deep=True)
-    img = vtk.vtkImageData()
-    img.SetDimensions(mask3d.shape[::-1])  # (X, Y, Z)
-    img.SetSpacing(*spacing)
-    img.GetPointData().SetScalars(arr)
-    mc = vtk.vtkMarchingCubes()
-    mc.SetInputData(img)
-    mc.SetValue(0, 0.5)
-    mc.Update()
-    return mc.GetOutput()

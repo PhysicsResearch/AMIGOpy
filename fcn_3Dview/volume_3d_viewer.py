@@ -374,7 +374,8 @@ class VTK3DViewerMixin:
             'actor': actor,
             'color': color,
             'size': size,
-            'points': points
+            'points': points,
+            'transparency': 1.0
         }
         self.VTK3D_renderer.AddActor(actor)
         self.VTK3D_interactor.GetRenderWindow().Render()
@@ -593,3 +594,37 @@ class VTK3DViewerMixin:
     def play_4D_sequence_3D(self, play: bool):
         """Proxy to the 4D playback helper."""
         play_4D_sequence_3D(self, play)
+
+    def clear_3d_axes(self):
+        # Remove all volumes
+        for vol in self._volumes.values():
+            self.VTK3D_renderer.RemoveVolume(vol)
+        self._volumes.clear()
+        self._imgs.clear()
+        self._ctfs.clear()
+        self._otfs.clear()
+        self._vol_props.clear()
+        self._thresholds.clear()
+        self._crops.clear()
+        self._dims.clear()
+        self._full_ranges.clear()
+
+        # Remove all point cloud actors
+        for cloud in self._clouds.values():
+            self.VTK3D_renderer.RemoveActor(cloud['actor'])
+        self._clouds.clear()
+
+        # Remove all surface actors if you use them
+        if hasattr(self, '_surfaces'):
+            for actor in self._surfaces.values():
+                self.VTK3D_renderer.RemoveActor(actor)
+            self._surfaces.clear()
+
+        # Remove all rows from the clouds table
+        self._3D_Struct_table.setRowCount(0)
+
+        self.VTK3D_interactor.GetRenderWindow().Render()
+
+    def reset_3d_camera(self):
+        self.VTK3D_renderer.ResetCamera()
+        self.VTK3D_interactor.GetRenderWindow().Render()

@@ -47,9 +47,6 @@ from fcn_materialassignment.material_map import mat2HU,del_mat2HU,generate_mat_m
 def initialize_software_buttons(self):
 
 
-
-
-
     # IrIS add row dw table
     self.add_dw_table.clicked.connect(lambda: add_row_dw_table(self))
     self.remove_dw_table.clicked.connect(lambda: remove_row_dw_table(self))
@@ -138,6 +135,12 @@ def initialize_software_buttons(self):
     # 4D video
     self.View3D_play4D.setCheckable(True)
     self.View3D_play4D.toggled.connect(lambda: play_4D_sequence_3D(self,1))
+    self.View3D_play4D.setStyleSheet("background-color: blue; color: white;")
+    self.View3D_clear_all.clicked.connect(self.clear_3d_axes)
+    self.View3D_clear_all.setStyleSheet("background-color: blue; color: white;")
+    self.View3D_reset_camera.clicked.connect(self.reset_3d_camera)
+    self.View3D_reset_camera.setStyleSheet("background-color: blue; color: white;")
+    
 
     # DECT
     self.add_coll_table_mat.clicked.connect(lambda: add_coll2table(self))

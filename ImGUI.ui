@@ -1384,7 +1384,7 @@
            <item row="6" column="2">
             <widget class="QPushButton" name="View3D_clear_all">
              <property name="enabled">
-              <bool>false</bool>
+              <bool>true</bool>
              </property>
              <property name="text">
               <string>Clear all</string>
@@ -1411,7 +1411,7 @@
            <item row="6" column="1">
             <widget class="QPushButton" name="View3D_reset_camera">
              <property name="enabled">
-              <bool>false</bool>
+              <bool>true</bool>
              </property>
              <property name="text">
               <string>Reset Camera</string>
