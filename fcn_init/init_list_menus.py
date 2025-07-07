@@ -6,6 +6,7 @@ from fcn_display.display_images import update_layer_view
 from fcn_ctcal.ct_cal import update_ct_cal_view,load_ct_cal_curve,update_ct_cal_table
 from fcn_materialassignment.material_map import on_material_change
 import os
+import sys
 
 # from fcn_3Dview.Prepare_data_3D_vtk import _on_colormap_changed
 
@@ -193,12 +194,12 @@ def populate_list_menus(self):
     
     
 
-    def resource_path(relative_path):
-        """ Get absolute path to resource, works for dev and for PyInstaller """
-        if hasattr(sys, '_MEIPASS'):
-            # PyInstaller stores data files in _MEIPASS
-            base_path = sys._MEIPASS
-        else:
-            base_path = os.path.abspath(".")
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    if hasattr(sys, '_MEIPASS'):
+        # PyInstaller stores data files in _MEIPASS
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(".")
 
-        return os.path.join(base_path, relative_path)
+    return os.path.join(base_path, relative_path)

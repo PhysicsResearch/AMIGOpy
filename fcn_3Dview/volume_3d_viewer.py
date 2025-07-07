@@ -105,10 +105,11 @@ def _from_slider(self, idx: int, sval: int):
     self._thresholds[layer] = (tmin, tmax)
     # print(f"[DEBUG] stored thresholds[{layer}] = {self._thresholds[layer]}") 
     # apply only this layer’s transfer functions
+    opacity = self._opacities[layer] 
     otf = self._otfs[layer]
     otf.RemoveAllPoints()
     otf.AddPoint(tmin, 0.0)
-    otf.AddPoint(tmax, 1.0)
+    otf.AddPoint(tmax, opacity)
 
     ctf = self._ctfs[layer]
     cmap = self._colormaps.get(
@@ -394,7 +395,9 @@ class VTK3DViewerMixin:
                 otf = self._otfs[li]
                 otf.RemoveAllPoints()
                 otf.AddPoint(tmin,0.0)
-                otf.AddPoint(tmax,1.0)
+                layer = self.layer_selection_box.currentIndex()
+                opacity = self._opacities[layer] 
+                otf.AddPoint(tmax, opacity)
                 self.update_color_transfer(li, ctf, cmap, tmin, tmax)
         self.VTK3D_interactor.GetRenderWindow().Render()
 
@@ -440,7 +443,11 @@ class VTK3DViewerMixin:
         otf = self._otfs[new_idx]
         otf.RemoveAllPoints()
         otf.AddPoint(tmin, 0.0)
-        otf.AddPoint(tmax, 1.0)
+        layer = self.layer_selection_box.currentIndex()
+        opacity = self._opacities[layer] 
+        otf.AddPoint(tmax, opacity)
+
+
         ctf = self._ctfs[new_idx]
         cmap = self._colormaps.get(new_idx,
             self.findChild(QtWidgets.QComboBox, 'View3D_colormap').currentText()
@@ -504,8 +511,9 @@ class VTK3DViewerMixin:
 
         ctf = vtk.vtkColorTransferFunction()
         otf = vtk.vtkPiecewiseFunction()
+        opacity = self._opacities[layer_idx]
         otf.AddPoint(vmin, 0.0)
-        otf.AddPoint(vmax, 1.0)
+        otf.AddPoint(vmax, opacity)
         self._ctfs[layer_idx] = ctf
         self._otfs[layer_idx] = otf
 
@@ -539,8 +547,8 @@ class VTK3DViewerMixin:
         self._volumes[layer_idx] = volobj
         self.VTK3D_renderer.AddVolume(volobj)
 
-        if layer_idx == 0:
-            self.VTK3D_renderer.ResetCamera()
+
+
 
         # initialize sliders & crops if first time
         if layer_idx not in self._thresholds:
@@ -549,6 +557,32 @@ class VTK3DViewerMixin:
             initialize_crop_widgets(self, (nx, ny, nz), layer_idx)
 
         self.VTK3D_interactor.GetRenderWindow().Render()
+
+        if layer_idx==0:
+            self.VTK3D_renderer.ResetCamera()
+            self.Layer_0_alpha_sli.setValue(100)
+        elif layer_idx==1:
+            self.Layer_1_alpha_sli.setValue(100)
+        elif layer_idx==2:
+            self.Layer_2_alpha_sli.setValue(100)
+        elif layer_idx==3:
+            self.Layer_3_alpha_sli.setValue(100)
+
+
+
+    def _on_opacity_changed(self, val, layer=None):
+        if layer is None or layer not in self._thresholds:
+            return
+        opacity = max(0.0, min(1.0, val))
+        self._opacities[layer] = opacity
+        # Update OTF
+        tmin, tmax = self._thresholds[layer]
+        otf = self._otfs[layer]
+        otf.RemoveAllPoints()
+        otf.AddPoint(tmin, 0.0)
+        otf.AddPoint(tmax, opacity)
+        self.VTK3D_interactor.GetRenderWindow().Render()
+
 
     def update_3d_volume(self, volume_np, layer_idx=None):
         """Update just the scalar data of an existing volume."""

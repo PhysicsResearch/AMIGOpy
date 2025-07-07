@@ -41,6 +41,10 @@ def Layer_alpha_slider_set(self,layer):
         self.vtkWidgetSagittal.GetRenderWindow().Render()
         self.vtkWidgetCoronal.GetRenderWindow().Render()
         #
+    elif currentTabText == "_3Dview":
+        #
+        self._on_opacity_changed(self.LayerAlpha[layer], layer)
+        #
     elif currentTabText == "Compare":
         for i in range (0,self.Comp_im_idx.maximum()+1):
             imageProperty = self.imageActorAxComp[i, layer].GetProperty()
