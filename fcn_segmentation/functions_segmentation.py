@@ -537,6 +537,7 @@ def calcStrucStats(self):
                     slice_thick = target_series_dict['metadata']['SliceThickness']
                     pixel_spac = target_series_dict['metadata']['PixelSpacing']
                     Im_PatPosition = target_series_dict['metadata']['ImagePositionPatient']
+                    image_vol = target_series_dict['3DMatrix']
                     
                     for k in target_series_dict['structures']:
                         struct = target_series_dict['structures'][k]
@@ -546,19 +547,25 @@ def calcStrucStats(self):
                         vol_in_voxels = mask.sum() 
                         vol_in_mm = vol_in_voxels * slice_thick * pixel_spac[0] * pixel_spac[1]
                         CoM = calc_com(mask) * np.array([slice_thick, pixel_spac[0], pixel_spac[1]]) + Im_PatPosition[::-1]
-                        data[f"{patientID}_{series_id}_{struct_name}"] = {"patient_id": patientID, "series_id": series_id, "name": struct_name, "volume": vol_in_mm, "CoM": CoM}
+                        hu_mean = np.ma.masked_array(image_vol, np.logical_not(mask)).mean()
+                        hu_std = np.ma.masked_array(image_vol, np.logical_not(mask)).std()
+                        data[f"{patientID}_{series_id}_{struct_name}"] = {"patient_id": patientID, "series_id": series_id, 
+                                                                          "name": struct_name, "volume": vol_in_mm, "CoM": CoM,
+                                                                          "hu_mean": hu_mean, "hu_std": hu_std}
                         
     self.tableSegStrucStats.clear()
     # Clear the table before populating it
-    header_cols = ["Export", "Patient ID", "Series ID", "Name", "Volume (mm^3)", "CoM (z)", "CoM (y)", "CoM (x)"]
+    header_cols = ["Export", "Patient ID", "Series ID", "Name", "Volume (mm^3)", "CoM (z)", "CoM (y)", "CoM (x)", "HU Mean", "HU Std"]
     self.tableSegStrucStats.clear()
     self.tableSegStrucStats.setRowCount(len(data))
     self.tableSegStrucStats.setColumnCount(len(header_cols))
     self.tableSegStrucStats.setHorizontalHeaderLabels(header_cols)
 
     for row, name in enumerate(data):
-        instance_data = ["checkbox", data[name]["patient_id"], data[name]["series_id"], data[name]["name"], data[name]["volume"], 
-                                     data[name]["CoM"][0], data[name]["CoM"][1], data[name]["CoM"][2]]
+        instance_data = ["checkbox", data[name]["patient_id"], data[name]["series_id"], 
+                         data[name]["name"], data[name]["volume"], 
+                         data[name]["CoM"][0], data[name]["CoM"][1], data[name]["CoM"][2], 
+                         data[name]["hu_mean"], data[name]["hu_std"]]
         for col, val in enumerate(instance_data):
             if val == "checkbox":
                 checkkBoxItem = QTableWidgetItem()
@@ -588,7 +595,7 @@ def exportStrucStats(self):
     folder = QFileDialog.getExistingDirectory(self, options=options)
     
     # Get the checked items from the table
-    checked_items = [("patient_id", "series_id", "name", "volume", "z", "y", "x")]
+    checked_items = [("patient_id", "series_id", "name", "volume", "z", "y", "x", "mean", "std")]
     for row in range(self.tableSegStrucStats.rowCount()):
         item = self.tableSegStrucStats.item(row, 0)  # Assuming the checkbox is in the first column
         if item and item.checkState() == QtCore.Qt.Checked:
@@ -599,7 +606,9 @@ def exportStrucStats(self):
             z = self.tableSegStrucStats.item(row, 5).text()
             y = self.tableSegStrucStats.item(row, 6).text()
             x = self.tableSegStrucStats.item(row, 7).text()
-            checked_items.append((patient_id, series_id, name, volume, z, y, x))
+            hu_mean = self.tableSegStrucStats.item(row, 8).text()
+            hu_std = self.tableSegStrucStats.item(row, 9).text()
+            checked_items.append((patient_id, series_id, name, volume, z, y, x, hu_mean, hu_std))
 
     with open(os.path.join(folder, "structure_stats.csv"), 'w', newline='') as f:
         writer = csv.writer(f)
