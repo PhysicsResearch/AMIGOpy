@@ -8,13 +8,24 @@ import csv, math
 from PyQt5.QtGui         import QColor, QBrush
 from PyQt5.QtCore        import Qt
 from fcn_materialassignment.material_map import update_material_list,check_mat2HU,check_struct2mat
+import sys, os
 
 SYMBOL_TO_ATOMIC_NUMBER = {v: k for k, v in ATOMIC_NUMBER_TO_SYMBOL.items()}
+
+
+
+
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and PyInstaller"""
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.abspath(relative_path)
+
 
 def create_dataframe_materials(self):
     # Open file dialog to select a CSV file
 
-    filename = 'fcn_materialassignment/materials_db.csv'
+    filename = resource_path('fcn_materialassignment/materials_db.csv')
 
     #
     data = []
