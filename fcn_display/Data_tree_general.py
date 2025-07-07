@@ -15,8 +15,9 @@ from fcn_display.disp_plan_data import update_plan_tables
 from fcn_RTFiles.process_rt_files import update_structure_list_widget
 from fcn_RTFiles.process_contours import find_matching_series
 from fcn_segmentation.functions_segmentation import plot_hist
-from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin,initialize_3Dsliders, initialize_crop_widgets
 from fcn_materialassignment.material_map import update_mat_struct_list
+from fcn_display.Data_tree_view_axes_update import update_axial_image, update_sagittal_image, update_coronal_image
+from fcn_display.Data_tree_3Dview import set_3DViewer_data
 
 
 
@@ -73,10 +74,11 @@ def on_DataTreeView_clicked(self,index):
                 # 
                 self.modality_metadata = self.modality_struct
                 update_meta_view_table_dicom(self,self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info'])
-                update_structure_list_widget(self,
-                                             self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'],
-                                             self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys'],
-                                            )
+                if currentTabText != "_3DView":
+                    update_structure_list_widget(self,
+                                                self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'],
+                                                self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys'],
+                                                )
                 # find reference series
                 Ref = None
                 if 'ReferencedFrameOfReferenceSequence' in self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']:
@@ -89,35 +91,37 @@ def on_DataTreeView_clicked(self,index):
 
                 # Select the struct tab
                 self.tabView01.setCurrentIndex(3)
-                return
-            #print(self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['AcquisitionNumber'])
-            # Assign data and display init image
-            #
-            Window = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowWidth']
-            Level  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowCenter']
-            # For Window
-            if Window in ('N/A', None) or Level in ('N/A', None):
-                Window = 100
-                Level = 0
-            else:
-                if isinstance(Window, MultiValue):
-                    Window = float(Window[0])
+                if currentTabText != "_3Dview":
+                    return
+                
+            if currentTabText != "_3Dview":
+                # Assign data and display init image
+                #
+                Window = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowWidth']
+                Level  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowCenter']
+                # For Window
+                if Window in ('N/A', None) or Level in ('N/A', None):
+                    Window = 100
+                    Level = 0
                 else:
-                    Window = float(Window)
-                if isinstance(Level, MultiValue):
-                    Level = float(Level[0])
-                else:
-                    Level = float(Level) 
-            #
-            if idx == 0:
-                self.LayerAlpha[0] = 1.0
-                self.Layer_0_alpha_sli.setValue(int(self.LayerAlpha[0]*100))
-            elif idx==1:
-                self.LayerAlpha[1] = 0.6
-                self.Layer_1_alpha_sli.setValue(int(self.LayerAlpha[1]*100))
-            elif idx==2:
-                self.LayerAlpha[2] = 0.6
-                self.Layer_2_alpha_sli.setValue(int(self.LayerAlpha[2]*100))
+                    if isinstance(Window, MultiValue):
+                        Window = float(Window[0])
+                    else:
+                        Window = float(Window)
+                    if isinstance(Level, MultiValue):
+                        Level = float(Level[0])
+                    else:
+                        Level = float(Level) 
+                #
+                if idx == 0:
+                    self.LayerAlpha[0] = 1.0
+                    self.Layer_0_alpha_sli.setValue(int(self.LayerAlpha[0]*100))
+                elif idx==1:
+                    self.LayerAlpha[1] = 0.6
+                    self.Layer_1_alpha_sli.setValue(int(self.LayerAlpha[1]*100))
+                elif idx==2:
+                    self.LayerAlpha[2] = 0.6
+                    self.Layer_2_alpha_sli.setValue(int(self.LayerAlpha[2]*100))
             #
             # check the current module
             if currentTabText == "View":
@@ -225,52 +229,12 @@ def on_DataTreeView_clicked(self,index):
                 #
             elif currentTabText == "_3Dview":
                 # Matrix to display + spacing
-                idx                                 = self.layer_selection_box.currentIndex()
-                self.display_3D_data[idx]           = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
-                self.pixel_spacing3Dview[idx]       = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
-                self.slice_thickness3Dview[idx]     = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
-                #
-                self.Im_PatPosition3Dview[idx, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
-                #
-                if idx == 0:
-                    offset = (0.0, 0.0, 0.0)
+                if len(hierarchy) >= 5: # binary mask contour or density map
+                    set_3DViewer_data(self, hierarchy,hierarchy_indices)
                 else:
-                    base_pos = self.Im_PatPosition3Dview[0]
-                    curr_pos = self.Im_PatPosition3Dview[idx]
-                    offset   = tuple(np.array(curr_pos) - np.array(base_pos))
-                    self.Im_Offset3Dview[idx] = offset
-
-                # load into VTK and display
-                self.display_numpy_volume(
-                    self.display_3D_data[idx],
-                    voxel_spacing=(
-                        self.pixel_spacing3Dview[idx,0],
-                        self.pixel_spacing3Dview[idx,1],
-                        self.slice_thickness3Dview[idx]
-                    ),
-                    layer_idx=idx,
-                    offset=offset
-                )
-
-                # ── reset thresholds (and full‐range) for this layer so the sliders jump to the new data
-                # clear any old state
-                self._thresholds.pop(idx, None)
-                self._full_ranges.pop(idx, None)
-                # compute new data range
-                vol = self.display_3D_data[idx]
-                vmin, vmax = float(vol.min()), float(vol.max())
-                # re-initialize the two 3D sliders for this layer
-                initialize_3Dsliders(self, vmin, vmax)
-                # ── now reset the crop‐region sliders for just this layer
-                # clear any old crop state
-                self._crops.pop(idx, None)
-                self._dims .pop(idx, None)
-                # volume_np.shape is (Z, Y, X), but initialize_crop_widgets wants (X, Y, Z)
-                dz, dy, dx = vol.shape
-                initialize_crop_widgets(self, (dx, dy, dz), idx)
-
-                # stop exectution here
-                return
+                    return
+            #                
+                
             elif currentTabText == "Compare":
                 #
                 # Current view
@@ -719,172 +683,3 @@ def populate_CT4D_table(self):
             # Increment the sequence ID for the next row
             sequence_id += 1
 
-def update_axial_image(self,  Im = None):
-    idx = self.layer_selection_box.currentIndex()
-    #
-    for i in range(len(self.dataImporterAxial)):
-        # Add or update circular ROIs in the 4th layer
-        if i == 3 and self.checkBox_circ_roi_data_2.isChecked():
-            renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
-            for actor in self.circle_actors_ax:
-                renderer.RemoveActor(actor)
-            self.circle_actors_ax.clear()
-        if self.slice_thick[i] ==0:
-            continue
-
-        Offset_vox = (self.Im_PatPosition[idx,2]-self.Im_PatPosition[i,2])/self.slice_thick[i]
-        self.current_axial_slice_index[i] = int((self.current_axial_slice_index[idx]*(self.slice_thick[idx]/self.slice_thick[i]))+Offset_vox)
-        #
-        if 0 <=self.current_axial_slice_index[i] <self.display_data[i].shape[0]:
-            if self.display_data[i].ndim==2:
-                slice_data = self.display_data[i]
-            elif Im is not None:
-                slice_data = Im
-            else:       
-                slice_data = self.display_data[i][self.current_axial_slice_index[i], :, :]
-            data_string = slice_data.tobytes()
-            #
-            self.dataImporterAxial[i].SetDataSpacing(self.pixel_spac[i,1],self.pixel_spac[i,0],1)
-            #
-            extent = slice_data.shape
-            self.dataImporterAxial[i].CopyImportVoidPointer(data_string, len(data_string))
-            self.dataImporterAxial[i].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-            self.dataImporterAxial[i].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-            #
-            self.imageActorAxial[i].SetPosition(self.Im_Offset[i,0], self.Im_Offset[i,1] , 0)
-            #
-            #
-            imageProperty = self.imageActorAxial[i].GetProperty()
-            imageProperty.SetOpacity(self.LayerAlpha[i])  
-            self.dataImporterAxial[i].Modified()  
-            if i == idx:
-                # Update the position and lateral extension of the axial line to cross the entire image
-                self.sagittalLine2Source.SetPoint1(self.Im_Offset[i,1],self.Im_Offset[i,2]+self.current_axial_slice_index[i]*self.slice_thick[i], 0.1)
-                self.sagittalLine2Source.SetPoint2(self.Im_Offset[i,1]+extent[0]*self.pixel_spac[i,0]-self.pixel_spac[i,0],self.Im_Offset[i,2]+self.current_axial_slice_index[i]*self.slice_thick[i], 0.1)
-                self.sagittalLine2Source.Modified()  # Notify VTK of the changes
-                #
-                # Update the position and lateral extension of the axial line to cross the entire image
-                self.coronalLine2Source.SetPoint1(self.Im_Offset[i,0],self.Im_Offset[i,2]+self.current_axial_slice_index[i]*self.slice_thick[i], 1)
-                self.coronalLine2Source.SetPoint2(self.Im_Offset[i,0]+extent[1]*self.pixel_spac[i,1]-self.pixel_spac[i,1],self.Im_Offset[i,2]+self.current_axial_slice_index[i]*self.slice_thick[i], 0.11)
-                self.coronalLine2Source.Modified()  # Notify VTK of the changes
-                self.current_axial_slice_index[i]  
-                      
-        else:             
-            imageProperty = self.imageActorAxial[i].GetProperty()
-            imageProperty.SetOpacity(0)
-            self.dataImporterAxial[i].Modified()
-            #  Render to update
-        #     
-
-def update_coronal_image(self,  Im = None):
-    idx = self.layer_selection_box.currentIndex()
-    if self.display_data[idx].ndim==2:
-        return
-    for i in range(len(self.dataImporterCoronal)):
-        # Add or update circular ROIs in the 4th layer
-        if i == 3 and self.checkBox_circ_roi_data_2.isChecked():
-            renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
-            for actor in self.circle_actors_co:
-                renderer.RemoveActor(actor)
-            self.circle_actors_co.clear()
-            # self.vtkWidgetAxial.GetRenderWindow().Render() 
-
-        if self.slice_thick[i] ==0:
-            continue   
-        
-        Offset = (self.display_data[idx].shape[1]*self.pixel_spac[idx,0]-self.display_data[i].shape[1]*self.pixel_spac[i,0]-(self.Im_PatPosition[i,1]-self.Im_PatPosition[idx,1]))/self.pixel_spac[i,0]
-        self.current_coronal_slice_index[i] = int((self.current_coronal_slice_index[idx]*(self.pixel_spac[idx,0]/self.pixel_spac[i,0]))-Offset)
-        #
-        if 0<= self.current_coronal_slice_index[i] <self.display_data[i].shape[1]:
-            # Just update the slice data for the existing pipeline
-            if Im is not None:
-                slice_data = Im
-            else:
-                slice_data = self.display_data[i][:, self.current_coronal_slice_index[i], :]
-            data_string = slice_data.tobytes()
-            extent = slice_data.shape
-            self.dataImporterCoronal[i].CopyImportVoidPointer(data_string, len(data_string))
-            self.dataImporterCoronal[i].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-            self.dataImporterCoronal[i].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-            #
-            # 
-            self.dataImporterCoronal[i].SetDataSpacing(self.pixel_spac[i,1],self.slice_thick[i],1)     
-            # Inform the pipeline that data has changed.
-            imageProperty = self.imageActorCoronal[i].GetProperty()
-            imageProperty.SetOpacity(self.LayerAlpha[i])  
-            self.dataImporterCoronal[i].Modified()  
-            if i == idx:
-                # Update the position and lateral extension of the axial line to cross the entire image
-                self.axialLineSource.SetPoint1(self.Im_Offset[i,0],self.Im_Offset[i,1]+ self.current_coronal_slice_index[i]*self.pixel_spac[i,0], 1)
-                self.axialLineSource.SetPoint2(self.Im_Offset[i,0]+extent[1]*self.pixel_spac[i,1]-self.pixel_spac[i,1],self.Im_Offset[i,1]+ self.current_coronal_slice_index[i]*self.pixel_spac[i,0], 0.1)
-                self.axialLineSource.Modified()  # Notify VTK of the changes
-                
-                # Update the position and lateral extension of the axial line to cross the entire image
-                self.sagittalLineSource.SetPoint1(self.Im_Offset[i,1]+self.current_coronal_slice_index[i]*self.pixel_spac[i,0],self.Im_Offset[i,2], 1)
-                self.sagittalLineSource.SetPoint2(self.Im_Offset[i,1]+self.current_coronal_slice_index[i]*self.pixel_spac[i,0],self.Im_Offset[i,2]+extent[0]*self.slice_thick[i]-self.slice_thick[i], 0.1)
-                self.sagittalLineSource.Modified()  # Notify VTK of the changes
-            #
-            self.imageActorCoronal[i].SetPosition(self.Im_Offset[i,0], self.Im_Offset[i,2] , 0)
-            # if self.modality == 'RTDOSE':   
-            #     # Just update the slice data for the existing pipeline
-            #     slice_dose = self.current_slice_index[1]-int(self.Dose_Im_offset[1])
-        else:
-            imageProperty = self.imageActorCoronal[i].GetProperty()
-            imageProperty.SetOpacity(0) 
-            self.dataImporterCoronal[i].Modified() 
-        #    
-
-def update_sagittal_image(self,  Im = None):
-    idx = self.layer_selection_box.currentIndex()
-    if self.display_data[idx].ndim==2:
-        return
-    for i in range(len(self.dataImporterSagittal)):
-        
-        # Add or update circular ROIs in the 4th layer
-        if i == 3 and self.checkBox_circ_roi_data_2.isChecked():
-            renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
-            for actor in self.circle_actors_sa:
-                renderer.RemoveActor(actor)
-            self.circle_actors_sa.clear()
-            # self.vtkWidgetAxial.GetRenderWindow().Render() 
-
-        if self.slice_thick[i] ==0:
-            continue
-        
-        Offset_vox = (self.Im_PatPosition[idx,0]-self.Im_PatPosition[i,0])/self.pixel_spac[i,1]
-        self.current_sagittal_slice_index[i] = int(self.current_sagittal_slice_index[idx]*(self.pixel_spac[idx,1]/self.pixel_spac[i,1]) + Offset_vox)
-        #
-        if 0 <= self.current_sagittal_slice_index[i] < self.display_data[i].shape[2]:
-            # Just update the slice data for the existing pipeline
-            if Im is not None:
-                slice_data = Im
-            else:
-                slice_data = self.display_data[i][:, :, self.current_sagittal_slice_index[i]]
-            data_string = slice_data.tobytes()
-          
-            extent = slice_data.shape
-            self.dataImporterSagittal[i].CopyImportVoidPointer(data_string, len(data_string))
-            self.dataImporterSagittal[i].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-            self.dataImporterSagittal[i].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-            
-            self.dataImporterSagittal[i].SetDataSpacing(self.pixel_spac[i,0],self.slice_thick[i],1) 
-            self.imageActorSagittal[i].SetPosition(self.Im_Offset[i,1], self.Im_Offset[i,2] , 0)
-            imageProperty = self.imageActorSagittal[i].GetProperty()
-            imageProperty.SetOpacity(self.LayerAlpha[i])  
-            # Inform the pipeline that data has changed.
-            self.dataImporterSagittal[i].Modified()  
-            if i==idx:
-                # Update the position and lateral extension of the axial line to cross the entire image
-                self.axialLine2Source.SetPoint1(self.Im_Offset[i,0]+self.current_sagittal_slice_index[i]*self.pixel_spac[i,1],self.Im_Offset[i,1], 1)
-                self.axialLine2Source.SetPoint2(self.Im_Offset[i,0]+self.current_sagittal_slice_index[i]*self.pixel_spac[i,1],self.Im_Offset[i,1]+extent[1]*self.pixel_spac[i,0]-self.pixel_spac[i,0],  1)
-                self.axialLine2Source.Modified()  # Notify VTK of the changes
-            
-                # # Update the position and lateral extension of the coronal line to cross the entire image
-                self.coronalLineSource.SetPoint1(self.Im_Offset[i,0]+self.current_sagittal_slice_index[i]*self.pixel_spac[i,1], self.Im_Offset[i,2], 1)
-                self.coronalLineSource.SetPoint2(self.Im_Offset[i,0]+self.current_sagittal_slice_index[i]*self.pixel_spac[i,1],self.Im_Offset[i,2]+extent[0]*self.slice_thick[i]-self.slice_thick[i],  1)
-                self.coronalLineSource.Modified()  # Notify VTK of the changes     
-        else: 
-            imageProperty = self.imageActorSagittal[i].GetProperty()
-            imageProperty.SetOpacity(0)
-            self.dataImporterSagittal[i].Modified() 
-        #    

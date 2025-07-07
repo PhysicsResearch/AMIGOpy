@@ -48,6 +48,15 @@ def populate_DICOM_tree(self):
                         series_label = f"{Struct_label}_Series: {series_data['SeriesNumber']}"
                         series_item = QStandardItem(series_label)
                         modality_item.appendRow(series_item)
+                        # If structures exist, add them as a sublevel
+                        structures_names = series_data.get('structures_names')
+                        if structures_names:
+                            structures_parent_item = QStandardItem("Structures")
+                            series_item.appendRow(structures_parent_item)
+                            for name in structures_names:
+                                structure_item = QStandardItem(name)
+                                structures_parent_item.appendRow(structure_item)
+
                     elif modality == 'RTDOSE':
                         Dose_label = series_data['metadata']['SeriesDescription']
                         series_label = f"{Dose_label}_Series: {series_data['SeriesNumber']}"

@@ -165,9 +165,9 @@ def process_rt_struct(self, rtstruct, structured_data):
             print(f"No valid contours for '{roi_name}' (ROI {ref_roi_number}); skipping.")
 
     # Explicitly update structured_data
-    series_data['structures'] = structures
-    series_data['structures_names'] = structures_names
-    series_data['structures_keys'] = structures_keys
+    series_data['structures']        = structures
+    series_data['structures_names']  = structures_names
+    series_data['structures_keys']   = structures_keys
 
 
 

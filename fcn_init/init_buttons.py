@@ -38,10 +38,9 @@ from fcn_display.display_images_seg import undo_brush_seg
 from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes,add_row_to_ct_table, export_ct_cal_to_csv
 from fcn_densitymap.density_map import create_density_map,del_density_map
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
-from fcn_3Dview.Prepare_data_3D_vtk import play_4D_sequence_3D
+from fcn_3Dview.volume_3d_viewer import play_4D_sequence_3D
 from fcn_materialassignment.material_assignment_properties import add_mat_row,del_mat_row,add_element,del_element,save_mat_db,undo_changes
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
-from fcn_3Dview.Prepare_data_3D_vtk import play_4D_sequence_3D
 from fcn_materialassignment.material_map import mat2HU,del_mat2HU,generate_mat_map,delete_mat_map,struct2mat,del_stuct2mat,update_mat_struct_list
 
 

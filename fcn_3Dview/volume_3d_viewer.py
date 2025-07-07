@@ -280,6 +280,7 @@ class VTK3DViewerMixin:
         self._dims        = {}
         self._colormaps   = {}
         self._full_ranges = {}
+        self._clouds      = {}
         self._play3D_index = 0
 
         # colormap menu
@@ -307,6 +308,88 @@ class VTK3DViewerMixin:
                 partial(_crop_from_spin, self, axis, 1))
             getattr(self, f'View3D_{axis}_spin_02').valueChanged.connect(
                 partial(_crop_from_spin, self, axis, 2))
+
+    def add_surface_actor(self, polydata, color=(0, 1, 0), opacity=0.4, name=None):
+        """
+        Add a surface (vtkPolyData) to the 3D renderer as a semi-transparent mesh.
+        Stores actor with name for later removal.
+        """
+        print("Number of points:", polydata.GetNumberOfPoints())
+        print("Number of polygons:", polydata.GetNumberOfPolys())
+        print("Number of triangles:", polydata.GetNumberOfCells())
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(polydata)
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetColor(color)
+        actor.GetProperty().SetOpacity(opacity)
+        actor.GetProperty().SetInterpolationToPhong()
+        actor.GetProperty().SetSpecular(0.2)
+        actor.GetProperty().SetSpecularPower(10.0)
+        if name is None:
+            name = f"surface_{len(getattr(self, '_surfaces', {}))}"
+
+        # Store actors in a dictionary for easy removal
+        if not hasattr(self, '_surfaces'):
+            self._surfaces = {}
+        self._surfaces[name] = actor
+
+        self.VTK3D_renderer.AddActor(actor)
+        self.VTK3D_interactor.GetRenderWindow().Render()
+        return name
+    
+    def add_3d_point_cloud(self, points, color=(1, 0, 0), size=3.0, name=None):
+        """
+        Add a 3D point cloud (Nx3 numpy array) as VTK actor. Returns a key for later removal.
+        - color: (r,g,b)
+        - size: point size in pixels
+        - name: optional unique string, else uses len(self._clouds)
+        """
+        import vtkmodules.all as vtk
+
+        # Prepare VTK points
+        vtk_points = vtk.vtkPoints()
+        for pt in points:
+            vtk_points.InsertNextPoint(float(pt[0]), float(pt[1]), float(pt[2]))
+
+        polydata = vtk.vtkPolyData()
+        polydata.SetPoints(vtk_points)
+
+        verts = vtk.vtkVertexGlyphFilter()
+        verts.SetInputData(polydata)
+        verts.Update()
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(verts.GetOutputPort())
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetColor(color)
+        actor.GetProperty().SetPointSize(size)
+
+        # Store in clouds dict
+        if name is None:
+            name = f"cloud_{len(self._clouds)}"
+        self._clouds[name] = actor
+        self.VTK3D_renderer.AddActor(actor)
+        self.VTK3D_interactor.GetRenderWindow().Render()
+        return name
+
+    def remove_3d_point_cloud(self, name):
+        """Remove a named 3D point cloud from the renderer."""
+        if name in self._clouds:
+            actor = self._clouds.pop(name)
+            self.VTK3D_renderer.RemoveActor(actor)
+            self.VTK3D_interactor.GetRenderWindow().Render()
+
+    def clear_3d_point_clouds(self):
+        """Remove all 3D point cloud actors."""
+        for actor in self._clouds.values():
+            self.VTK3D_renderer.RemoveActor(actor)
+        self._clouds.clear()
+        self.VTK3D_interactor.GetRenderWindow().Render()
+
 
     def update_color_transfer(self,
                               layer_idx: int,
