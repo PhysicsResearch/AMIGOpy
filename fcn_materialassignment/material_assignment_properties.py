@@ -12,12 +12,6 @@ import sys, os
 
 SYMBOL_TO_ATOMIC_NUMBER = {v: k for k, v in ATOMIC_NUMBER_TO_SYMBOL.items()}
 
-def get_user_mat_db_path():
-    appdata = os.environ.get('APPDATA', os.path.expanduser('~'))
-    user_folder = os.path.join(appdata, 'AMIGOpy')
-    if not os.path.exists(user_folder):
-        os.makedirs(user_folder)
-    return os.path.join(user_folder, 'materials_db.csv')
 
 
 
@@ -30,11 +24,8 @@ def resource_path(relative_path):
 
 def create_dataframe_materials(self):
     # Open file dialog to select a CSV file
-    user_file = get_user_mat_db_path()
-    if os.path.exists(user_file):
-        filename = user_file
-    else:
-        filename = resource_path('fcn_materialassignment/materials_db.csv')
+
+    filename = resource_path('fcn_materialassignment/materials_db.csv')
 
     #
     data = []
@@ -317,7 +308,8 @@ def save_mat_db(self):
         data.append(", ".join(row_data))
 
     # Construct the file path
-    file_path = get_user_mat_db_path()
+    file_path  = resource_path('fcn_materialassignment/materials_db.csv')
+
     try:
         # Write the data to a CSV file manually to avoid quotes
         with open(file_path, mode='w', newline='') as file:
