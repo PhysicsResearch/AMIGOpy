@@ -36,6 +36,7 @@ from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal, QObject
 from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin
 from fcn_3Dview.structures_3D_table import init_3D_Struct_table 
 from fcn_init.init_tool_tip import set_tooltip
+from fcn_3Dview.surfaces_3D_table import init_STL_Surface_table
 
 
 # ── constants in module / class scope ─────────────────────────────────────────
@@ -79,7 +80,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # load ref csv files
         load_Source_cal_csv_file(self)
         #
-        init_3D_Struct_table (self)
+        init_3D_Struct_table(self)
+        init_STL_Surface_table(self)
 
         #
         self.LeftButtonSagittalDown = False
@@ -117,6 +119,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         #
         self.dicom_data   = None            # Initialize the attribute to store DICOM data
         self.IrIS_data    = None            # Initialize the attribute to store IrIS data
+        self.STL_data     = None            # Initialize the attribute to store STL data
         self.IrIS_corr    = {}              # Initialize the attribute to store IrIS correction data
         self.current_slice_index = [-1,-1,-1]  # axial, sagital and coronal slices
         #

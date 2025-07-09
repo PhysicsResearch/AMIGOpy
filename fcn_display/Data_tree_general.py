@@ -18,8 +18,23 @@ from fcn_segmentation.functions_segmentation import plot_hist
 from fcn_materialassignment.material_map import update_mat_struct_list
 from fcn_display.Data_tree_view_axes_update import update_axial_image, update_sagittal_image, update_coronal_image
 from fcn_display.Data_tree_3Dview import set_3DViewer_data
+import vtk
+from vtkmodules.util.numpy_support import numpy_to_vtk
 
 
+def numpy_to_vtk_polydata(points, faces):
+    polydata = vtk.vtkPolyData()
+    vtk_points = vtk.vtkPoints()
+    vtk_points.SetData(numpy_to_vtk(points))
+    polydata.SetPoints(vtk_points)
+
+    vtk_cells = vtk.vtkCellArray()
+    for face in faces:
+        vtk_cells.InsertNextCell(len(face))
+        for idx in face:
+            vtk_cells.InsertCellPoint(int(idx))
+    polydata.SetPolys(vtk_cells)
+    return polydata
 
 def on_DataTreeView_clicked(self,index):
     model = self.DataTreeView.model()
@@ -39,7 +54,32 @@ def on_DataTreeView_clicked(self,index):
     idx = self.layer_selection_box.currentIndex()
     currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
     #
-    if hierarchy[0] == "DICOM":
+    if hierarchy[0] == "Surfaces":
+        item = model.itemFromIndex(index)
+        stl_key = item.data(Qt.UserRole)
+        if currentTabText == "_3Dview":
+            # Check for cached VTK polydata
+            if not hasattr(self, "_vtk_surface_cache"):
+                self._vtk_surface_cache = {}
+            if stl_key in self._vtk_surface_cache:
+                polydata = self._vtk_surface_cache[stl_key]
+            else:
+                # Convert numpy arrays to vtkPolyData
+                stl_info = self.STL_data[stl_key]
+                polydata = numpy_to_vtk_polydata(stl_info["points"], stl_info["faces"])
+                self._vtk_surface_cache[stl_key] = polydata
+            # Display with your VTK display function (replace with your function)
+            # 2. Display in 3D
+            self.display_stl_surface_in_3d_viewer(
+                polydata,
+                name=stl_key,  # unique STL identifier
+                color=(0.5, 0.8, 0.2),  # or any color
+                opacity=1.0,
+                highlight=True
+            )
+            print("Select the 3D_view tab to display the surface.")
+        #
+    elif hierarchy[0] == "DICOM":
         self.DataType = "DICOM"  
         # clear metadata search field
         # Temporarily block signals so this won't fire textChanged again

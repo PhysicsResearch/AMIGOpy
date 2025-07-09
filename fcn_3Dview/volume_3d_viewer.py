@@ -633,3 +633,50 @@ class VTK3DViewerMixin:
     def reset_3d_camera(self):
         self.VTK3D_renderer.ResetCamera()
         self.VTK3D_interactor.GetRenderWindow().Render()
+    
+    def display_stl_surface_in_3d_viewer(self, polydata, name="surface", color=(0.8, 0.3, 0.2), opacity=1.0, highlight=False):
+        """
+        Display a single STL surface in the 3D viewer.
+        - polydata: vtkPolyData of the surface
+        - name: unique key for surface (use STL_data key)
+        - color: tuple, default reddish
+        - opacity: 0..1
+        - highlight: if True, sets a yellow border
+
+        Caches actors in self._surfaces; replaces actor if already exists.
+        """
+        # --- Ensure _surfaces dict exists ---
+        if not hasattr(self, "_surfaces") or self._surfaces is None:
+            self._surfaces = {}
+
+        # --- Remove previous actor if exists ---
+        if name in self._surfaces:
+            self.VTK3D_renderer.RemoveActor(self._surfaces[name])
+            del self._surfaces[name]
+
+        # --- Build new actor ---
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(polydata)
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetColor(*color)
+        actor.GetProperty().SetOpacity(opacity)
+        actor.GetProperty().SetInterpolationToPhong()
+        if highlight:
+            actor.GetProperty().SetEdgeVisibility(1)
+            actor.GetProperty().SetEdgeColor(1,1,0)
+            actor.GetProperty().SetLineWidth(2)
+        else:
+            actor.GetProperty().SetEdgeVisibility(0)
+
+        # --- Add to renderer and cache ---
+        self.VTK3D_renderer.AddActor(actor)
+        self._surfaces[name] = actor
+
+        # --- Render and adjust camera if wanted ---
+        self.VTK3D_interactor.GetRenderWindow().Render()
+        # Optionally, reset camera on first STL
+        if len(self._surfaces) == 1:
+            self.VTK3D_renderer.ResetCamera()
+            self.VTK3D_interactor.GetRenderWindow().Render()
