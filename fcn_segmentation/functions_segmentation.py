@@ -25,8 +25,8 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 #########################
 
 def InitSeg(self):
-    if len(self.display_seg_data) == 0:
-        QMessageBox.warning(None, "Warning", "No image volume was selected.\nPlease select the one for which to create structure.")
+    if 0 not in self.display_seg_data:
+        QMessageBox.warning(None, "Warning", "No image volume was selected.")
         return
     
     structures_keys = []
@@ -122,15 +122,16 @@ def InitSeg(self):
     new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
     mask_3d = target_series_dict["structures"][new_s_key]["Mask3D"]
     self.display_seg_data[1] = mask_3d
+    self.slice_data_copy = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
+    self.curr_struc_key = None
+    self.curr_struc_name = None
     adjust_data_type_seg_input(self,1)
     disp_seg_image_slice(self)
     update_seg_struct_list(self, structures_keys, delete=False)
 
 
 def DeleteSeg(self):
-    if len(self.display_seg_data) == 0:
-        return
-    if self.curr_struc_key is None:
+    if 0 not in self.display_seg_data or self.curr_struc_key is None:
         return
     
     target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
@@ -167,6 +168,7 @@ def DeleteSeg(self):
         structures_keys.append([s_key, s_key_name, target_series_dict['SeriesNumber'], self.patientID])
 
     self.display_seg_data[1] = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
+    self.slice_data_copy = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
     adjust_data_type_seg_input(self,1)
 
     populate_DICOM_tree(self)
@@ -178,7 +180,6 @@ def DeleteSeg(self):
     extent = slice_data.shape
     # initialize display image
     self.dataImporterSeg[1].SetDataScalarTypeToUnsignedShort()
-    #
     self.dataImporterSeg[1].CopyImportVoidPointer(data_string, len(data_string))
     self.dataImporterSeg[1].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
     self.dataImporterSeg[1].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
@@ -468,24 +469,22 @@ def threshSeg(self):
     try:
         min_ = int(self.threshMinHU.text())
     except:
-        QMessageBox.warning(None, "Warning", "No integer value was provided for min. HU")
+        QMessageBox.warning(None, "Warning", "No valid value (int) was provided for min. HU")
         return
     try:
         max_ = int(self.threshMaxHU.text())
     except:
-        QMessageBox.warning(None, "Warning", "No integer value was provided for max. HU")
+        QMessageBox.warning(None, "Warning", "No valid value (int) was provided for max. HU")
         return
     
     if min_ >= max_:
-        QMessageBox.warning(None, "Warning", "No valid HU was provided (ensure min HU < max HU)")
+        QMessageBox.warning(None, "Warning", "No valid HU range was provided (ensure min HU < max HU)")
         return       
     
     target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
 
     existing_structures = target_series_dict.get('structures', {})
-    existing_structure_count = len(existing_structures)
-
-    if existing_structure_count == 0:
+    if len(existing_structures) == 0:
         return
     
     mask_3d = ((self.display_seg_data[0] >= min_) * (self.display_seg_data[0] <= max_)).astype(np.uint8)
@@ -509,6 +508,16 @@ def on_erase_click(self):
     if self.seg_erase == 1:
         self.segBrushButton.setChecked(0) 
         self.seg_brush = 0 
+
+
+def undo_brush_seg(self):
+    if hasattr(self, 'slice_data_copy'):
+        self.display_seg_data[1] = self.slice_data_copy.copy()  
+        self.slice_data_copy = self.display_seg_data[1].copy()
+        self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = self.display_seg_data[1]
+        disp_seg_image_slice(self)
+    else:
+        return
     
     
 ################

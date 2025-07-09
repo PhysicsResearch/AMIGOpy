@@ -16,21 +16,21 @@ def left_button_pressseg_event(self, caller, event):
             try:
                 min_hu = int(self.threshMinHU.text())
             except:
-                QMessageBox.warning(None, "Warning", "No integer value was provided for min. HU")
+                QMessageBox.warning(None, "Warning", "No valid value (int) was provided for min HU")
                 self.left_but_pressed[0] = 0
                 return
             try:
                 max_hu = int(self.threshMaxHU.text())
             except:
-                QMessageBox.warning(None, "Warning", "No integer value was provided for max. HU")
+                QMessageBox.warning(None, "Warning", "No valid value (int) was provided for max HU")
                 self.left_but_pressed[0] = 0
                 return
             if min_hu >= max_hu:
-                QMessageBox.warning(None, "Warning", "No valid HU was provided (ensure min HU < max HU)")
+                QMessageBox.warning(None, "Warning", "No valid HU range was provided (ensure min HU < max HU)")
                 self.left_but_pressed[0] = 0
                 return  
-        QApplication.setOverrideCursor(Qt.CrossCursor)
         self.slice_data_copy = self.display_seg_data[1].copy()
+        QApplication.setOverrideCursor(Qt.CrossCursor)
     
     
 def left_button_releaseseg_event(self, caller, event):
@@ -39,7 +39,7 @@ def left_button_releaseseg_event(self, caller, event):
         self.seg_brush_coords = None
         QApplication.restoreOverrideCursor()
         if 1 not in self.display_seg_data or self.curr_struc_key is None:
-            QMessageBox.warning(None, "Warning", "No structure was selected.\nPlease select a structure.")
+            QMessageBox.warning(None, "Warning", "No structure was selected.")
         
       
 def on_scroll_backwardseg(self, caller, event):
@@ -55,21 +55,24 @@ def on_scroll_forwardseg(self, caller, event):
 
 
 def onMouseMoveseg(self, caller, event):
-    layer = self.layer_selection_box.currentIndex()
     if self.left_but_pressed[0] == 1:
         if self.seg_brush or self.seg_erase:
             layer = 1
+            if not hasattr(self, 'curr_struc_key') or self.curr_struc_key is None:
+                return
         else:
             layer = 0
-    ori = self.segSelectView.currentText()
+    else:
+        return
+
     if layer not in self.display_seg_data:
         return
 
-    if ori=="Axial": #Axial
+    if self.im_ori_seg=="axial": #Axial
         slice_data = self.display_seg_data[layer][int(self.current_seg_slice_index), :, :]
-    elif ori=="Sagittal": #Sagittal 
+    elif self.im_ori_seg=="sagittal": #Sagittal 
         slice_data = self.display_seg_data[layer][:,:,int(self.current_seg_slice_index)]
-    elif ori=="Coronal": #Coronal
+    elif self.im_ori_seg=="coronal": #Coronal
         slice_data = self.display_seg_data[layer][:,int(self.current_seg_slice_index), :]
     #    
     # Get the position of the mouse
@@ -105,30 +108,25 @@ def onMouseMoveseg(self, caller, event):
     # 
     self.textActorSeg[2].SetInput(f"Slice:{self.current_seg_slice_index}  ({image_coord_vox[0]},{image_coord_vox[1]}) {round(pixel_value,4):.4f}")
     #
-    if self.left_but_pressed[0] == 1:
-        if self.seg_brush or self.seg_erase:
-            if 1 not in self.display_seg_data or self.curr_struc_key is None:
-                return
-            self.seg_brush_coords = image_coord_vox
-            disp_seg_image_slice(self)
-        else:
-            if layer == 1:
-                return
-            current_window = self.windowLevelSeg[layer].GetWindow()
-            current_level  = self.windowLevelSeg[layer].GetLevel()
-            if current_level==0:
-                current_level=1
-            if current_window==0:
-                current_window=1
-            # Data can be in the range of 1 (RED and SPR) or 10 (Zeff)
-            # so the adjustment needs to be done in smaller increments in this region
-            DeltaW = (x-x0)*0.01*current_window
-            DeltaL = (y-y0)*0.01*current_level
-            Window = current_window + DeltaW
-            Level  = current_level  + DeltaL
-            #    
-            self.seg_win_lev = [Window, Level]
-            set_window(self,Window,Level)
+    if self.seg_brush or self.seg_erase:
+        self.seg_brush_coords = image_coord_vox
+        disp_seg_image_slice(self)
+    else:
+        current_window = self.windowLevelSeg[layer].GetWindow()
+        current_level  = self.windowLevelSeg[layer].GetLevel()
+        if current_level==0:
+            current_level=1
+        if current_window==0:
+            current_window=1
+        # Data can be in the range of 1 (RED and SPR) or 10 (Zeff)
+        # so the adjustment needs to be done in smaller increments in this region
+        DeltaW = (x-x0)*0.01*current_window
+        DeltaL = (y-y0)*0.01*current_level
+        Window = current_window + DeltaW
+        Level  = current_level  + DeltaL
+        #    
+        self.seg_win_lev = [Window, Level]
+        set_window(self,Window,Level)
     #
     self.renSeg.GetRenderWindow().Render()
 
