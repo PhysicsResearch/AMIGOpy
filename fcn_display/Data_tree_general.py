@@ -362,6 +362,9 @@ def on_DataTreeView_clicked(self,index):
                     self.curr_struc_key = None
                     self.curr_struc_name = None
 
+                    if hasattr(self, 'slice_data_copy'):
+                        delattr(self, 'slice_data_copy')
+
                     # Get and store the selected series volume
                     self.display_seg_data[0] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
                     adjust_data_type_seg_input(self,0)
@@ -373,28 +376,24 @@ def on_DataTreeView_clicked(self,index):
                 if len(hierarchy) == 7: # binary mask contour
                     self.display_seg_data = {}
 
-                    # Get and store the corresponding series volume
-                    self.display_seg_data[0] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
-                    adjust_data_type_seg_input(self,0)
-                    plot_hist(self)
-
                     # Get and store the selected structure 
                     s_key  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
                     s_name = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'][hierarchy_indices[6].row()]
                     self.curr_struc_key = s_key
                     self.curr_struc_name = s_name
 
+                    # Get and store the corresponding series volume
+                    self.display_seg_data[0] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                    adjust_data_type_seg_input(self,0)
+                    plot_hist(self)
+
+                    self.slice_data_copy = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
                     self.display_seg_data[1] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
                     adjust_data_type_seg_input(self,1)
 
                     self.Im_Offset_seg[1,0]    = (self.Im_PatPosition_seg[1,0]-self.Im_PatPosition_seg[0,0])
                     self.Im_Offset_seg[1,1]    = (self.display_seg_data[0].shape[1]*self.pixel_spac_seg[0,0]-self.display_seg_data[1].shape[1]*self.pixel_spac_seg[1,0])-(self.Im_PatPosition_seg[1,1]-self.Im_PatPosition[0,1])
                     self.Im_Offset_seg[1,2]    = (self.Im_PatPosition_seg[1,2]-self.Im_PatPosition_seg[0,2])
-                        
-                    # check the current module                
-                    self.slice_thick_seg[1]         = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
-                    self.pixel_spac_seg[1, :2]      = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
-                    self.Im_PatPosition_seg[1, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
 
                 self.curr_series_no = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['SeriesNumber']
 
@@ -415,21 +414,21 @@ def on_DataTreeView_clicked(self,index):
 
                 # check the selected view
                 if self.segSelectView.currentText() == "Axial":
-                    self.im_ori_seg = 0
+                    self.im_ori_seg = "axial"
                     if self.seg_init_view == True:
                         self.current_seg_slice_index   = int(self.display_seg_data[0].shape[0]/2)
                         Ax_s = self.current_seg_slice_index
                         self.segViewSlider.setMaximum(self.display_seg_data[0].shape[0] - 1)
                         self.segViewSlider.setValue(int(Ax_s))   
                 elif self.segSelectView.currentText() == "Sagittal":
-                    self.im_ori_seg = 1
+                    self.im_ori_seg = "sagittal"
                     if self.seg_init_view == True:
                         self.current_seg_slice_index   = int(self.display_seg_data[0].shape[2]/2)
                         Ax_s = self.current_seg_slice_index
                         self.segViewSlider.setMaximum(self.display_seg_data[0].shape[2] - 1)  
                         self.segViewSlider.setValue(int(Ax_s))   
                 elif self.segSelectView.currentText() == "Coronal":
-                    self.im_ori_seg = 2
+                    self.im_ori_seg = "coronal"
                     if self.seg_init_view == True:
                         self.current_seg_slice_index   = int(self.display_seg_data[0].shape[1]/2)
                         Ax_s = self.current_seg_slice_index

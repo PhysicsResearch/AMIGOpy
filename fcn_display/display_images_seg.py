@@ -10,33 +10,22 @@ def update_seg_slider(self):
     layer  = int(self.layer_selection_box.currentIndex())
     if layer not in self.display_seg_data:
         return
-    ori = self.segSelectView.currentText()
 
-    if ori=="Axial":
+    if self.im_ori_seg=="axial":
         self.segViewSlider.setMaximum(self.display_seg_data[layer].shape[0] - 1)
         self.segViewSlider.setValue(int(self.display_seg_data[layer].shape[0]/2))  
-    elif ori=="Sagittal":
+    elif self.im_ori_seg=="sagittal":
         self.display_seg_data[layer].shape[2] - 1
         self.segViewSlider.setMaximum(self.display_seg_data[layer].shape[2] - 1)
         self.segViewSlider.setValue(int(self.display_seg_data[layer].shape[2]/2))  
-    elif ori=="Coronal":
+    elif self.im_ori_seg=="coronal":
         self.segViewSlider.setMaximum(self.display_seg_data[layer].shape[1] - 1)
         self.segViewSlider.setValue(int(self.display_seg_data[layer].shape[1]/2))  
 
     disp_seg_image_slice(self)
-    
-    
-def undo_brush_seg(self):
-    try:
-        self.display_seg_data[1] = self.slice_data_copy  
-        disp_seg_image_slice(self)
-    except:
-        return
 
 
 def disp_seg_image_slice(self):
-    layer  = int(self.layer_selection_box.currentIndex())
-    ori = self.segSelectView.currentText()
     self.current_seg_slice_index = self.segViewSlider.value()
     
     #########################
@@ -49,15 +38,15 @@ def disp_seg_image_slice(self):
 
     # Display CT volume in layer 0
     layer = 0 
-    if ori=="Axial": #Axial
+    if self.im_ori_seg=="axial": #Axial
         slice_data = self.display_seg_data[layer][int(self.current_seg_slice_index), :, :]
         self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,1], 0)
         self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.pixel_spac_seg[layer,0],1)
-    elif ori=="Sagittal": #Sagittal 
+    elif self.im_ori_seg=="sagittal": #Sagittal 
         slice_data = self.display_seg_data[layer][:,:,int(self.current_seg_slice_index)]
         self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,1], self.Im_Offset_seg[layer,2], 0)
         self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,0],self.slice_thick_seg[0],1)
-    elif ori=="Coronal": #Coronal
+    elif self.im_ori_seg=="coronal": #Coronal
         slice_data = self.display_seg_data[layer][:,int(self.current_seg_slice_index), :]
         self.imageActorSeg[layer].SetPosition(self.Im_Offset_seg[layer,0], self.Im_Offset_seg[layer,2], 0)
         self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.slice_thick_seg[0],1)
@@ -80,30 +69,31 @@ def disp_seg_image_slice(self):
     ### DISPLAY SELECTED SEGMENTATION ###
     #####################################
     layer = 1
-    if ori=="Axial": #Axial
+    if self.im_ori_seg=="axial": #Axial
         self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.pixel_spac_seg[layer,0],1)
-    elif ori=="Sagittal": #Sagittal 
+    elif self.im_ori_seg=="sagittal": #Sagittal 
         self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,0],self.slice_thick_seg[layer],1)
-    elif ori=="Coronal": #Coronal
+    elif self.im_ori_seg=="coronal": #Coronal
         self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[layer,1],self.slice_thick_seg[layer],1)
 
     # If any structure is selected, display selected segmentation in layer 1
     slice_data_im = slice_data.copy()
-    if self.curr_struc_key is not None and 1 in self.display_seg_data: 
+    if (self.curr_struc_key is not None and 1 in self.display_seg_data and \
+        self.curr_struc_key in self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures']):
         self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
         target_key = f"{self.patientID}_{self.curr_series_no}_{self.curr_struc_name}"
 
-        if ori=="Axial": #Axial
+        if self.im_ori_seg=="axial": #Axial
             slice_data = self.display_seg_data[layer][int(self.current_seg_slice_index), :, :]
-        elif ori=="Sagittal": #Sagittal 
+        elif self.im_ori_seg=="sagittal": #Sagittal 
             slice_data = self.display_seg_data[layer][:,:,int(self.current_seg_slice_index)]
-        elif ori=="Coronal": #Coronal
+        elif self.im_ori_seg=="coronal": #Coronal
             slice_data = self.display_seg_data[layer][:,int(self.current_seg_slice_index), :]
         
         if self.seg_brush_coords is not None: # If brush enabled
             self.brush_size = self.BrushSizeSlider.value()
             
-            if ori=="Axial": 
+            if self.im_ori_seg=="axial": 
                 Y, X = np.ogrid[:slice_data.shape[0], :slice_data.shape[1]]
                 dist_from_center = np.sqrt((X - self.seg_brush_coords[0])**2 + (Y-self.seg_brush_coords[1])**2)
             else: # Account for slice thickness if not axial
@@ -117,15 +107,15 @@ def disp_seg_image_slice(self):
                     try:
                         min_hu = int(self.threshMinHU.text())
                     except:
-                        QMessageBox.warning(None, "Warning", "No integer value was provided for min. HU")
+                        QMessageBox.warning(None, "Warning", "No valid value (int) was provided for min HU")
                         return
                     try:
                         max_hu = int(self.threshMaxHU.text())
                     except:
-                        QMessageBox.warning(None, "Warning", "No integer value was provided for max. HU")
+                        QMessageBox.warning(None, "Warning", "No valid value (int) was provided for max HU")
                         return
                     if min_hu >= max_hu:
-                        QMessageBox.warning(None, "Warning", "No valid HU was provided (ensure min HU < max HU)")
+                        QMessageBox.warning(None, "Warning", "No valid HU range was provided (ensure min HU < max HU)")
                         return  
                     mask_hu = (slice_data_im >= min_hu) * (slice_data_im <= max_hu)
                     slice_data[mask * mask_hu] = 0
@@ -137,15 +127,15 @@ def disp_seg_image_slice(self):
                     try:
                         min_hu = int(self.threshMinHU.text())
                     except:
-                        QMessageBox.warning(None, "Warning", "No integer value was provided for min. HU")
+                        QMessageBox.warning(None, "Warning", "No valid value (int) was provided for min HU")
                         return
                     try:
                         max_hu = int(self.threshMaxHU.text())
                     except:
-                        QMessageBox.warning(None, "Warning", "No integer value was provided for max. HU")
+                        QMessageBox.warning(None, "Warning", "No valid value (int) was provided for max HU")
                         return
                     if min_hu >= max_hu:
-                        QMessageBox.warning(None, "Warning", "No valid HU was provided (ensure min HU < max HU)")
+                        QMessageBox.warning(None, "Warning", "No valid HU range was provided (ensure min HU < max HU)")
                         return  
                     mask_hu = (slice_data_im >= min_hu) * (slice_data_im <= max_hu)
                     slice_data[mask * mask_hu] = 1
@@ -206,72 +196,52 @@ def disp_seg_image_slice(self):
 
     # Display checked segmentations in layer 2
     layer = 2 
-    if ori=="Axial": #Axial
+    if self.im_ori_seg=="axial": #Axial
         self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[0,1],self.pixel_spac_seg[0,0],1)
-    elif ori=="Sagittal": #Sagittal 
+    elif self.im_ori_seg=="sagittal": #Sagittal 
         self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[0,0],self.slice_thick_seg[0],1)
-    elif ori=="Coronal": #Coronal
+    elif self.im_ori_seg=="coronal": #Coronal
         self.dataImporterSeg[layer].SetDataSpacing(self.pixel_spac_seg[0,1],self.slice_thick_seg[0],1)
 
     # If any structure in structure list
+    plot_structures = False
     if self.segStructList.count() > 0:
         # Create composite of all available and checked structures
-        rgba_image = render_all_seg_layers(self) 
-        if rgba_image is None:
-            slice_data = np.zeros((*slice_data.shape, 4), dtype=np.uint8)
-            data_string = slice_data.tobytes()
-            self.dataImporterSeg[layer].SetNumberOfScalarComponents(4)
-            self.dataImporterSeg[layer].CopyImportVoidPointer(data_string, len(data_string))
-            self.dataImporterSeg[layer].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-            self.dataImporterSeg[layer].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-
-            # Skip window-level mapping; connect importer directly
-            self.imageActorSeg[layer].GetMapper().SetInputConnection(self.dataImporterSeg[layer].GetOutputPort())
-            self.imageActorSeg[layer].GetProperty().SetOpacity(0.0)  
-        else:
-            # Set data to importer
-            data_string = rgba_image.tobytes()
-            self.dataImporterSeg[layer].SetNumberOfScalarComponents(4)
-            self.dataImporterSeg[layer].CopyImportVoidPointer(data_string, len(data_string))
-            self.dataImporterSeg[layer].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-            self.dataImporterSeg[layer].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-
-            # Skip window-level mapping; connect importer directly
-            self.imageActorSeg[layer].GetMapper().SetInputConnection(self.dataImporterSeg[layer].GetOutputPort())
-            self.imageActorSeg[layer].GetProperty().SetOpacity(1.0)  
-        
-        self.dataImporterSeg[layer].SetDataScalarTypeToUnsignedChar()
-        self.dataImporterSeg[layer].Modified()   
-        self.renSeg.GetRenderWindow().Render() 
+        slice_data = render_all_seg_layers(self) 
+        if slice_data is not None:
+            plot_structures = True
 
     # If no selected segmentation, render empty layer
+    if not plot_structures:
+        slice_data = np.zeros((*slice_data_im.shape, 4), dtype=np.uint8)    
+
+    # Set data to importer
+    data_string = slice_data.tobytes()
+    self.dataImporterSeg[layer].SetNumberOfScalarComponents(4)
+    self.dataImporterSeg[layer].CopyImportVoidPointer(data_string, len(data_string))
+    self.dataImporterSeg[layer].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+    self.dataImporterSeg[layer].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
+
+    # Skip window-level mapping; connect importer directly
+    self.imageActorSeg[layer].GetMapper().SetInputConnection(self.dataImporterSeg[layer].GetOutputPort())
+
+    if plot_structures:
+        self.imageActorSeg[layer].GetProperty().SetOpacity(1.0)  
     else:
-        slice_data = np.zeros((*slice_data_im.shape, 4), dtype=np.uint8)
+        self.imageActorSeg[layer].GetProperty().SetOpacity(0.0)  
 
-        # Set data
-        data_string = slice_data.tobytes()
-        self.dataImporterSeg[layer].SetNumberOfScalarComponents(4)
-        self.dataImporterSeg[layer].CopyImportVoidPointer(data_string, len(data_string))
-        self.dataImporterSeg[layer].SetWholeExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-        self.dataImporterSeg[layer].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
-
-        # Skip window-level mapping; connect importer directly
-        imageProperty = self.imageActorSeg[layer].GetProperty()
-        imageProperty.SetOpacity(0)  
-
-        self.dataImporterSeg[layer].SetDataScalarTypeToUnsignedChar()
-        self.dataImporterSeg[layer].Modified()   
-        self.renSeg.GetRenderWindow().Render()
+    self.dataImporterSeg[layer].SetDataScalarTypeToUnsignedChar()
+    self.dataImporterSeg[layer].Modified()   
+    self.renSeg.GetRenderWindow().Render()
 
 
 def render_all_seg_layers(self):
-    ori = self.segSelectView.currentText()
 
-    if ori=="Axial": #Axial
+    if self.im_ori_seg=="axial": #Axial
         slice_data = self.display_seg_data[0][int(self.current_seg_slice_index), :, :]
-    elif ori=="Sagittal": #Sagittal 
+    elif self.im_ori_seg=="sagittal": #Sagittal 
         slice_data = self.display_seg_data[0][:,:,int(self.current_seg_slice_index)]
-    elif ori=="Coronal": #Coronal
+    elif self.im_ori_seg=="coronal": #Coronal
         slice_data = self.display_seg_data[0][:,int(self.current_seg_slice_index), :]
     
     height, width = slice_data.shape
@@ -304,11 +274,11 @@ def render_all_seg_layers(self):
             s_key = structures_keys[structures_names.index(name)]
             mask = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
 
-            if ori=="Axial": #Axial
+            if self.im_ori_seg=="axial": #Axial
                 slice_data = mask[int(self.current_seg_slice_index), :, :]
-            elif ori=="Sagittal": #Sagittal 
+            elif self.im_ori_seg=="sagittal": #Sagittal 
                 slice_data = mask[:,:,int(self.current_seg_slice_index)]
-            elif ori=="Coronal": #Coronal
+            elif self.im_ori_seg=="coronal": #Coronal
                 slice_data = mask[:,int(self.current_seg_slice_index), :]
 
             color = widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1, 0, 0)
