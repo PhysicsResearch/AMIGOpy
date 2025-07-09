@@ -8,6 +8,7 @@ from fcn_display.colormap_set import set_color_map_gray, set_color_map_bone, set
 from fcn_export.export_fcn import export_np_array, export_dw_np, export_dcm_np_array
 from fcn_processing.split_dcm_series import shift_and_split_3D_matrix
 from fcn_3Dprint.split_gcode_file import  split_gcode
+from fcn_DECT.calculateVMIs import calculate_VMI
 
 def initializeMenuBar(self):
     # define fontsize
@@ -141,7 +142,15 @@ def initializeMenuBar(self):
         if item == "Split":
             action.triggered.connect(lambda: shift_and_split_3D_matrix(self))
         SeriesMenu.addAction(action)
-        
+    
+    # Add items 
+    items = ["Create_VMI"]
+    for item in items:
+        action = QAction(item, self)
+        # Connect the Folder action to the load_dcm function
+        if item == "Create_VMI":
+            action.triggered.connect(lambda: calculate_VMI(self))
+        SeriesMenu.addAction(action)
         
 
   
