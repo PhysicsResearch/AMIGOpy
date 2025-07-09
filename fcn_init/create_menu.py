@@ -9,7 +9,7 @@ from fcn_export.export_fcn import export_np_array, export_dw_np, export_dcm_np_a
 from fcn_processing.split_dcm_series import shift_and_split_3D_matrix
 from fcn_3Dprint.split_gcode_file import  split_gcode
 from fcn_DECT.calculateVMIs import calculate_VMI
-from fcn_STL.load_STL import load_stl_files
+from fcn_load.load_STL import load_stl_files
 
 def initializeMenuBar(self):
     # define fontsize

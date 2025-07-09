@@ -203,6 +203,11 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # Install filter on the parent container for “show all”
         self.im_display_tab.installEventFilter(self)
         #
+        # 3D view:
+        self.VTK_view_3D.installEventFilter(self)
+        self.vtk3dWidget.installEventFilter(self)
+        self._vtk3d_is_maximized = False
+        #
         initializeMenuBar(self)
         self.DataType = "None"
         # Create a toolbar
@@ -310,9 +315,35 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
 
     def eventFilter(self, watched, event):
         if event.type() == QEvent.MouseButtonDblClick and event.button() == Qt.LeftButton:
-            # Double click on background/parent → restore all
             if watched is self.im_display_tab:
                 self.set_view_mode("all")
+                return True
+
+            if watched is self.VTK_view_3D or watched is self.vtk3dWidget:
+                parent = self.VTK_view_3D.parentWidget()
+                current_tab = self.tabModules.tabText(self.tabModules.currentIndex())
+                if current_tab == "_3Dview":
+                    layout = parent.layout()
+                    if not self._vtk3d_is_maximized:
+                        # Store original grid layout position
+                        row, col, rowSpan, colSpan = _find_widget_in_gridlayout(layout, self.VTK_view_3D)
+                        self._vtk3d_orig_grid = (row, col, rowSpan, colSpan)
+                        self._vtk3d_orig_parent = parent
+                        self._vtk3d_orig_geometry = self.VTK_view_3D.geometry()
+                        # Maximize widget to fill parent
+                        self.VTK_view_3D.setParent(parent)
+                        self.VTK_view_3D.raise_()
+                        self.VTK_view_3D.setGeometry(parent.rect())
+                        self.VTK_view_3D.show()
+                        self._vtk3d_is_maximized = True
+                    else:
+                        # Restore to original grid position and span
+                        row, col, rowSpan, colSpan = self._vtk3d_orig_grid
+                        layout.addWidget(self.VTK_view_3D, row, col, rowSpan, colSpan)
+                        self.VTK_view_3D.setParent(parent)
+                        self.VTK_view_3D.setMinimumSize(0, 0)  # Reset min size
+                        self.VTK_view_3D.updateGeometry()
+                        self._vtk3d_is_maximized = False
                 return True
 
             # Double click on any axis render widget
@@ -328,7 +359,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
                 return True
 
         return super().eventFilter(watched, event)
-    
+        
     def set_view_mode(self, mode: str = "all"):
         """
         mode = "all" | "axial" | "coronal" | "sagittal"
@@ -390,7 +421,18 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
             gl.setRowMinimumHeight(3, sl.sizeHint().height())
 
         self._max_axis = None if mode == "all" else mode
-    
+
+
+
+def _find_widget_in_gridlayout(layout, widget):
+    for i in range(layout.count()):
+        item = layout.itemAt(i)
+        if item and item.widget() is widget:
+            row, col, rowSpan, colSpan = layout.getItemPosition(i)
+            return row, col, rowSpan, colSpan
+    return None, None, 1, 1
+
+
 
 if __name__ == "__main__":
     fmt = QSurfaceFormat()
@@ -410,3 +452,10 @@ if __name__ == "__main__":
         print(folder_path)
         load_all_dcm(window,folder_path, progress_callback=None, update_label=None)
     sys.exit(app.exec_())
+
+
+
+
+
+
+

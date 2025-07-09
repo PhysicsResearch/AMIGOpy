@@ -1,5 +1,9 @@
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QTableWidgetItem, QPushButton, QCheckBox, QSpinBox, QColorDialog, QDoubleSpinBox
+from PyQt5.QtGui import QColor
+
 def init_STL_Surface_table(self):
-    self._STL_Surface_table.setColumnCount(17)
+    self._STL_Surface_table.setColumnCount(16)
     self._STL_Surface_table.setHorizontalHeaderLabels([
         "Name",         # 0
         "Face Color",   # 1
@@ -7,21 +11,21 @@ def init_STL_Surface_table(self):
         "Show Faces",   # 3
         "Show Lines",   # 4
         "Face Alpha",   # 5
-        "Line Alpha",   # 6
-        "Line Width",   # 7
-        "Delete",       # 8
-        "Tx", "Ty", "Tz",  # 9-11 translation
-        "Sx", "Sy", "Sz",  # 12-14 scaling
-        "Reset T",         # 15
-        "Reset S"          # 16
+        "Line Width",   # 6
+        "Tx", "Ty", "Tz",    # 7-9 translation
+        "Sx", "Sy", "Sz",    # 10-12 scaling
+        "Reset T",           # 13
+        "Reset S",           # 14
+        "Delete"             # 15 ← LAST COLUMN
     ])
     self._STL_Surface_table.setEditTriggers(self._STL_Surface_table.NoEditTriggers)
     self._STL_Surface_table.setSelectionBehavior(self._STL_Surface_table.SelectRows)
 
+
 def add_stl_to_table(self, name,
                      face_color=(0.8,0.8,0.3), line_color=(0,0,0),
                      show_faces=True, show_lines=True,
-                     face_alpha=1.0, line_alpha=1.0,
+                     face_alpha=1.0,
                      line_width=1.0,
                      tx=0, ty=0, tz=0,
                      sx=1.0, sy=1.0, sz=1.0):
@@ -65,29 +69,16 @@ def add_stl_to_table(self, name,
     spin_face_alpha.valueChanged.connect(lambda val, n=name: update_stl_face_alpha(self, n, val))
     self._STL_Surface_table.setCellWidget(row, 5, spin_face_alpha)
 
-    # Line Alpha
-    spin_line_alpha = QDoubleSpinBox()
-    spin_line_alpha.setRange(0.0, 1.0)
-    spin_line_alpha.setSingleStep(0.05)
-    spin_line_alpha.setValue(line_alpha)
-    spin_line_alpha.valueChanged.connect(lambda val, n=name: update_stl_line_alpha(self, n, val))
-    self._STL_Surface_table.setCellWidget(row, 6, spin_line_alpha)
-
     # Line Width
     spin_line_width = QDoubleSpinBox()
     spin_line_width.setRange(0.1, 10.0)
     spin_line_width.setSingleStep(0.1)
     spin_line_width.setValue(line_width)
     spin_line_width.valueChanged.connect(lambda val, n=name: update_stl_line_width(self, n, val))
-    self._STL_Surface_table.setCellWidget(row, 7, spin_line_width)
+    self._STL_Surface_table.setCellWidget(row, 6, spin_line_width)
 
-    # Delete
-    btn_del = QPushButton("Delete")
-    btn_del.clicked.connect(lambda _, n=name: delete_stl_surface(self, n))
-    self._STL_Surface_table.setCellWidget(row, 8, btn_del)
-
-    # Translation X, Y, Z
-    for col, val, update_func in zip([9, 10, 11], [tx, ty, tz], [update_stl_tx, update_stl_ty, update_stl_tz]):
+    # Translation X, Y, Z (columns 7-9)
+    for col, val, update_func in zip([7, 8, 9], [tx, ty, tz], [update_stl_tx, update_stl_ty, update_stl_tz]):
         spin = QDoubleSpinBox()
         spin.setRange(-1000, 1000)
         spin.setSingleStep(0.1)
@@ -95,8 +86,8 @@ def add_stl_to_table(self, name,
         spin.valueChanged.connect(lambda v, n=name, f=update_func: f(self, n, v))
         self._STL_Surface_table.setCellWidget(row, col, spin)
 
-    # Scaling Sx, Sy, Sz
-    for col, val, update_func in zip([12, 13, 14], [sx, sy, sz], [update_stl_sx, update_stl_sy, update_stl_sz]):
+    # Scaling Sx, Sy, Sz (columns 10-12)
+    for col, val, update_func in zip([10, 11, 12], [sx, sy, sz], [update_stl_sx, update_stl_sy, update_stl_sz]):
         spin = QDoubleSpinBox()
         spin.setRange(0.01, 100.0)
         spin.setSingleStep(0.01)
@@ -104,41 +95,74 @@ def add_stl_to_table(self, name,
         spin.valueChanged.connect(lambda v, n=name, f=update_func: f(self, n, v))
         self._STL_Surface_table.setCellWidget(row, col, spin)
 
-    # Reset translation button
+    # Reset translation button (col 13)
     btn_reset_t = QPushButton("Reset T")
+    btn_reset_t.setStyleSheet(
+        "background-color: #2574A9; color: white; margin-right: 4px; margin-left: 2px; border-radius: 4px;")
     btn_reset_t.clicked.connect(lambda _, n=name: reset_stl_translation(self, n))
-    self._STL_Surface_table.setCellWidget(row, 15, btn_reset_t)
+    self._STL_Surface_table.setCellWidget(row, 13, btn_reset_t)
 
-    # Reset scaling button
+    # Reset scaling button (col 14)
     btn_reset_s = QPushButton("Reset S")
+    btn_reset_s.setStyleSheet(
+        "background-color: #2574A9; color: white; margin-left: 4px; margin-right: 4px; border-radius: 4px;")
     btn_reset_s.clicked.connect(lambda _, n=name: reset_stl_scale(self, n))
-    self._STL_Surface_table.setCellWidget(row, 16, btn_reset_s)
+    self._STL_Surface_table.setCellWidget(row, 14, btn_reset_s)
 
-def pick_stl_face_color(self, stl_name):
-    color = QColorDialog.getColor()
-    if color.isValid():
-        rgb = (color.red()/255, color.green()/255, color.blue()/255)
-        row = find_row_by_name_stl(self, stl_name)
-        if row is not None:
-            self._STL_Surface_table.cellWidget(row, 1).setStyleSheet(f"background-color: rgb({color.red()}, {color.green()}, {color.blue()});")
-        self._surfaces[stl_name].GetProperty().SetColor(rgb)
-        self.VTK3D_interactor.GetRenderWindow().Render()
+    # Delete button (col 15)
+    btn_del = QPushButton("Delete")
+    btn_del.setStyleSheet(
+        "background-color: #D64541; color: white; margin-left: 8px; border-radius: 4px;")
+    btn_del.clicked.connect(lambda _, n=name: delete_stl_surface(self, n))
+    self._STL_Surface_table.setCellWidget(row, 15, btn_del)
 
-def pick_stl_line_color(self, stl_name):
-    color = QColorDialog.getColor()
-    if color.isValid():
-        rgb = (color.red()/255, color.green()/255, color.blue()/255)
-        row = find_row_by_name_stl(self, stl_name)
-        if row is not None:
-            self._STL_Surface_table.cellWidget(row, 2).setStyleSheet(f"background-color: rgb({color.red()}, {color.green()}, {color.blue()});")
-        self._surfaces[stl_name].GetProperty().SetEdgeColor(rgb)
-        self.VTK3D_interactor.GetRenderWindow().Render()
+    # Sync initial colors for table and actor
+    pick_stl_face_color(self, name, initial=True, rgb=face_color)
+    pick_stl_line_color(self, name, initial=True, rgb=line_color)
+
+
+def pick_stl_face_color(self, stl_name, initial=False, rgb=None):
+    if initial and rgb is not None:
+        color = rgb
+    else:
+        c = QColorDialog.getColor()
+        if not c.isValid():
+            return
+        color = (c.red()/255, c.green()/255, c.blue()/255)
+    row = find_row_by_name_stl(self, stl_name)
+    if row is not None:
+        qcolor = QColor(int(color[0]*255), int(color[1]*255), int(color[2]*255))
+        self._STL_Surface_table.cellWidget(row, 1).setStyleSheet(f"background-color: rgb({qcolor.red()}, {qcolor.green()}, {qcolor.blue()});")
+    self._surfaces[stl_name].GetProperty().SetColor(color)
+    self.VTK3D_interactor.GetRenderWindow().Render()
+
+def pick_stl_line_color(self, stl_name, initial=False, rgb=None):
+    if initial and rgb is not None:
+        color = rgb
+    else:
+        c = QColorDialog.getColor()
+        if not c.isValid():
+            return
+        color = (c.red()/255, c.green()/255, c.blue()/255)
+    row = find_row_by_name_stl(self, stl_name)
+    if row is not None:
+        qcolor = QColor(int(color[0]*255), int(color[1]*255), int(color[2]*255))
+        self._STL_Surface_table.cellWidget(row, 2).setStyleSheet(f"background-color: rgb({qcolor.red()}, {qcolor.green()}, {qcolor.blue()});")
+    self._surfaces[stl_name].GetProperty().SetEdgeColor(color)
+    self.VTK3D_interactor.GetRenderWindow().Render()
+
 
 def update_stl_show_faces(self, stl_name, state):
     actor = self._surfaces[stl_name]
-    vis = (state == 2)
-    actor.GetProperty().SetOpacity(actor.GetProperty().GetOpacity() if vis else 0.0)
+    # Show/hide faces, but keep lines visible if checked
+    if state == 2:  # Checked: show faces (surface)
+        actor.GetProperty().SetRepresentationToSurface()
+        # Restore face opacity (get from table or actor if needed)
+        # (optionally restore face color, etc)
+    else:  # Unchecked: show only lines (wireframe)
+        actor.GetProperty().SetRepresentationToWireframe()
     self.VTK3D_interactor.GetRenderWindow().Render()
+
 
 def update_stl_show_lines(self, stl_name, state):
     actor = self._surfaces[stl_name]

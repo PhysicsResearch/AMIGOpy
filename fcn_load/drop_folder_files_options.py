@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt
 from fcn_load.load_dcm  import load_all_dcm
 from fcn_display.dicom_info import open_dicom_tag_viewer
 from fcn_load.save_load import load_amigo_bundle
+from fcn_load.load_STL import load_stl_files
 
 class FolderDropArea(QWidget):
     def __init__(self, parent=None):
@@ -66,6 +67,9 @@ def handle_dropped_path(main_window, path):
 
     def is_amigo_file(filename: str) -> bool:
         return os.path.splitext(filename)[-1].lower() == ".amigo"
+    
+    def is_stl_file(filename: str) -> bool:
+        return os.path.splitext(filename)[-1].lower() == ".stl"
 
     if os.path.isfile(path):
         if is_dicom_file(path):
@@ -74,6 +78,9 @@ def handle_dropped_path(main_window, path):
         elif is_amigo_file(path):
             # call your async loader (reuse the existing menu slot)
             load_amigo_bundle(main_window, path)      # see note ①
+        elif is_stl_file(path):
+            # call your async loader (reuse the existing menu slot)
+            load_stl_files(main_window, path)      # see note ①
         else:
             print(f"Unsupported file type: {os.path.splitext(path)[-1]}")
         return

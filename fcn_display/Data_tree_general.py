@@ -55,29 +55,37 @@ def on_DataTreeView_clicked(self,index):
     currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
     #
     if hierarchy[0] == "Surfaces":
+        if len(hierarchy) != 2:
+            return
         item = model.itemFromIndex(index)
         stl_key = item.data(Qt.UserRole)
-        if currentTabText == "_3Dview":
-            # Check for cached VTK polydata
-            if not hasattr(self, "_vtk_surface_cache"):
-                self._vtk_surface_cache = {}
-            if stl_key in self._vtk_surface_cache:
-                polydata = self._vtk_surface_cache[stl_key]
-            else:
-                # Convert numpy arrays to vtkPolyData
-                stl_info = self.STL_data[stl_key]
-                polydata = numpy_to_vtk_polydata(stl_info["points"], stl_info["faces"])
-                self._vtk_surface_cache[stl_key] = polydata
-            # Display with your VTK display function (replace with your function)
-            # 2. Display in 3D
-            self.display_stl_surface_in_3d_viewer(
-                polydata,
-                name=stl_key,  # unique STL identifier
-                color=(0.5, 0.8, 0.2),  # or any color
-                opacity=1.0,
-                highlight=True
-            )
-            print("Select the 3D_view tab to display the surface.")
+        if currentTabText != "_3Dview":
+            tab_name = "_3Dview"
+            tabWidget = self.tabModules
+            # Find the index of the tab whose text is "_3Dview"
+            for i in range(tabWidget.count()):
+                if tabWidget.tabText(i) == tab_name:
+                    tabWidget.setCurrentIndex(i)
+                    break
+        # Check for cached VTK polydata
+        if not hasattr(self, "_vtk_surface_cache"):
+            self._vtk_surface_cache = {}
+        if stl_key in self._vtk_surface_cache:
+            polydata = self._vtk_surface_cache[stl_key]
+        else:
+            # Convert numpy arrays to vtkPolyData
+            stl_info = self.STL_data[stl_key]
+            polydata = numpy_to_vtk_polydata(stl_info["points"], stl_info["faces"])
+            self._vtk_surface_cache[stl_key] = polydata
+        # Display with your VTK display function (replace with your function)
+        # 2. Display in 3D
+        self.display_stl_surface_in_3d_viewer(
+            polydata,
+            name=stl_key,     # unique STL identifier
+            color=(1, 0, 0),  
+            opacity=0.5,
+            highlight=True
+        )
         #
     elif hierarchy[0] == "DICOM":
         self.DataType = "DICOM"  

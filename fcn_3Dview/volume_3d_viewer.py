@@ -12,8 +12,10 @@ import numpy as np
 import matplotlib.cm as cm
 
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
 from functools import partial
+
+from fcn_3Dview.surfaces_3D_table import add_stl_to_table
 
 # -------------------------------------------------------------------------
 # Suggested colormaps for medical imaging & radiotherapy
@@ -263,6 +265,12 @@ def play_4D_sequence_3D(self, play: bool):
         self.View3D_play4D.setStyleSheet("")
         self._play3D_index = 0
 
+def find_row_by_name_stl(self, stl_name):
+    for row in range(self._STL_Surface_table.rowCount()):
+        item = self._STL_Surface_table.item(row, 0)
+        if item and item.data(Qt.UserRole) == stl_name:
+            return row
+    return None
 
 # -------------------------------------------------------------------------
 # Mixin class
@@ -680,3 +688,26 @@ class VTK3DViewerMixin:
         if len(self._surfaces) == 1:
             self.VTK3D_renderer.ResetCamera()
             self.VTK3D_interactor.GetRenderWindow().Render()
+        
+        # --- Add or update row in the STL table ---
+        if hasattr(self, "_STL_Surface_table"):
+            row = find_row_by_name_stl(self, name)
+            if row is not None:
+                self._STL_Surface_table.removeRow(row)
+            add_stl_to_table(
+                self,
+                name=name,
+                face_color=color,
+                line_color=(1,0,0),
+                show_faces=True,
+                show_lines=False if not highlight else True,
+                face_alpha=opacity,
+                line_width=1,
+                tx=actor.GetPosition()[0],
+                ty=actor.GetPosition()[1],
+                tz=actor.GetPosition()[2],
+                sx=actor.GetScale()[0],
+                sy=actor.GetScale()[1],
+                sz=actor.GetScale()[2],
+        )
+

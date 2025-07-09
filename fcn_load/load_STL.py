@@ -5,22 +5,39 @@ import numpy as np
 from pathlib import Path
 from fcn_load.populate_stl_list import populate_stl_tree
 
-def load_stl_files(self):
+
+def load_stl_files(self, file_names=None):
     """
-    Open a dialog for STL selection (single/multiple). Convert to numpy.
-    Store all mesh data in self.STL_data (dict).
+    Load one or more STL files. If file_names is None, opens dialog.
+    Remembers last used directory in self.last_stl_dir.
+    Stores all mesh data in self.STL_data (dict).
     """
-    paths, _ = QFileDialog.getOpenFileNames(
-        self,
-        "Open STL surface files",
-        str(Path.home()),
-        "STL files (*.stl);;All files (*)"
-    )
+    # Initialize STL_data if needed
+    if not hasattr(self, 'STL_data') or self.STL_data is None:
+        self.STL_data = {}
+
+    # Determine directory to open dialog in
+    start_dir = getattr(self, 'last_stl_dir', str(Path.home()))
+
+    # Get file list
+    if file_names is None:
+        paths, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Open STL surface files",
+            start_dir,
+            "STL files (*.stl);;All files (*)"
+        )
+    else:
+        if isinstance(file_names, str):
+            paths = [file_names]
+        else:
+            paths = list(file_names)
+
     if not paths:
         return
 
-    if not hasattr(self, 'STL_data') or self.STL_data is None:
-        self.STL_data = {}
+    # Update the last used directory
+    self.last_stl_dir = str(Path(paths[0]).parent)
 
     for stl_path in paths:
         # --- Read STL ---
@@ -59,5 +76,6 @@ def load_stl_files(self):
             "faces": faces,
             "header": header
         }
+
     # Populate the tree view with the loaded STL data
     populate_stl_tree(self)
