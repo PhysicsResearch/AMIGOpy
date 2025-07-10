@@ -633,6 +633,9 @@ class VTK3DViewerMixin:
                 self.VTK3D_renderer.RemoveActor(actor)
             self._surfaces.clear()
 
+        if hasattr(self, "_STL_Surface_table"):
+            self._STL_Surface_table.setRowCount(0)
+            
         # Remove all rows from the clouds table
         self._3D_Struct_table.setRowCount(0)
 

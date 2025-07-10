@@ -5,6 +5,8 @@ from fcn_load.load_dcm  import load_all_dcm
 from fcn_display.dicom_info import open_dicom_tag_viewer
 from fcn_load.save_load import load_amigo_bundle
 from fcn_load.load_STL import load_stl_files
+from fcn_load.load_OBJ import load_obj_files
+
 
 class FolderDropArea(QWidget):
     def __init__(self, parent=None):
@@ -70,6 +72,9 @@ def handle_dropped_path(main_window, path):
     
     def is_stl_file(filename: str) -> bool:
         return os.path.splitext(filename)[-1].lower() == ".stl"
+    
+    def is_obj_file(filename: str) -> bool:
+        return os.path.splitext(filename)[-1].lower() == ".obj"
 
     if os.path.isfile(path):
         if is_dicom_file(path):
@@ -81,6 +86,9 @@ def handle_dropped_path(main_window, path):
         elif is_stl_file(path):
             # call your async loader (reuse the existing menu slot)
             load_stl_files(main_window, path)      # see note ①
+        elif is_obj_file(path):
+            # call your async loader (reuse the existing menu slot)
+            load_obj_files(main_window, path)      # see note ①
         else:
             print(f"Unsupported file type: {os.path.splitext(path)[-1]}")
         return

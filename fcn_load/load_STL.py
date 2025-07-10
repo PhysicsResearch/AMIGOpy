@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
 import vtk
 from vtkmodules.util.numpy_support import vtk_to_numpy
 import numpy as np
@@ -48,12 +48,20 @@ def load_stl_files(self, file_names=None):
         if polydata.GetNumberOfPoints() == 0:
             QMessageBox.warning(self, "STL Load Error", f"File '{stl_path}' could not be read as a valid STL mesh.")
             continue
-
+        self.progressBar.setValue(10)
         points = vtk_to_numpy(polydata.GetPoints().GetData())
         faces = []
+        n_cells = polydata.GetNumberOfCells()
         for i in range(polydata.GetNumberOfCells()):
             cell = polydata.GetCell(i)
             faces.append([cell.GetPointId(j) for j in range(cell.GetNumberOfPoints())])
+
+            # Update progress every 10% or on last face
+            if n_cells > 10 and (i % max(1, n_cells // 10) == 0 or i == n_cells - 1):
+                progress = ((i + 1) / n_cells) * 100
+                self.progressBar.setValue(int(progress))
+                QApplication.processEvents()
+
         faces = np.array(faces, dtype=np.int32)
 
         name = Path(stl_path).stem
