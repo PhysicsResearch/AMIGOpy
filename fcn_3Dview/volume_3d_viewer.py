@@ -12,8 +12,10 @@ import numpy as np
 import matplotlib.cm as cm
 
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
 from functools import partial
+
+from fcn_3Dview.surfaces_3D_table import add_stl_to_table
 
 # -------------------------------------------------------------------------
 # Suggested colormaps for medical imaging & radiotherapy
@@ -263,6 +265,12 @@ def play_4D_sequence_3D(self, play: bool):
         self.View3D_play4D.setStyleSheet("")
         self._play3D_index = 0
 
+def find_row_by_name_stl(self, stl_name):
+    for row in range(self._STL_Surface_table.rowCount()):
+        item = self._STL_Surface_table.item(row, 0)
+        if item and item.data(Qt.UserRole) == stl_name:
+            return row
+    return None
 
 # -------------------------------------------------------------------------
 # Mixin class
@@ -633,3 +641,73 @@ class VTK3DViewerMixin:
     def reset_3d_camera(self):
         self.VTK3D_renderer.ResetCamera()
         self.VTK3D_interactor.GetRenderWindow().Render()
+    
+    def display_stl_surface_in_3d_viewer(self, polydata, name="surface", color=(0.8, 0.3, 0.2), opacity=1.0, highlight=False):
+        """
+        Display a single STL surface in the 3D viewer.
+        - polydata: vtkPolyData of the surface
+        - name: unique key for surface (use STL_data key)
+        - color: tuple, default reddish
+        - opacity: 0..1
+        - highlight: if True, sets a yellow border
+
+        Caches actors in self._surfaces; replaces actor if already exists.
+        """
+        # --- Ensure _surfaces dict exists ---
+        if not hasattr(self, "_surfaces") or self._surfaces is None:
+            self._surfaces = {}
+
+        # --- Remove previous actor if exists ---
+        if name in self._surfaces:
+            self.VTK3D_renderer.RemoveActor(self._surfaces[name])
+            del self._surfaces[name]
+
+        # --- Build new actor ---
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(polydata)
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetColor(*color)
+        actor.GetProperty().SetOpacity(opacity)
+        actor.GetProperty().SetInterpolationToPhong()
+        if highlight:
+            actor.GetProperty().SetEdgeVisibility(1)
+            actor.GetProperty().SetEdgeColor(1,1,0)
+            actor.GetProperty().SetLineWidth(2)
+        else:
+            actor.GetProperty().SetEdgeVisibility(0)
+
+        # --- Add to renderer and cache ---
+        self.VTK3D_renderer.AddActor(actor)
+        self._surfaces[name] = actor
+
+        # --- Render and adjust camera if wanted ---
+        self.VTK3D_interactor.GetRenderWindow().Render()
+        # Optionally, reset camera on first STL
+        if len(self._surfaces) == 1:
+            self.VTK3D_renderer.ResetCamera()
+            self.VTK3D_interactor.GetRenderWindow().Render()
+        
+        # --- Add or update row in the STL table ---
+        if hasattr(self, "_STL_Surface_table"):
+            row = find_row_by_name_stl(self, name)
+            if row is not None:
+                self._STL_Surface_table.removeRow(row)
+            add_stl_to_table(
+                self,
+                name=name,
+                face_color=color,
+                line_color=(1,0,0),
+                show_faces=True,
+                show_lines=False if not highlight else True,
+                face_alpha=opacity,
+                line_width=1,
+                tx=actor.GetPosition()[0],
+                ty=actor.GetPosition()[1],
+                tz=actor.GetPosition()[2],
+                sx=actor.GetScale()[0],
+                sy=actor.GetScale()[1],
+                sz=actor.GetScale()[2],
+        )
+

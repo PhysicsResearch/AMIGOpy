@@ -8,6 +8,8 @@ from fcn_display.colormap_set import set_color_map_gray, set_color_map_bone, set
 from fcn_export.export_fcn import export_np_array, export_dw_np, export_dcm_np_array
 from fcn_processing.split_dcm_series import shift_and_split_3D_matrix
 from fcn_3Dprint.split_gcode_file import  split_gcode
+from fcn_DECT.calculateVMIs import calculate_VMI
+from fcn_load.load_STL import load_stl_files
 
 def initializeMenuBar(self):
     # define fontsize
@@ -29,7 +31,7 @@ def initializeMenuBar(self):
     # open
     openMenu = fileMenu.addMenu("Open")
     # Add items 
-    items = ["DICOM", "NIfTI","AMIGOpy","Tiff", "EGSPhant","IrIS", "MCNPinp", "MCNPout"]
+    items = ["DICOM", "NIfTI","AMIGOpy","STL", "Tiff", "EGSPhant","IrIS", "MCNPinp", "MCNPout"]
     for item in items:
         action = QAction(item, self)
         # Connect the Folder action to the load_dcm function
@@ -38,10 +40,13 @@ def initializeMenuBar(self):
             action.setShortcut("Ctrl+D")
         if item == "IrIS":
             action.triggered.connect(lambda: load_IrIS_folder(self))
-            action.setShortcut("Ctrl+I")
+            #action.setShortcut("Ctrl+I")
         if item == "AMIGOpy":
             action.triggered.connect(lambda: load_amigo_bundle(self))
-            action.setShortcut("Ctrl+A")    
+            #action.setShortcut("Ctrl+A") 
+        if item == "STL":
+            action.triggered.connect(lambda: load_stl_files(self))
+            #action.setShortcut("Ctrl+A")    
         openMenu.addAction(action)
 
     ViewMenu      = self.menuBar().addMenu("View")
@@ -141,7 +146,15 @@ def initializeMenuBar(self):
         if item == "Split":
             action.triggered.connect(lambda: shift_and_split_3D_matrix(self))
         SeriesMenu.addAction(action)
-        
+    
+    # Add items 
+    items = ["Create_VMI"]
+    for item in items:
+        action = QAction(item, self)
+        # Connect the Folder action to the load_dcm function
+        if item == "Create_VMI":
+            action.triggered.connect(lambda: calculate_VMI(self))
+        SeriesMenu.addAction(action)
         
 
   

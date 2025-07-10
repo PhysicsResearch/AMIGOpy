@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1739</width>
-    <height>1181</height>
+    <width>1743</width>
+    <height>1190</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -1604,9 +1604,19 @@
             </item>
            </layout>
           </widget>
+          <widget class="QWidget" name="tab_42">
+           <attribute name="title">
+            <string>STL</string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_75">
+            <item row="0" column="0">
+             <widget class="QTableWidget" name="_STL_Surface_table"/>
+            </item>
+           </layout>
+          </widget>
           <widget class="QWidget" name="tab_41">
            <attribute name="title">
-            <string>Plan</string>
+            <string>Plan_Brachy</string>
            </attribute>
           </widget>
          </widget>
@@ -2094,7 +2104,7 @@
         <item row="1" column="0">
          <widget class="QTabWidget" name="DECTmenu">
           <property name="currentIndex">
-           <number>2</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="tab">
            <attribute name="title">
@@ -8536,8 +8546,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>440</width>
-             <height>365</height>
+             <width>441</width>
+             <height>388</height>
             </rect>
            </property>
            <attribute name="label">
