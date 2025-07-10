@@ -83,6 +83,10 @@ def disp_seg_image_slice(self):
         self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
         target_key = f"{self.patientID}_{self.curr_series_no}_{self.curr_struc_name}"
 
+        if self.display_seg_data[0].shape != self.display_seg_data[1].shape:
+            QMessageBox.warning(None, "Warning", "Selected segmentation does not match the image volume shape.")
+            return
+        
         if self.im_ori_seg=="axial": #Axial
             slice_data = self.display_seg_data[layer][int(self.current_seg_slice_index), :, :]
         elif self.im_ori_seg=="sagittal": #Sagittal 

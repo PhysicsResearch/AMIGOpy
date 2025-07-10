@@ -553,6 +553,9 @@ def calcStrucStats(self):
                         series_id = target_series_dict['SeriesNumber']
                         struct_name = struct['Name']
                         mask = struct["Mask3D"]
+                        if image_vol.shape != mask.shape:
+                            QMessageBox.warning(None, "Warning", f"Structure '{struct_name}' does not match the image volume shape.")
+                            continue
                         vol_in_voxels = mask.sum() 
                         vol_in_mm = vol_in_voxels * slice_thick * pixel_spac[0] * pixel_spac[1]
                         CoM = calc_com(mask) * np.array([slice_thick, pixel_spac[0], pixel_spac[1]]) + Im_PatPosition[::-1]
