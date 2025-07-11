@@ -14,7 +14,7 @@ from fcn_display.win_level import set_window
 from fcn_display.disp_plan_data import update_plan_tables
 from fcn_RTFiles.process_rt_files import update_structure_list_widget
 from fcn_RTFiles.process_contours import find_matching_series
-from fcn_segmentation.functions_segmentation import plot_hist
+from fcn_segmentation.functions_segmentation import plot_hist, update_seg_struct_list
 from fcn_materialassignment.material_map import update_mat_struct_list
 from fcn_display.Data_tree_view_axes_update import update_axial_image, update_sagittal_image, update_coronal_image
 from fcn_display.Data_tree_3Dview import set_3DViewer_data
@@ -96,6 +96,11 @@ def on_DataTreeView_clicked(self,index):
         # Unblock signals
         self.metadata_search.blockSignals(False)
         if len(hierarchy) >= 5:
+            if hasattr(self, 'series_index'):
+                if hierarchy_indices[4].row() != self.series_index:
+                    self.series_changed = True
+                else:
+                    self.series_changed = False
             self.series_index = hierarchy_indices[4].row()
             # need to remove part of the tag otherwise it does not match with the key:
             self.patientID = hierarchy[1].replace("PatientID: ", "")
@@ -351,6 +356,9 @@ def on_DataTreeView_clicked(self,index):
                                 self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'],
                                 self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys']
                             )
+                    
+                if self.series_changed:
+                    update_seg_struct_list(self)
                     
                 if self.seg_win_lev[0] is not None and self.seg_win_lev[1] is not None:
                     Window = self.seg_win_lev[0]
