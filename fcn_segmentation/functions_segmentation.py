@@ -333,6 +333,7 @@ class ColorCheckItem(QWidget):
 
         # 1) Master checkbox to enable/disable the structure
         self.checkbox = QCheckBox()
+        self.checkbox.setChecked(True)
 
         # 2) Label for the structure name
         patient_id, series_id, struct_name = widget_info
@@ -579,7 +580,7 @@ def calcStrucStats(self):
             if val == "checkbox":
                 checkkBoxItem = QTableWidgetItem()
                 checkkBoxItem.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-                checkkBoxItem.setCheckState(QtCore.Qt.Unchecked)       
+                checkkBoxItem.setCheckState(QtCore.Qt.Checked)       
                 self.tableSegStrucStats.setItem(row,col,checkkBoxItem)
             elif type(val) == str:
                 self.tableSegStrucStats.setItem(row, col, QTableWidgetItem(val))
