@@ -327,9 +327,8 @@ class ColorCheckItem(QWidget):
       - A 'Fill' checkbox (to indicate whether to display a filled polygon).
     """
 
-    def __init__(self, widget_info, parent=None):
+    def __init__(self, widget_info, struct_colors, parent=None):
         super().__init__(parent)
-        self.selectedColor = None
 
         # 1) Master checkbox to enable/disable the structure
         self.checkbox = QCheckBox()
@@ -342,9 +341,16 @@ class ColorCheckItem(QWidget):
         self.struct_name = QLabel(str(struct_name))
 
         # 3) Button to pick color
+        if struct_name not in struct_colors:
+            struct_colors[struct_name] = QColor(Qt.red)
+        self.selectedColor = struct_colors[struct_name]
+        self.struct_colors = struct_colors
+
         self.color_button = QPushButton("Select Color")
         self.color_button.setMaximumWidth(100)
         self.color_button.clicked.connect(self.openColorDialog)
+        if self.selectedColor.isValid():
+            self.color_button.setStyleSheet(f"background-color: {self.selectedColor.name()};")
 
         # 5) Spinbox for transparency (0=opaque, 1=fully transparent)
         self.transparency_spinbox = QDoubleSpinBox()
@@ -402,8 +408,9 @@ def update_seg_struct_list(self, structures_keys=None, delete=False):
                             target_key = f"{patientID}_{seriesID}_{name}"
                         
                             list_item = QListWidgetItem(self.segStructList)
-                            custom_item = ColorCheckItem([patientID, seriesID, name])
+                            custom_item = ColorCheckItem([patientID, seriesID, name], self.struct_colors)
                             custom_item.structure_key = target_key
+                            self.struct_colors = custom_item.struct_colors
                             list_item.setSizeHint(custom_item.sizeHint())
 
                             # Append new item
@@ -438,8 +445,10 @@ def update_seg_struct_list(self, structures_keys=None, delete=False):
                         self.segStructList.takeItem(i)
                         break
                 list_item = QListWidgetItem(self.segStructList)
-                custom_item = ColorCheckItem([patient_id, series_id, name])
+                custom_item = ColorCheckItem([patient_id, series_id, name], self.struct_colors)
                 custom_item.structure_key = target_key
+                self.struct_colors = custom_item.struct_colors
+                
                 list_item.setSizeHint(custom_item.sizeHint())
         
                 # Append new item
@@ -654,7 +663,6 @@ def remove_roi_by_name(rtstruct, roi_name):
     # Get index corresponding to ROI_name
     roi_index = None
     for i, roi in enumerate(rtstruct.ds.StructureSetROISequence):
-        print(roi.ROIName)
         if roi.ROIName == roi_name:
             roi_index = i
             break

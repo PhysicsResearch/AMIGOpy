@@ -1,6 +1,9 @@
 import vtk 
 import numpy as np
 from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import Qt
+
 
 def sliderSegView_change(self):
     disp_seg_image_slice(self)
@@ -156,6 +159,7 @@ def disp_seg_image_slice(self):
             if not widget:
                 continue
             if getattr(widget, "structure_key", None) == target_key:
+                self.struct_colors[self.curr_struc_name] = widget.selectedColor if widget.selectedColor else QColor(Qt.red)
                 color = widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1, 0, 0)
                 opacity = widget.transparency_spinbox.value()
 
@@ -285,6 +289,7 @@ def render_all_seg_layers(self):
             elif self.im_ori_seg=="coronal": #Coronal
                 slice_data = mask[:,int(self.current_seg_slice_index), :]
 
+            self.struct_colors[name] = widget.selectedColor if widget.selectedColor else QColor(Qt.red)
             color = widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1, 0, 0)
             opacity = widget.transparency_spinbox.value()
 

@@ -100,6 +100,7 @@ def initialize_software_variables(self):
     self.seg_init_view = True
     self.seg_prev_data = {"Orientation": None, "Dimensions": (None, None, None),
                           "SliceThickness": None, "PixelSpacing": (None, None)}
+    self.struct_colors = {}
     # IrIS ################################################################
     # this varibale will be resized depeding on the number of dwell positions
     # the number of colluns should remaing the same and was included here for documentation purposes.
