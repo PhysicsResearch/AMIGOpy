@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1743</width>
-    <height>1190</height>
+    <width>1747</width>
+    <height>1199</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -1606,7 +1606,7 @@
           </widget>
           <widget class="QWidget" name="tab_42">
            <attribute name="title">
-            <string>STL</string>
+            <string>Surfaces</string>
            </attribute>
            <layout class="QGridLayout" name="gridLayout_75">
             <item row="0" column="0">
@@ -8546,8 +8546,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>441</width>
-             <height>388</height>
+             <width>241</width>
+             <height>179</height>
             </rect>
            </property>
            <attribute name="label">

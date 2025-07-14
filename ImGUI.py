@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_AMIGOpy(object):
     def setupUi(self, AMIGOpy):
         AMIGOpy.setObjectName("AMIGOpy")
-        AMIGOpy.resize(1743, 1190)
+        AMIGOpy.resize(1747, 1199)
         AMIGOpy.setAutoFillBackground(False)
         AMIGOpy.setInputMethodHints(QtCore.Qt.ImhNone)
         self.centralwidget = QtWidgets.QWidget(AMIGOpy)
@@ -4019,7 +4019,7 @@ class Ui_AMIGOpy(object):
         self.gridLayout_70.setRowStretch(0, 2)
         self.toolBox_seg.addItem(self.page_thresholding, "")
         self.page = QtWidgets.QWidget()
-        self.page.setGeometry(QtCore.QRect(0, 0, 441, 388))
+        self.page.setGeometry(QtCore.QRect(0, 0, 241, 179))
         self.page.setObjectName("page")
         self.gridLayout_61 = QtWidgets.QGridLayout(self.page)
         self.gridLayout_61.setObjectName("gridLayout_61")
@@ -4400,7 +4400,7 @@ class Ui_AMIGOpy(object):
         self.View3D_shoiw_axes_checkBox.setText(_translate("AMIGOpy", "Show axes"))
         self.View3D_annotation_checkBox.setText(_translate("AMIGOpy", "Annotation"))
         self.tabWidget_3Dview.setTabText(self.tabWidget_3Dview.indexOf(self.tab_40), _translate("AMIGOpy", "Structures"))
-        self.tabWidget_3Dview.setTabText(self.tabWidget_3Dview.indexOf(self.tab_42), _translate("AMIGOpy", "STL"))
+        self.tabWidget_3Dview.setTabText(self.tabWidget_3Dview.indexOf(self.tab_42), _translate("AMIGOpy", "Surfaces"))
         self.tabWidget_3Dview.setTabText(self.tabWidget_3Dview.indexOf(self.tab_41), _translate("AMIGOpy", "Plan_Brachy"))
         self.View3DgroupBox_13.setTitle(_translate("AMIGOpy", "3D view"))
         self.View3D_Apply.setText(_translate("AMIGOpy", "Apply"))
