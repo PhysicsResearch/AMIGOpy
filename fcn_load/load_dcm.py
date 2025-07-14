@@ -50,9 +50,9 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
             image = dicom_file.pixel_array
             #
             #
-            instance_number = getattr(dicom_file, "InstanceNumber", 0)
+            instance_number = getattr(dicom_file, "InstanceNumber", None)
             if instance_number is None:
-                instance_number = 0
+                instance_number = file_info['InstanceNumber']
             instance_number = int(instance_number)
             image_position_patient    = getattr(dicom_file, "ImagePositionPatient", [0,0,0])
               
