@@ -44,10 +44,39 @@ def calculate_VMI(self):
     # Clip negative values
     water_map[water_map < 0] = 0
     iodine_map[iodine_map < 0] = 0
-
+    
+    # store iodine and water maps for visualization
+    # copy the header of the low image ... in the future some tags will be adjusted
+    original_data = self.dicom_data[patient_id_L][study_id_L][modality_L][item_index_L].copy()
+    required_length = len(self.dicom_data[patient_id_L][study_id_L][modality_L]) + 1
+    while len(self.dicom_data[patient_id_L][study_id_L][modality_L]) < required_length:
+        self.dicom_data[patient_id_L][study_id_L][modality_L].append(None)
+    # Store data into new series indice
+    self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]                              = copy.deepcopy(original_data)
+    self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['3DMatrix']                  = water_map.astype(np.float32)
+    self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['SliceImageComments']        = 'RED Calculated AMB'
+    self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['ImageComments'] = "RED Calculated AMB"
+    image_comment = str('water map')
+    data_element = DataElement((0x0020, 0x4000), 'LO', image_comment)
+    self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['DCM_Info']['ImageComments'] = data_element
+    self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = ("Water map")
+   
+    required_length = len(self.dicom_data[patient_id_L][study_id_L][modality_L]) + 1
+    while len(self.dicom_data[patient_id_L][study_id_L][modality_L]) < required_length:
+        self.dicom_data[patient_id_L][study_id_L][modality_L].append(None)
+    # Store data into new series indice
+    self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]                              = copy.deepcopy(original_data)
+    self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['3DMatrix']                  = iodine_map.astype(np.float32)
+    self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['SliceImageComments']        = 'RED Calculated AMB'
+    self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['ImageComments'] = "RED Calculated AMB"
+    image_comment = str('iodine map')
+    data_element = DataElement((0x0020, 0x4000), 'LO', image_comment)
+    self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['DCM_Info']['ImageComments'] = data_element
+    self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = ("Iodine map")
+    
     # generate VMIs
-    Data = np.zeros(ct_low.shape, dtype=np.float32)
-
+    Data = np.zeros(ct_low.shape, dtype=np.float32)  
+    
     for i, E in enumerate(energies):
         mu   = mu_water[i] * water_map + mu_iodine[i] * iodine_map
         Data = (mu / mu_water[i] - 1) * 1000  # HU
@@ -69,4 +98,6 @@ def calculate_VMI(self):
         self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"VMI_{E}")
         #
         #
-    populate_DICOM_tree(self)   
+    
+   
+    populate_DICOM_tree(self)    
