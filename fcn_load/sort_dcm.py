@@ -171,6 +171,33 @@ def extract_file_info(all_files, progress_callback=None, total_steps=None):
         # Set the ReferenceTime for the current file_info
         file_info['ReferenceTime'] = reference_times[unique_combination_key]
 
+
+    # INSERT MISSING INSTANCE NUMBER FIX HERE
+    from collections import defaultdict
+
+    series_groups = defaultdict(list)
+    for file_info in detailed_files_info:
+        series_key = (
+            file_info['PatientID'],
+            file_info['StudyID'],
+            file_info['Modality'],
+            file_info['SeriesNumber']
+        )
+        series_groups[series_key].append(file_info)
+
+    for series_files in series_groups.values():
+        series_files.sort(key=lambda x: (
+            x['AcquisitionTime'] if x['AcquisitionTime'] not in ["N/A", None, ""] else "",
+            x['FilePath']
+        ))
+        instance_counter = 1
+        for file_info in series_files:
+            if file_info['InstanceNumber'] in [None, "N/A", ""]:
+                file_info['InstanceNumber'] = instance_counter
+                instance_counter += 1
+
+
+
     return detailed_files_info, unique_files_info
 
 
