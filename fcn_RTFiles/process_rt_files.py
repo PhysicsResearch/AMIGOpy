@@ -175,6 +175,8 @@ def process_rt_plans(plan,ref_str,structured_data):
     # 
     if structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['BrachyTreatmentType'] != 'N/A':
         read_brachy_plan(plan,ref_str,structured_data)
+    elif structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['TreatmentProtocols'] != 'N/A':
+        print('proton_plan')
         
 
 def read_brachy_plan(plan,ref_str,structured_data):
