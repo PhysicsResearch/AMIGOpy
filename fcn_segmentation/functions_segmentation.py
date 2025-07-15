@@ -502,7 +502,30 @@ def threshSeg(self):
     if len(existing_structures) == 0:
         return
     
-    mask_3d = ((self.display_seg_data[0] >= min_) * (self.display_seg_data[0] <= max_)).astype(np.uint8)
+    slice_mask = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
+    min_idx = self.indexMinThreshSeg.value() 
+    max_idx = self.indexMaxThreshSeg.value()
+
+    if self.im_ori_seg == "axial":
+        if min_idx >= 0 and max_idx < slice_mask.shape[0] and min_idx <= max_idx:
+            slice_mask[min_idx:max_idx + 1, :, :] = 1
+        else:
+            QMessageBox.warning(None, "Warning", "Invalid slice indices for axial orientation.")
+            return
+    elif self.im_ori_seg == "sagittal":
+        if min_idx >= 0 and max_idx < slice_mask.shape[2] and min_idx <= max_idx:
+            slice_mask[:, :, min_idx:max_idx + 1] = 1
+        else:
+            QMessageBox.warning(None, "Warning", "Invalid slice indices for sagittal orientation.")
+            return
+    elif self.im_ori_seg == "coronal":
+        if min_idx >= 0 and max_idx < slice_mask.shape[1] and min_idx <= max_idx:
+            slice_mask[:, min_idx:max_idx + 1, :] = 1  
+        else:
+            QMessageBox.warning(None, "Warning", "Invalid slice indices for coronal orientation.")
+            return
+        
+    mask_3d = ((self.display_seg_data[0] >= min_) * (self.display_seg_data[0] <= max_) * slice_mask).astype(np.uint8)
 
     self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
     self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = mask_3d

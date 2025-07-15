@@ -461,6 +461,12 @@ def on_DataTreeView_clicked(self,index):
                         self.segViewSlider.setMaximum(self.display_seg_data[0].shape[1] - 1)  
                         self.segViewSlider.setValue(int(Ax_s))      
                 #
+                self.indexMinThreshSeg.setMinimum(0)
+                self.indexMinThreshSeg.setValue(0)
+                self.indexMinThreshSeg.setMaximum(self.segViewSlider.maximum() - 1)
+                self.indexMaxThreshSeg.setMinimum(1)
+                self.indexMaxThreshSeg.setMaximum(self.segViewSlider.maximum())
+                self.indexMaxThreshSeg.setValue(self.segViewSlider.maximum())
                 # Add ID 
                 self.textActorSeg[0].SetInput(f"{self.modality} / {hierarchy[4]}")
                 disp_seg_image_slice(self) 

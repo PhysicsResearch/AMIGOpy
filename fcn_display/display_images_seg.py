@@ -5,25 +5,28 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
 
 
-def sliderSegView_change(self):
-    disp_seg_image_slice(self)
-    
-    
 def update_seg_slider(self):
-    layer  = int(self.layer_selection_box.currentIndex())
-    if layer not in self.display_seg_data:
+
+    self.im_ori_seg = self.segSelectView.currentText().lower()
+    if 0 not in self.display_seg_data:
         return
 
     if self.im_ori_seg=="axial":
-        self.segViewSlider.setMaximum(self.display_seg_data[layer].shape[0] - 1)
-        self.segViewSlider.setValue(int(self.display_seg_data[layer].shape[0]/2))  
+        self.segViewSlider.setMaximum(self.display_seg_data[0].shape[0] - 1)
+        self.segViewSlider.setValue(int(self.display_seg_data[0].shape[0]/2))  
     elif self.im_ori_seg=="sagittal":
-        self.display_seg_data[layer].shape[2] - 1
-        self.segViewSlider.setMaximum(self.display_seg_data[layer].shape[2] - 1)
-        self.segViewSlider.setValue(int(self.display_seg_data[layer].shape[2]/2))  
+        self.segViewSlider.setMaximum(self.display_seg_data[0].shape[2] - 1)
+        self.segViewSlider.setValue(int(self.display_seg_data[0].shape[2]/2))  
     elif self.im_ori_seg=="coronal":
-        self.segViewSlider.setMaximum(self.display_seg_data[layer].shape[1] - 1)
-        self.segViewSlider.setValue(int(self.display_seg_data[layer].shape[1]/2))  
+        self.segViewSlider.setMaximum(self.display_seg_data[0].shape[1] - 1)
+        self.segViewSlider.setValue(int(self.display_seg_data[0].shape[1]/2))  
+
+    self.indexMinThreshSeg.setMinimum(0)
+    self.indexMinThreshSeg.setValue(0)
+    self.indexMinThreshSeg.setMaximum(self.segViewSlider.maximum() - 1)
+    self.indexMaxThreshSeg.setMinimum(1)
+    self.indexMaxThreshSeg.setMaximum(self.segViewSlider.maximum())
+    self.indexMaxThreshSeg.setValue(self.segViewSlider.maximum())
 
     disp_seg_image_slice(self)
 
