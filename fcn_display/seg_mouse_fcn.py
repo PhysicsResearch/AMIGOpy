@@ -3,8 +3,28 @@ from fcn_display.display_images_seg import disp_seg_image_slice
 from fcn_display.colormap_set import set_color_map
 from fcn_display.win_level import set_window
 import time
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtGui import QCursor, QPixmap, QPainter, QColor, QPen
 from PyQt5.QtWidgets import QApplication, QMessageBox
+
+
+def create_circular_cursor(self, radius=10, thickness=2, color=QColor(255, 255, 255)) -> QCursor:
+    if self.zoom_scale is None:
+        self.zoom_scale = 350
+    print(self.zoom_scale)
+    size = 2 * (int(radius / self.zoom_scale * 380) + thickness)
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.transparent)
+
+    painter = QPainter(pixmap)
+    pen = QPen(color)
+    pen.setWidth(thickness)
+    painter.setPen(pen)
+    painter.drawEllipse(QPoint(size // 2, size // 2), int(radius / self.zoom_scale * 380), int(radius / self.zoom_scale * 380))
+    painter.end()
+
+    return QCursor(pixmap, size // 2, size // 2)
+
 
 def left_button_pressseg_event(self, caller, event):
     self.left_but_pressed[0] = 1
@@ -30,7 +50,9 @@ def left_button_pressseg_event(self, caller, event):
                 self.left_but_pressed[0] = 0
                 return  
         self.slice_data_copy = self.display_seg_data[1].copy()
+
         QApplication.setOverrideCursor(Qt.CrossCursor)
+        # QApplication.setOverrideCursor(create_circular_cursor(self, radius=self.BrushSizeSlider.value()))
     
     
 def left_button_releaseseg_event(self, caller, event):
