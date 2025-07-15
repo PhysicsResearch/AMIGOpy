@@ -138,7 +138,8 @@ def disp_structure_overlay_axial(self):
             continue
 
         s_data = series_dict["structures"].get(s_key, {})
-
+        if not s_data:
+            return
         # ── 1) make sure axial actors exist  if not create all ──────────────────────────
         if 'Contours2D' not in s_data:
             s_data['Contours2D'] = {'axial':{}, 'sagittal':{}, 'coronal':{}},
