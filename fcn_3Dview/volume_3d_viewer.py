@@ -622,7 +622,7 @@ class VTK3DViewerMixin:
         self._dims.clear()
         self._full_ranges.clear()
 
-        # Remove all point cloud actors
+        # Remove all general point cloud actors
         for cloud in self._clouds.values():
             self.VTK3D_renderer.RemoveActor(cloud['actor'])
         self._clouds.clear()
@@ -633,13 +633,25 @@ class VTK3DViewerMixin:
                 self.VTK3D_renderer.RemoveActor(actor)
             self._surfaces.clear()
 
+        # Remove all STL surface table rows
         if hasattr(self, "_STL_Surface_table"):
             self._STL_Surface_table.setRowCount(0)
-            
+
         # Remove all rows from the clouds table
         self._3D_Struct_table.setRowCount(0)
 
+        # ----- NEW: Clear proton spot actors and data -----
+        if hasattr(self, '_proton_spots'):
+            for actor in self._proton_spots.values():
+                self.VTK3D_renderer.RemoveActor(actor)
+            self._proton_spots.clear()
+        if hasattr(self, '_proton_spot_data'):
+            self._proton_spot_data.clear()
+        if hasattr(self, '_3D_proton_table'):
+            self._3D_proton_table.setRowCount(0)
+
         self.VTK3D_interactor.GetRenderWindow().Render()
+
 
     def reset_3d_camera(self):
         self.VTK3D_renderer.ResetCamera()
