@@ -714,3 +714,65 @@ class VTK3DViewerMixin:
                 sz=actor.GetScale()[2],
         )
 
+    def add_3d_proton_spots(self, points, color=(1,0,0), size=3.0, name=None):
+        """
+        Add 3D proton spots as VTK crosses (one per spot).
+        - points: (N,3) array of spot XYZ positions
+        - color: (r,g,b) tuple
+        - size: cross length (float, e.g. 3.0)
+        - name: unique key to store for later removal
+        """
+        import vtkmodules.all as vtk
+
+        if not hasattr(self, '_proton_spots'):
+            self._proton_spots = {}
+
+        # Remove previous actor for this name if exists
+        if name and name in self._proton_spots:
+            self.VTK3D_renderer.RemoveActor(self._proton_spots[name])
+            del self._proton_spots[name]
+
+        # ---- Subtract the reference from all spots ----
+        ref = self.Im_PatPosition3Dview[0, :3] if hasattr(self, "Im_PatPosition3Dview") else np.zeros(3)
+        shifted_points = points - ref  # shape (N,3)
+
+        # subtract this image reference from spots: self.Im_PatPosition3Dview[0, :3]
+
+        # Build a single vtkAppendPolyData of all crosses for performance
+        append = vtk.vtkAppendPolyData()
+        for pt in shifted_points:
+            for axis in range(3):
+                line = vtk.vtkLineSource()
+                start = list(pt)
+                end   = list(pt)
+                start[axis] -= size/2
+                end[axis]   += size/2
+                line.SetPoint1(*start)
+                line.SetPoint2(*end)
+                line.Update()
+                append.AddInputData(line.GetOutput())
+        append.Update()
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(append.GetOutputPort())
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetColor(color)
+        actor.GetProperty().SetLineWidth(2.5) # adjust for visibility
+
+        if name is None:
+            name = f"proton_spots_{len(self._proton_spots)}"
+        self._proton_spots[name] = actor
+        self.VTK3D_renderer.AddActor(actor)
+        self.VTK3D_interactor.GetRenderWindow().Render()
+        return name
+    
+    def remove_3d_proton_spots(self, name):
+        """
+        Remove a proton spot actor by name.
+        """
+        if hasattr(self, '_proton_spots') and name in self._proton_spots:
+            self.VTK3D_renderer.RemoveActor(self._proton_spots[name])
+            del self._proton_spots[name]
+            self.VTK3D_interactor.GetRenderWindow().Render()
