@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1743</width>
-    <height>1190</height>
+    <width>1747</width>
+    <height>1199</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -1606,7 +1606,7 @@
           </widget>
           <widget class="QWidget" name="tab_42">
            <attribute name="title">
-            <string>STL</string>
+            <string>Surfaces</string>
            </attribute>
            <layout class="QGridLayout" name="gridLayout_75">
             <item row="0" column="0">
@@ -8369,15 +8369,15 @@ p, li { white-space: pre-wrap; }
         <item row="4" column="3" rowspan="2">
          <widget class="QToolBox" name="toolBox_seg">
           <property name="currentIndex">
-           <number>2</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="seg_manual_contour">
            <property name="geometry">
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>261</width>
-             <height>152</height>
+             <width>446</width>
+             <height>397</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8518,18 +8518,34 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>119</width>
-             <height>50</height>
+             <width>446</width>
+             <height>397</height>
             </rect>
            </property>
            <attribute name="label">
             <string>Thresholding</string>
            </attribute>
-           <layout class="QGridLayout" name="gridLayout_70" rowstretch="2,0">
-            <item row="0" column="0" rowspan="2">
+           <layout class="QGridLayout" name="gridLayout_70" rowstretch="2,0,0,0,0" columnstretch="1,0,1">
+            <item row="0" column="2">
+             <widget class="QSpinBox" name="indexMinThreshSeg"/>
+            </item>
+            <item row="1" column="2">
+             <widget class="QSpinBox" name="indexMaxThreshSeg"/>
+            </item>
+            <item row="0" column="0" colspan="2">
+             <widget class="QLineEdit" name="lineEdit_75">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Min slice index</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="2">
              <widget class="QPushButton" name="applyThreshSeg">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -8539,6 +8555,29 @@ p, li { white-space: pre-wrap; }
               </property>
              </widget>
             </item>
+            <item row="1" column="0" colspan="2">
+             <widget class="QLineEdit" name="lineEdit_76">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Max slice index</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="2">
+             <spacer name="verticalSpacer_21">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
            </layout>
           </widget>
           <widget class="QWidget" name="page">
@@ -8546,8 +8585,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>441</width>
-             <height>388</height>
+             <width>446</width>
+             <height>397</height>
             </rect>
            </property>
            <attribute name="label">

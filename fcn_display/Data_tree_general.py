@@ -67,6 +67,16 @@ def on_DataTreeView_clicked(self,index):
                 if tabWidget.tabText(i) == tab_name:
                     tabWidget.setCurrentIndex(i)
                     break
+        #        
+        current3Dview_TabText = self.tabWidget_3Dview.tabText(self.tabWidget_3Dview.currentIndex())
+        if current3Dview_TabText != "Surfaces":
+            tab_name = "Surfaces"
+            tabWidget = self.tabWidget_3Dview
+            # Find the index of the tab whose text is "_3Dview"
+            for i in range(tabWidget.count()):
+                if tabWidget.tabText(i) == tab_name:
+                    tabWidget.setCurrentIndex(i)
+                    break
         # Check for cached VTK polydata
         if not hasattr(self, "_vtk_surface_cache"):
             self._vtk_surface_cache = {}

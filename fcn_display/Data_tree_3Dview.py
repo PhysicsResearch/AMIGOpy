@@ -10,6 +10,15 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
     modality  = hierarchy[3].replace("Modality: ", "")     
     idx       = self.layer_selection_box.currentIndex()
     #
+    current3Dview_TabText = self.tabWidget_3Dview.tabText(self.tabWidget_3Dview.currentIndex())
+    if current3Dview_TabText != "Structures":
+        tab_name = "Structures"
+        tabWidget = self.tabWidget_3Dview
+        # Find the index of the tab whose text is "_3Dview"
+        for i in range(tabWidget.count()):
+            if tabWidget.tabText(i) == tab_name:
+                tabWidget.setCurrentIndex(i)
+                break
     if modality == 'RTSTRUCT':
         # keep track of the last selected struct file ... if user chose and image or dose this will not change
                         # keep track of the last selected struct file ... if user chose and image or dose this will not change
@@ -137,6 +146,7 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
     dz, dy, dx = vol.shape
     initialize_crop_widgets(self, (dx, dy, dz), idx)
     # stop exectution here
+
     return
 
 

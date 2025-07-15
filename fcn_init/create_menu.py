@@ -33,7 +33,7 @@ def initializeMenuBar(self):
     # open
     openMenu = fileMenu.addMenu("Open")
     # Add items 
-    items = ["DICOM", "NIfTI","AMIGOpy","STL","Obj", "Tiff", "EGSPhant","IrIS", "MCNPinp", "MCNPout"]
+    items = ["DICOM", "NIfTI","AMIGOpy","STL","Obj","3mf", "Tiff", "EGSPhant","IrIS", "MCNPinp", "MCNPout"]
     for item in items:
         action = QAction(item, self)
         # Connect the Folder action to the load_dcm function
@@ -52,6 +52,9 @@ def initializeMenuBar(self):
         if item == "Obj":
             action.triggered.connect(lambda: load_obj_files(self))
             action.setShortcut("Ctrl+O")    
+        if item == "3mf":
+            action.triggered.connect(lambda: load_3mf(self))
+            action.setShortcut("Ctrl+3")    
         openMenu.addAction(action)
 
     ViewMenu      = self.menuBar().addMenu("View")
