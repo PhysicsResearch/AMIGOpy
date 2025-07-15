@@ -32,7 +32,7 @@ import pydicom
 import argparse
 import tkinter as tk
 from tkinter import filedialog
-import zipfile
+import numpy as np
 
 
 
@@ -102,7 +102,7 @@ def extract_file_info(all_files, progress_callback=None, total_steps=None):
         acquisition_time = getattr(dicom_file, "AcquisitionTime", "N/A")
         acquisition_number = getattr(dicom_file, "AcquisitionNumber", "N/A")
         KVP = getattr(dicom_file, "KVP", "N/A")
-        image_patient_position = getattr(dicom_file, "PatientPosition", "N/A")
+        image_patient_position = getattr(dicom_file, "ImagePositionPatient", "N/A")
         
         # RealWorldValueMappingSequence can be a list
         RWV = getattr(dicom_file, "RealWorldValueMappingSequence", [])
@@ -133,7 +133,6 @@ def extract_file_info(all_files, progress_callback=None, total_steps=None):
             "ImagePatientPosition": image_patient_position
         }
         detailed_files_info.append(file_info)
-
         # Create a unique key for each combination
         unique_combination_key = (patient_id, study_id, series_number, modality)
         if unique_combination_key not in seen_combinations:
@@ -186,15 +185,66 @@ def extract_file_info(all_files, progress_callback=None, total_steps=None):
         series_groups[series_key].append(file_info)
 
     for series_files in series_groups.values():
-        series_files.sort(key=lambda x: (
-            x['AcquisitionTime'] if x['AcquisitionTime'] not in ["N/A", None, ""] else "",
-            x['FilePath']
-        ))
-        instance_counter = 1
-        for file_info in series_files:
-            if file_info['InstanceNumber'] in [None, "N/A", ""]:
-                file_info['InstanceNumber'] = instance_counter
-                instance_counter += 1
+        need_fix = [f for f in series_files if f['InstanceNumber'] in [None, "N/A", "", "None"]]
+        if len(series_files) > 1 and need_fix:
+            z_positions = []
+            for f in series_files:
+                ipp = f.get('ImagePatientPosition', [0,0,0])
+                try:
+                    if isinstance(ipp, str):  # Convert string repr to list
+                        ipp = eval(ipp)
+                    ipp = [float(v) for v in ipp]
+                except Exception:
+                    ipp = [0,0,0]
+                f['_z'] = float(ipp[2])
+                z_positions.append(f['_z'])
+                # Always get thickness for later
+                try:
+                    dcm = pydicom.dcmread(f['FilePath'], stop_before_pixels=True, force=True)
+                    thick = getattr(dcm, 'SliceThickness', None)
+                    if thick is not None: thick = float(thick)
+                except Exception:
+                    thick = None
+                f['_slice_thickness'] = thick
+
+            # Calculate median slice thickness from DICOM field if possible
+            slice_thicknesses = [f['_slice_thickness'] for f in series_files if f['_slice_thickness'] and f['_slice_thickness'] > 0]
+            slice_thickness = np.median(slice_thicknesses) if slice_thicknesses else None
+            # Estimate from z-positions if DICOM field is missing or zero
+            z_unique_sorted = sorted(list(set(z_positions)))
+            est_thick = np.median(np.diff(z_unique_sorted)) if len(z_unique_sorted) > 1 else None
+            if not slice_thickness or slice_thickness == 0:
+                slice_thickness = est_thick
+
+            # # Debug print
+            # print("Series: {} | z_positions: {} | slice_thickness: {} | est_thick: {}".format(
+            #     series_files[0]['SeriesNumber'], z_positions, slice_thickness, est_thick))
+
+            # Fallback to sequential if impossible to determine
+            if not slice_thickness or slice_thickness == 0 or np.allclose(z_positions, z_positions[0]):
+                instance_counter = 1
+                for f in sorted(series_files, key=lambda f: f['_z']):
+                    if f['InstanceNumber'] in [None, "N/A", "", "None"]:
+                        f['InstanceNumber'] = instance_counter
+                        instance_counter += 1
+            else:
+                min_z = min(z_positions)
+                # Always sort by z for numbering
+                for f in series_files:
+                    if f['InstanceNumber'] in [None, "N/A", "", "None"]:
+                        idx = int(round((f['_z'] - min_z) / slice_thickness)) + 1
+                        f['InstanceNumber'] = idx
+            # Clean up
+            for f in series_files:
+                if '_z' in f: del f['_z']
+                if '_slice_thickness' in f: del f['_slice_thickness']
+        else:
+            # Fallback: sequential assign for missing
+            instance_counter = 1
+            for f in series_files:
+                if f['InstanceNumber'] in [None, "N/A", "", "None"]:
+                    f['InstanceNumber'] = instance_counter
+                    instance_counter += 1
 
 
 
