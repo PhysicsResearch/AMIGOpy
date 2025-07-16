@@ -448,7 +448,7 @@ def exportData(self):
     # Reset the dataframe to one copy
     undoOperations(self)
     
-from scipy.ndimage import median_filter 
+from scipy.ndimage import uniform_filter1d, median_filter
     
 def exportGCODE(self):
     # Prompt user to select a folder
@@ -491,10 +491,10 @@ def exportGCODE(self):
 
     # Write G-code file
     for col in df.columns[1:]:
-        # df[col] = median_filter(df[col], 9)
+        df[col] = uniform_filter1d(df[col], size=5)
         df["diff"] = df[col].diff().shift(-1)
         for i in range(len(df[col]) - 1):
-            if df.loc[i, "diff"] < 1e-1:
+            if df.loc[i, "diff"] < 1e-3:
                 df.loc[i, col] += np.random.choice([1, 1], 1) * np.random.choice(list(range(1, 1000)), 1) * 1e-5
         results[col] = df[col]
 
