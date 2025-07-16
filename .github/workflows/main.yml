@@ -33,8 +33,35 @@ jobs:
       - name: Build Windows installer
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
 
-      - name: Upload installer artifact
+      - name: Upload unsigned installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mysetup-installer
+          name: unsigned-installer
           path: Output/mysetup.exe
+
+  sign-windows-installer:
+    needs: build-windows
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download unsigned installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: unsigned-installer
+          path: .
+
+      - name: Sign Windows installer with SignPath
+        uses: SignPath/github-action@v1
+        with:
+          signpathApiToken: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organizationId: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          projectSlug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          signingPolicySlug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
+          inputArtifacts: 'mysetup.exe'
+          outputArtifact: 'mysetup-signed.exe'
+
+      - name: Upload signed installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-installer
+          path: mysetup-signed.exe
