@@ -3,6 +3,7 @@ import copy
 from skimage.draw import polygon
 from skimage.measure import find_contours
 from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_RTFiles.process_mevion import read_proton_plan
 
 
 from PyQt5.QtWidgets import (
@@ -176,8 +177,10 @@ def process_rt_plans(plan,ref_str,structured_data):
     if structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['BrachyTreatmentType'] != 'N/A':
         read_brachy_plan(plan,ref_str,structured_data)
     elif structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['TreatmentProtocols'] != 'N/A':
-        print('proton_plan')
-        
+        read_proton_plan(plan, structured_data)
+
+
+
 
 def read_brachy_plan(plan,ref_str,structured_data):
     app_sequence = structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['ApplicationSetupSequence']

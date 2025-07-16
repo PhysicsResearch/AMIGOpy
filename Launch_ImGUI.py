@@ -37,6 +37,7 @@ from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin
 from fcn_3Dview.structures_3D_table import init_3D_Struct_table 
 from fcn_init.init_tool_tip import set_tooltip
 from fcn_3Dview.surfaces_3D_table import init_STL_Surface_table
+from fcn_3Dview.protons_3D_plan import init_3D_proton_table
 
 
 # ── constants in module / class scope ─────────────────────────────────────────
@@ -82,6 +83,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         #
         init_3D_Struct_table(self)
         init_STL_Surface_table(self)
+        init_3D_proton_table(self)
 
         #
         self.LeftButtonSagittalDown = False

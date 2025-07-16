@@ -18,6 +18,7 @@ from fcn_segmentation.functions_segmentation import plot_hist, update_seg_struct
 from fcn_materialassignment.material_map import update_mat_struct_list
 from fcn_display.Data_tree_view_axes_update import update_axial_image, update_sagittal_image, update_coronal_image
 from fcn_display.Data_tree_3Dview import set_3DViewer_data
+from fcn_3Dview.protons_3D_plan import add_beam_to_proton_table
 import vtk
 from vtkmodules.util.numpy_support import numpy_to_vtk
 
@@ -125,9 +126,10 @@ def on_DataTreeView_clicked(self,index):
                 self.series_index_plan = self.series_index
                 self.modality_metadata = self.modality_plan
                 update_meta_view_table_dicom(self,self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['DCM_Info'])
-                update_plan_tables(self)
-                
-                return
+                if 'Plan_Brachy_Channels' in self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
+                    update_plan_tables(self)
+                    return
+
             if self.modality == 'RTSTRUCT':
                 # keep track of the last selected struct file ... if user chose and image or dose this will not change
                 self.patientID_struct     = hierarchy[1].replace("PatientID: ", "")
@@ -291,7 +293,15 @@ def on_DataTreeView_clicked(self,index):
                 set_vtk_histogran_fig(self)
                 #
             elif currentTabText == "_3Dview":
-                # Matrix to display + spacing
+                # 
+                if self.modality == 'RTPLAN':
+                    if 'Plan_Protons_Beams' in self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
+                        plan_beams = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Protons_Beams']
+                        for beam_key, beam in plan_beams.items():
+                            beam_name = beam_key
+                            info_df = beam['Info']
+                            add_beam_to_proton_table(self, beam_name, info_df)
+                        return
                 if len(hierarchy) >= 5: # binary mask contour or density map
                     set_3DViewer_data(self, hierarchy,hierarchy_indices)
                 else:
