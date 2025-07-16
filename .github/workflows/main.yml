@@ -42,14 +42,12 @@ jobs:
   sign-windows-installer:
     needs: build-windows
     runs-on: ubuntu-latest
-
     steps:
       - name: Download unsigned installer artifact
         uses: actions/download-artifact@v4
         with:
           name: unsigned-installer
           path: .
-
       - name: Sign Windows installer with SignPath
         uses: signpath/github-action-submit-signing-request@v1.1
         with:
@@ -57,13 +55,12 @@ jobs:
           organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
           project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
           signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
-          github-artifact-id: ${{ steps.upload-unsigned-artifact.outputs.artifact-id }}
+          input-artifact-path: 'mysetup.exe'
           wait-for-completion: true
           output-artifact-directory: signed
-
-
-      - name: Upload signed installer artifact
+          
+      - name: Upload signed installer
         uses: actions/upload-artifact@v4
         with:
           name: signed-installer
-          path: mysetup-signed.exe
+          path: signed/
