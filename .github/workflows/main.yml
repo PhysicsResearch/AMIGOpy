@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
+  build-and-sign-windows:
     runs-on: windows-latest
 
     steps:
@@ -34,20 +34,12 @@ jobs:
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
 
       - name: Upload unsigned installer artifact
+        id: upload_unsigned
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-installer
           path: Output/mysetup.exe
 
-  sign-windows-installer:
-    needs: build-windows
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download unsigned installer artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: unsigned-installer
-          path: .
       - name: Sign Windows installer with SignPath
         uses: signpath/github-action-submit-signing-request@v1.1
         with:
@@ -55,10 +47,10 @@ jobs:
           organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
           project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
           signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
-          input-artifact-path: 'mysetup.exe'
+          github-artifact-id: ${{ steps.upload_unsigned.outputs.artifact-id }}
           wait-for-completion: true
           output-artifact-directory: signed
-          
+
       - name: Upload signed installer
         uses: actions/upload-artifact@v4
         with:
