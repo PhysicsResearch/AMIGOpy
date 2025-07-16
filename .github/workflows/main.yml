@@ -51,14 +51,16 @@ jobs:
           path: .
 
       - name: Sign Windows installer with SignPath
-        uses: SignPath/github-action@v1
+        uses: signpath/github-action-submit-signing-request@v1.1
         with:
-          signpathApiToken: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organizationId: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
-          projectSlug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
-          signingPolicySlug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
-          inputArtifacts: 'mysetup.exe'
-          outputArtifact: 'mysetup-signed.exe'
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload-unsigned-artifact.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
 
       - name: Upload signed installer artifact
         uses: actions/upload-artifact@v4
