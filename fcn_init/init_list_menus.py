@@ -71,6 +71,9 @@ def populate_list_menus(self):
     
     self.editXAxis_list_BrCv = self.findChild(QtWidgets.QComboBox, 'editXAxis_BrCv')
     self.editXAxis_list_BrCv.addItems(["timestamp", "time"])
+
+    self.smooth_method_BrCv = self.findChild(QtWidgets.QComboBox, 'smooth_method_BrCv')
+    self.smooth_method_BrCv.addItems(["Uniform", "Median"])
     
     
     # Segmentation

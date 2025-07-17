@@ -326,6 +326,19 @@ def applyBreathhold(self):
     # Insert the copied rows into the original DataFrame
     df = pd.concat([df.iloc[:idx], b, df.iloc[idx:]]).reset_index(drop=True)
     self.dfEdit_BrCv = df
+
+
+def smoothAmpl(self):
+    if self.smooth_method_BrCv.currentText() == "Fourier":
+        threshold = self.smooth_size_BrCv.value() * 10 ** 3 #** self.fft_power.value()
+        fourier = np.fft.rfft(self.dfEdit_BrCv["amplitude"])
+        frequencies = np.fft.rfftfreq(self.dfEdit_BrCv["amplitude"].size, d=20e-3/self.dfEdit_BrCv["amplitude"].size)
+        fourier[frequencies > threshold] = 0
+        self.dfEdit_BrCv["amplitude"] = np.fft.irfft(fourier)
+    if self.smooth_method_BrCv.currentText() == "Uniform":
+        self.dfEdit_BrCv["amplitude"] = uniform_filter1d(self.dfEdit_BrCv["amplitude"], size=self.smooth_size_BrCv.value())
+    elif self.smooth_method_BrCv.currentText() == "Median":
+        self.dfEdit_BrCv["amplitude"] = median_filter(self.dfEdit_BrCv["amplitude"], size=self.smooth_size_BrCv.value())
     
 
 def applyOperations(self):
@@ -345,6 +358,9 @@ def applyOperations(self):
         
     if self.shiftAmpl_BrCv.value() != 0:
         shiftAmpl(self)
+
+    if self.smooth_BrCv.isChecked():
+        smoothAmpl(self)
 
     if self.scaleFreq_BrCv.value() != 1:
         scaleFreq(self)
@@ -469,19 +485,22 @@ def exportGCODE(self):
     time_col = df.columns[0]
     df[time_col] = pd.to_timedelta(df[time_col], unit=self.timeUnitCSV_BrCv.currentText())
     
-    # Create a new index for resampling at 0.1s intervals
-    new_index = pd.timedelta_range(start=df[time_col].min(), end=df[time_col].max(), freq='10L')
+    if self.interp_BrCv.isChecked():
+        # Create a new index for resampling at 0.1s intervals
+        freq = int(self.interp_value_BrCv.value())
+        new_index = pd.timedelta_range(start=df[time_col].min(), end=df[time_col].max(), freq=f'{freq}L')
 
-    # Reindex the DataFrame to the new index, keeping original data points
-    df = df.set_index(time_col).reindex(new_index.union(df[time_col])).sort_index()
-    
-    # Interpolate only the missing values
-    df = df.interpolate(method='linear', limit_area='inside')
-    
-    # Ensure the original time points are not modified
-    df.loc[df.index.isin(new_index) == False, :] = df.loc[df.index.isin(new_index) == False, :].fillna(method='ffill').fillna(method='bfill')
-    
-    df.reset_index(inplace=True)
+        # Reindex the DataFrame to the new index, keeping original data points
+        df = df.set_index(time_col).reindex(new_index.union(df[time_col])).sort_index()
+        
+        # Interpolate only the missing values
+        df = df.interpolate(method='linear', limit_area='inside')
+        
+        # Ensure the original time points are not modified
+        df.loc[df.index.isin(new_index) == False, :] = df.loc[df.index.isin(new_index) == False, :].fillna(method='ffill').fillna(method='bfill')
+        
+        df.reset_index(inplace=True)
+
     df.rename(columns={'index': time_col}, inplace=True)
     
     # Calculate velocity and acceleration for each column
@@ -491,7 +510,6 @@ def exportGCODE(self):
 
     # Write G-code file
     for col in df.columns[1:]:
-        df[col] = uniform_filter1d(df[col], size=5)
         df["diff"] = df[col].diff().shift(-1)
         for i in range(len(df[col]) - 1):
             if df.loc[i, "diff"] < 1e-3:
