@@ -36,8 +36,13 @@ def defineInputFolder(self):
     self.PhOperFolder.setText(folder)
 
 
-def set_GCODE_speed(self):
-    speed_factor = self.MoVeSpeedFactor.value()
+def set_GCODE_speed(self, sf=None):
+    if self.MoVeAutoControl.isChecked() and sf is None:
+        return
+    if sf is None:
+        speed_factor = self.MoVeSpeedFactor.value()
+    else:
+        speed_factor = sf
     url = f'http://{self.duet_ip}/rr_gcode'
     code = f"M220 S{speed_factor}"
     r = requests.get(url, {'gcode': code})
@@ -84,7 +89,6 @@ def init_MoVeTab(self):
 
     self.ani = FuncAnimation(self.fig_MoVe, lambda i: update_MoVeData(self), interval=UPDATE_INTERVAL * 1000)
     plt.tight_layout()
-    # plt.show()
 
 
 def get_curr_file(self):
@@ -101,9 +105,6 @@ def get_curr_file(self):
     else:
         QMessageBox.warning(None, "Warning", "No valid Duet IP provided.")
         return None
-
-
-
 
 
 def import_planned_curve(self, filename):
@@ -141,6 +142,9 @@ def update_MoVeData(self):
     try:
         t, x, y, z, speed, top_speed = get_duet_status(self)
 
+        if self.MoVeAutoControl.isChecked():
+            calc_diff(self)
+
         self.time_buffer.append(t)
         self.x_buffer.append(x)
         self.y_buffer.append(y)
@@ -150,17 +154,36 @@ def update_MoVeData(self):
         plot_MoVeData(self)
     except:
         return
+    
+
+def calc_diff(self):
+    t = self.time_buffer[-1]
+    x_meas = self.x_buffer[-1]
+
+    t_offset = self.MoVeOffsetSlider.value() * UPDATE_INTERVAL
+    t0, t1 = t - 1.5, t + 1.5
+
+    t_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "timestamp"] - t_offset
+    x_plan = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "amplitude"]
+
+    ampl_diff = x_plan - x_meas
+    idx = ampl_diff.abs().idxmin()
+    t_diff = t - t_roi[idx]
+
+    sf = self.MoVeSpeedFactor.value() * (t_diff / 10 + 1)
+    set_GCODE_speed(self, sf)
+
+    
+
 
 
 def plot_MoVeData(self):
     ax = self.fig_MoVe.gca()
-    # ax1 = ax.twinx()
 
     ax.clear()
     ax.plot(self.time_buffer, self.x_buffer, label="x")
     ax.plot(self.time_buffer, self.y_buffer, label="y")
     ax.plot(self.time_buffer, self.z_buffer, label="z")
-    ax.plot(self.time_buffer, self.speed_buffer, label="speed check", color="r")
 
     # plot original data
     t0, t1 = min(self.time_buffer), max(self.time_buffer) 
@@ -177,9 +200,5 @@ def plot_MoVeData(self):
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Position (mm)")
     ax.legend()
-
-    # ax1.clear()
-    # print(len(self.speed_buffer))
-    # ax1.plot(self.time_buffer, self.speed_buffer, "r-")
 
     self.MoVeCanvas.draw()

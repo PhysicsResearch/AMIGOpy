@@ -26,6 +26,12 @@ def getColumnIndexByName(self, column_name):
     return None
 
 
+def on_fourierSlider_change(self):
+    cutoff = self.fourier_cutoffs[self.threshFourierSlider.value()]
+    self.threshFourierValue.setText(f"{cutoff:.2e} Hz")
+    # self.threshFourierSlider.setToolTip(f"Cutoff frequency: {cutoff:.2e} Hz")
+
+
 def getDataframeFromTable(self):
     """Extract data from tableWidget and convert to pandas.DataFrame"""
     x_col = self.editXAxis_BrCv.currentText()
@@ -58,12 +64,14 @@ def getDataframeFromTable(self):
 def init_BrCv_edit(self):
     if self.tabWidget_BrCv.currentIndex() == 1 and self.BrCvTab_index == 0:
         self.BrCvTab_index = 1
-        try:
-            getDataframeFromTable(self)
-            initXRange(self)
-            plotViewData_BrCv_edit(self)   
-        except:
-            return
+        # try:
+        on_fourierSlider_change(self)
+        self.threshFourierSlider.valueChanged.connect(lambda:on_fourierSlider_change(self))
+        getDataframeFromTable(self)
+        initXRange(self)
+        plotViewData_BrCv_edit(self)   
+        # except:
+        #     return
 
   
 def initXRange(self):
@@ -330,11 +338,13 @@ def applyBreathhold(self):
 
 def smoothAmpl(self):
     if self.smooth_method_BrCv.currentText() == "Fourier":
-        threshold = self.smooth_size_BrCv.value() * 10 ** 3 #** self.fft_power.value()
+        threshold = self.fourier_cutoffs[self.threshFourierSlider.value()]
         fourier = np.fft.rfft(self.dfEdit_BrCv["amplitude"])
-        frequencies = np.fft.rfftfreq(self.dfEdit_BrCv["amplitude"].size, d=20e-3/self.dfEdit_BrCv["amplitude"].size)
+        frequencies = np.fft.rfftfreq(self.dfEdit_BrCv["amplitude"].size, d=self.dfEdit_BrCv["timestamp"].diff().iloc[1])#20e-3/self.dfEdit_BrCv["amplitude"].size)
         fourier[frequencies > threshold] = 0
-        self.dfEdit_BrCv["amplitude"] = np.fft.irfft(fourier)
+        smooth_signal = np.fft.irfft(fourier, n=self.dfEdit_BrCv["amplitude"].size)
+        self.dfEdit_BrCv["amplitude"] = smooth_signal
+        
     if self.smooth_method_BrCv.currentText() == "Uniform":
         self.dfEdit_BrCv["amplitude"] = uniform_filter1d(self.dfEdit_BrCv["amplitude"], size=self.smooth_size_BrCv.value())
     elif self.smooth_method_BrCv.currentText() == "Median":
