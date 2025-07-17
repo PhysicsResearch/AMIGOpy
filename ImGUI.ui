@@ -7764,9 +7764,9 @@ p, li { white-space: pre-wrap; }
            <attribute name="title">
             <string>Edit &amp;&amp; export</string>
            </attribute>
-           <layout class="QGridLayout" name="gridLayout_BrCv_edit" columnstretch="1,3">
+           <layout class="QGridLayout" name="gridLayout_BrCv_edit" columnstretch="2,5">
             <item row="0" column="0">
-             <layout class="QGridLayout" name="gridLayout_BrCv_6" rowstretch="0,0,0,0,0,0,0,0,0">
+             <layout class="QGridLayout" name="gridLayout_BrCv_6" rowstretch="0,0,0,0,0,0,0,0,0,0">
               <item row="1" column="1" colspan="2">
                <widget class="QGroupBox" name="breathhold_BrCv">
                 <property name="title">
@@ -7811,80 +7811,6 @@ p, li { white-space: pre-wrap; }
                   </widget>
                  </item>
                 </layout>
-               </widget>
-              </item>
-              <item row="5" column="1" colspan="2">
-               <widget class="QGroupBox" name="export_BrCv">
-                <property name="title">
-                 <string>Export</string>
-                </property>
-                <layout class="QGridLayout" name="gridLayout_BrCv_9" columnstretch="1,1">
-                 <item row="2" column="0">
-                  <widget class="QPushButton" name="exportData_BrCv">
-                   <property name="text">
-                    <string>Export CSV</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QLineEdit" name="editExportFile_BrCv"/>
-                 </item>
-                 <item row="2" column="1">
-                  <widget class="QPushButton" name="exportGCODE_BrCv">
-                   <property name="text">
-                    <string>Export GCODE</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QLineEdit" name="lineEdit_BrCv_28">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="text">
-                    <string>Filename</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="0">
-                  <widget class="QLineEdit" name="lineEdit_BrCv_24">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="text">
-                    <string>Copy fragment</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QSpinBox" name="copyCurve_BrCv">
-                   <property name="value">
-                    <number>1</number>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QPushButton" name="applyOper_BrCv">
-                <property name="text">
-                 <string>Apply operations</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1" colspan="2">
-               <widget class="Line" name="line_BrCv">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="2">
-               <widget class="QPushButton" name="undoOperations_BrCv">
-                <property name="text">
-                 <string>Undo</string>
-                </property>
                </widget>
               </item>
               <item row="0" column="1" colspan="2">
@@ -7953,7 +7879,7 @@ p, li { white-space: pre-wrap; }
                  <item row="3" column="1">
                   <widget class="QDoubleSpinBox" name="maxAmplThresh_BrCv">
                    <property name="value">
-                    <double>25.000000000000000</double>
+                    <double>39.000000000000000</double>
                    </property>
                   </widget>
                  </item>
@@ -7977,7 +7903,14 @@ p, li { white-space: pre-wrap; }
                 </layout>
                </widget>
               </item>
-              <item row="8" column="1" colspan="2">
+              <item row="3" column="1">
+               <widget class="QPushButton" name="applyOper_BrCv">
+                <property name="text">
+                 <string>Apply operations</string>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="1" colspan="2">
                <spacer name="verticalSpacer_BrCv_4">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
@@ -7990,13 +7923,80 @@ p, li { white-space: pre-wrap; }
                 </property>
                </spacer>
               </item>
-              <item row="3" column="1" colspan="2">
+              <item row="6" column="1" colspan="2">
+               <widget class="QGroupBox" name="export_BrCv">
+                <property name="title">
+                 <string>Export</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_BrCv_9" columnstretch="1,1">
+                 <item row="2" column="0">
+                  <widget class="QPushButton" name="exportData_BrCv">
+                   <property name="text">
+                    <string>Export CSV</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLineEdit" name="editExportFile_BrCv"/>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QPushButton" name="exportGCODE_BrCv">
+                   <property name="text">
+                    <string>Export GCODE</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLineEdit" name="lineEdit_BrCv_28">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="text">
+                    <string>Filename</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLineEdit" name="lineEdit_BrCv_24">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="text">
+                    <string>Copy fragment</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QSpinBox" name="copyCurve_BrCv">
+                   <property name="value">
+                    <number>1</number>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="5" column="1" colspan="2">
+               <widget class="Line" name="line_BrCv">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="2">
+               <widget class="QPushButton" name="undoOperations_BrCv">
+                <property name="text">
+                 <string>Undo</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1" colspan="2">
                <widget class="QGroupBox" name="smoothing_BrCv">
                 <property name="title">
                  <string>Smoothing</string>
                 </property>
-                <layout class="QGridLayout" name="gridLayout_77" columnstretch="1,1,0">
-                 <item row="1" column="0">
+                <layout class="QGridLayout" name="gridLayout_77" columnstretch="1,1,1,0">
+                 <item row="2" column="0">
                   <widget class="QCheckBox" name="smooth_BrCv">
                    <property name="layoutDirection">
                     <enum>Qt::RightToLeft</enum>
@@ -8009,7 +8009,55 @@ p, li { white-space: pre-wrap; }
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="0">
+                 <item row="4" column="3">
+                  <widget class="QLineEdit" name="lineEdit_79">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>kernel size</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QLineEdit" name="lineEdit_78">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>method</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QLineEdit" name="lineEdit_77">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>ms</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
                   <widget class="QCheckBox" name="interp_BrCv">
                    <property name="layoutDirection">
                     <enum>Qt::RightToLeft</enum>
@@ -8022,50 +8070,56 @@ p, li { white-space: pre-wrap; }
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
-                  <widget class="QComboBox" name="smooth_method_BrCv"/>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QDoubleSpinBox" name="interp_value_BrCv">
-                   <property name="value">
-                    <double>10.000000000000000</double>
+                 <item row="6" column="0" colspan="2">
+                  <widget class="QSlider" name="threshFourierSlider">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="2">
-                  <widget class="QLineEdit" name="lineEdit_77">
+                 <item row="6" column="3">
+                  <widget class="QLineEdit" name="lineEdit_81">
                    <property name="enabled">
                     <bool>false</bool>
                    </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
                    <property name="text">
-                    <string>ms</string>
+                    <string>cut-off frequency</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="1">
+                 <item row="6" column="2">
+                  <widget class="QLineEdit" name="threshFourierValue">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="2">
                   <widget class="QSpinBox" name="smooth_size_BrCv">
                    <property name="value">
                     <number>5</number>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="2">
-                  <widget class="QLineEdit" name="lineEdit_78">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="text">
-                    <string>method</string>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="2" column="2">
-                  <widget class="QLineEdit" name="lineEdit_79">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="text">
-                    <string>size</string>
+                  <widget class="QComboBox" name="smooth_method_BrCv"/>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QDoubleSpinBox" name="interp_value_BrCv">
+                   <property name="value">
+                    <double>10.000000000000000</double>
                    </property>
                   </widget>
                  </item>
@@ -8469,7 +8523,7 @@ p, li { white-space: pre-wrap; }
              <x>0</x>
              <y>0</y>
              <width>446</width>
-             <height>412</height>
+             <height>397</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8610,8 +8664,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>141</width>
-             <height>97</height>
+             <width>165</width>
+             <height>99</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8677,8 +8731,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>174</width>
-             <height>135</height>
+             <width>206</width>
+             <height>147</height>
             </rect>
            </property>
            <attribute name="label">
