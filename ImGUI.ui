@@ -7506,7 +7506,7 @@ p, li { white-space: pre-wrap; }
         <item row="0" column="0">
          <widget class="QTabWidget" name="tabWidget_BrCv">
           <property name="currentIndex">
-           <number>3</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="tab_import">
            <attribute name="title">
@@ -8441,6 +8441,39 @@ p, li { white-space: pre-wrap; }
                 <string>Motion Verification</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_MotionVerification" columnstretch="1,1,4">
+                <item row="1" column="0">
+                 <widget class="QLineEdit" name="lineEdit_MoVeOffset">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string>Offset</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QDoubleSpinBox" name="MoVeSystemLatency"/>
+                </item>
+                <item row="0" column="0" colspan="3">
+                 <widget class="QWidget" name="MoVeView" native="true"/>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QCheckBox" name="MoVeAutoControl">
+                  <property name="text">
+                   <string>Auto-control</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLineEdit" name="lineEdit_MoVeSF">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string>Speed factor</string>
+                  </property>
+                 </widget>
+                </item>
                 <item row="1" column="1">
                  <widget class="QSlider" name="MoVeOffsetSlider">
                   <property name="minimum">
@@ -8457,10 +8490,13 @@ p, li { white-space: pre-wrap; }
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="0">
-                 <widget class="QLineEdit" name="lineEdit_MoVeOffset">
+                <item row="3" column="0">
+                 <widget class="QLineEdit" name="lineEdit_80">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
                   <property name="text">
-                   <string>Offset</string>
+                   <string>System latency (s)</string>
                   </property>
                  </widget>
                 </item>
@@ -8477,16 +8513,6 @@ p, li { white-space: pre-wrap; }
                   </property>
                  </spacer>
                 </item>
-                <item row="0" column="0" colspan="3">
-                 <widget class="QWidget" name="MoVeView" native="true"/>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_MoVeSF">
-                  <property name="text">
-                   <string>Speed factor</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="2" column="1">
                  <widget class="QSpinBox" name="MoVeSpeedFactor">
                   <property name="maximum">
@@ -8497,10 +8523,10 @@ p, li { white-space: pre-wrap; }
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="2">
-                 <widget class="QCheckBox" name="MoVeAutoControl">
+                <item row="4" column="1">
+                 <widget class="QPushButton" name="MoVeAcqStart">
                   <property name="text">
-                   <string>Auto-control</string>
+                   <string>Acquisition Start</string>
                   </property>
                  </widget>
                 </item>
