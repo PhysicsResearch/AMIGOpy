@@ -176,7 +176,7 @@ def addColumns(self, dataframe):
     # Interpolate amplitude values equal to 0
     if self.curve_origin == "measured":
         dataframe.loc[dataframe["amplitude"] == 0, "amplitude"] = np.nan
-        dataframe = dataframe.interpolate(method='linear', limit_direction='forward')
+        dataframe["amplitude"] = dataframe["amplitude"].interpolate(method='linear', limit_direction='forward')
 
     # Add column with time in seconds
     dataframe["time"] = pd.to_timedelta(dataframe["timestamp"], unit=self.timeUnitCSV_BrCv.currentText())

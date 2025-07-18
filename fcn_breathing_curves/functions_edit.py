@@ -211,6 +211,13 @@ def scaleFreq(self):
             # Concatenate the scaled instance DataFrame
             df_scaled = pd.concat([df_scaled, df_i], ignore_index=True)
 
+        df_scaled["acq"] = np.nan
+        if "acq" in self.dfEdit_BrCv.columns and self.dfEdit_BrCv["acq"].sum() > 0:
+            timestamps = self.dfEdit_BrCv.loc[self.dfEdit_BrCv["acq"] == 1, "timestamp"]
+            for t in timestamps:
+                closest_t = (df_scaled["timestamp"] - t / self.scaleFreq_BrCv.value()).abs().idxmin()
+                df_scaled.loc[closest_t, "acq"] = 1 
+
         self.dfEdit_BrCv = df_scaled
         del df_i, df_scaled
 
@@ -249,6 +256,14 @@ def scaleFreq(self):
                 df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "Z"
             for t in mark_timestamps_E:
                 df.loc[df.iloc[(df['timestamp']-t*scale_factor).abs().argsort()].index[0], "mark"] = "E"
+        
+        df_scaled["acq"] = np.nan
+        if "acq" in self.dfEdit_BrCv.columns and self.dfEdit_BrCv["acq"].sum() > 0:
+            timestamps = self.dfEdit_BrCv.loc[self.dfEdit_BrCv["acq"] == 1, "timestamp"]
+            for t in timestamps:
+                closest_t = (df_scaled["timestamp"] - t / self.scaleFreq_BrCv.value()).abs().idxmin()
+                df_scaled.loc[closest_t, "acq"] = 1 
+
         self.dfEdit_BrCv = df
     del df
     
@@ -440,6 +455,7 @@ def copyCurve(self):
         # Copy fragment N times
         df_copy = df.copy()
         df_copy["timestamp"] += df_mult["timestamp"].max() + timestep
+        df_copy["time"] += df_mult["time"].max() + timestep / 1000
         if "instance" in df.columns:
             df_copy["instance"] += df_mult["instance"].max()
         df_mult = pd.concat([df_mult, df_copy]).reset_index(drop=True)
@@ -490,6 +506,8 @@ def exportGCODE(self):
     # Copy the fragment N times and extract timestamp and amplitude data
     copyCurve(self)
     df = self.dfEdit_BrCv[["timestamp", "amplitude"]]
+    if "acq" not in self.dfEdit_BrCv.columns:
+        self.dfEdit_BrCv["acq"] = np.nan
     
     # Convert the time column to TimedeltaIndex for resampling
     time_col = df.columns[0]
@@ -518,8 +536,16 @@ def exportGCODE(self):
     results[time_col] = df[time_col].dt.total_seconds()
     axis_labels = ['X', 'Y', 'Z']  # Define axis labels
 
+    if self.dfEdit_BrCv["acq"].sum() > 0:
+        timestamps = self.dfEdit_BrCv.loc[self.dfEdit_BrCv["acq"] == 1, "time"]
+        for t in timestamps:
+            closest_t = (df[time_col].dt.total_seconds() - t).abs().idxmin()
+            df.loc[closest_t, "acq"] = 1 
+    else:
+        df["acq"] = np.nan
+
     # Write G-code file
-    for col in df.columns[1:]:
+    for col in df.columns[1:2]:
         df["diff"] = df[col].diff().shift(-1)
         for i in range(len(df[col]) - 1):
             if df.loc[i, "diff"] < 1e-3:
@@ -537,6 +563,8 @@ def exportGCODE(self):
         accel = vel.diff() / df[time_col].diff().dt.total_seconds()
         accel.iloc[-1] = accel.iloc[-2]  # Copy the second last value to the last element
         results[f'{col}_accel'] = accel
+
+    results["acq"] = df["acq"]
      
     # Save results to CSV file
     try:
@@ -572,6 +600,20 @@ def exportGCODE(self):
 ################
 ### PLOTTING ###
 ################
+def onclick(self, event):
+    """Function to handle mouse click events on the plot"""
+    x_col = self.editXAxis_BrCv.currentText()
+    if event.button == 1:  # Left click
+        if "acq" not in self.dfEdit_BrCv.columns:
+            self.dfEdit_BrCv["acq"] = np.nan
+        x = event.xdata
+        self.dfEdit_BrCv.loc[(self.dfEdit_BrCv[x_col] - x).abs().idxmin(), "acq"] = 1
+    elif event.button == 3:  # Right click
+        x = event.xdata
+        if "acq" in self.dfEdit_BrCv.columns and self.dfEdit_BrCv["acq"].sum() > 0:
+            delete_idx = (self.dfEdit_BrCv.loc[self.dfEdit_BrCv["acq"] == 1, x_col] - x).abs().idxmin()
+            self.dfEdit_BrCv.loc[delete_idx, "acq"] = np.nan
+    plotViewData_BrCv_edit(self)
 
 
 def plotViewData_BrCv_edit(self, df=None):
@@ -611,6 +653,15 @@ def plotViewData_BrCv_edit(self, df=None):
     # Plot the data
     ax.set_xlim(np.min(x_data), np.max(x_data))
     ax.plot(x_data, y_data, label=f'{x_col} vs {y_col}')
+    if "acq" in self.dfEdit_BrCv.columns and self.dfEdit_BrCv["acq"].sum() > 0:
+        x_acq = self.dfEdit_BrCv.loc[self.dfEdit_BrCv["acq"] == 1, x_col]
+        for x in x_acq:
+            if x > np.min(x_data) and x < np.max(x_data):
+                ax.axvline(x, color='red', label="Acquisition Timestamps")
+                if x_col == "timestamp":
+                    ax.fill_between(x=[x, x + 6000], y1=np.min(y_data), y2=np.max(y_data), facecolor="pink", alpha=0.5)
+                else:
+                    ax.fill_between(x=[x, x + 6], y1=np.min(y_data), y2=np.max(y_data), facecolor="pink", alpha=0.5)
 
     ax.set_xlabel(x_col, fontsize=self.selected_font_size)
     ax.set_ylabel(y_col, fontsize=self.selected_font_size)
@@ -618,7 +669,7 @@ def plotViewData_BrCv_edit(self, df=None):
     # Create a canvas and toolbar
     canvas = FigureCanvas(self.plot_fig)
     canvas.setStyleSheet("background-color:Transparent;")
-    toolbar = NavigationToolbar(canvas, self)
+    canvas.mpl_connect('button_press_event', lambda event: onclick(self, event))
 
     # Check if the container has a layout, set one if not
     container = self.editAxView_BrCv
@@ -629,11 +680,10 @@ def plotViewData_BrCv_edit(self, df=None):
         # Clear existing content in the container, if any
         while container.layout().count():
             child = container.layout().takeAt(0)
-            if child.widget() and not isinstance(child.widget(), NavigationToolbar):
+            if child.widget():
                 child.widget().deleteLater()
 
     # Add the canvas and toolbar to the container
-    container.layout().addWidget(toolbar)
     container.layout().addWidget(canvas)
     canvas.draw()
     
