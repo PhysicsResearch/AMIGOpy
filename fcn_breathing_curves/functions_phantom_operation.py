@@ -43,6 +43,7 @@ def set_GCODE_speed(self, sf=None):
         speed_factor = self.MoVeSpeedFactor.value()
     else:
         speed_factor = sf
+        self.MoVeSpeedFactor.setValue(int(speed_factor))
     url = f'http://{self.duet_ip}/rr_gcode'
     code = f"M220 S{speed_factor}"
     r = requests.get(url, {'gcode': code})
@@ -60,7 +61,7 @@ def init_MoVeTab(self):
     self.MoVeOffsetSlider.setRange(-150, 150)
 
     self.t0 = time.time() 
-    # self.MoVeData = []
+    self.MoVeData = {'t': [], 'x': [], 'y': [], 'z': []}
 
     max_points = int(WINDOW_DURATION / UPDATE_INTERVAL)
     self.time_buffer = deque(maxlen=max_points)
@@ -128,10 +129,8 @@ def get_duet_status(self):
         if response.status_code == 200:
             data = response.json()
             x, y, z = data['coords']['xyz']
-            speed = data['speeds']['requested']
-            top_speed = data['speeds']['top']
             t = time.time() - self.t0 + self.tprint
-            return t, x, y, z, speed, top_speed
+            return t, x, y, z
         else:
             print(f"Error: {response.status_code}")
     except Exception as e:
@@ -140,17 +139,19 @@ def get_duet_status(self):
 
 def update_MoVeData(self):
     try:
-        t, x, y, z, speed, top_speed = get_duet_status(self)
+        t, x, y, z = get_duet_status(self)
 
+        if not self.MoVeAutoControl.isChecked():
+            self.MoVeUserSetSpeed = self.MoVeSpeedFactor.value()
         if self.MoVeAutoControl.isChecked():
             calc_diff(self)
 
         self.time_buffer.append(t)
         self.x_buffer.append(x)
         self.y_buffer.append(y)
-        self.z_buffer.append(z)  # Example: Z position
-        self.speed_buffer.append((speed * 60 == 1200) * 5)
-        # self.MoVeData.append([t, x, y, z, speed, top_speed])
+        self.z_buffer.append(z)  
+        self.MoVeData['t'].append(t); self.MoVeData['x'].append(x)
+        self.MoVeData['y'].append(y); self.MoVeData['z'].append(z)
         plot_MoVeData(self)
     except:
         return
@@ -170,13 +171,28 @@ def calc_diff(self):
     idx = ampl_diff.abs().idxmin()
     t_diff = t - t_roi[idx]
 
-    sf = self.MoVeSpeedFactor.value() * (t_diff / 10 + 1)
+    # calculate the speed factor adjustment, relative to user defined default 
+    # and clip between 90 - 20 to avoid explosive speed changes
+    sf = np.clip(self.MoVeUserSetSpeed * (t_diff * np.median(self.MoVeData['x']) / 75 + 1), 90, 120)
     set_GCODE_speed(self, sf)
 
+
+def export_MoVeData(self):
+    csv_root = self.PhOperFolder.text()
+    if not os.path.exists(csv_root):
+        QMessageBox.warning(None, "Warning", "No valid input folder was provided.")
+        return
+
+    filename = get_curr_file(self)
+    if filename is None:
+        return
+
+    filepath = os.path.join(csv_root, filename.replace(".gcode", "_MoVe.csv"))
+    df = pd.DataFrame(self.MoVeData)
+    df.to_csv(filepath, index=False)
+    QMessageBox.information(None, "Info", f"MoVe data exported to {filepath}")
+
     
-
-
-
 def plot_MoVeData(self):
     ax = self.fig_MoVe.gca()
 
