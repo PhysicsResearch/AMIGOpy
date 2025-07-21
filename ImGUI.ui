@@ -8441,6 +8441,39 @@ p, li { white-space: pre-wrap; }
                 <string>Motion Verification</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_MotionVerification" columnstretch="1,1,4">
+                <item row="1" column="0">
+                 <widget class="QLineEdit" name="lineEdit_MoVeOffset">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string>Offset</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QDoubleSpinBox" name="MoVeSystemLatency"/>
+                </item>
+                <item row="0" column="0" colspan="3">
+                 <widget class="QWidget" name="MoVeView" native="true"/>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QCheckBox" name="MoVeAutoControl">
+                  <property name="text">
+                   <string>Auto-control</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLineEdit" name="lineEdit_MoVeSF">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string>Speed factor</string>
+                  </property>
+                 </widget>
+                </item>
                 <item row="1" column="1">
                  <widget class="QSlider" name="MoVeOffsetSlider">
                   <property name="minimum">
@@ -8457,10 +8490,13 @@ p, li { white-space: pre-wrap; }
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="0">
-                 <widget class="QLineEdit" name="lineEdit_MoVeOffset">
+                <item row="3" column="0">
+                 <widget class="QLineEdit" name="lineEdit_80">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
                   <property name="text">
-                   <string>Offset</string>
+                   <string>System latency (s)</string>
                   </property>
                  </widget>
                 </item>
@@ -8477,16 +8513,6 @@ p, li { white-space: pre-wrap; }
                   </property>
                  </spacer>
                 </item>
-                <item row="0" column="0" colspan="3">
-                 <widget class="QWidget" name="MoVeView" native="true"/>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_MoVeSF">
-                  <property name="text">
-                   <string>Speed factor</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="2" column="1">
                  <widget class="QSpinBox" name="MoVeSpeedFactor">
                   <property name="maximum">
@@ -8494,6 +8520,13 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <property name="value">
                    <number>100</number>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QPushButton" name="MoVeAcqStart">
+                  <property name="text">
+                   <string>Acquisition Start</string>
                   </property>
                  </widget>
                 </item>
@@ -8522,8 +8555,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>446</width>
-             <height>397</height>
+             <width>172</width>
+             <height>127</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8664,8 +8697,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>165</width>
-             <height>99</height>
+             <width>141</width>
+             <height>97</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8731,8 +8764,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>206</width>
-             <height>147</height>
+             <width>174</width>
+             <height>135</height>
             </rect>
            </property>
            <attribute name="label">
