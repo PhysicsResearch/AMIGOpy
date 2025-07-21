@@ -449,6 +449,9 @@ def copyCurve(self):
         shift = max2 - max1 * (max2 - min1) / (max1 - min1)
         df.loc[min1_idx:, "amplitude"] = df.loc[min1_idx:, "amplitude"] * scale + shift
     
+    df["start"] = 0
+    df.loc[0, "start"] = 1
+
     df_mult = df.copy()
 
     for i in range(N - 1):
@@ -544,6 +547,11 @@ def exportGCODE(self):
     else:
         df["acq"] = np.nan
 
+    timestamps = self.dfEdit_BrCv.loc[self.dfEdit_BrCv["start"] == 1, "time"]
+    for t in timestamps:
+        closest_t = (df[time_col].dt.total_seconds() - t).abs().idxmin()
+        df.loc[closest_t, "start"] = 1 
+
     # Write G-code file
     for col in df.columns[1:2]:
         df["diff"] = df[col].diff().shift(-1)
@@ -565,6 +573,7 @@ def exportGCODE(self):
         results[f'{col}_accel'] = accel
 
     results["acq"] = df["acq"]
+    results["start"] = df["start"]
      
     # Save results to CSV file
     try:
