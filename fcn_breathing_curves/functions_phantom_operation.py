@@ -11,8 +11,8 @@ import numpy as np
 from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
 from PyQt5 import QtCore
 
-UPDATE_INTERVAL = 0.1    # seconds between polls
 WINDOW_DURATION = 10     # seconds to show on the plot
+UPDATE_INTERVAL = 0.05    # seconds between polls
 
 def set_fcn_MoVeTab_changed(self):
     # Connect the currentChanged signal to the onTabChanged slot
@@ -61,14 +61,11 @@ def init_MoVeTab(self):
     self.MoVeOffsetSlider.setRange(-150, 150)
 
     self.t0 = time.time() 
-    self.MoVeData = {'t': [], 'x': [], 'y': [], 'z': []}
+    self.MoVeData = {'t': [], 'x': []}
 
     max_points = int(WINDOW_DURATION / UPDATE_INTERVAL)
     self.time_buffer = deque(maxlen=max_points)
     self.x_buffer = deque(maxlen=max_points)
-    self.y_buffer = deque(maxlen=max_points)
-    self.z_buffer = deque(maxlen=max_points)
-    self.speed_buffer = deque(maxlen=max_points)
 
     self.fig_MoVe = Figure()  # Create a figure for the first time
     self.MoVeCanvas = FigureCanvas(self.fig_MoVe)
@@ -94,18 +91,19 @@ def init_MoVeTab(self):
 
 def get_curr_file(self):
     url = f'http://{self.duet_ip}/rr_fileinfo'
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        if data['err'] == 1:
-            return None
-        filepath = data['fileName']
-        self.tprint = data['printDuration']
-        _, filename = os.path.split(filepath)
-        return filename
-    else:
-        QMessageBox.warning(None, "Warning", "No valid Duet IP provided.")
-        return None
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if data['err'] == 1:
+                return None
+            filepath = data['fileName']
+            self.tprint = data['printDuration']
+            _, filename = os.path.split(filepath)
+            return filename
+    except:
+        QMessageBox.warning(None, "Warning", "Duet could not be reached.")
+        return None       
 
 
 def import_planned_curve(self, filename):
@@ -128,9 +126,9 @@ def get_duet_status(self):
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
-            x, y, z = data['coords']['xyz']
+            x = data['coords']['xyz'][0]
             t = time.time() - self.t0 + self.tprint
-            return t, x, y, z
+            return t, x
         else:
             print(f"Error: {response.status_code}")
     except Exception as e:
@@ -139,7 +137,7 @@ def get_duet_status(self):
 
 def update_MoVeData(self):
     try:
-        t, x, y, z = get_duet_status(self)
+        t, x = get_duet_status(self)
 
         if not self.MoVeAutoControl.isChecked():
             self.MoVeUserSetSpeed = self.MoVeSpeedFactor.value()
@@ -148,33 +146,37 @@ def update_MoVeData(self):
 
         self.time_buffer.append(t)
         self.x_buffer.append(x)
-        self.y_buffer.append(y)
-        self.z_buffer.append(z)  
         self.MoVeData['t'].append(t); self.MoVeData['x'].append(x)
-        self.MoVeData['y'].append(y); self.MoVeData['z'].append(z)
         plot_MoVeData(self)
     except:
         return
     
 
 def calc_diff(self):
-    t = self.time_buffer[-1]
-    x_meas = self.x_buffer[-1]
+    try:
+        t = self.time_buffer[-1]
+        x_meas = self.x_buffer[-1]
 
-    t_offset = self.MoVeOffsetSlider.value() * UPDATE_INTERVAL
-    t0, t1 = t - 1.5, t + 1.5
+        t_offset = self.MoVeOffsetSlider.value() * UPDATE_INTERVAL
+        t0, t1 = t - 1.5, t + 1.5
 
-    t_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "timestamp"] - t_offset
-    x_plan = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "amplitude"]
+        t_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "timestamp"] - t_offset
+        x_plan = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "amplitude"]
 
-    ampl_diff = x_plan - x_meas
-    idx = ampl_diff.abs().idxmin()
-    t_diff = t - t_roi[idx]
+        ampl_diff = x_plan - x_meas
+        idx = ampl_diff.abs().idxmin()
+        t_diff = t - t_roi[idx]
 
-    # calculate the speed factor adjustment, relative to user defined default 
-    # and clip between 90 - 20 to avoid explosive speed changes
-    sf = np.clip(self.MoVeUserSetSpeed * (t_diff * np.median(self.MoVeData['x']) / 75 + 1), 90, 120)
-    set_GCODE_speed(self, sf)
+        # calculate the speed factor adjustment, relative to user defined default 
+        # and clip between 90 - 20 to avoid explosive speed changes
+        sf = np.clip(self.MoVeUserSetSpeed * (t_diff * np.median(self.MoVeData['x']) / 35 + 1), 90, 120)
+        set_GCODE_speed(self, sf)
+    except:
+        return
+
+
+def setAcqStart(self):
+    return
 
 
 def export_MoVeData(self):
@@ -197,24 +199,38 @@ def plot_MoVeData(self):
     ax = self.fig_MoVe.gca()
 
     ax.clear()
-    ax.plot(self.time_buffer, self.x_buffer, label="x")
-    ax.plot(self.time_buffer, self.y_buffer, label="y")
-    ax.plot(self.time_buffer, self.z_buffer, label="z")
+    ax.plot(self.time_buffer, self.x_buffer)
 
     # plot original data
     t0, t1 = min(self.time_buffer), max(self.time_buffer) 
     t_offset = self.MoVeOffsetSlider.value() * UPDATE_INTERVAL
     t_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "timestamp"] - t_offset
     x_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "amplitude"]
-    ax.plot(t_roi, x_roi, label="og", color="pink")
+    ax.plot(t_roi, x_roi, color="pink")
 
-    t_offset = self.MoVeOffsetSlider.value() * UPDATE_INTERVAL
     t_roi = self.orig_data.loc[(self.orig_data["timestamp"] > t1 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset + 10), "timestamp"] - t_offset
     x_roi = self.orig_data.loc[(self.orig_data["timestamp"] > t1 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset + 10), "amplitude"]
     ax.plot(t_roi, x_roi, linestyle="--", color="pink")
 
+    acq_timestamps = self.orig_data.loc[(self.orig_data["acq"] == 1) & \
+                                        (self.orig_data["timestamp"] >= t0 + t_offset) & \
+                                        (self.orig_data["timestamp"] <= t1 + t_offset + 10 + self.MoVeSystemLatency.value()), 
+                                        "timestamp"] - t_offset
+    start_timestamps = acq_timestamps - self.MoVeSystemLatency.value() 
+    ax.vlines(acq_timestamps, 0, 20, color="red")
+    ax.vlines(start_timestamps, 0, 20, color="green")
+    [ax.axvspan(xmin=t_acq, xmax=t_acq + 6, color="lightblue") \
+     for t_acq in acq_timestamps]
+
+    copy_timestamps = self.orig_data.loc[(self.orig_data["start"] == 1) & \
+                                         (self.orig_data["timestamp"] >= t0 + t_offset) & \
+                                         (self.orig_data["timestamp"] <= t1 + t_offset + 10), 
+                                         "timestamp"] - t_offset
+    ax.vlines(copy_timestamps, 0, 20, color="blue")
+
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Position (mm)")
     ax.legend()
+    ax.set_xlim(min(self.time_buffer), max(self.time_buffer)+10)
 
     self.MoVeCanvas.draw()
