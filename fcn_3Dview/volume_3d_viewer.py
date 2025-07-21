@@ -779,7 +779,125 @@ class VTK3DViewerMixin:
         self.VTK3D_renderer.AddActor(actor)
         self.VTK3D_interactor.GetRenderWindow().Render()
         return name
+
+    def add_3d_proton_beam_trajectory(self, source, corners, color=(1, 0, 0), size=3.0, name=None):
+        """
+        Plot a 3D proton beam visualization:
+        - A sphere at the source point.
+        - Lines connecting source to each corner.
+        - Spheres at each corner.
+
+        Parameters:
+        - source: (3,) array-like source position
+        - corners: (N,3) array-like corner coordinates
+        - color: (r,g,b) tuple
+        - size: size for line width and sphere radius
+        - name: unique key to manage this actor group
+        """
+        import numpy as np
+        import vtkmodules.all as vtk
+
+        # Fallback for name
+        if name is None:
+            name = f"proton_beam_{len(self._proton_spots)}"
+
+        # Remove previous actors if they exist
+        if name in self._proton_spots:
+            for actor in self._proton_spots[name]:
+                self.VTK3D_renderer.RemoveActor(actor)
+            del self._proton_spots[name]
+
+        # --- Coordinate alignment ---
+        ref = self.Im_PatPosition3Dview[0, :3] if hasattr(self, "Im_PatPosition3Dview") else np.zeros(3)
+        shifted_source = source - ref
+        shifted_corners = corners - ref
+
+        all_actors = []
+
+        # --- Plot source as a sphere ---
+        source_sphere = vtk.vtkSphereSource()
+        source_sphere.SetCenter(*shifted_source)
+        source_sphere.SetRadius(50 / 2)
+        source_sphere.SetPhiResolution(20)
+        source_sphere.SetThetaResolution(20)
+        source_sphere.Update()
+
+        source_mapper = vtk.vtkPolyDataMapper()
+        source_mapper.SetInputConnection(source_sphere.GetOutputPort())
+
+        source_actor = vtk.vtkActor()
+        source_actor.SetMapper(source_mapper)
+        source_actor.GetProperty().SetColor(color)
+        all_actors.append(source_actor)
+        self.VTK3D_renderer.AddActor(source_actor)
+
+        # --- Plot lines from source to corners ---
+        points = vtk.vtkPoints()
+        lines = vtk.vtkCellArray()
+        points.InsertNextPoint(*shifted_source)
+
+        for i, corner in enumerate(shifted_corners):
+            points.InsertNextPoint(*corner)
+            line = vtk.vtkLine()
+            line.GetPointIds().SetId(0, 0)
+            line.GetPointIds().SetId(1, i + 1)
+            lines.InsertNextCell(line)
+
+        poly_data = vtk.vtkPolyData()
+        poly_data.SetPoints(points)
+        poly_data.SetLines(lines)
+
+        line_mapper = vtk.vtkPolyDataMapper()
+        line_mapper.SetInputData(poly_data)
+
+        line_actor = vtk.vtkActor()
+        line_actor.SetMapper(line_mapper)
+        line_actor.GetProperty().SetColor(color)
+        line_actor.GetProperty().SetLineWidth(size)
+        all_actors.append(line_actor)
+        self.VTK3D_renderer.AddActor(line_actor)
+
+        # --- Plot each corner as small sphere ---
+        for corner in shifted_corners:
+            corner_sphere = vtk.vtkSphereSource()
+            corner_sphere.SetCenter(*corner)
+            corner_sphere.SetRadius(12 / 4)
+            corner_sphere.SetPhiResolution(15)
+            corner_sphere.SetThetaResolution(15)
+            corner_sphere.Update()
+
+            corner_mapper = vtk.vtkPolyDataMapper()
+            corner_mapper.SetInputConnection(corner_sphere.GetOutputPort())
+
+            corner_actor = vtk.vtkActor()
+            corner_actor.SetMapper(corner_mapper)
+            corner_actor.GetProperty().SetColor(color)
+            all_actors.append(corner_actor)
+            self.VTK3D_renderer.AddActor(corner_actor)
+
+        # --- Save all actors under this name ---
+        self._proton_spots[name] = all_actors
+        self.VTK3D_interactor.GetRenderWindow().Render()
+
+        return name
     
+    def remove_3d_proton_beam(self, name):
+        """
+        Remove all actors associated with a named proton beam.
+        """
+        if hasattr(self, '_proton_spots') and name in self._proton_spots:
+            actors = self._proton_spots[name]
+
+            # Ensure actors is iterable (backward compatibility)
+            if not isinstance(actors, list):
+                actors = [actors]
+
+            for actor in actors:
+                self.VTK3D_renderer.RemoveActor(actor)
+
+            del self._proton_spots[name]
+            self.VTK3D_interactor.GetRenderWindow().Render()
+
     def remove_3d_proton_spots(self, name):
         """
         Remove a proton spot actor by name.
@@ -788,3 +906,4 @@ class VTK3DViewerMixin:
             self.VTK3D_renderer.RemoveActor(self._proton_spots[name])
             del self._proton_spots[name]
             self.VTK3D_interactor.GetRenderWindow().Render()
+    

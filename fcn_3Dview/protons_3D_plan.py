@@ -110,6 +110,20 @@ def update_beam_transform_and_display(self, beam_name, *args):
     info_df = data['info_df']
     orig_points = data['original_points']
 
+    # Corner of the "beam"
+    # Compute bounding box
+    orig_points_corners = orig_points[:,0:2]
+    min_x, min_y = orig_points_corners.min(axis=0)
+    max_x, max_y = orig_points_corners.max(axis=0)
+    
+    # Get the 4 corners (you can extend this to 8 if you want full 3D box)
+    corners = np.array([
+        [min_x, min_y, 0],
+        [min_x, max_y, 0],
+        [max_x, min_y, 0],
+        [max_x, max_y, 0]
+    ])
+
     # -- Energy filter --
     spin_min = self._3D_proton_table.cellWidget(row, 3)
     spin_max = self._3D_proton_table.cellWidget(row, 4)
@@ -120,30 +134,65 @@ def update_beam_transform_and_display(self, beam_name, *args):
     points = orig_points[mask, :]
 
     # -- Rotations --
-    ref_point = np.array([10.0, 10.0, 10.0])
+    ref_point = np.array([0, 0, 0])
+    
+    source_point = np.array([0,0,1850])
+
+    theta = np.deg2rad(90)
+    c, s = np.cos(theta), np.sin(theta)
+    rot_x = np.array([
+            [1, 0, 0],
+            [0, c, -s],
+            [0, s, c]
+        ])
+    source_point = (source_point - ref_point) @ rot_x.T + ref_point
+    points = (points - ref_point) @ rot_x.T + ref_point
+    corners = (corners - ref_point) @ rot_x.T + ref_point
+
+    theta = np.deg2rad(90)
+    c, s = np.cos(theta), np.sin(theta)
+    rot_y = np.array([
+            [c, 0, s],
+            [0, 1, 0],
+            [-s, 0, c]
+        ])
+    source_point = (source_point - ref_point) @ rot_y.T + ref_point
+    points = (points - ref_point) @ rot_y.T + ref_point
+    corners = (corners - ref_point) @ rot_y.T + ref_point
+
+    # Shift from the treatment plan to CT
+    iso_shift = np.array([0, -99.36, -499.2])
+    points = points + iso_shift
+    source_point = source_point + iso_shift
+    corners = corners + iso_shift
+
     # Gantry (around y axis):
     gantry_angle = self._3D_proton_table.cellWidget(row, 5).value()
     if gantry_angle != 0:
         theta = np.deg2rad(gantry_angle)
         c, s = np.cos(theta), np.sin(theta)
-        rot_y = np.array([
-            [c, 0, s],
-            [0, 1, 0],
-            [-s, 0, c]
+        rot_z = np.array([
+            [c, -s, 0],
+            [s,  c, 0],
+            [0,  0, 1]
         ])
-        points = (points - ref_point) @ rot_y.T + ref_point
+        points = (points - iso_shift) @ rot_z.T + iso_shift
+        source_point = (source_point - iso_shift) @ rot_z.T + iso_shift
+        corners = (corners - iso_shift) @ rot_z.T + iso_shift
 
     # Couch (around x axis):
     couch_angle = self._3D_proton_table.cellWidget(row, 6).value()
     if couch_angle != 0:
         theta = np.deg2rad(couch_angle)
         c, s = np.cos(theta), np.sin(theta)
-        rot_x = np.array([
-            [1, 0, 0],
-            [0, c, -s],
-            [0, s, c]
+        rot_y = np.array([
+            [c, 0, s],
+            [0, 1, 0],
+            [-s, 0, c]
         ])
-        points = (points - ref_point) @ rot_x.T + ref_point
+        points = (points - iso_shift) @ rot_y.T + iso_shift
+        source_point = (source_point - iso_shift) @ rot_y.T + iso_shift
+        corners = (corners - iso_shift) @ rot_y.T + iso_shift
 
     # -- Isocenter translation --
     iso_x = self._3D_proton_table.cellWidget(row, 7).value()
@@ -151,6 +200,8 @@ def update_beam_transform_and_display(self, beam_name, *args):
     iso_z = self._3D_proton_table.cellWidget(row, 9).value()
     iso = np.array([iso_x, iso_y, iso_z])
     points = points + iso
+    source_point = source_point + iso
+    corners = corners + iso
 
     # -- Color & Size --
     spin_size = self._3D_proton_table.cellWidget(row, 2)
@@ -165,12 +216,18 @@ def update_beam_transform_and_display(self, beam_name, *args):
         rgb = (1, 0, 0)
 
     # -- Only display if visible! --
+    beam_trajectory_name = beam_name + '_trajectory'
     chk = self._3D_proton_table.cellWidget(row, 1)
     is_visible = chk.isChecked()
     self.remove_3d_proton_spots(beam_name)
+    self.remove_3d_proton_beam(beam_trajectory_name)
     if is_visible and points.shape[0] > 0:
         self.add_3d_proton_spots(points, color=rgb, size=point_size, name=beam_name)
+        self.add_3d_proton_beam_trajectory(source_point, corners, color=rgb, size=1, name=beam_trajectory_name)
     self.VTK3D_interactor.GetRenderWindow().Render()
+    
+    #self.add_3d_proton_source(iso_shift, color=[1,0,1], size=10, name='offset_iso')
+    #self.VTK3D_interactor.GetRenderWindow().Render()
 
 
 def pick_beam_color(self, beam_name):
