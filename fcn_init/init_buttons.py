@@ -31,7 +31,7 @@ from fcn_RTFiles.process_contours import create_contour_masks
 from fcn_breathing_curves.functions_import import openCSVFile_BrCv, setParams, createCurve
 from fcn_breathing_curves.functions_plot import calcStats, plotViewData_BrCv_plot, exportPlot
 from fcn_breathing_curves.functions_edit import applyOperations, undoOperations, exportData, plotViewData_BrCv_edit, cropRange_BrCv_edit, exportGCODE#, cropCurve_BrCv_edit
-from fcn_breathing_curves.functions_phantom_operation import setDuetIP, defineInputFolder, setAcqStart
+from fcn_breathing_curves.functions_phantom_operation import setDuetIP, defineInputFolder, setAcqStart, exportMoVeData
 from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, update_doses_list, update_structure_list, eqd2_calc
 from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc, DeleteSeg, undo_brush_seg
 from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes,add_row_to_ct_table, export_ct_cal_to_csv
@@ -86,6 +86,8 @@ def initialize_software_buttons(self):
     self.definePhOperFolder.setStyleSheet("background-color: blue; color:white")
     self.MoVeAcqStart.clicked.connect(lambda: setAcqStart(self))
     self.MoVeAcqStart.setStyleSheet("background-color: green; color:white")
+    self.exportDataMoVe.clicked.connect(lambda: exportMoVeData(self))
+    self.exportDataMoVe.setStyleSheet("background-color: green; color:white")
 
     # Segmentation
     self.applyThreshSeg.clicked.connect(lambda: threshSeg(self))

@@ -61,7 +61,7 @@ def init_MoVeTab(self):
     self.MoVeOffsetSlider.setRange(-150, 150)
 
     self.t0 = time.time() 
-    self.MoVeData = {'t': [], 'x': []}
+    self.MoVeData = {'t': [], 'x': [], 'acq': []}
 
     max_points = int(WINDOW_DURATION / UPDATE_INTERVAL)
     self.time_buffer = deque(maxlen=max_points)
@@ -89,7 +89,7 @@ def init_MoVeTab(self):
     plt.tight_layout()
 
 
-def get_curr_file(self):
+def get_curr_file(self, init=True):
     url = f'http://{self.duet_ip}/rr_fileinfo'
     try:
         response = requests.get(url, timeout=5)
@@ -98,7 +98,8 @@ def get_curr_file(self):
             if data['err'] == 1:
                 return None
             filepath = data['fileName']
-            self.tprint = data['printDuration']
+            if init == True:
+                self.tprint = data['printDuration']
             _, filename = os.path.split(filepath)
             return filename
     except:
@@ -147,6 +148,7 @@ def update_MoVeData(self):
         self.time_buffer.append(t)
         self.x_buffer.append(x)
         self.MoVeData['t'].append(t); self.MoVeData['x'].append(x)
+        self.MoVeData['acq'].append(0)
         plot_MoVeData(self)
     except:
         return
@@ -176,23 +178,31 @@ def calc_diff(self):
 
 
 def setAcqStart(self):
-    return
-
-
-def export_MoVeData(self):
-    csv_root = self.PhOperFolder.text()
-    if not os.path.exists(csv_root):
-        QMessageBox.warning(None, "Warning", "No valid input folder was provided.")
+    try:
+        self.MoVeData['acq'][-1] = 1
+        self.MoVeAcqStart.setStyleSheet("background-color: blue; color:white")
+        QMessageBox.information(None, "Info", f"MoVe Acquistion time stamp added")
+    except:
         return
 
-    filename = get_curr_file(self)
-    if filename is None:
-        return
 
-    filepath = os.path.join(csv_root, filename.replace(".gcode", "_MoVe.csv"))
-    df = pd.DataFrame(self.MoVeData)
-    df.to_csv(filepath, index=False)
-    QMessageBox.information(None, "Info", f"MoVe data exported to {filepath}")
+def exportMoVeData(self):
+    try:
+        csv_root = self.PhOperFolder.text()
+        if not os.path.exists(csv_root):
+            return
+
+        self.exportDataMoVe.setStyleSheet("background-color: blue; color:white")
+        filename = get_curr_file(self, init=False)
+        if filename is None:
+            return
+
+        filepath = os.path.join(csv_root, filename.replace(".gcode", "_MoVe.csv"))
+        df = pd.DataFrame(self.MoVeData)
+        df.to_csv(filepath, index=False)
+        QMessageBox.information(None, "Info", f"MoVe Data exported to {filepath}")
+    except:
+        pass
 
     
 def plot_MoVeData(self):
@@ -234,3 +244,5 @@ def plot_MoVeData(self):
     ax.set_xlim(min(self.time_buffer), max(self.time_buffer)+10)
 
     self.MoVeCanvas.draw()
+    self.MoVeAcqStart.setStyleSheet("background-color: green; color:white")
+    self.exportDataMoVe.setStyleSheet("background-color: green; color:white")
