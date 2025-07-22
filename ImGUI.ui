@@ -8530,6 +8530,13 @@ p, li { white-space: pre-wrap; }
                   </property>
                  </widget>
                 </item>
+                <item row="4" column="0">
+                 <widget class="QPushButton" name="exportDataMoVe">
+                  <property name="text">
+                   <string>Export motion verification data</string>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </widget>
              </widget>

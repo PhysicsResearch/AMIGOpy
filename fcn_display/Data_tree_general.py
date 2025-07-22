@@ -300,7 +300,8 @@ def on_DataTreeView_clicked(self,index):
                         for beam_key, beam in plan_beams.items():
                             beam_name = beam_key
                             info_df = beam['Info']
-                            add_beam_to_proton_table(self, beam_name, info_df)
+                            isocenter_off = beam['Isocenter']
+                            add_beam_to_proton_table(self, beam_name, info_df, isocenter_off)
                         return
                 if len(hierarchy) >= 5: # binary mask contour or density map
                     set_3DViewer_data(self, hierarchy,hierarchy_indices)
