@@ -18,7 +18,7 @@ def init_3D_proton_table(self):
     self._3D_proton_table.setEditTriggers(self._3D_proton_table.NoEditTriggers)
     self._3D_proton_table.setSelectionBehavior(self._3D_proton_table.SelectRows)
 
-def add_beam_to_proton_table(self, beam_name, info_df, visible=False, point_size=3, point_color=(1,0,0)):
+def add_beam_to_proton_table(self, beam_name, info_df, isocenter_off, visible=False, point_size=3, point_color=(1,0,0)):
     row = self._3D_proton_table.rowCount()
     self._3D_proton_table.insertRow(row)
 
@@ -31,6 +31,7 @@ def add_beam_to_proton_table(self, beam_name, info_df, visible=False, point_size
     self._proton_spot_data[beam_name] = {
         "original_points": orig_points,
         "info_df": info_df,
+        "isocenter": isocenter_off
     }
 
     item = QTableWidgetItem(beam_name)
@@ -79,9 +80,9 @@ def add_beam_to_proton_table(self, beam_name, info_df, visible=False, point_size
     self._3D_proton_table.setCellWidget(row, 6, couch_spin)
 
     # Isocenter X, Y, Z
-    iso_x = float(info_df['transx'].iloc[0])
-    iso_y = float(info_df['transy'].iloc[0])
-    iso_z = float(info_df['transz'].iloc[0])
+    iso_x = float(isocenter_off[0])
+    iso_y = float(isocenter_off[1])
+    iso_z = float(isocenter_off[2])
     for i, val in enumerate([iso_x, iso_y, iso_z]):
         iso_spin = QDoubleSpinBox()
         iso_spin.setDecimals(2)
@@ -99,7 +100,6 @@ def add_beam_to_proton_table(self, beam_name, info_df, visible=False, point_size
     btn.clicked.connect(functools.partial(pick_beam_color, self, beam_name))
     self._3D_proton_table.setCellWidget(row, 11, btn)
 
-
 def update_beam_transform_and_display(self, beam_name, *args):
     """
     Applies energy filter, gantry/couch rotations, and isocenter translation in sequence,
@@ -116,13 +116,8 @@ def update_beam_transform_and_display(self, beam_name, *args):
     min_x, min_y = orig_points_corners.min(axis=0)
     max_x, max_y = orig_points_corners.max(axis=0)
     
-    # Get the 4 corners (you can extend this to 8 if you want full 3D box)
-    corners = np.array([
-        [min_x, min_y, 0],
-        [min_x, max_y, 0],
-        [max_x, min_y, 0],
-        [max_x, max_y, 0]
-    ])
+    # Get the 4 corners
+    corners = np.array([[min_x, min_y, 0], [min_x, max_y, 0], [max_x, min_y, 0], [max_x, max_y, 0]])
 
     # -- Energy filter --
     spin_min = self._3D_proton_table.cellWidget(row, 3)
@@ -133,10 +128,9 @@ def update_beam_transform_and_display(self, beam_name, *args):
     mask = (energy >= min_energy) & (energy <= max_energy)
     points = orig_points[mask, :]
 
-    # -- Rotations --
+    # -- Original rotations from beam orientation to patient space --
     ref_point = np.array([0, 0, 0])
-    
-    source_point = np.array([0,0,1850])
+    source_point = np.array([0,0,-1850])
 
     theta = np.deg2rad(90)
     c, s = np.cos(theta), np.sin(theta)
@@ -148,8 +142,8 @@ def update_beam_transform_and_display(self, beam_name, *args):
     source_point = (source_point - ref_point) @ rot_x.T + ref_point
     points = (points - ref_point) @ rot_x.T + ref_point
     corners = (corners - ref_point) @ rot_x.T + ref_point
-
-    theta = np.deg2rad(90)
+    
+    theta = np.deg2rad(270)
     c, s = np.cos(theta), np.sin(theta)
     rot_y = np.array([
             [c, 0, s],
@@ -160,8 +154,22 @@ def update_beam_transform_and_display(self, beam_name, *args):
     points = (points - ref_point) @ rot_y.T + ref_point
     corners = (corners - ref_point) @ rot_y.T + ref_point
 
-    # Shift from the treatment plan to CT
-    iso_shift = np.array([0, -99.36, -499.2])
+    theta = np.deg2rad(180)
+    c, s = np.cos(theta), np.sin(theta)
+    rot_z = np.array([
+            [c, -s, 0],
+            [s,  c, 0],
+            [0,  0, 1]
+        ])
+    source_point = (source_point - ref_point) @ rot_z.T + ref_point
+    points = (points - ref_point) @ rot_z.T + ref_point
+    corners = (corners - ref_point) @ rot_z.T + ref_point
+
+    # -- Isocenter translation --
+    iso_x = self._3D_proton_table.cellWidget(row, 7).value()
+    iso_y = self._3D_proton_table.cellWidget(row, 8).value()
+    iso_z = self._3D_proton_table.cellWidget(row, 9).value()
+    iso_shift = np.array([iso_x, iso_y, iso_z])
     points = points + iso_shift
     source_point = source_point + iso_shift
     corners = corners + iso_shift
@@ -194,15 +202,6 @@ def update_beam_transform_and_display(self, beam_name, *args):
         source_point = (source_point - iso_shift) @ rot_y.T + iso_shift
         corners = (corners - iso_shift) @ rot_y.T + iso_shift
 
-    # -- Isocenter translation --
-    iso_x = self._3D_proton_table.cellWidget(row, 7).value()
-    iso_y = self._3D_proton_table.cellWidget(row, 8).value()
-    iso_z = self._3D_proton_table.cellWidget(row, 9).value()
-    iso = np.array([iso_x, iso_y, iso_z])
-    points = points + iso
-    source_point = source_point + iso
-    corners = corners + iso
-
     # -- Color & Size --
     spin_size = self._3D_proton_table.cellWidget(row, 2)
     point_size = spin_size.value()
@@ -222,12 +221,9 @@ def update_beam_transform_and_display(self, beam_name, *args):
     self.remove_3d_proton_spots(beam_name)
     self.remove_3d_proton_beam(beam_trajectory_name)
     if is_visible and points.shape[0] > 0:
-        self.add_3d_proton_spots(points, color=rgb, size=point_size, name=beam_name)
+        self.add_3d_proton_spots(points, iso_shift, color=rgb, size=point_size, name=beam_name)
         self.add_3d_proton_beam_trajectory(source_point, corners, color=rgb, size=1, name=beam_trajectory_name)
     self.VTK3D_interactor.GetRenderWindow().Render()
-    
-    #self.add_3d_proton_source(iso_shift, color=[1,0,1], size=10, name='offset_iso')
-    #self.VTK3D_interactor.GetRenderWindow().Render()
 
 
 def pick_beam_color(self, beam_name):
@@ -250,9 +246,10 @@ def reset_beam_transforms(self, beam_name):
     row = find_row_by_beam_name(self, beam_name)
     info_df = self._proton_spot_data[beam_name]['info_df']
     # Reset isocenter
-    self._3D_proton_table.cellWidget(row, 7).setValue(float(info_df['transx'].iloc[0]))
-    self._3D_proton_table.cellWidget(row, 8).setValue(float(info_df['transy'].iloc[0]))
-    self._3D_proton_table.cellWidget(row, 9).setValue(float(info_df['transz'].iloc[0]))
+    iso = self._proton_spot_data[beam_name]['isocenter']
+    self._3D_proton_table.cellWidget(row, 7).setValue(float(iso[0]))
+    self._3D_proton_table.cellWidget(row, 8).setValue(float(iso[1]))
+    self._3D_proton_table.cellWidget(row, 9).setValue(float(iso[2]))
     # Reset gantry/couch
     self._3D_proton_table.cellWidget(row, 5).setValue(float(info_df['gantry_ang'].iloc[0]))
     self._3D_proton_table.cellWidget(row, 6).setValue(float(info_df['couch_ang'].iloc[0]))

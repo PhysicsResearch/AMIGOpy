@@ -726,7 +726,7 @@ class VTK3DViewerMixin:
                 sz=actor.GetScale()[2],
         )
 
-    def add_3d_proton_spots(self, points, color=(1,0,0), size=3.0, name=None):
+    def add_3d_proton_spots(self, points, isocenter, color=(1,0,0), size=3.0, name=None):
         """
         Add 3D proton spots as VTK crosses (one per spot).
         - points: (N,3) array of spot XYZ positions
@@ -738,15 +738,23 @@ class VTK3DViewerMixin:
 
         if not hasattr(self, '_proton_spots'):
             self._proton_spots = {}
-
+        if not hasattr(self, '_isocenter_actors'):
+            self._isocenter_actors = {}
         # Remove previous actor for this name if exists
         if name and name in self._proton_spots:
             self.VTK3D_renderer.RemoveActor(self._proton_spots[name])
             del self._proton_spots[name]
 
+        # Remove previous isocenter actor
+        iso_name = f"{name}_isocenter" if name else "isocenter"
+        if iso_name in self._isocenter_actors:
+            self.VTK3D_renderer.RemoveActor(self._isocenter_actors[iso_name])
+            del self._isocenter_actors[iso_name]
+
         # ---- Subtract the reference from all spots ----
         ref = self.Im_PatPosition3Dview[0, :3] if hasattr(self, "Im_PatPosition3Dview") else np.zeros(3)
         shifted_points = points - ref  # shape (N,3)
+        shifted_isocenter = isocenter - ref
 
         # subtract this image reference from spots: self.Im_PatPosition3Dview[0, :3]
 
@@ -778,6 +786,28 @@ class VTK3DViewerMixin:
         self._proton_spots[name] = actor
         self.VTK3D_renderer.AddActor(actor)
         self.VTK3D_interactor.GetRenderWindow().Render()
+
+        sphere = vtk.vtkSphereSource()
+        sphere.SetCenter(*shifted_isocenter)
+        sphere.SetRadius(size)  # Match size with cross length
+        sphere.SetPhiResolution(30)
+        sphere.SetThetaResolution(30)
+        sphere.Update()
+
+        sphere_mapper = vtk.vtkPolyDataMapper()
+        sphere_mapper.SetInputConnection(sphere.GetOutputPort())
+
+        sphere_actor = vtk.vtkActor()
+        sphere_actor.SetMapper(sphere_mapper)
+        sphere_actor.GetProperty().SetColor(0, 1, 1)  # Cyan
+        sphere_actor.GetProperty().SetOpacity(0.7)
+
+        self._isocenter_actors[iso_name] = sphere_actor
+        self.VTK3D_renderer.AddActor(sphere_actor)
+
+        # Final render
+        self.VTK3D_interactor.GetRenderWindow().Render()
+
         return name
 
     def add_3d_proton_beam_trajectory(self, source, corners, color=(1, 0, 0), size=3.0, name=None):
@@ -905,5 +935,12 @@ class VTK3DViewerMixin:
         if hasattr(self, '_proton_spots') and name in self._proton_spots:
             self.VTK3D_renderer.RemoveActor(self._proton_spots[name])
             del self._proton_spots[name]
-            self.VTK3D_interactor.GetRenderWindow().Render()
+
+        # Remove associated isocenter (if any)
+        iso_name = f"{name}_isocenter"
+        if hasattr(self, '_isocenter_actors') and iso_name in self._isocenter_actors:
+            self.VTK3D_renderer.RemoveActor(self._isocenter_actors[iso_name])
+            del self._isocenter_actors[iso_name]
+
+        self.VTK3D_interactor.GetRenderWindow().Render()
     
