@@ -120,6 +120,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         'SourceSequence': getattr(dicom_file, "SourceSequence", []),
                         'PrivateCreator': creator_value,
                         'CatOnc': getattr(dicom_file, 'get', lambda *args: [])(Tag(0x300f, 0x1000), []),
+                        'TreatmentProtocols': getattr(dicom_file, "TreatmentProtocols", "N/A"),
                         'DCM_Info': dicom_file
                     },
                     'images': {},

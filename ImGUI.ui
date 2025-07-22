@@ -1619,6 +1619,16 @@
             <string>Plan_Brachy</string>
            </attribute>
           </widget>
+          <widget class="QWidget" name="tab_43">
+           <attribute name="title">
+            <string>Plan_Proton</string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_76">
+            <item row="0" column="0">
+             <widget class="QTableWidget" name="_3D_proton_table"/>
+            </item>
+           </layout>
+          </widget>
          </widget>
         </item>
         <item row="1" column="3" rowspan="2">
@@ -7754,14 +7764,53 @@ p, li { white-space: pre-wrap; }
            <attribute name="title">
             <string>Edit &amp;&amp; export</string>
            </attribute>
-           <layout class="QGridLayout" name="gridLayout_BrCv_edit" columnstretch="1,3">
+           <layout class="QGridLayout" name="gridLayout_BrCv_edit" columnstretch="2,5">
             <item row="0" column="0">
-             <layout class="QGridLayout" name="gridLayout_BrCv_6" rowstretch="0,0,0,0,0,0,0,0">
-              <item row="2" column="2">
-               <widget class="QPushButton" name="undoOperations_BrCv">
-                <property name="text">
-                 <string>Undo</string>
+             <layout class="QGridLayout" name="gridLayout_BrCv_6" rowstretch="0,0,0,0,0,0,0,0,0,0">
+              <item row="1" column="1" colspan="2">
+               <widget class="QGroupBox" name="breathhold_BrCv">
+                <property name="title">
+                 <string>Breath hold</string>
                 </property>
+                <layout class="QGridLayout" name="gridLayout_BrCv_8" columnstretch="2,1">
+                 <item row="2" column="0">
+                  <widget class="QLineEdit" name="lineEdit_BrCv_30">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="text">
+                    <string>Duration (s)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QSpinBox" name="breathholdStart">
+                   <property name="maximum">
+                    <number>999999</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLineEdit" name="lineEdit_BrCv_29">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="text">
+                    <string>Start timestamp (s)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QDoubleSpinBox" name="breathholdDuration"/>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QCheckBox" name="applyBreathhold">
+                   <property name="text">
+                    <string>Apply breath hold</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
                </widget>
               </item>
               <item row="0" column="1" colspan="2">
@@ -7830,7 +7879,7 @@ p, li { white-space: pre-wrap; }
                  <item row="3" column="1">
                   <widget class="QDoubleSpinBox" name="maxAmplThresh_BrCv">
                    <property name="value">
-                    <double>25.000000000000000</double>
+                    <double>39.000000000000000</double>
                    </property>
                   </widget>
                  </item>
@@ -7854,7 +7903,14 @@ p, li { white-space: pre-wrap; }
                 </layout>
                </widget>
               </item>
-              <item row="7" column="1" colspan="2">
+              <item row="3" column="1">
+               <widget class="QPushButton" name="applyOper_BrCv">
+                <property name="text">
+                 <string>Apply operations</string>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="1" colspan="2">
                <spacer name="verticalSpacer_BrCv_4">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
@@ -7867,14 +7923,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </spacer>
               </item>
-              <item row="2" column="1">
-               <widget class="QPushButton" name="applyOper_BrCv">
-                <property name="text">
-                 <string>Apply operations</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1" colspan="2">
+              <item row="6" column="1" colspan="2">
                <widget class="QGroupBox" name="export_BrCv">
                 <property name="title">
                  <string>Export</string>
@@ -7927,57 +7976,154 @@ p, li { white-space: pre-wrap; }
                 </layout>
                </widget>
               </item>
-              <item row="1" column="1" colspan="2">
-               <widget class="QGroupBox" name="breathhold_BrCv">
-                <property name="title">
-                 <string>Breath hold</string>
-                </property>
-                <layout class="QGridLayout" name="gridLayout_BrCv_8" columnstretch="2,1">
-                 <item row="2" column="0">
-                  <widget class="QLineEdit" name="lineEdit_BrCv_30">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="text">
-                    <string>Duration (s)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QSpinBox" name="breathholdStart">
-                   <property name="maximum">
-                    <number>999999</number>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QLineEdit" name="lineEdit_BrCv_29">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="text">
-                    <string>Start timestamp (s)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="1">
-                  <widget class="QDoubleSpinBox" name="breathholdDuration"/>
-                 </item>
-                 <item row="0" column="0">
-                  <widget class="QCheckBox" name="applyBreathhold">
-                   <property name="text">
-                    <string>Apply breath hold</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item row="3" column="1" colspan="2">
+              <item row="5" column="1" colspan="2">
                <widget class="Line" name="line_BrCv">
                 <property name="orientation">
                  <enum>Qt::Horizontal</enum>
                 </property>
+               </widget>
+              </item>
+              <item row="3" column="2">
+               <widget class="QPushButton" name="undoOperations_BrCv">
+                <property name="text">
+                 <string>Undo</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1" colspan="2">
+               <widget class="QGroupBox" name="smoothing_BrCv">
+                <property name="title">
+                 <string>Smoothing</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_77" columnstretch="1,1,1,0">
+                 <item row="2" column="0">
+                  <widget class="QCheckBox" name="smooth_BrCv">
+                   <property name="layoutDirection">
+                    <enum>Qt::RightToLeft</enum>
+                   </property>
+                   <property name="text">
+                    <string>Smoothing</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="3">
+                  <widget class="QLineEdit" name="lineEdit_79">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>kernel size</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QLineEdit" name="lineEdit_78">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>method</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QLineEdit" name="lineEdit_77">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>ms</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QCheckBox" name="interp_BrCv">
+                   <property name="layoutDirection">
+                    <enum>Qt::RightToLeft</enum>
+                   </property>
+                   <property name="text">
+                    <string>Interpolate</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="0" colspan="2">
+                  <widget class="QSlider" name="threshFourierSlider">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="3">
+                  <widget class="QLineEdit" name="lineEdit_81">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>cut-off frequency</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="2">
+                  <widget class="QLineEdit" name="threshFourierValue">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="2">
+                  <widget class="QSpinBox" name="smooth_size_BrCv">
+                   <property name="value">
+                    <number>5</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="2">
+                  <widget class="QComboBox" name="smooth_method_BrCv"/>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QDoubleSpinBox" name="interp_value_BrCv">
+                   <property name="value">
+                    <double>10.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
                </widget>
               </item>
              </layout>
@@ -8295,6 +8441,39 @@ p, li { white-space: pre-wrap; }
                 <string>Motion Verification</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_MotionVerification" columnstretch="1,1,4">
+                <item row="1" column="0">
+                 <widget class="QLineEdit" name="lineEdit_MoVeOffset">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string>Offset</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QDoubleSpinBox" name="MoVeSystemLatency"/>
+                </item>
+                <item row="0" column="0" colspan="3">
+                 <widget class="QWidget" name="MoVeView" native="true"/>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QCheckBox" name="MoVeAutoControl">
+                  <property name="text">
+                   <string>Auto-control</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLineEdit" name="lineEdit_MoVeSF">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string>Speed factor</string>
+                  </property>
+                 </widget>
+                </item>
                 <item row="1" column="1">
                  <widget class="QSlider" name="MoVeOffsetSlider">
                   <property name="minimum">
@@ -8311,10 +8490,13 @@ p, li { white-space: pre-wrap; }
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="0">
-                 <widget class="QLineEdit" name="lineEdit_MoVeOffset">
+                <item row="3" column="0">
+                 <widget class="QLineEdit" name="lineEdit_80">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
                   <property name="text">
-                   <string>Offset</string>
+                   <string>System latency (s)</string>
                   </property>
                  </widget>
                 </item>
@@ -8331,16 +8513,6 @@ p, li { white-space: pre-wrap; }
                   </property>
                  </spacer>
                 </item>
-                <item row="0" column="0" colspan="3">
-                 <widget class="QWidget" name="MoVeView" native="true"/>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_MoVeSF">
-                  <property name="text">
-                   <string>Speed factor</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="2" column="1">
                  <widget class="QSpinBox" name="MoVeSpeedFactor">
                   <property name="maximum">
@@ -8348,6 +8520,13 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <property name="value">
                    <number>100</number>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QPushButton" name="MoVeAcqStart">
+                  <property name="text">
+                   <string>Acquisition Start</string>
                   </property>
                  </widget>
                 </item>
@@ -8376,8 +8555,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>446</width>
-             <height>397</height>
+             <width>172</width>
+             <height>127</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8518,14 +8697,14 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>446</width>
-             <height>397</height>
+             <width>141</width>
+             <height>97</height>
             </rect>
            </property>
            <attribute name="label">
             <string>Thresholding</string>
            </attribute>
-           <layout class="QGridLayout" name="gridLayout_70" rowstretch="2,0,0,0,0" columnstretch="1,0,1">
+           <layout class="QGridLayout" name="gridLayout_70" rowstretch="2,0,0,0" columnstretch="1,0,1">
             <item row="0" column="2">
              <widget class="QSpinBox" name="indexMinThreshSeg"/>
             </item>
@@ -8585,8 +8764,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>446</width>
-             <height>397</height>
+             <width>174</width>
+             <height>135</height>
             </rect>
            </property>
            <attribute name="label">

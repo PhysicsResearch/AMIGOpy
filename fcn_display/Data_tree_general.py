@@ -14,10 +14,11 @@ from fcn_display.win_level import set_window
 from fcn_display.disp_plan_data import update_plan_tables
 from fcn_RTFiles.process_rt_files import update_structure_list_widget
 from fcn_RTFiles.process_contours import find_matching_series
-from fcn_segmentation.functions_segmentation import plot_hist
+from fcn_segmentation.functions_segmentation import plot_hist, update_seg_struct_list
 from fcn_materialassignment.material_map import update_mat_struct_list
 from fcn_display.Data_tree_view_axes_update import update_axial_image, update_sagittal_image, update_coronal_image
 from fcn_display.Data_tree_3Dview import set_3DViewer_data
+from fcn_3Dview.protons_3D_plan import add_beam_to_proton_table
 import vtk
 from vtkmodules.util.numpy_support import numpy_to_vtk
 
@@ -106,6 +107,11 @@ def on_DataTreeView_clicked(self,index):
         # Unblock signals
         self.metadata_search.blockSignals(False)
         if len(hierarchy) >= 5:
+            if hasattr(self, 'series_index'):
+                if hierarchy_indices[4].row() != self.series_index:
+                    self.series_changed = True
+                else:
+                    self.series_changed = False
             self.series_index = hierarchy_indices[4].row()
             # need to remove part of the tag otherwise it does not match with the key:
             self.patientID = hierarchy[1].replace("PatientID: ", "")
@@ -120,9 +126,10 @@ def on_DataTreeView_clicked(self,index):
                 self.series_index_plan = self.series_index
                 self.modality_metadata = self.modality_plan
                 update_meta_view_table_dicom(self,self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['DCM_Info'])
-                update_plan_tables(self)
-                
-                return
+                if 'Plan_Brachy_Channels' in self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
+                    update_plan_tables(self)
+                    return
+
             if self.modality == 'RTSTRUCT':
                 # keep track of the last selected struct file ... if user chose and image or dose this will not change
                 self.patientID_struct     = hierarchy[1].replace("PatientID: ", "")
@@ -286,7 +293,15 @@ def on_DataTreeView_clicked(self,index):
                 set_vtk_histogran_fig(self)
                 #
             elif currentTabText == "_3Dview":
-                # Matrix to display + spacing
+                # 
+                if self.modality == 'RTPLAN':
+                    if 'Plan_Protons_Beams' in self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
+                        plan_beams = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Protons_Beams']
+                        for beam_key, beam in plan_beams.items():
+                            beam_name = beam_key
+                            info_df = beam['Info']
+                            add_beam_to_proton_table(self, beam_name, info_df)
+                        return
                 if len(hierarchy) >= 5: # binary mask contour or density map
                     set_3DViewer_data(self, hierarchy,hierarchy_indices)
                 else:
@@ -361,6 +376,9 @@ def on_DataTreeView_clicked(self,index):
                                 self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'],
                                 self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys']
                             )
+                    
+                if self.series_changed:
+                    update_seg_struct_list(self)
                     
                 if self.seg_win_lev[0] is not None and self.seg_win_lev[1] is not None:
                     Window = self.seg_win_lev[0]
@@ -453,6 +471,12 @@ def on_DataTreeView_clicked(self,index):
                         self.segViewSlider.setMaximum(self.display_seg_data[0].shape[1] - 1)  
                         self.segViewSlider.setValue(int(Ax_s))      
                 #
+                self.indexMinThreshSeg.setMinimum(0)
+                self.indexMinThreshSeg.setValue(0)
+                self.indexMinThreshSeg.setMaximum(self.segViewSlider.maximum() - 1)
+                self.indexMaxThreshSeg.setMinimum(1)
+                self.indexMaxThreshSeg.setMaximum(self.segViewSlider.maximum())
+                self.indexMaxThreshSeg.setValue(self.segViewSlider.maximum())
                 # Add ID 
                 self.textActorSeg[0].SetInput(f"{self.modality} / {hierarchy[4]}")
                 disp_seg_image_slice(self) 

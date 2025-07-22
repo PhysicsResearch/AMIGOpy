@@ -327,12 +327,12 @@ class ColorCheckItem(QWidget):
       - A 'Fill' checkbox (to indicate whether to display a filled polygon).
     """
 
-    def __init__(self, widget_info, parent=None):
+    def __init__(self, widget_info, struct_colors, parent=None):
         super().__init__(parent)
-        self.selectedColor = None
 
         # 1) Master checkbox to enable/disable the structure
         self.checkbox = QCheckBox()
+        self.checkbox.setChecked(True)
 
         # 2) Label for the structure name
         patient_id, series_id, struct_name = widget_info
@@ -341,9 +341,16 @@ class ColorCheckItem(QWidget):
         self.struct_name = QLabel(str(struct_name))
 
         # 3) Button to pick color
+        if struct_name not in struct_colors:
+            struct_colors[struct_name] = QColor(Qt.red)
+        self.selectedColor = struct_colors[struct_name]
+        self.struct_colors = struct_colors
+
         self.color_button = QPushButton("Select Color")
         self.color_button.setMaximumWidth(100)
         self.color_button.clicked.connect(self.openColorDialog)
+        if self.selectedColor.isValid():
+            self.color_button.setStyleSheet(f"background-color: {self.selectedColor.name()};")
 
         # 5) Spinbox for transparency (0=opaque, 1=fully transparent)
         self.transparency_spinbox = QDoubleSpinBox()
@@ -381,6 +388,7 @@ def update_seg_struct_list(self, structures_keys=None, delete=False):
     a checkbox, and a color-selection button. The corresponding structure key is stored in the custom widget.
     """
     if structures_keys is None:
+        self.segStructList.clear()
         if self.segStructList.count() != 0 or self.dicom_data is None:
             return
         for patientID in self.dicom_data:
@@ -388,21 +396,26 @@ def update_seg_struct_list(self, structures_keys=None, delete=False):
                 for modality in self.dicom_data[patientID][studyID]:
                     if modality != "CT":
                         continue
-                    for target_series_dict in self.dicom_data[patientID][studyID][modality]:
-                        if type(target_series_dict) is dict and 'structures' in target_series_dict:
-                            seriesID = target_series_dict["SeriesNumber"]
-                            for k in target_series_dict['structures']:
-                                name = target_series_dict['structures'][k]['Name']
-                                target_key = f"{patientID}_{seriesID}_{name}"
-                            
-                                list_item = QListWidgetItem(self.segStructList)
-                                custom_item = ColorCheckItem([patientID, seriesID, name])
-                                custom_item.structure_key = target_key
-                                list_item.setSizeHint(custom_item.sizeHint())
-    
-                                # Append new item
-                                self.segStructList.addItem(list_item)
-                                self.segStructList.setItemWidget(list_item, custom_item)
+                    if not hasattr(self, 'series_index') or self.series_index is None:
+                        continue
+
+                    target_series_dict = self.dicom_data[patientID][studyID][modality][self.series_index]
+                     
+                    if type(target_series_dict) is dict and 'structures' in target_series_dict:
+                        seriesID = target_series_dict["SeriesNumber"]
+                        for k in target_series_dict['structures']:
+                            name = target_series_dict['structures'][k]['Name']
+                            target_key = f"{patientID}_{seriesID}_{name}"
+                        
+                            list_item = QListWidgetItem(self.segStructList)
+                            custom_item = ColorCheckItem([patientID, seriesID, name], self.struct_colors)
+                            custom_item.structure_key = target_key
+                            self.struct_colors = custom_item.struct_colors
+                            list_item.setSizeHint(custom_item.sizeHint())
+
+                            # Append new item
+                            self.segStructList.addItem(list_item)
+                            self.segStructList.setItemWidget(list_item, custom_item)
     else:
         for key, name, series_id, patient_id in structures_keys:
             target_key  = f"{patient_id}_{series_id}_{name}"
@@ -432,8 +445,10 @@ def update_seg_struct_list(self, structures_keys=None, delete=False):
                         self.segStructList.takeItem(i)
                         break
                 list_item = QListWidgetItem(self.segStructList)
-                custom_item = ColorCheckItem([patient_id, series_id, name])
+                custom_item = ColorCheckItem([patient_id, series_id, name], self.struct_colors)
                 custom_item.structure_key = target_key
+                self.struct_colors = custom_item.struct_colors
+                
                 list_item.setSizeHint(custom_item.sizeHint())
         
                 # Append new item
@@ -487,7 +502,30 @@ def threshSeg(self):
     if len(existing_structures) == 0:
         return
     
-    mask_3d = ((self.display_seg_data[0] >= min_) * (self.display_seg_data[0] <= max_)).astype(np.uint8)
+    slice_mask = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
+    min_idx = self.indexMinThreshSeg.value() 
+    max_idx = self.indexMaxThreshSeg.value()
+
+    if self.im_ori_seg == "axial":
+        if min_idx >= 0 and max_idx < slice_mask.shape[0] and min_idx <= max_idx:
+            slice_mask[min_idx:max_idx + 1, :, :] = 1
+        else:
+            QMessageBox.warning(None, "Warning", "Invalid slice indices for axial orientation.")
+            return
+    elif self.im_ori_seg == "sagittal":
+        if min_idx >= 0 and max_idx < slice_mask.shape[2] and min_idx <= max_idx:
+            slice_mask[:, :, min_idx:max_idx + 1] = 1
+        else:
+            QMessageBox.warning(None, "Warning", "Invalid slice indices for sagittal orientation.")
+            return
+    elif self.im_ori_seg == "coronal":
+        if min_idx >= 0 and max_idx < slice_mask.shape[1] and min_idx <= max_idx:
+            slice_mask[:, min_idx:max_idx + 1, :] = 1  
+        else:
+            QMessageBox.warning(None, "Warning", "Invalid slice indices for coronal orientation.")
+            return
+        
+    mask_3d = ((self.display_seg_data[0] >= min_) * (self.display_seg_data[0] <= max_) * slice_mask).astype(np.uint8)
 
     self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
     self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = mask_3d
@@ -582,7 +620,7 @@ def calcStrucStats(self):
             if val == "checkbox":
                 checkkBoxItem = QTableWidgetItem()
                 checkkBoxItem.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-                checkkBoxItem.setCheckState(QtCore.Qt.Unchecked)       
+                checkkBoxItem.setCheckState(QtCore.Qt.Checked)       
                 self.tableSegStrucStats.setItem(row,col,checkkBoxItem)
             elif type(val) == str:
                 self.tableSegStrucStats.setItem(row, col, QTableWidgetItem(val))
@@ -648,7 +686,6 @@ def remove_roi_by_name(rtstruct, roi_name):
     # Get index corresponding to ROI_name
     roi_index = None
     for i, roi in enumerate(rtstruct.ds.StructureSetROISequence):
-        print(roi.ROIName)
         if roi.ROIName == roi_name:
             roi_index = i
             break
