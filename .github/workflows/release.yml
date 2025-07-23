@@ -1,0 +1,64 @@
+name: Release AMIGOpy
+
+# Trigger the workflow manually OR by pushing a Git tag (e.g., v1.0.0)
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.2.0)'
+        required: true
+  push:
+    tags:
+      - 'v*'  # Trigger on any tag that starts with 'v'
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniconda-version: "latest"
+          python-version: "3.11"
+          environment-file: amigo.yml
+          activate-environment: amigo
+
+      - name: Run PyInstaller
+        shell: powershell
+        run: |
+          pyinstaller Launch_ImGUI.spec
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Build Windows installer
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
+
+      - name: Upload unsigned installer artifact
+        id: upload_unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installer
+          path: Output/mysetup.exe
+
+      - name: Sign Windows installer with SignPath
+        uses: signpath/github-action-submit-signing-request@v1.1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload_unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version || github.ref_name }}
+          name: AMIGOpy ${{ github.event.inputs.version || github.ref_name }}
+          files: signed/mysetup.exe
