@@ -10,7 +10,10 @@ on:
   push:
     tags:
       - 'v*'  # Trigger on any tag that starts with 'v'
-
+      
+permissions:
+  contents: write  
+  
 jobs:
   release:
     runs-on: windows-latest
