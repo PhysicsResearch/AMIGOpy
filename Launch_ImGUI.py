@@ -234,10 +234,10 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
 
     def organize_dcm_folder(self):
         self.label.setText("Reading folders")
-        detailed_files_info, unique_files_info = get_data_description(folder_path=None, progress_callback=self.update_progress,update_label=self.label)
+        detailed_files_info, unique_files_info, outputfolder = get_data_description(folder_path=None, progress_callback=self.progressBar.setValue,update_label=self.label,sort_folder=1)
         total_steps = len(detailed_files_info)
         self.label.setText(f"Copying {total_steps} files")
-        organize_files_into_folders(detailed_files_info,progress_callback=self.update_progress,update_label=self.label)
+        organize_files_into_folders(outputfolder, detailed_files_info,progress_callback=self.progressBar.setValue,update_label=self.label)
         
             
     # Slot for the 'About' action
