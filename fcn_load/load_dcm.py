@@ -322,7 +322,7 @@ def load_all_dcm(self,folder_path=None, progress_callback=None, update_label=Non
     Returns:
         dicom_data (dict): Hierarchical representation of DICOM data.
     """
-    detailed_files_info, unique_files_info = get_data_description(folder_path, self.progressBar.setValue, update_label)
+    detailed_files_info, unique_files_info, folder = get_data_description(folder_path, self.progressBar.setValue, update_label)
     self.files_info = detailed_files_info
     if detailed_files_info is None:
         # user cacled or folder does not exist

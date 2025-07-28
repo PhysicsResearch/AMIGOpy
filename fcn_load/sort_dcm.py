@@ -251,7 +251,7 @@ def extract_file_info(all_files, progress_callback=None, total_steps=None):
     return detailed_files_info, unique_files_info
 
 
-def get_data_description(folder_path=None, progress_callback=None, update_label=None):
+def get_data_description(folder_path=None, progress_callback=None, update_label=None, sort_folder=0):
     """Main function to handle directory selection, DICOM extraction, and metadata analysis.
     
     Args:
@@ -268,7 +268,17 @@ def get_data_description(folder_path=None, progress_callback=None, update_label=
 
     if not os.path.exists(folder_path) or folder_path is None:
         print(f"Error: The folder '{folder_path}' does not exist or the operation was cancelled!")
-        return None, None
+        return None, None, None
+
+    # if user wants to organize the dta into folder ask for the folder path
+    if sort_folder == 1:
+        # Getting the root destination folder from the user.
+        root = tk.Tk()
+        root.withdraw()  # Hide the main window
+        outputfolder = filedialog.askdirectory(title="Select an OUTPUT Folder - Create one and use the refresh button if necessary")
+    else:
+        outputfolder = None
+
 
     all_files = get_all_files(folder_path)
     total_steps = len(all_files)
@@ -276,7 +286,7 @@ def get_data_description(folder_path=None, progress_callback=None, update_label=
         update_label.setText(f"Checking and sorting the header of {total_steps} files")
     detailed_files_info, unique_files_info  = extract_file_info(all_files,progress_callback,total_steps)
 
-    return  detailed_files_info, unique_files_info
+    return  detailed_files_info, unique_files_info, outputfolder
 
 
 
