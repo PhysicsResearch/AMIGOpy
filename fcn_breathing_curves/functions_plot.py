@@ -158,15 +158,39 @@ def plotViewData_BrCv_plot(self):
         for x, y in zip(x_data, y_data):
             ax.plot(x, y)
 
-    ax.set_xlabel(x_col, fontsize=self.selected_font_size)
-    ax.set_ylabel(y_col, fontsize=self.selected_font_size)
+    from PyQt5 import QtWidgets
+    self.plotPeaksBrCv = QtWidgets.QCheckBox(self.smoothing_BrCv)
+    self.plotPeaksBrCv.setChecked(False)
+    self.plotPeaksBrCv.setObjectName("plotPeaksBrCv")
+    if 'mark' in self.dfEdit_BrCv.columns and self.plotXAxis_BrCv.currentText() in ['timestamp', 'time'] \
+        and self.plotPeaksBrCv.isChecked():
+        time_col = self.plotXAxis_BrCv.currentText()
+        z_marks = self.dfEdit_BrCv.loc[self.dfEdit_BrCv['mark'] == 'Z']
+        ax.scatter(z_marks[time_col], z_marks['amplitude'],
+                color='#bc80bd', marker='*', s=25, label='Peak')
+        ax.vlines(z_marks[time_col], ymin=0, ymax=z_marks['amplitude'],
+                colors='#bc80bd', linewidth=1.5)
+
+    # Set x_col as xlabel
+    if x_col == 'time':
+        ax.set_xlabel('Time (s)', fontsize=self.selected_font_size)
+    elif x_col == 'timestamp':
+        ax.set_xlabel('Time (ms)', fontsize=self.selected_font_size)
+    else:
+        ax.set_xlabel(x_col, fontsize=self.selected_font_size)
+
+    # Set y_col as ylabel
+    if y_col == 'amplitude':
+        ax.set_ylabel('Amplitude (mm)', fontsize=self.selected_font_size)
+    else:
+        ax.set_ylabel(y_col, fontsize=self.selected_font_size)
         
     if self.selected_background == "Transparent":
-        self.plot_fig.suptitle(f"{x_col} vs {y_col}", 
+        ax.set_title(f"{x_col} vs {y_col}", 
                                fontsize=self.selected_font_size + 4,
                                color="white")
     else:
-        self.plot_fig.suptitle(f"{x_col} vs {y_col}", 
+        ax.set_title(f"{x_col} vs {y_col}", 
                                fontsize=self.selected_font_size + 4)
     
     if self.selected_legend_on_off == "On":

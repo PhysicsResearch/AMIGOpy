@@ -29,7 +29,6 @@ def getColumnIndexByName(self, column_name):
 def on_fourierSlider_change(self):
     cutoff = self.fourier_cutoffs[self.threshFourierSlider.value()]
     self.threshFourierValue.setText(f"{cutoff:.2e} Hz")
-    # self.threshFourierSlider.setToolTip(f"Cutoff frequency: {cutoff:.2e} Hz")
 
 
 def getDataframeFromTable(self):
@@ -627,7 +626,10 @@ def onclick(self, event):
 
 def plotViewData_BrCv_edit(self, df=None):
     
-    x_col = self.editXAxis_BrCv.currentText()
+    try:
+        x_col = self.editXAxis_BrCv.currentText()
+    except:
+        return
     y_col = "amplitude"
     
     self.lower_bound = self.editXMinSlider_BrCv.value()
@@ -637,8 +639,10 @@ def plotViewData_BrCv_edit(self, df=None):
         initXRange(self)
         plotViewData_BrCv_edit(self)
         
-    if df is None:
+    if df is None and hasattr(self, 'dfEdit_BrCv'):
         df = self.dfEdit_BrCv
+    else:
+        return
 
     x_data = df[x_col][(df[x_col] >= self.lower_bound) & (df[x_col] <= self.upper_bound)]
     y_data = df[y_col][(df[x_col] >= self.lower_bound) & (df[x_col] <= self.upper_bound)]

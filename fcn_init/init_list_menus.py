@@ -73,12 +73,12 @@ def populate_list_menus(self):
     self.editXAxis_list_BrCv.addItems(["timestamp", "time"])
 
     self.smooth_method_BrCv = self.findChild(QtWidgets.QComboBox, 'smooth_method_BrCv')
-    self.smooth_method_BrCv.addItems(["Uniform", "Median", "Fourier"])
+    self.smooth_method_BrCv.addItems(["Fourier", "Uniform", "Median"])
     
     self.fourier_cutoffs = [(x*y) for y in [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1] for x in list(range(1, 10))] 
     self.threshFourierSlider.setMinimum(0)
     self.threshFourierSlider.setMaximum(len(self.fourier_cutoffs) - 1)
-    self.threshFourierSlider.setValue(19)
+    self.threshFourierSlider.setValue(26)
     
     # Segmentation
     views = ["Axial", "Coronal", "Sagittal"]
