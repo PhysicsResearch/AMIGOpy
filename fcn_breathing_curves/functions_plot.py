@@ -163,7 +163,7 @@ def plotViewData_BrCv_plot(self):
     self.plotPeaksBrCv.setChecked(False)
     self.plotPeaksBrCv.setObjectName("plotPeaksBrCv")
     if 'mark' in self.dfEdit_BrCv.columns and self.plotXAxis_BrCv.currentText() in ['timestamp', 'time'] \
-        and self.plotPeaksBrCv.isChecked():
+        and self.plotPeaks_BrCv.isChecked():
         time_col = self.plotXAxis_BrCv.currentText()
         z_marks = self.dfEdit_BrCv.loc[self.dfEdit_BrCv['mark'] == 'Z']
         ax.scatter(z_marks[time_col], z_marks['amplitude'],
@@ -186,11 +186,11 @@ def plotViewData_BrCv_plot(self):
         ax.set_ylabel(y_col, fontsize=self.selected_font_size)
         
     if self.selected_background == "Transparent":
-        ax.set_title(f"{x_col} vs {y_col}", 
+        self.plot_fig.suptitle(self.plotTitle_BrCv.text(), 
                                fontsize=self.selected_font_size + 4,
                                color="white")
     else:
-        ax.set_title(f"{x_col} vs {y_col}", 
+        self.plot_fig.suptitle(self.plotTitle_BrCv.text(), 
                                fontsize=self.selected_font_size + 4)
     
     if self.selected_legend_on_off == "On":
