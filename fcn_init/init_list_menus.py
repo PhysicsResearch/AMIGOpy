@@ -185,7 +185,7 @@ def populate_list_menus(self):
     self.ct_cal_list.currentTextChanged.connect(lambda: update_ct_cal_view(self))
     #Initialize a list to store the CT calibration curves
     self.ct_cal_curves={}
-    ct_cal_dir = resource_path('fcn_ctcal/ct_cal_curves')
+    ct_cal_dir = get_appdata_ct_cal_dir()
     ct_cal_files = os.listdir(ct_cal_dir)
     for file in ct_cal_files:
         file_path = os.path.join(ct_cal_dir, file)
@@ -210,3 +210,25 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
+
+
+def get_appdata_ct_cal_dir():
+    """Returns the user-writable path to the ct_cal_curves folder under AppData/Local/AMIGOpy."""
+    from pathlib import Path
+    appdata_base = os.path.join(Path.home(), 'AppData', 'Local', 'AMIGOpy')
+    ct_cal_dir = os.path.join(appdata_base, 'ct_cal_curves')
+    os.makedirs(ct_cal_dir, exist_ok=True)
+
+    # Copy default files from the bundled directory only if empty
+    if not os.listdir(ct_cal_dir):
+        default_dir = resource_path('fcn_ctcal/ct_cal_curves')
+        if os.path.exists(default_dir):
+            for fname in os.listdir(default_dir):
+                src = os.path.join(default_dir, fname)
+                dst = os.path.join(ct_cal_dir, fname)
+                try:
+                    with open(src, 'rb') as fsrc, open(dst, 'wb') as fdst:
+                        fdst.write(fsrc.read())
+                except Exception as e:
+                    print(f"Error copying {fname} to AppData: {e}")
+    return ct_cal_dir
