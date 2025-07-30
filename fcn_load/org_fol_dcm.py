@@ -4,6 +4,7 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import math
+import pydicom
 
 
 def get_folder_path_from_dialog():
@@ -52,6 +53,11 @@ def generate_patient_id_map(detailed_files_info, max_length=30):
     
     return patient_id_map
 
+def make_hashable(val):
+    if isinstance(val, (list, pydicom.multival.MultiValue)):
+        return tuple(val)
+    return val
+
 def remove_and_count_duplicates(detailed_files_info):
     """
     Count the number of duplicated files in the detailed files info list,
@@ -60,25 +66,29 @@ def remove_and_count_duplicates(detailed_files_info):
     :param detailed_files_info: List containing file information.
     :return: Tuple of the updated detailed_files_info and the number of duplicated files.
     """
-    # Create a list of tuples containing the relevant information for each file
-    file_info = [(info['StudyID'], info['Modality'], info['SeriesTime'],info['KVP'],
-                  info['InstanceNumber'], info['SOPInstanceUID'], info['ImagePatientPosition'])
-                 for info in detailed_files_info]
+    file_info = [
+        (make_hashable(info['StudyID']),
+         make_hashable(info['Modality']),
+         make_hashable(info['SeriesTime']),
+         make_hashable(info['KVP']),
+         make_hashable(info['InstanceNumber']),
+         make_hashable(info['SOPInstanceUID']),
+         make_hashable(info['ImagePatientPosition']))
+        for info in detailed_files_info
+    ]
 
     file_counts = {}
     duplicate_indices = []
+
     for index, info in enumerate(file_info):
         if file_counts.get(info, 0) >= 1:
             duplicate_indices.append(index)
         file_counts[info] = file_counts.get(info, 0) + 1
 
-    # Reverse the duplicate indices list to not mess up the indexing when deleting
     for index in sorted(duplicate_indices, reverse=True):
         del detailed_files_info[index]
 
-    # Count duplicates
     duplicate_count = len(duplicate_indices)
-
     return detailed_files_info, duplicate_count
 
 
@@ -93,7 +103,7 @@ def show_warning(message):
     messagebox.showwarning("Warning", message)
     root.destroy()  # Clean up the root window after showing the dialog
 
-def organize_files_into_folders(detailed_files_info, progress_callback=None, update_label=None):
+def organize_files_into_folders(root_destination, detailed_files_info, progress_callback=None, update_label=None):
     """
     Organize files into a hierarchical folder structure based on their metadata.
 
@@ -122,8 +132,8 @@ def organize_files_into_folders(detailed_files_info, progress_callback=None, upd
     else:
         print("Please select the root destination folder ... Minimize other windows in case you don't see it")
 
-    # Getting the root destination folder from the user.
-    root_destination = get_folder_path_from_dialog()
+    # # Getting the root destination folder from the user.
+    # root_destination = get_folder_path_from_dialog()
 
     # Check if the user closed the dialog without selecting a folder.
     if not root_destination:  
@@ -202,7 +212,7 @@ def organize_files_into_folders(detailed_files_info, progress_callback=None, upd
         print("Done - going to check the number of files now")
         
     # After finalizing, compare the file counts.
-    result, diff = compare_file_counts(detailed_files_info, root_destination)
+    result, diff = compare_file_counts(detailed_files_info, patient_folder)
     if result:
         print("All files successfully copied. Excl. duplicated files if any.")
         if update_label:
@@ -214,5 +224,5 @@ def organize_files_into_folders(detailed_files_info, progress_callback=None, upd
 
 if __name__ == "__main__":
     # Getting detailed file information and organizing files.
-    detailed_files_info, unique_files_info = get_data_description()
-    organize_files_into_folders(detailed_files_info)
+    detailed_files_info, unique_files_info,outputfolder = get_data_description(sort_folder=1)
+    organize_files_into_folders(outputfolder,detailed_files_info)

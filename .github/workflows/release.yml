@@ -1,13 +1,21 @@
-name: Build AMIGOpy installer
+name: Release AMIGOpy
 
+# Trigger the workflow manually OR by pushing a Git tag (e.g., v1.0.0)
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
-
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.2.0)'
+        required: true
+  push:
+    tags:
+      - 'v*'  # Trigger on any tag that starts with 'v'
+      
+permissions:
+  contents: write  
+  
 jobs:
-  build-and-sign-windows:
+  release:
     runs-on: windows-latest
 
     steps:
@@ -51,8 +59,9 @@ jobs:
           wait-for-completion: true
           output-artifact-directory: signed
 
-      - name: Upload signed installer
-        uses: actions/upload-artifact@v4
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: signed-installer
-          path: signed/
+          tag_name: ${{ github.event.inputs.version || github.ref_name }}
+          name: AMIGOpy ${{ github.event.inputs.version || github.ref_name }}
+          files: signed/mysetup.exe

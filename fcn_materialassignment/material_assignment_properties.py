@@ -14,6 +14,28 @@ SYMBOL_TO_ATOMIC_NUMBER = {v: k for k, v in ATOMIC_NUMBER_TO_SYMBOL.items()}
 
 
 
+def get_appdata_path():
+    """Returns the path to the AppData directory for storing user-specific files."""
+    from pathlib import Path
+    appdata_dir = os.path.join(Path.home(), 'AppData', 'Local', 'AMIGOpy')
+    os.makedirs(appdata_dir, exist_ok=True)
+    return appdata_dir
+
+def get_materials_db_path():
+    """Get the path to the writable materials_db.csv (use user-local AppData if writing is needed)."""
+    appdata_path = os.path.join(get_appdata_path(), 'materials_db.csv')
+    
+    # If the file doesn't exist yet in AppData, copy it from the resource folder
+    if not os.path.exists(appdata_path):
+        original = resource_path('fcn_materialassignment/materials_db.csv')
+        try:
+            os.makedirs(os.path.dirname(appdata_path), exist_ok=True)
+            with open(original, 'r') as src, open(appdata_path, 'w') as dst:
+                dst.write(src.read())
+        except Exception as e:
+            print(f"Warning: Could not copy materials_db to AppData. Reason: {e}")
+    
+    return appdata_path
 
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev and PyInstaller"""
@@ -21,11 +43,10 @@ def resource_path(relative_path):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.abspath(relative_path)
 
-
 def create_dataframe_materials(self):
     # Open file dialog to select a CSV file
 
-    filename = resource_path('fcn_materialassignment/materials_db.csv')
+    filename = get_materials_db_path()
 
     #
     data = []
@@ -308,7 +329,7 @@ def save_mat_db(self):
         data.append(", ".join(row_data))
 
     # Construct the file path
-    file_path  = resource_path('fcn_materialassignment/materials_db.csv')
+    file_path  = get_materials_db_path()
 
     try:
         # Write the data to a CSV file manually to avoid quotes

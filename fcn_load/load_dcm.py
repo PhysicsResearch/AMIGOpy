@@ -120,6 +120,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         'SourceSequence': getattr(dicom_file, "SourceSequence", []),
                         'PrivateCreator': creator_value,
                         'CatOnc': getattr(dicom_file, 'get', lambda *args: [])(Tag(0x300f, 0x1000), []),
+                        'TreatmentProtocols': getattr(dicom_file, "TreatmentProtocols", "N/A"),
                         'DCM_Info': dicom_file
                     },
                     'images': {},
@@ -321,7 +322,7 @@ def load_all_dcm(self,folder_path=None, progress_callback=None, update_label=Non
     Returns:
         dicom_data (dict): Hierarchical representation of DICOM data.
     """
-    detailed_files_info, unique_files_info = get_data_description(folder_path, self.progressBar.setValue, update_label)
+    detailed_files_info, unique_files_info, folder = get_data_description(folder_path, self.progressBar.setValue, update_label)
     self.files_info = detailed_files_info
     if detailed_files_info is None:
         # user cacled or folder does not exist

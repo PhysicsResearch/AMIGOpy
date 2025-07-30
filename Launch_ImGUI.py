@@ -37,6 +37,8 @@ from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin
 from fcn_3Dview.structures_3D_table import init_3D_Struct_table 
 from fcn_init.init_tool_tip import set_tooltip
 from fcn_3Dview.surfaces_3D_table import init_STL_Surface_table
+from fcn_3Dview.protons_3D_plan import init_3D_proton_table
+from fcn_init.init_data_tree import set_context_menu
 
 
 # ── constants in module / class scope ─────────────────────────────────────────
@@ -82,6 +84,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         #
         init_3D_Struct_table(self)
         init_STL_Surface_table(self)
+        init_3D_proton_table(self)
 
         #
         self.LeftButtonSagittalDown = False
@@ -224,14 +227,17 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # set tooltip 
         set_tooltip(self)
 
+        # set data tree context menu
+        set_context_menu(self)
+
 
 
     def organize_dcm_folder(self):
         self.label.setText("Reading folders")
-        detailed_files_info, unique_files_info = get_data_description(folder_path=None, progress_callback=self.update_progress,update_label=self.label)
+        detailed_files_info, unique_files_info, outputfolder = get_data_description(folder_path=None, progress_callback=self.progressBar.setValue,update_label=self.label,sort_folder=1)
         total_steps = len(detailed_files_info)
         self.label.setText(f"Copying {total_steps} files")
-        organize_files_into_folders(detailed_files_info,progress_callback=self.update_progress,update_label=self.label)
+        organize_files_into_folders(outputfolder, detailed_files_info,progress_callback=self.progressBar.setValue,update_label=self.label)
         
             
     # Slot for the 'About' action

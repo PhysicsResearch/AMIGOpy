@@ -13,7 +13,7 @@ from matplotlib.figure import Figure
 import matplotlib.colors as mcolors
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-
+import pandas as pd
 
 
 
@@ -34,8 +34,7 @@ def update_plan_tables(self):
         self.brachy_spinBox_02.setValue(1)
         #
         update_disp_brachy_plan(self)
-    else:
-        print("'Plan_Brachy_Channels' does NOT exist.")
+
 
 def update_disp_brachy_plan(self):
     # Check if plan-related attributes exist

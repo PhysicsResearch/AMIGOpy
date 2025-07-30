@@ -12,7 +12,8 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pandas as pd
-
+import os
+from pathlib import Path
 
 
 def init_ct_cal_table(self):
@@ -100,7 +101,8 @@ def load_ct_cal_curve(self,fileName=None):
     if validated_data is None:
         return  # User cancelled or headers invalid
     # Proceed with validated_data
-    ct_cal_name=fileName.split('/')[-1].split('.')[0]
+    #
+    ct_cal_name = Path(fileName).stem
     i=1
     while ct_cal_name in self.ct_cal_curves.keys():
         if i>1:
@@ -340,6 +342,19 @@ def export_ct_cal_to_csv(self,export=True): #If export True, the user choose whe
         else:
             return
     else:
-        filepath=f'fcn_ctcal/ct_cal_curves/{table_name}.csv'
-        export_df.to_csv(filepath, index=False, header=False)
-    
+        # Save to AppData fallback location
+        ct_cal_dir = get_appdata_ct_cal_dir()  # ensures correct folder and creates it
+        table_name = os.path.basename(table_name).replace('.csv', '').strip()
+        filepath = os.path.join(ct_cal_dir, f"{table_name}.csv")
+        try:
+            export_df.to_csv(filepath, index=False, header=False)
+            QMessageBox.information(self, "Saved", f"Saved to:\n{filepath}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save calibration file to AppData:\n{str(e)}")
+
+def get_appdata_ct_cal_dir():
+    """Returns the user-writable path to the ct_cal_curves folder under AppData/Local/AMIGOpy."""
+    appdata_base = os.path.join(Path.home(), 'AppData', 'Local', 'AMIGOpy')
+    ct_cal_dir = os.path.join(appdata_base, 'ct_cal_curves')
+    os.makedirs(ct_cal_dir, exist_ok=True)
+    return ct_cal_dir
