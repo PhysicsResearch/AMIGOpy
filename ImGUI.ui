@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1747</width>
-    <height>1199</height>
+    <width>1745</width>
+    <height>1192</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -1148,6 +1148,9 @@
            <layout class="QGridLayout" name="gridLayout_30">
             <item row="0" column="0">
              <widget class="QTabWidget" name="tabWidget_8">
+              <property name="currentIndex">
+               <number>0</number>
+              </property>
               <widget class="QWidget" name="tab_32">
                <attribute name="title">
                 <string>Display</string>
@@ -1224,6 +1227,41 @@
                <attribute name="title">
                 <string>Tab 2</string>
                </attribute>
+               <layout class="QGridLayout" name="gridLayout_78">
+                <item row="0" column="0">
+                 <widget class="QPushButton" name="calcAvg4DCT">
+                  <property name="text">
+                   <string>Calculate average</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <spacer name="horizontalSpacer_79">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="1" column="0">
+                 <spacer name="verticalSpacer_22">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>40</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
               </widget>
              </widget>
             </item>
@@ -8582,8 +8620,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>222</width>
-             <height>130</height>
+             <width>172</width>
+             <height>127</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8724,8 +8762,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>165</width>
-             <height>99</height>
+             <width>141</width>
+             <height>97</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8791,8 +8829,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>206</width>
-             <height>147</height>
+             <width>174</width>
+             <height>135</height>
             </rect>
            </property>
            <attribute name="label">
