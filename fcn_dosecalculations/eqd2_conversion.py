@@ -40,7 +40,6 @@ def on_struct_list_change(self):
         target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
         structure_selected = self.eqd2_struct_list.currentText()
         ab_dict=target_series_dict.get('ab_values')
-        print('here 1')
         if structure_selected!='None' and ab_dict: 
             if structure_selected in ab_dict.keys():
                 current_ab_val=target_series_dict['ab_values'][structure_selected]
@@ -122,16 +121,15 @@ def update_alpha_beta_table(self):
 def update_doses_list(self):
     #Update dose list to list the dose of the current active patient and study
     if self.patientID and self.studyID:
-        dose_list=self.dicom_data[self.patientID][self.studyID]['RTDOSE'] #TBF: not sure if it works if no dose is loaded
-        if len(dose_list):
-            labels=[f"{dose['metadata']['SeriesDescription']}_Series: {dose['SeriesNumber']}" for dose in dose_list]
-            self.dose_list.clear()
-            self.dose_list.addItems(['None'])
-            self.dose_list.addItems(labels)
-        else:
-            display_message_box('missing data', 'no dose found')
-    else: 
-        display_message_box('select patient', 'no active patient found')
+        try:
+            dose_list=self.dicom_data[self.patientID][self.studyID]['RTDOSE'] #TBF: not sure if it works if no dose is loaded
+            if len(dose_list):
+                labels=[f"{dose['metadata']['SeriesDescription']}_Series: {dose['SeriesNumber']}" for dose in dose_list]
+                self.dose_list.clear()
+                self.dose_list.addItems(['None'])
+                self.dose_list.addItems(labels)
+        except:
+            return
 
 def update_structure_list(self):
     if self.patientID and self.studyID:
