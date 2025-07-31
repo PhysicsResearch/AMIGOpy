@@ -391,31 +391,28 @@ def update_seg_struct_list(self, structures_keys=None, delete=False):
         self.segStructList.clear()
         if self.segStructList.count() != 0 or self.dicom_data is None:
             return
-        for patientID in self.dicom_data:
-            for studyID in self.dicom_data[patientID]:
-                for modality in self.dicom_data[patientID][studyID]:
-                    if modality != "CT":
-                        continue
-                    if not hasattr(self, 'series_index') or self.series_index is None:
-                        continue
+        if self.modality != "CT":
+            return
+        if not hasattr(self, 'series_index') or self.series_index is None:
+            return
 
-                    target_series_dict = self.dicom_data[patientID][studyID][modality][self.series_index]
-                     
-                    if type(target_series_dict) is dict and 'structures' in target_series_dict:
-                        seriesID = target_series_dict["SeriesNumber"]
-                        for k in target_series_dict['structures']:
-                            name = target_series_dict['structures'][k]['Name']
-                            target_key = f"{patientID}_{seriesID}_{name}"
-                        
-                            list_item = QListWidgetItem(self.segStructList)
-                            custom_item = ColorCheckItem([patientID, seriesID, name], self.struct_colors)
-                            custom_item.structure_key = target_key
-                            self.struct_colors = custom_item.struct_colors
-                            list_item.setSizeHint(custom_item.sizeHint())
+        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+            
+        if type(target_series_dict) is dict and 'structures' in target_series_dict:
+            seriesID = target_series_dict["SeriesNumber"]
+            for k in target_series_dict['structures']:
+                name = target_series_dict['structures'][k]['Name']
+                target_key = f"{self.patientID}_{seriesID}_{name}"
+            
+                list_item = QListWidgetItem(self.segStructList)
+                custom_item = ColorCheckItem([self.patientID, seriesID, name], self.struct_colors)
+                custom_item.structure_key = target_key
+                self.struct_colors = custom_item.struct_colors
+                list_item.setSizeHint(custom_item.sizeHint())
 
-                            # Append new item
-                            self.segStructList.addItem(list_item)
-                            self.segStructList.setItemWidget(list_item, custom_item)
+                # Append new item
+                self.segStructList.addItem(list_item)
+                self.segStructList.setItemWidget(list_item, custom_item)
     else:
         for key, name, series_id, patient_id in structures_keys:
             target_key  = f"{patient_id}_{series_id}_{name}"

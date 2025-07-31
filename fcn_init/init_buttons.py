@@ -13,6 +13,7 @@ from fcn_processing.roi_circle import (toggle_rois, roi_c_add_row, roi_c_remove_
 from fcn_IrIS.Load_CorrectionFrames import load_offset_IrIS, load_CorrectionFrame_IrIS
 from fcn_DECT.DECT_table_disp        import remove_coll2table, add_row2table, remove_row2table, reset_matTable, add_coll2table, calc_material_parameters, load_csv_mat_info
 from fcn_4DCT.disp_4D import play_4D_sequence
+from fcn_4DCT.process_4dct import calculate_average
 from fcn_DECT.export_data import export_matinfotable_to_csv
 from fcn_DECT.RED_calc_plot import RED_copy_ref_columns, RED_fit_plot_fcn
 from fcn_DECT.zeff_calc_plot import Zeff_copy_ref_columns, Zeff_fit_plot_fcn
@@ -56,6 +57,8 @@ def initialize_software_buttons(self):
     # Image processing
     self.ImageUndo_operation.clicked.connect(lambda: image_processing_undo(self))
     self.ImageUndo_operation.setStyleSheet("background-color: green; color: white;")
+    self.calcAvg4DCT.clicked.connect(lambda: calculate_average(self))
+    self.calcAvg4DCT.setStyleSheet("background-color: green; color: white;")
     #
 
     # Breathing curves explore
