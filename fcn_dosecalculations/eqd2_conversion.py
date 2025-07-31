@@ -11,7 +11,7 @@ from fcn_dosecalculations.general_fcn import scale_dose_to_CT
 import matplotlib.pyplot as plt #ONLY FOR TESTING
 
 
-###TO UPDATE
+
 def to_EQD2(D,fractions,ab):
     d=D/fractions
     dose_EQD2=D*((d+ab)/(2+ab))
@@ -35,6 +35,21 @@ def display_message_box(title,msg):
     msg_box.setText(msg)
     msg_box.exec()
 
+def on_struct_list_change(self):
+    if self.patientID:
+        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        structure_selected = self.eqd2_struct_list.currentText()
+        ab_dict=target_series_dict.get('ab_values')
+        print('here 1')
+        if structure_selected!='None' and ab_dict: 
+            if structure_selected in ab_dict.keys():
+                current_ab_val=target_series_dict['ab_values'][structure_selected]
+                self.ab_input.setText(str(current_ab_val))
+            else:
+                self.ab_input.clear()
+        else:
+            self.ab_input.clear()
+        
 
 def add_ab(self):
     # Creating a dictionary reference for the target series

@@ -18,7 +18,6 @@ def look_for_dose_data():
 
 
 
-
 def scale_dose_to_CT(self,dose):
     
     #retriving information for scaling
