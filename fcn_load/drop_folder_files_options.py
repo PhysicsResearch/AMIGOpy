@@ -6,6 +6,7 @@ from fcn_display.dicom_info import open_dicom_tag_viewer
 from fcn_load.save_load import load_amigo_bundle
 from fcn_load.load_STL import load_stl_files
 from fcn_load.load_OBJ import load_obj_files
+from fcn_load.load_nifti import load_nifti_files
 
 
 class FolderDropArea(QWidget):
@@ -75,6 +76,9 @@ def handle_dropped_path(main_window, path):
     
     def is_obj_file(filename: str) -> bool:
         return os.path.splitext(filename)[-1].lower() == ".obj"
+    
+    def is_nifti_file(filename: str) -> bool:
+        return filename.endswith('.nii.gz')
 
     if os.path.isfile(path):
         if is_dicom_file(path):
@@ -89,6 +93,8 @@ def handle_dropped_path(main_window, path):
         elif is_obj_file(path):
             # call your async loader (reuse the existing menu slot)
             load_obj_files(main_window, path)      # see note ①
+        elif is_nifti_file(path):
+            load_nifti_files(main_window, path)
         else:
             print(f"Unsupported file type: {os.path.splitext(path)[-1]}")
         return
@@ -107,6 +113,9 @@ def handle_dropped_path(main_window, path):
                         return
                     elif ext == '.iris':
                         print(f"Found IrIS file: {full_path}")
+                        return
+                    elif full_path.endswith('.nii.gz'):
+                        load_nifti_files(main_window, path)
                         return
             print("No recognized files found in folder.")
         except Exception as e:

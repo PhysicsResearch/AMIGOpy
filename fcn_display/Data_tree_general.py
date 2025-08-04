@@ -687,6 +687,76 @@ def on_DataTreeView_clicked(self,index):
                     continue
                 self.renAxComp[i].ResetCamera()
                 self.renAxComp[i].GetRenderWindow().Render() 
+    if hierarchy[0] == "Nifti":   
+        # Extract hierarchy information based on the clicked index 
+        previous_series = getattr(self, 'series_index', None)
+        self.series_index = hierarchy_indices[1].row()
+
+        if previous_series is None or self.series_index != previous_series:
+            self.series_changed = True
+
+        # check the current module
+        if currentTabText == "View":
+            # need to remove part of the tag otherwise it does not match with the key:
+            self.display_data[idx] = self.nifti_data[self.series_index]['3DMatrix']
+            adjust_data_type_input(self,idx)
+            self.current_axial_slice_index[idx]    = round(self.display_data[idx].shape[0]/2)
+            self.current_sagittal_slice_index[idx] = round(self.display_data[idx].shape[1]/2)
+            self.current_coronal_slice_index[idx]  = round(self.display_data[idx].shape[2]/2)
+            # Accessing the values
+            self.slice_thick[idx]         = self.nifti_data[self.series_index]['metadata']['SliceThickness']
+            self.pixel_spac[idx, :2]      = self.nifti_data[self.series_index]['metadata']['PixelSpacing']
+            self.Im_PatPosition[idx, :3]  = [0,0,0]
+            #
+            # # # Update the slider's value to match the current slice index
+            Ax_s = self.current_axial_slice_index[idx]
+            Sa_s = self.current_sagittal_slice_index[idx]
+            Co_s = self.current_coronal_slice_index[idx]
+            #
+            update_axial_image(self)
+            self.vtkWidgetAxial.GetRenderWindow().Render()
+            update_coronal_image(self)
+            self.vtkWidgetCoronal.GetRenderWindow().Render()
+            update_sagittal_image(self)
+            self.vtkWidgetSagittal.GetRenderWindow().Render()
+            #
+            #
+            displayaxial(self)
+            displaysagittal(self)
+            displaycoronal(self)
+            #
+            self.AxialSlider.setMaximum(self.display_data[idx].shape[0] - 1)
+            self.SagittalSlider.setMaximum(self.display_data[idx].shape[2] - 1)
+            self.CoronalSlider.setMaximum(self.display_data[idx].shape[1] - 1)
+            #
+            self.AxialSlider.setValue(Ax_s)
+            self.SagittalSlider.setValue(Sa_s)
+            self.CoronalSlider.setValue(Co_s)
+            #
+            Window = 100
+            Level = 0
+            self.windowLevelAxial[idx].SetWindow(Window)
+            self.windowLevelAxial[idx].SetLevel(Level)
+            self.windowLevelSagittal[idx].SetWindow(Window)
+            self.windowLevelSagittal[idx].SetLevel(Level)
+            self.windowLevelCoronal[idx].SetWindow(Window)
+            self.windowLevelCoronal[idx].SetLevel(Level)
+            #   
+            #
+            self.textActorAxialWL.SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
+            self.textActorSagittalWL.SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
+            self.textActorCoronalWL.SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
+            #
+            self.renAxial.ResetCamera()
+            self.renSagittal.ResetCamera()
+            self.renCoronal.ResetCamera() 
+            #
+            set_vtk_histogran_fig(self)   
+            #
+            self.vtkWidgetAxial.GetRenderWindow().Render()
+            self.vtkWidgetSagittal.GetRenderWindow().Render()
+            self.vtkWidgetCoronal.GetRenderWindow().Render()
+            #
             #
     #
 
