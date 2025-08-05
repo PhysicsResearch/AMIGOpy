@@ -35,9 +35,9 @@ def InitSeg(self):
 
     if self.initStructCheck.isChecked():
         check_duplicates = True
-        if self.file_format == "DICOM":
+        if self.DataType == "DICOM":
             target_series = self.dicom_data[self.patientID][self.studyID][self.modality]
-        elif self.file_format == "nifti":
+        elif self.DataType == "nifti":
             target_series = self.nifti_data
         else:
             return
@@ -84,9 +84,9 @@ def InitSeg(self):
             structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber'], self.patientID])
 
     else:
-        if self.file_format == "DICOM":
+        if self.DataType == "DICOM":
             target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-        elif self.file_format == "nifti":
+        elif self.DataType == "nifti":
             target_series_dict = self.nifti_data[self.series_index]
         else:
             return
@@ -129,10 +129,10 @@ def InitSeg(self):
         target_series_dict['structures_names'].append(name)
         structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber'], self.patientID])
     
-    if self.file_format == "DICOM":
+    if self.DataType == "DICOM":
         populate_DICOM_tree(self)
         target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    elif self.file_format == "nifti":
+    elif self.DataType == "nifti":
         populate_nifti_tree(self)
         target_series_dict = self.nifti_data[self.series_index]
 
@@ -150,9 +150,9 @@ def DeleteSeg(self):
     if 0 not in self.display_seg_data or self.curr_struc_key is None:
         return
     
-    if self.file_format == "DICOM":
+    if self.DataType == "DICOM":
         target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    elif self.file_format == "nifti":
+    elif self.DataType == "nifti":
         target_series_dict = self.nifti_data[self.series_index]
     else:
         return
@@ -172,9 +172,9 @@ def DeleteSeg(self):
         else:
             return
         
-        if self.file_format == "DICOM":
+        if self.DataType == "DICOM":
             target_series = self.dicom_data[self.patientID][self.studyID][self.modality]
-        elif self.file_format == "nifti":
+        elif self.DataType == "nifti":
             target_series = self.nifti_data
         else:
             return
@@ -201,9 +201,9 @@ def DeleteSeg(self):
     self.slice_data_copy = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
     adjust_data_type_seg_input(self,1)
 
-    if self.file_format == "DICOM":
+    if self.DataType == "DICOM":
         populate_DICOM_tree(self)
-    elif self.file_format == "nifti":
+    elif self.DataType == "nifti":
         populate_nifti_tree(self)
 
     self.curr_struc_key, self.curr_struc_name = None, None
@@ -424,10 +424,10 @@ def update_seg_struct_list(self, structures_keys=None, delete=False):
         return
     if structures_keys is None:
         self.segStructList.clear()
-        if self.segStructList.count() != 0 or not (self.file_format in ["DICOM", "nifti"]):
+        if self.segStructList.count() != 0 or not (self.DataType in ["DICOM", "nifti"]):
             return
 
-        if self.file_format == "DICOM":
+        if self.DataType == "DICOM":
             target_series = []
             for patientID in self.dicom_data:
                 for studyID in self.dicom_data[patientID]:
@@ -440,7 +440,7 @@ def update_seg_struct_list(self, structures_keys=None, delete=False):
                         target_series_dict = self.dicom_data[patientID][studyID][modality][self.series_index]
                         target_series_dict["PatientID"] = patientID
                         target_series.append(target_series_dict)
-        elif self.file_format == "nifti":
+        elif self.DataType == "nifti":
             target_series = self.nifti_data
         else:
             return
@@ -544,9 +544,9 @@ def threshSeg(self):
         QMessageBox.warning(None, "Warning", "No valid HU range was provided (ensure min HU < max HU)")
         return       
     
-    if self.file_format == "DICOM":
+    if self.DataType == "DICOM":
         target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    elif self.file_format == "nifti":
+    elif self.DataType == "nifti":
         target_series_dict = self.nifti_data[self.series_index]
     else:
         return
@@ -580,10 +580,10 @@ def threshSeg(self):
         
     mask_3d = ((self.display_seg_data[0] >= min_) * (self.display_seg_data[0] <= max_) * slice_mask).astype(np.uint8)
 
-    if self.file_format == "DICOM":
+    if self.DataType == "DICOM":
         self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
         self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = mask_3d
-    elif self.file_format == "nifti":
+    elif self.DataType == "nifti":
         self.nifti_data[self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
         self.nifti_data[self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = mask_3d
 
@@ -610,9 +610,9 @@ def undo_brush_seg(self):
     if hasattr(self, 'slice_data_copy'):
         self.display_seg_data[1] = self.slice_data_copy.copy()  
         self.slice_data_copy = self.display_seg_data[1].copy()
-        if self.file_format == "DICOM":
+        if self.DataType == "DICOM":
             self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = self.display_seg_data[1]
-        elif self.file_format == "nifti":
+        elif self.DataType == "nifti":
             self.nifti_data[self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = self.display_seg_data[1]
         else:
             return
@@ -633,10 +633,10 @@ def calc_com(segmentation):
 def calcStrucStats(self):
     
     data = {}
-    if self.file_format not in ["DICOM", "nifti"]:
+    if self.DataType not in ["DICOM", "nifti"]:
         return
     
-    if self.file_format == "DICOM":
+    if self.DataType == "DICOM":
         target_series = []
         for patientID in self.dicom_data:
             for studyID in self.dicom_data[patientID]:
@@ -647,7 +647,7 @@ def calcStrucStats(self):
                         if len(target_series_dict.get('structures', {})) == 0:
                             continue
                         target_series.append(target_series_dict)
-    elif self.file_format == "nifti":
+    elif self.DataType == "nifti":
         target_series = self.nifti_data
         patientID = ""
 
@@ -707,7 +707,7 @@ def calcStrucStats(self):
 
 
 def exportStrucStats(self): 
-    if self.file_format not in ["DICOM", "nifti"]:
+    if self.DataType not in ["DICOM", "nifti"]:
         return
     if self.tableSegStrucStats.rowCount() == 0:
         calcStrucStats(self)
@@ -774,7 +774,7 @@ def remove_roi_by_name(rtstruct, roi_name):
 
 
 def exportSegStruc(self):
-    if self.file_format not in ["DICOM", "nifti"]:
+    if self.DataType not in ["DICOM", "nifti"]:
         return
     if self.tableSegStrucStats.rowCount() == 0:
         calcStrucStats(self)
@@ -794,7 +794,7 @@ def exportSegStruc(self):
             series_id = self.tableSegStrucStats.item(row, 2).text()
             s_key = self.tableSegStrucStats.item(row, 3).text()
             target_series = []
-            if self.file_format == "DICOM":
+            if self.DataType == "DICOM":
                 for studyID in self.dicom_data[patient_id]:
                     for modality in self.dicom_data[patient_id][studyID]:
                         for target_series_dict in self.dicom_data[patient_id][studyID][modality]:
@@ -802,7 +802,7 @@ def exportSegStruc(self):
                                     str(target_series_dict['SeriesNumber']) != series_id or \
                                     'structures' not in target_series_dict):
                                 target_series.append(target_series_dict) 
-            if self.file_format == "nifti":
+            if self.DataType == "nifti":
                 for target_series_dict in self.nifti_data:
                     if not ('SeriesNumber' not in target_series_dict or \
                             str(target_series_dict['SeriesNumber']) != series_id or \
@@ -814,9 +814,9 @@ def exportSegStruc(self):
                     struct = target_series_dict['structures'][k]
                     if struct['Name'] == s_key:
                         mask = target_series_dict['structures'][k]["Mask3D"]
-                        if self.file_format == "DICOM":
+                        if self.DataType == "DICOM":
                             mask = np.flip(mask, axis=1)
-                        elif self.file_format == "nifti":
+                        elif self.DataType == "nifti":
                             mask = np.flip(mask, axis=1)
                             
                         img = sitk.GetImageFromArray(mask)

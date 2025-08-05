@@ -336,7 +336,7 @@ def load_all_dcm(self,folder_path=None, progress_callback=None, update_label=Non
     # Clear the lists of segmentation structures 
     self.segStructList.clear()
 
-    self.file_format = "DICOM"
+    self.DataType = "DICOM"
     populate_DICOM_tree(self)
     
     # for index, file_info in enumerate(non_im_files):

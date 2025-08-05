@@ -30,7 +30,7 @@ def displayaxial(self, Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_ax(self)
-        if i == 3 and self.file_format == "DICOM":
+        if i == 3 and self.DataType == "DICOM":
             # Check if the required fields exist in dicom_data
                 # First, clear previous overlays explicitly
                 disp_structure_overlay_axial(self)
@@ -509,7 +509,7 @@ def displaycoronal(self, Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_co(self)
-        if i == 3 and self.file_format == "DICOM":
+        if i == 3 and self.DataType == "DICOM":
                 disp_structure_overlay_coronal(self)
 
         if self.slice_thick[i] ==0:
@@ -994,7 +994,7 @@ def displaysagittal(self,Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_sa(self)    
-        if i == 3 and self.file_format == "DICOM":
+        if i == 3 and self.DataType == "DICOM":
             disp_structure_overlay_sagittal(self)
 
         if self.slice_thick[i] ==0:

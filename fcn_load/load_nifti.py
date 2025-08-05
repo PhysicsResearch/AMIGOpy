@@ -27,7 +27,7 @@ def read_nifti(path):
     return {'SeriesNumber': filename, '3DMatrix': image_volume, 
             'metadata': {'SliceThickness': spacing[2],'PixelSpacing': spacing[0:2], 
                          'size': size, 'ImagePositionPatient': origin,
-                         'file_format': 'nifti'}
+                         'DataType': 'nifti'}
     }
 
 
@@ -63,6 +63,6 @@ def load_nifti_files(self, path=None):
             self.nifti_data.append(data)
 
     self.last_nifti_dir = str(Path(paths[0]).parent)
-    self.file_format = "nifti"
+    self.DataType = "nifti"
 
     populate_nifti_tree(self)
