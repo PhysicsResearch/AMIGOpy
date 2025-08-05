@@ -11,6 +11,7 @@ from fcn_3Dprint.split_gcode_file import  split_gcode
 from fcn_DECT.calculateVMIs import calculate_VMI
 from fcn_load.load_STL import load_stl_files
 from fcn_load.load_OBJ import load_obj_files
+from fcn_load.load_nifti import load_nifti_files
 
 
 def initializeMenuBar(self):
@@ -55,6 +56,8 @@ def initializeMenuBar(self):
         if item == "3mf":
             action.triggered.connect(lambda: load_3mf(self))
             action.setShortcut("Ctrl+3")    
+        if item == "NIfTI":
+            action.triggered.connect(lambda: load_nifti_files(self))
         openMenu.addAction(action)
 
     ViewMenu      = self.menuBar().addMenu("View")

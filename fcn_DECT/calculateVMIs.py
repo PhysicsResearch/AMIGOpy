@@ -2,9 +2,13 @@ import numpy as np
 import copy
 from fcn_load.populate_dcm_list import populate_DICOM_tree
 from pydicom.dataelem import DataElement
+from PyQt5.QtWidgets import QMessageBox
 
 
 def calculate_VMI(self):
+    if getattr(self, 'DataType', None) != "DICOM":
+        QMessageBox.warning(None, "Warning", "No DICOM data was found")
+        return
     selected_index_L = self.scatter_plot_im_01.currentIndex()
     series_label_L, patient_id_L, study_id_L, modality_L, item_index_L = self.series_info_dict[selected_index_L]      
     # Get HU_High
