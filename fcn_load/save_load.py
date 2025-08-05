@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (QFileDialog, QProgressDialog,
 import joblib, pickle, importlib.util
 from pathlib import Path
 from fcn_load.load_dcm import populate_DICOM_tree
+from fcn_load.load_nifti import populate_nifti_tree
 import copy
 import numpy as np
 
@@ -167,11 +168,22 @@ def save_amigo_bundle(self):
     dlg.setMinimumDuration(0)        # show immediately
     dlg.setValue(0)
     # used for debugging
-    find_unpicklable(self.dicom_data)
+    if self.file_format == "DICOM":
+        find_unpicklable(self.dicom_data)
+    elif self.file_format == "nifti":
+        find_unpicklable(self.nifti_data)
+    else:
+        return
     #
     # 2) Thread + worker
     thread = QThread(self)
-    worker = SaveWorker(self.dicom_data, path)
+    if self.file_format == "DICOM":
+        worker = SaveWorker(self.dicom_data, path)
+    elif self.file_format == "nifti":
+        worker = SaveWorker(self.nifti_data, path)
+    else:
+        return
+
     worker.moveToThread(thread)
 
     # 3) Wiring
@@ -223,8 +235,22 @@ def load_amigo_bundle(self, path: str | None = None):
     worker.moveToThread(thread)
 
     def _apply_loaded_data(data):
-        self.dicom_data = data
-        populate_DICOM_tree(self)        # refresh your UI
+        try:
+            self.file_format = data[0]['metadata']['file_format']
+        except:
+            self.file_format = "DICOM"
+
+        if self.file_format == "DICOM":
+            self.dicom_data = data
+            self.file_format = "DICOM"
+            populate_DICOM_tree(self)        # refresh your UI
+        elif self.file_format == "nifti": 
+            self.nifti_data = data
+            self.file_format = "nifti"
+            populate_nifti_tree(self)
+        else:
+            return
+
 
     # wiring
     worker.result.connect(_apply_loaded_data)

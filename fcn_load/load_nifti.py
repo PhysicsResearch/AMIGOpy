@@ -26,7 +26,8 @@ def read_nifti(path):
 
     return {'SeriesNumber': filename, '3DMatrix': image_volume, 
             'metadata': {'SliceThickness': spacing[2],'PixelSpacing': spacing[0:2], 
-                         'size': size, 'ImagePositionPatient': origin}
+                         'size': size, 'ImagePositionPatient': origin,
+                         'file_format': 'nifti'}
     }
 
 
