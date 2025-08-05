@@ -84,10 +84,19 @@ def disp_seg_image_slice(self):
 
     # If any structure is selected, display selected segmentation in layer 1
     slice_data_im = slice_data.copy()
-    if (self.curr_struc_key is not None and 1 in self.display_seg_data and \
-        self.curr_struc_key in self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures']):
-        self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
-        target_key = f"{self.patientID}_{self.curr_series_no}_{self.curr_struc_name}"
+    if self.curr_struc_key is not None and 1 in self.display_seg_data:
+        if self.DataType == "DICOM":
+            target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        elif self.DataType == "nifti":
+            target_series_dict = self.nifti_data[self.series_index]
+        else:
+            return
+
+        if self.curr_struc_key in target_series_dict['structures']:
+            target_series_dict['structures'][self.curr_struc_key]['Modified'] = 1
+            patientID = target_series_dict.get('PatientID', '')
+            seriesID = target_series_dict.get('SeriesNumber', '')
+            target_key = f"{patientID}_{seriesID}_{self.curr_struc_name}"
 
         if self.display_seg_data[0].shape != self.display_seg_data[1].shape:
             QMessageBox.warning(None, "Warning", "Selected segmentation does not match the image volume shape.")
@@ -256,13 +265,20 @@ def render_all_seg_layers(self):
         slice_data = self.display_seg_data[0][:,int(self.current_seg_slice_index), :]
     
     height, width = slice_data.shape
-    
-    if 'structures_keys' not in self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index] or \
-        'structures_names'not in self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]:
+
+    if self.DataType == "DICOM":
+        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    elif self.DataType == "nifti":
+        target_series_dict = self.nifti_data[self.series_index]
+    else:
         return None
     
-    structures_keys = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys']
-    structures_names = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names']
+    if 'structures_keys' in target_series_dict and 'structures_names' in target_series_dict:
+        structures_keys = target_series_dict['structures_keys']
+        structures_names = target_series_dict['structures_names']
+    else:
+        return
+
     layer_opacity = self.LayerAlpha[2]
 
     colors = []
@@ -278,26 +294,33 @@ def render_all_seg_layers(self):
         if not widget.checkbox.isChecked():
             continue
 
-        # structure_key = getattr(widget, "structure_key", None)
         patient_id, series_id, name = widget.patient_id.text(), widget.series_id.text(), widget.struct_name.text()
+        s_key = structures_keys[structures_names.index(name)]
 
-        if (patient_id == self.patientID) and (int(series_id) == self.curr_series_no) and (name != self.curr_struc_name):
-            s_key = structures_keys[structures_names.index(name)]
-            mask = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+        if self.DataType == "DICOM":
+            if not ((patient_id == self.patientID) and (int(series_id) == self.curr_series_no) and (name != self.curr_struc_name)):
+                return
+            else:
+                mask = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+        elif self.DataType == "nifti":
+            if series_id != self.nifti_data[self.series_index]["SeriesNumber"]:
+                return
+            else:
+                mask = self.nifti_data[self.series_index]['structures'][s_key]['Mask3D']
+            
+        if self.im_ori_seg=="axial": #Axial
+            slice_data = mask[int(self.current_seg_slice_index), :, :]
+        elif self.im_ori_seg=="sagittal": #Sagittal 
+            slice_data = mask[:,:,int(self.current_seg_slice_index)]
+        elif self.im_ori_seg=="coronal": #Coronal
+            slice_data = mask[:,int(self.current_seg_slice_index), :]
 
-            if self.im_ori_seg=="axial": #Axial
-                slice_data = mask[int(self.current_seg_slice_index), :, :]
-            elif self.im_ori_seg=="sagittal": #Sagittal 
-                slice_data = mask[:,:,int(self.current_seg_slice_index)]
-            elif self.im_ori_seg=="coronal": #Coronal
-                slice_data = mask[:,int(self.current_seg_slice_index), :]
+        self.struct_colors[name] = widget.selectedColor if widget.selectedColor else QColor(Qt.red)
+        color = widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1, 0, 0)
+        opacity = widget.transparency_spinbox.value()
 
-            self.struct_colors[name] = widget.selectedColor if widget.selectedColor else QColor(Qt.red)
-            color = widget.selectedColor.getRgbF()[:3] if widget.selectedColor else (1, 0, 0)
-            opacity = widget.transparency_spinbox.value()
-
-            masks.append(slice_data)
-            colors.append((*color, np.clip(layer_opacity * opacity, 0, 0.99)))
+        masks.append(slice_data)
+        colors.append((*color, np.clip(layer_opacity * opacity, 0, 0.99)))
 
     rgba_image = np.zeros((height, width, 4), dtype=np.uint8)
 
