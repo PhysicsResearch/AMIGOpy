@@ -61,7 +61,7 @@ def init_MoVeTab(self):
     self.MoVeOffsetSlider.setRange(-150, 150)
 
     self.t0 = time.time() 
-    self.MoVeData = {'t': [], 'x': [], 'acq': [], 'volume': []}
+    self.MoVeData = {'t': [], 'x': [], 'acq': []}
 
     max_points = int(WINDOW_DURATION / UPDATE_INTERVAL)
     self.time_buffer = deque(maxlen=max_points)
@@ -84,27 +84,6 @@ def init_MoVeTab(self):
                 child.widget().deleteLater()
 
     layout.addWidget(self.MoVeCanvas)
-
-    import pyaudio
-
-    # Audio setup
-    FORMAT = pyaudio.paInt16
-    CHANNELS = 1
-    RATE = 16000 #48000
-    CHUNK = 256
-
-    p = pyaudio.PyAudio()
-    default_input_index = p.get_default_input_device_info()["index"]
-
-    # Select correct input device if needed
-    device_index = default_input_index  # Replace with an index if needed
-
-    self.stream = p.open(format=FORMAT,
-                        channels=CHANNELS,
-                        rate=RATE,
-                        input=True,
-                        input_device_index=device_index,
-                        frames_per_buffer=CHUNK)
 
     self.ani = FuncAnimation(self.fig_MoVe, lambda i: update_MoVeData(self), interval=UPDATE_INTERVAL * 1000)
     plt.tight_layout()
@@ -157,20 +136,9 @@ def get_duet_status(self):
         print(f"Exception: {e}")
 
 
-def get_volume(self):
-    try:
-        data = self.stream.read(256, exception_on_overflow=False)
-        samples = np.frombuffer(data, dtype=np.int16)
-        volume = np.sqrt(np.mean(samples**2)) # or np.max(np.abs(samples))
-    except:
-        volume = np.nan
-    return volume
-
-
 def update_MoVeData(self):
     try:
         t, x = get_duet_status(self)
-        volume = get_volume(self)
 
         if not self.MoVeAutoControl.isChecked():
             self.MoVeUserSetSpeed = self.MoVeSpeedFactor.value()
@@ -181,7 +149,6 @@ def update_MoVeData(self):
         self.x_buffer.append(x)
         self.MoVeData['t'].append(t); self.MoVeData['x'].append(x)
         self.MoVeData['acq'].append(0)
-        self.MoVeData['volume'].append(volume)
         plot_MoVeData(self)
     except:
         return
@@ -273,7 +240,7 @@ def plot_MoVeData(self):
 
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Position (mm)")
-    # ax.legend()
+    ax.legend()
     ax.set_xlim(min(self.time_buffer), max(self.time_buffer)+10)
 
     self.MoVeCanvas.draw()
