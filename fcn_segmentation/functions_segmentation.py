@@ -447,8 +447,9 @@ def update_seg_struct_list(self, structures_keys=None, delete=False):
         
         for target_series_dict in target_series:
             if type(target_series_dict) is dict and 'structures' in target_series_dict:
-                if target_series_dict["SeriesNumber"] != target_series[self.series_index]["SeriesNumber"]:
-                    continue
+                if self.DataType == "nifti":
+                    if target_series_dict["SeriesNumber"] != target_series[self.series_index]["SeriesNumber"]:
+                        continue
                 patientID = target_series_dict.get("PatientID", "")
                 seriesID = target_series_dict.get("SeriesNumber", None)
                 for k in target_series_dict['structures']:
