@@ -85,9 +85,9 @@ def disp_seg_image_slice(self):
     # If any structure is selected, display selected segmentation in layer 1
     slice_data_im = slice_data.copy()
     if self.curr_struc_key is not None and 1 in self.display_seg_data:
-        if self.file_format == "DICOM":
+        if self.DataType == "DICOM":
             target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-        elif self.file_format == "nifti":
+        elif self.DataType == "nifti":
             target_series_dict = self.nifti_data[self.series_index]
         else:
             return
@@ -266,9 +266,9 @@ def render_all_seg_layers(self):
     
     height, width = slice_data.shape
 
-    if self.file_format == "DICOM":
+    if self.DataType == "DICOM":
         target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    elif self.file_format == "nifti":
+    elif self.DataType == "nifti":
         target_series_dict = self.nifti_data[self.series_index]
     else:
         return None
@@ -297,12 +297,12 @@ def render_all_seg_layers(self):
         patient_id, series_id, name = widget.patient_id.text(), widget.series_id.text(), widget.struct_name.text()
         s_key = structures_keys[structures_names.index(name)]
 
-        if self.file_format == "DICOM":
+        if self.DataType == "DICOM":
             if not ((patient_id == self.patientID) and (int(series_id) == self.curr_series_no) and (name != self.curr_struc_name)):
                 return
             else:
                 mask = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
-        elif self.file_format == "nifti":
+        elif self.DataType == "nifti":
             if series_id != self.nifti_data[self.series_index]["SeriesNumber"]:
                 return
             else:
