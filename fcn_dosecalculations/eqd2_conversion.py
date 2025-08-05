@@ -141,11 +141,11 @@ def update_structure_list(self):
                 self.eqd2_struct_list.addItems(['None'])
                 self.eqd2_struct_list.addItems(structure_names)
             else:
-                display_message_box('missing data', 'no structure found')
+                return
         else:
-            display_message_box('select CT set', 'select CT set to procede')
+            return
     else:
-       display_message_box('select patient', 'no active patient found')
+       return
 
 def generate_eqd2_dose(self):
      #Retrive dose slected

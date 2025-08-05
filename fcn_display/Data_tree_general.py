@@ -21,7 +21,7 @@ from fcn_display.Data_tree_3Dview import set_3DViewer_data
 from fcn_3Dview.protons_3D_plan import add_beam_to_proton_table
 import vtk
 from vtkmodules.util.numpy_support import numpy_to_vtk
-from fcn_dosecalculations.eqd2_conversion import update_doses_list
+from fcn_dosecalculations.eqd2_conversion import update_doses_list, update_structure_list
 
 
 def numpy_to_vtk_polydata(points, faces):
@@ -511,6 +511,8 @@ def on_DataTreeView_clicked(self,index):
                         update_mat_struct_list(self)
                 if currentSubTabText== 'EQD2':
                     update_doses_list(self)
+                    update_structure_list(self)
+                    
                     
                 
                 
