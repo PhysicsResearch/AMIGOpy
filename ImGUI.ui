@@ -7966,25 +7966,22 @@ p, li { white-space: pre-wrap; }
                 <property name="title">
                  <string>Export</string>
                 </property>
-                <layout class="QGridLayout" name="gridLayout_BrCv_9" columnstretch="1,1">
-                 <item row="2" column="0">
+                <layout class="QGridLayout" name="gridLayout_BrCv_9" columnstretch="2,1,1">
+                 <item row="4" column="0">
                   <widget class="QPushButton" name="exportData_BrCv">
                    <property name="text">
                     <string>Export CSV</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
-                  <widget class="QLineEdit" name="editExportFile_BrCv"/>
-                 </item>
-                 <item row="2" column="1">
-                  <widget class="QPushButton" name="exportGCODE_BrCv">
-                   <property name="text">
-                    <string>Export GCODE</string>
+                 <item row="2" column="1" colspan="2">
+                  <widget class="QSpinBox" name="copyCurve_BrCv">
+                   <property name="value">
+                    <number>1</number>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="0">
+                 <item row="3" column="0">
                   <widget class="QLineEdit" name="lineEdit_BrCv_28">
                    <property name="enabled">
                     <bool>false</bool>
@@ -7995,6 +7992,52 @@ p, li { white-space: pre-wrap; }
                   </widget>
                  </item>
                  <item row="0" column="0">
+                  <widget class="QCheckBox" name="interp_BrCv">
+                   <property name="layoutDirection">
+                    <enum>Qt::RightToLeft</enum>
+                   </property>
+                   <property name="text">
+                    <string>Interpolate</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1" colspan="2">
+                  <widget class="QPushButton" name="exportGCODE_BrCv">
+                   <property name="text">
+                    <string>Export GCODE</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1" colspan="2">
+                  <widget class="QLineEdit" name="editExportFile_BrCv"/>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QLineEdit" name="lineEdit_77">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>ms</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QDoubleSpinBox" name="interp_value_BrCv">
+                   <property name="value">
+                    <double>10.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
                   <widget class="QLineEdit" name="lineEdit_BrCv_24">
                    <property name="enabled">
                     <bool>false</bool>
@@ -8004,12 +8047,18 @@ p, li { white-space: pre-wrap; }
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="1">
-                  <widget class="QSpinBox" name="copyCurve_BrCv">
-                   <property name="value">
-                    <number>1</number>
+                 <item row="1" column="0">
+                  <widget class="QLineEdit" name="lineEdit_83">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="text">
+                    <string>Compress below speed</string>
                    </property>
                   </widget>
+                 </item>
+                 <item row="1" column="1" colspan="2">
+                  <widget class="QDoubleSpinBox" name="compress_speed_BrCv"/>
                  </item>
                 </layout>
                </widget>
@@ -8079,35 +8128,6 @@ p, li { white-space: pre-wrap; }
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="3">
-                  <widget class="QLineEdit" name="lineEdit_77">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="text">
-                    <string>ms</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QCheckBox" name="interp_BrCv">
-                   <property name="layoutDirection">
-                    <enum>Qt::RightToLeft</enum>
-                   </property>
-                   <property name="text">
-                    <string>Interpolate</string>
-                   </property>
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="6" column="0" colspan="2">
                   <widget class="QSlider" name="threshFourierSlider">
                    <property name="sizePolicy">
@@ -8153,13 +8173,6 @@ p, li { white-space: pre-wrap; }
                  </item>
                  <item row="2" column="2">
                   <widget class="QComboBox" name="smooth_method_BrCv"/>
-                 </item>
-                 <item row="1" column="2">
-                  <widget class="QDoubleSpinBox" name="interp_value_BrCv">
-                   <property name="value">
-                    <double>10.000000000000000</double>
-                   </property>
-                  </widget>
                  </item>
                 </layout>
                </widget>
@@ -8620,7 +8633,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>172</width>
+             <width>213</width>
              <height>127</height>
             </rect>
            </property>
@@ -8762,7 +8775,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>141</width>
+             <width>159</width>
              <height>97</height>
             </rect>
            </property>
@@ -8829,8 +8842,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>174</width>
-             <height>135</height>
+             <width>206</width>
+             <height>139</height>
             </rect>
            </property>
            <attribute name="label">
