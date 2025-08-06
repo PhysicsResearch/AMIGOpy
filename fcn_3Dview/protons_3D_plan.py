@@ -202,6 +202,16 @@ def update_beam_transform_and_display(self, beam_name, *args):
         source_point = (source_point - iso_shift) @ rot_y.T + iso_shift
         corners = (corners - iso_shift) @ rot_y.T + iso_shift
 
+    # Retrieve the lines for each spot in the beam (L(t) = P + t * v)
+    v_vector = points - source_point
+    lines = [(source_point, direction) for direction in v_vector]
+    random_points = np.random.choice(len(lines), size=8, replace=False)
+    lines_visual = []
+    for idx in random_points:
+        P,v = lines[idx]
+        loc = P + 1.2 * v
+        lines_visual.append([P,loc])
+
     # -- Color & Size --
     spin_size = self._3D_proton_table.cellWidget(row, 2)
     point_size = spin_size.value()
@@ -222,7 +232,7 @@ def update_beam_transform_and_display(self, beam_name, *args):
     self.remove_3d_proton_beam(beam_trajectory_name)
     if is_visible and points.shape[0] > 0:
         self.add_3d_proton_spots(points, iso_shift, color=rgb, size=point_size, name=beam_name)
-        self.add_3d_proton_beam_trajectory(source_point, corners, color=rgb, size=1, name=beam_trajectory_name)
+        self.add_3d_proton_beam_trajectory(source_point, corners, lines_visual, color=rgb, size=1, name=beam_trajectory_name)
     self.VTK3D_interactor.GetRenderWindow().Render()
 
 

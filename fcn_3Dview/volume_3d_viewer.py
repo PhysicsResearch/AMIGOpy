@@ -810,7 +810,7 @@ class VTK3DViewerMixin:
 
         return name
 
-    def add_3d_proton_beam_trajectory(self, source, corners, color=(1, 0, 0), size=3.0, name=None):
+    def add_3d_proton_beam_trajectory(self, source, corners, lines_visual, color=(1, 0, 0), size=3.0, name=None):
         """
         Plot a 3D proton beam visualization:
         - A sphere at the source point.
@@ -905,9 +905,72 @@ class VTK3DViewerMixin:
             all_actors.append(corner_actor)
             self.VTK3D_renderer.AddActor(corner_actor)
 
-        # --- Save all actors under this name ---
-        self._proton_spots[name] = all_actors
-        self.VTK3D_interactor.GetRenderWindow().Render()
+        # dash/gap lengths (in the same units as your coordinates). Tweak to taste.
+        dash_len = 10.0
+        gap_len = 5.0
+
+        for seg in lines_visual:
+            start = np.asarray(seg[0]) - ref
+            end = np.asarray(seg[1]) - ref
+            vec = end - start
+            dist = np.linalg.norm(vec)
+            if dist <= 1e-8:
+                # zero-length — skip
+                continue
+
+            direction = vec / dist
+            pattern_len = dash_len + gap_len
+            # how many dash+gap patterns we need to cover the line
+            n_patterns = int(np.ceil(dist / pattern_len))
+
+            pts = vtk.vtkPoints()
+            lines_cells = vtk.vtkCellArray()
+            pid = 0
+
+            for i in range(n_patterns):
+                seg_start = start + direction * (i * pattern_len)
+                seg_end = seg_start + direction * dash_len
+
+                # if this dash would overshoot the true end, clamp it
+                if np.linalg.norm(seg_end - start) > dist:
+                    seg_end = end
+
+                # Insert the two points and create a single-line cell for this dash
+                pts.InsertNextPoint(float(seg_start[0]), float(seg_start[1]), float(seg_start[2]))
+                pts.InsertNextPoint(float(seg_end[0]),   float(seg_end[1]),   float(seg_end[2]))
+
+                dash_line = vtk.vtkLine()
+                dash_line.GetPointIds().SetId(0, pid)
+                dash_line.GetPointIds().SetId(1, pid + 1)
+                lines_cells.InsertNextCell(dash_line)
+                pid += 2
+
+                # if we reached the end, break early
+                if np.allclose(seg_end, end):
+                    break
+
+            poly_data_dashed = vtk.vtkPolyData()
+            poly_data_dashed.SetPoints(pts)
+            poly_data_dashed.SetLines(lines_cells)
+
+            dashed_mapper = vtk.vtkPolyDataMapper()
+            dashed_mapper.SetInputData(poly_data_dashed)
+
+            dashed_actor = vtk.vtkActor()
+            dashed_actor.SetMapper(dashed_mapper)
+            dashed_actor.GetProperty().SetColor(color)
+            dashed_actor.GetProperty().SetLineWidth(size)
+            # (Optional) you can set a different opacity or lighting if desired:
+            # dashed_actor.GetProperty().SetOpacity(0.9)
+            # dashed_actor.GetProperty().LightingOff()
+
+            all_actors.append(dashed_actor)
+            self.VTK3D_renderer.AddActor(dashed_actor)
+
+
+            # --- Save all actors under this name ---
+            self._proton_spots[name] = all_actors
+            self.VTK3D_interactor.GetRenderWindow().Render()
 
         return name
     
