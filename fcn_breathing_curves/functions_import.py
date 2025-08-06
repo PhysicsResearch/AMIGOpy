@@ -65,6 +65,8 @@ def processVXP(self, filePath):
             for i, line in enumerate(file):
                 if i == header_line: 
                     header_param = line.strip().split('=')[1].split(separator)
+                if "Samples_per_second" in line:
+                    self.sampling_rate_BrCv = float(line.split('=')[1].strip())
                 if "Scale_factor" in line:
                     scale_factor = float(line.split('=')[1].strip())
                 if i == skip_lines:

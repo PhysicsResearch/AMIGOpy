@@ -527,8 +527,12 @@ def exportGCODE(self):
         df = df.interpolate(method='linear', limit_area='inside')
         
         # Ensure the original time points are not modified
-        df.loc[df.index.isin(new_index) == False, :] = df.loc[df.index.isin(new_index) == False, :].fillna(method='ffill').fillna(method='bfill')
-        
+        if getattr(self, 'sampling_rate_BrCv', None) is not None:
+            if (((1 / self.sampling_rate_BrCv) * 1e3) % freq) == 0:
+                df.loc[df.index.isin(new_index) == False, :] = df.loc[df.index.isin(new_index) == False, :].fillna(method='ffill').fillna(method='bfill')
+            else:
+                df = df.loc[df.index.isin(new_index), :]
+
         df.reset_index(inplace=True)
 
     df.rename(columns={'index': time_col}, inplace=True)
@@ -564,7 +568,11 @@ def exportGCODE(self):
         vel.iloc[-1] = vel.iloc[-2]  # Copy the second last value to the last element
         results[f'{col}_vel'] = vel
         # Calculate speed in mm/min
-        results[f'{col}_speed'] = abs(vel) * 60 
+        speed = abs(vel) * 60
+        results[f'{col}_speed'] = speed 
+
+        df[f'{col}_vel'] = vel
+        df[f'{col}_speed'] = speed
         
         # Calculate acceleration
         accel = vel.diff() / df[time_col].diff().dt.total_seconds()
