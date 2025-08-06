@@ -556,53 +556,84 @@ def exportGCODE(self):
         df.loc[closest_t, "start"] = 1 
 
     # Write G-code file
-    for col in df.columns[1:2]:
-        df["diff"] = df[col].diff().shift(-1)
-        for i in range(len(df[col]) - 1):
-            if df.loc[i, "diff"] < 1e-3:
-                df.loc[i, col] += np.random.choice([1, 1], 1) * np.random.choice(list(range(1, 1000)), 1) * 1e-5
-        results[col] = df[col]
+    col = 'amplitude'
+    df["diff"] = df[col].diff().shift(-1)
+    for i in range(len(df[col]) - 1):
+        if df.loc[i, "diff"] < 1e-3:
+            df.loc[i, col] += np.random.choice([1, 1], 1) * np.random.choice(list(range(1, 1000)), 1) * 1e-5
+    results[col] = df[col]
 
-        # Calculate average speed
-        vel = df[col].diff().shift(-1) / df[time_col].diff().shift(-1).dt.total_seconds()
-        vel.iloc[-1] = vel.iloc[-2]  # Copy the second last value to the last element
-        results[f'{col}_vel'] = vel
-        # Calculate speed in mm/min
-        speed = abs(vel) * 60
-        results[f'{col}_speed'] = speed 
+    # Calculate average speed
+    vel = df[col].diff().shift(-1) / df[time_col].diff().shift(-1).dt.total_seconds()
+    vel.iloc[-1] = vel.iloc[-2]  # Copy the second last value to the last element
+    
+    # Calculate speed in mm/min
+    speed = abs(vel) * 60
+    
+    # Calculate acceleration
+    accel = vel.diff() / df[time_col].diff().dt.total_seconds()
+    accel.iloc[-1] = accel.iloc[-2]  # Copy the second last value to the last element
 
-        df[f'{col}_vel'] = vel
-        df[f'{col}_speed'] = speed
-        
-        # Calculate acceleration
-        accel = vel.diff() / df[time_col].diff().dt.total_seconds()
-        accel.iloc[-1] = accel.iloc[-2]  # Copy the second last value to the last element
-        results[f'{col}_accel'] = accel
-
+    # Store & save results for real-time verification
+    results[f'{col}_vel'] = vel
+    results[f'{col}_speed'] = speed 
+    results[f'{col}_accel'] = accel
     results["acq"] = df["acq"]
     results["start"] = df["start"]
-     
-    # Save results to CSV file
+
     try:
         results.to_csv(file_path, index=False, mode='w')
     except:
         return
-    #
+
+    # Set recalculated velocity and speed after resampling
+    df[f'{col}_vel'] = vel
+    df[f'{col}_speed'] = speed
+    
+    if self.compress_speed_BrCv.value() > 0:
+        df['keep'] = False
+
+        # Always keep the first and last points
+        df.loc[df.index[0], 'keep'] = True
+        df.loc[df.index[-1], 'keep'] = True
+
+        # Mark points with velocity above threshold
+        df.loc[df[f'{col}_speed'].abs() > self.compress_speed_BrCv.value(), 'keep'] = True
+
+        # Also keep local extrema (changes in velocity sign)
+        vel_sign = np.sign(vel)
+        extrema = vel_sign.diff().fillna(0).ne(0)
+        df.loc[extrema, 'keep'] = True
+
+        # Filter to only the important points
+        df = df[df['keep']].copy()
+        df.drop(columns='keep', inplace=True)
+
+        # Calculate average speed
+        vel = df[col].diff().shift(-1) / df[time_col].diff().shift(-1).dt.total_seconds()
+        vel.iloc[-1] = vel.iloc[-2]  # Copy the second last value to the last element
+
+        # Calculate speed in mm/min
+        speed = abs(vel) * 60
+
+        df[f'{col}_vel'] = vel
+        df[f'{col}_speed'] = speed
+
     gcode_file_path = os.path.join(folder_path, file_name + ".gcode")
     gcode_lines = ["G90"]  # Initialize G-code lines with absolute positioning command
     # Write G-code file
-    for i, row in results.iterrows():
+    for i, row in df.iterrows():
         if i == 0:
             continue  # Skip the first row for G-code generation
         # Calculate speed in mm per minute
         speed = row[f'{df.columns[1]}_speed'] * np.sqrt(len(axis_labels))
         # Prepare G-code line
-        gcode_line = f"G0 F{speed:.8f}"
+        gcode_line = f"G0 F{speed:.6f}"
         for j, col in enumerate(axis_labels):
             if j < len(axis_labels):
-                gcode_line += f" {axis_labels[j]}{row[f'{df.columns[1]}']:.8f}"  # X, Y, Z, U, W
+                gcode_line += f" {axis_labels[j]}{row[f'{df.columns[1]}']:.6f}"  # X, Y, Z, U, W
             else:
-                gcode_line += f" {chr(85 + j)}{row[f'{df.columns[1]}']:.8f}"  # Continue with U, V, W, etc. if more than 5 columns
+                gcode_line += f" {chr(85 + j)}{row[f'{df.columns[1]}']:.6f}"  # Continue with U, V, W, etc. if more than 5 columns
         gcode_lines.append(gcode_line)
 
     # Write G-code lines to the file
