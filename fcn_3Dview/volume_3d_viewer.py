@@ -645,6 +645,16 @@ class VTK3DViewerMixin:
             for actor in self._proton_spots.values():
                 self.VTK3D_renderer.RemoveActor(actor)
             self._proton_spots.clear()
+        if hasattr(self, '_isocenter_actors'):
+            for actor in self._isocenter_actors.values():
+                self.VTK3D_renderer.RemoveActor(actor)
+            self._isocenter_actors.clear()
+        if hasattr(self, '_proton_beams'):
+            for actors in self._proton_beams.values():
+                for actor in actors:
+                    self.VTK3D_renderer.RemoveActor(actor)          
+            self._proton_beams.clear()
+        self.VTK3D_interactor.GetRenderWindow().Render()            
         if hasattr(self, '_proton_spot_data'):
             self._proton_spot_data.clear()
         if hasattr(self, '_3D_proton_table'):
@@ -747,7 +757,7 @@ class VTK3DViewerMixin:
 
         # Remove previous isocenter actor
         iso_name = f"{name}_isocenter" if name else "isocenter"
-        if iso_name in self._isocenter_actors:
+        if iso_name and iso_name in self._isocenter_actors:
             self.VTK3D_renderer.RemoveActor(self._isocenter_actors[iso_name])
             del self._isocenter_actors[iso_name]
 
@@ -831,11 +841,13 @@ class VTK3DViewerMixin:
         if name is None:
             name = f"proton_beam_{len(self._proton_spots)}"
 
+        if not hasattr(self, '_proton_beams'):
+            self._proton_beams = {}
         # Remove previous actors if they exist
-        if name in self._proton_spots:
-            for actor in self._proton_spots[name]:
+        if name in self._proton_beams:
+            for actor in self._proton_beams[name]:
                 self.VTK3D_renderer.RemoveActor(actor)
-            del self._proton_spots[name]
+            del self._proton_beams[name]
 
         # --- Coordinate alignment ---
         ref = self.Im_PatPosition3Dview[0, :3] if hasattr(self, "Im_PatPosition3Dview") else np.zeros(3)
@@ -969,7 +981,7 @@ class VTK3DViewerMixin:
 
 
             # --- Save all actors under this name ---
-            self._proton_spots[name] = all_actors
+            self._proton_beams[name] = all_actors
             self.VTK3D_interactor.GetRenderWindow().Render()
 
         return name
@@ -978,18 +990,11 @@ class VTK3DViewerMixin:
         """
         Remove all actors associated with a named proton beam.
         """
-        if hasattr(self, '_proton_spots') and name in self._proton_spots:
-            actors = self._proton_spots[name]
-
-            # Ensure actors is iterable (backward compatibility)
-            if not isinstance(actors, list):
-                actors = [actors]
-
-            for actor in actors:
-                self.VTK3D_renderer.RemoveActor(actor)
-
-            del self._proton_spots[name]
-            self.VTK3D_interactor.GetRenderWindow().Render()
+        if hasattr(self, '_proton_beams') and name in self._proton_beams:
+            for actor in self._proton_beams[name]:
+                self.VTK3D_renderer.RemoveActor(actor)          
+            del self._proton_beams[name]
+        self.VTK3D_interactor.GetRenderWindow().Render()
 
     def remove_3d_proton_spots(self, name):
         """
