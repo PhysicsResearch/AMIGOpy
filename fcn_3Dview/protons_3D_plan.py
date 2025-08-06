@@ -28,10 +28,54 @@ def add_beam_to_proton_table(self, beam_name, info_df, isocenter_off, visible=Fa
         info_df['y_spot'].values,
         np.zeros_like(info_df['x_spot'].values)
     ]).T
+
+    # -- translate and rotate the beam orientation to patient space --  
+    ref_point = np.array([0, 0, 0])
+    source_location = np.array([0,0,-1850])
+
+    # Find corners of the spots
+    orig_points_corners = orig_points[:,0:2]
+    min_x, min_y = orig_points_corners.min(axis=0)
+    max_x, max_y = orig_points_corners.max(axis=0)
+    ip_corners = np.array([[min_x, min_y, 0], [min_x, max_y, 0], [max_x, min_y, 0], [max_x, max_y, 0]])
+
+    # rotate 90 degress in x-axis
+    theta = np.deg2rad(90)
+    c, s = np.cos(theta), np.sin(theta)
+    rot_x = np.array([[1, 0, 0],
+            [0, c, -s],
+            [0, s, c]])
+    source_location = (source_location - ref_point) @ rot_x.T + ref_point
+    ip_points = (orig_points - ref_point) @ rot_x.T + ref_point
+    ip_corners = (ip_corners - ref_point) @ rot_x.T + ref_point
+    
+    # Rotate 270 degrees in y-axis
+    theta = np.deg2rad(270)
+    c, s = np.cos(theta), np.sin(theta)
+    rot_y = np.array([[c, 0, s],
+            [0, 1, 0],
+            [-s, 0, c]])
+    source_location = (source_location - ref_point) @ rot_y.T + ref_point
+    ip_points = (ip_points - ref_point) @ rot_y.T + ref_point
+    ip_corners = (ip_corners - ref_point) @ rot_y.T + ref_point
+
+    # rotate 180 degrees in z-axis
+    theta = np.deg2rad(180)
+    c, s = np.cos(theta), np.sin(theta)
+    rot_z = np.array([[c, -s, 0],
+            [s,  c, 0],
+            [0,  0, 1]])
+    source_location = (source_location - ref_point) @ rot_z.T + ref_point
+    ip_points = (ip_points - ref_point) @ rot_z.T + ref_point
+    ip_corners = (ip_corners - ref_point) @ rot_z.T + ref_point
+
     self._proton_spot_data[beam_name] = {
         "original_points": orig_points,
         "info_df": info_df,
-        "isocenter": isocenter_off
+        "isocenter": isocenter_off,
+        "inplane_points" : ip_points,
+        "source_location": source_location,
+        "inplane_corners": ip_corners
     }
 
     item = QTableWidgetItem(beam_name)
@@ -108,16 +152,9 @@ def update_beam_transform_and_display(self, beam_name, *args):
     row = find_row_by_beam_name(self,beam_name)
     data = self._proton_spot_data[beam_name]
     info_df = data['info_df']
-    orig_points = data['original_points']
-
-    # Corner of the "beam"
-    # Compute bounding box
-    orig_points_corners = orig_points[:,0:2]
-    min_x, min_y = orig_points_corners.min(axis=0)
-    max_x, max_y = orig_points_corners.max(axis=0)
-    
-    # Get the 4 corners
-    corners = np.array([[min_x, min_y, 0], [min_x, max_y, 0], [max_x, min_y, 0], [max_x, max_y, 0]])
+    orig_points = data['inplane_points']
+    corners = data['inplane_corners']
+    source_point = data['source_location']
 
     # -- Energy filter --
     spin_min = self._3D_proton_table.cellWidget(row, 3)
@@ -127,43 +164,6 @@ def update_beam_transform_and_display(self, beam_name, *args):
     energy = info_df['Energy'].values
     mask = (energy >= min_energy) & (energy <= max_energy)
     points = orig_points[mask, :]
-
-    # -- Original rotations from beam orientation to patient space --
-    ref_point = np.array([0, 0, 0])
-    source_point = np.array([0,0,-1850])
-
-    theta = np.deg2rad(90)
-    c, s = np.cos(theta), np.sin(theta)
-    rot_x = np.array([
-            [1, 0, 0],
-            [0, c, -s],
-            [0, s, c]
-        ])
-    source_point = (source_point - ref_point) @ rot_x.T + ref_point
-    points = (points - ref_point) @ rot_x.T + ref_point
-    corners = (corners - ref_point) @ rot_x.T + ref_point
-    
-    theta = np.deg2rad(270)
-    c, s = np.cos(theta), np.sin(theta)
-    rot_y = np.array([
-            [c, 0, s],
-            [0, 1, 0],
-            [-s, 0, c]
-        ])
-    source_point = (source_point - ref_point) @ rot_y.T + ref_point
-    points = (points - ref_point) @ rot_y.T + ref_point
-    corners = (corners - ref_point) @ rot_y.T + ref_point
-
-    theta = np.deg2rad(180)
-    c, s = np.cos(theta), np.sin(theta)
-    rot_z = np.array([
-            [c, -s, 0],
-            [s,  c, 0],
-            [0,  0, 1]
-        ])
-    source_point = (source_point - ref_point) @ rot_z.T + ref_point
-    points = (points - ref_point) @ rot_z.T + ref_point
-    corners = (corners - ref_point) @ rot_z.T + ref_point
 
     # -- Isocenter translation --
     iso_x = self._3D_proton_table.cellWidget(row, 7).value()
