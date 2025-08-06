@@ -171,7 +171,8 @@ def calc_diff(self):
 
         # calculate the speed factor adjustment, relative to user defined default 
         # and clip between 90 - 20 to avoid explosive speed changes
-        sf = np.clip(self.MoVeUserSetSpeed * (t_diff * np.median(self.MoVeData['x']) / 35 + 1), 90, 120)
+        sf = np.clip(self.MoVeUserSetSpeed * (t_diff * np.median(self.MoVeData['x']) / 35 + 1), 
+                     0.9 * self.MoVeUserSetSpeed, 1.2 * self.MoVeUserSetSpeed)
         set_GCODE_speed(self, sf)
     except:
         return
