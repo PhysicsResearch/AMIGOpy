@@ -205,12 +205,20 @@ def update_beam_transform_and_display(self, beam_name, *args):
     # Retrieve the lines for each spot in the beam (L(t) = P + t * v)
     v_vector = points - source_point
     lines = [(source_point, direction) for direction in v_vector]
-    random_points = np.random.choice(len(lines), size=8, replace=False)
+    #random_points = np.random.choice(len(lines), size=8, replace=False)
+    random_points = [10]
     lines_visual = []
+    spots = []
+    distances = np.arange(-200, 200.5, .5)
+
     for idx in random_points:
         P,v = lines[idx]
-        loc = P + 1.2 * v
+        loc = P + 1.1 * v
         lines_visual.append([P,loc])
+        spot = P + 1 * v
+        for dist in distances:
+            weight = (dist + 1850)/1850
+            spots.append((dist, P + weight * v))
 
     # -- Color & Size --
     spin_size = self._3D_proton_table.cellWidget(row, 2)
@@ -224,6 +232,104 @@ def update_beam_transform_and_display(self, beam_name, *args):
     else:
         rgb = (1, 0, 0)
 
+    if point_size == 5:
+        # Retrieve the dose matrix and the dose voxel spacing
+        dose_img = self.display_3D_data[1]
+        dose_voxel_spacing=(
+            self.pixel_spacing3Dview[1,0],
+            self.pixel_spacing3Dview[1,1],
+            self.slice_thickness3Dview[1]
+        )
+        # Dose offset is needed for correct location of the sampled points
+        dose_offset = self.Im_Offset3Dview[1]
+        # Generate an empty image that can be used as validation
+        val_img = np.zeros((dose_img.shape))
+        # Retrieve the dose
+        dose_distance = []
+        # Retrieve each sampled point per proton spot
+        for spot in spots:
+            # Generate image, where you will score 9 pixels and 3 slices above
+            mask_img = np.zeros((dose_img.shape))
+            # Distance from the proton spot
+            distance = spot[0]
+            # Translate the spot coordinates with the PatientPosition coordinates
+            spot = spot[1] - self.Im_PatPosition3Dview[0]
+            # Translate the coordinates to image space by using the voxel spacing of the dose matrix, but also the offset of the dose matrix
+            voxel_spot = [(spot[i] - dose_offset[i]) / dose_voxel_spacing[i] for i in range(3)]
+            # Round the voxels for nearest neighbour outcome
+            voxel_spot = tuple(int(round(v)) for v in voxel_spot)
+            # If voxels are outside the dose matrix, they will be given a dose of 0
+            if voxel_spot[2] < 0 or voxel_spot[2] > val_img.shape[0]-1 or voxel_spot[1] < 0 or voxel_spot[1] > val_img.shape[1]-1 or voxel_spot[0] < 0 or voxel_spot[0] > val_img.shape[2]-1:
+                dose_distance.append((distance, 0))
+            else:
+                # The voxel spot is rearranged
+                x, y, z = voxel_spot
+                val_img[z, y, x] = 1
+                # Create volume around the voxel of 3 slices and 9 pixels, but clip if it extends the boundaries of the dose matrix
+                z_min = max(z - 1, 0)
+                z_max = min(z + 2, mask_img.shape[0])
+                y_min = max(y - 1, 0)
+                y_max = min(y + 2, mask_img.shape[1])
+                x_min = max(x - 1, 0)
+                x_max = min(x + 2, mask_img.shape[2])
+                mask_img[z_min:z_max, y_min:y_max, x_min:x_max] = 1
+                mask_img=np.flip(mask_img, axis=1)
+                total_dose = np.sum(dose_img*mask_img)
+                mean_dose = total_dose/27
+                dose_distance.append((distance, mean_dose))
+
+
+        # To get correct, the y-axis has to be flipped
+        val_img=np.flip(val_img, axis=1)
+        # Plot the voxel spot as binary image on axis two
+        self.display_numpy_volume(
+            val_img,
+            voxel_spacing= dose_voxel_spacing,
+            layer_idx=2,
+            offset=dose_offset
+        )
+
+        import matplotlib.pyplot as plt
+
+        dose_distance = np.array(dose_distance)  # shape (N, 2)
+        # Sort by distance for clean plotting
+        dose_distance = dose_distance[dose_distance[:, 0].argsort()]
+        # Extract distance and dose
+        distances = (dose_distance[:, 0] + 200)/10
+        doses = dose_distance[:, 1]
+
+        # Normalize doses
+        max_dose = np.max(doses)
+        doses_normalized = doses / max_dose
+
+        # Create figure with a name
+        fig_protons, ax_proton = plt.subplots(figsize=(6, 4), num="Proton Dose vs Distance")
+
+        # Plot
+        ax_proton.plot(distances, doses_normalized,
+                marker=None,
+                linestyle='-', color='lightgreen', linewidth=3)
+
+        # Find dose at x=0
+        if 20 in distances:
+            dose_at_zero = doses_normalized[distances == 20][0]
+        else:
+            idx_closest = np.argmin(np.abs(distances - 20))
+            dose_at_zero = doses_normalized[idx_closest]
+
+        # Fill from x=0 to dose_at_zero
+        ax_proton.fill_betweenx([20, dose_at_zero], x1=0, x2=0.05,
+                        color='lightgreen', alpha=0.9)
+
+        # Labels and formatting
+        ax_proton.set_xlabel("Distance (cm)")
+        ax_proton.set_ylabel("Normalized Dose")
+        ax_proton.grid(True)
+        ax_proton.set_ylim(0, 1.05)
+
+        plt.show(block=True)
+
+        
     # -- Only display if visible! --
     beam_trajectory_name = beam_name + '_trajectory'
     chk = self._3D_proton_table.cellWidget(row, 1)
