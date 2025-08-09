@@ -28,12 +28,7 @@ def convert_dose_matrix_to_EQD2(dose_matrix,structures,ab_values,fractions,defau
     #plt.imshow(ab_matrix[73,:,:])
     return to_EQD2(dose_matrix,fractions,ab_matrix)
 
-def display_message_box(title,msg):
-    msg_box = QMessageBox()
-    msg_box.setIcon(QMessageBox.Warning)
-    msg_box.setWindowTitle(title)
-    msg_box.setText(msg)
-    msg_box.exec()
+
 
 def on_struct_list_change(self):
     if self.patientID:
@@ -63,12 +58,14 @@ def add_ab(self):
             try:
                 ab_value = float(ab_selected)  # Convert to float
             except ValueError:
-                display_message_box('α/β values', 'please enter a valid α/β ratio')
+                QMessageBox.warning('invalid input', 'please enter a valid α/β ratio')
                 return  # Exit function if input is invalid
         
             # Ensure 'ab_values' exists in the dictionary
             if 'ab_values' not in target_series_dict:
                 target_series_dict['ab_values'] = {}
+
+            
         
             # Add/update the structure's alpha-beta value
             target_series_dict['ab_values'][structure_selected] = ab_value
@@ -76,9 +73,9 @@ def add_ab(self):
             # Call function to update the table
             update_alpha_beta_table(self)
         else:
-            display_message_box('missing input data', 'please select a valid structure and enter a valid valid α/β ratio')
+            QMessageBox.warning('missing input data', 'please select a valid structure and enter a valid valid α/β ratio')
     else:
-        display_message_box('select patient', 'no active patient found')
+        QMessageBox.warning('select patient', 'no active patient found')
 
 def delete_ab(self):
     target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
@@ -93,12 +90,12 @@ def delete_ab(self):
                 target_series_dict['ab_values'].pop(structure_selected)
                 update_alpha_beta_table(self)
             else:
-                display_message_box('missing input data', 'The structure does not exist')
+                QMessageBox.warning('missing input data', 'The structure does not exist')
         else:
-            display_message_box('missing input data', 'no structure found')
+            QMessageBox.warning('missing input data', 'no structure found')
             
     else:
-        display_message_box('missing input data', 'please select a valid structure to delete')
+        QMessageBox.warning('missing input data', 'please select a valid structure to delete')
     
 
 
@@ -175,7 +172,7 @@ def generate_eqd2_dose(self):
                      try:
                          fractions=float(fractions)
                      except:
-                         display_message_box('invalid input', 'select a valid number of fractions')
+                         QMessageBox.warning('invalid input', 'select a valid number of fractions')
                          return
                 
                      dose_matrix_eqd2=convert_dose_matrix_to_EQD2(dose_matrix,masks,ab_coeff,fractions,default_ab=3)
@@ -197,15 +194,15 @@ def generate_eqd2_dose(self):
                      populate_DICOM_tree(self)
                      print('dose added')
                  else:
-                     display_message_box('missing input data', 'enter the number of fractions')
+                     QMessageBox.warning('missing input data', 'enter the number of fractions')
              else:
-                display_message_box('missing input data', 'define α/β ratios first')
+                QMessageBox.warning('missing input data', 'define α/β ratios first')
              
     
          else:
-             display_message_box('missing input data', 'select a valid dose first')
+             QMessageBox.warning('missing input data', 'select a valid dose first')
      else:
-        display_message_box('select patient', 'no active patient found')
+        QMessageBox.warning('select patient', 'no active patient found')
      
      
 def eqd2_calc(self):
@@ -219,9 +216,9 @@ def eqd2_calc(self):
             fractions=float(fractions)
             ab_value=float(ab_value)
         except:
-            display_message_box('invalid input', 'please insert valid values')
+            QMessageBox.warning('invalid input', 'please insert valid values')
             return
         eqd2=to_EQD2(total_dose,fractions,ab_value)
         self.eqd2_out.display(np.round(eqd2,3))
     else:
-        display_message_box('missing input', 'please insert valid values')
+        QMessageBox.warning('missing input', 'please insert valid values')
