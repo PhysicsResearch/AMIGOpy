@@ -5,12 +5,10 @@ from collections import deque
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
 from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
-from PyQt5.QtCore import QTimer, QThread, QUrl
-import pyaudio
+from PyQt5.QtCore import QThread, QUrl
 from datetime import datetime
 
 WINDOW_DURATION = 10     # seconds to show on the plot
@@ -42,12 +40,14 @@ def defineInputFolder(self):
 
 
 def get_curr_file(self, init=True):
+    # Get the filename of the GCODE currently being executed on Duet
     url = f'http://{self.duet_ip}/rr_fileinfo'
     try:
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, timeout=3)
         if response.status_code == 200:
             data = response.json()
             if data['err'] == 1:
+                QMessageBox.warning(None, "Warning", "Duet could not be reached.")
                 return None
             filepath = data['fileName']
             if init == True:
@@ -60,6 +60,7 @@ def get_curr_file(self, init=True):
 
 
 def import_planned_curve(self, filename):
+    # Import the reference curve from a CSV file corresponding to the GCODE being executed
     csv_root = self.PhOperFolder.text()
     if not os.path.exists(csv_root):
         self.orig_data = None
@@ -74,6 +75,7 @@ def import_planned_curve(self, filename):
 
 
 def set_GCODE_speed(self, sf=None):
+    # Send a GCODE command to adjust the speed factor on Duet
     if self.MoVeAutoControl.isChecked() and sf is None:
         return
     if sf is None:
@@ -83,75 +85,7 @@ def set_GCODE_speed(self, sf=None):
         self.MoVeSpeedFactor.setValue(int(speed_factor))
     url = f'http://{self.duet_ip}/rr_gcode'
     code = f"M220 S{speed_factor}"
-    r = requests.get(url, {'gcode': code})
-
-
-class AudioThread(QThread):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.running = True
-        self.parent = parent
-
-    def run(self):
-        interval = 0.01 # 10 ms
-        while self.running:
-            start_time = time.time()
-            record_audio_chunk(self.parent)
-            elapsed = time.time() - start_time
-            sleep_time = max(0, interval - elapsed)
-            time.sleep(sleep_time)
-
-    def stop(self):
-        self.running = False
-        self.wait()
-
-
-def record_audio_chunk(self):
-    t = time.time() - self.t0 + self.tprint
-    try:
-        data = self.stream.read(self.CHUNK, exception_on_overflow=False)
-        samples = np.frombuffer(data, dtype=np.int16)
-        volume = np.max(np.abs(samples))
-    except:
-        volume = np.nan
-    self.audio_signal.append([t, volume])
-
-
-def initialize_audio_stream(self):
-    FORMAT = pyaudio.paInt16
-    CHANNELS = 1
-    RATE = 44100
-    self.CHUNK = 1024
-
-    p = pyaudio.PyAudio()
-    default_input_index = p.get_default_input_device_info()["index"]
-    print(f"Recording: {p.get_default_input_device_info()['name']}")
-    self.stream = p.open(format=FORMAT,
-                         channels=CHANNELS,
-                         rate=RATE,
-                         input=True,
-                         input_device_index=default_input_index,
-                         frames_per_buffer=self.CHUNK)
-
-
-class MoVeThread(QThread):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.running = True
-        self.parent = parent
-
-    def run(self):
-        interval = 0.05  # 50 ms
-        while self.running:
-            start_time = time.time()
-            update_MoVeData(self.parent)
-            elapsed = time.time() - start_time
-            sleep_time = max(0, interval - elapsed)
-            time.sleep(sleep_time)
-
-    def stop(self):
-        self.running = False
-        self.wait()
+    requests.get(url, {'gcode': code})
 
 
 def init_MoVeTab(self):
@@ -159,26 +93,19 @@ def init_MoVeTab(self):
     filename = get_curr_file(self)
     if filename is None:
         return
+    
     import_planned_curve(self, filename)
     if self.orig_data is None:
         return
 
-    self.MoVeOffsetSlider.setRange(-150, 150)
+    self.MoVeOffsetSlider.setRange(-200, 200)
 
     self.t0 = time.time() 
-    self.MoVeData = {'t': [], 'x': [], 'acq': []}
+    self.MoVeData = {'t': [], 'x': [], 'acq': [], 'geiger': []}
 
     max_points = int(WINDOW_DURATION / UPDATE_INTERVAL)
     self.time_buffer = deque(maxlen=max_points)
     self.x_buffer = deque(maxlen=max_points)
-
-    # Initialize Audio Record
-    initialize_audio_stream(self)
-    self.audio_signal = []
-
-    # Start audio thread
-    self.audio_thread = AudioThread(self)
-    self.audio_thread.start()
 
     self.fig_MoVe = Figure()  # Create a figure for the first time
     self.MoVeCanvas = FigureCanvas(self.fig_MoVe)
@@ -204,6 +131,26 @@ def init_MoVeTab(self):
     self.move_thread.start()
 
 
+class MoVeThread(QThread):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.running = True
+        self.parent = parent
+
+    def run(self):
+        interval = 0.05  # 50 ms
+        while self.running:
+            start_time = time.time()
+            update_MoVeData(self.parent)
+            elapsed = time.time() - start_time
+            sleep_time = max(0, interval - elapsed)
+            time.sleep(sleep_time)
+
+    def stop(self):
+        self.running = False
+        self.wait()
+
+
 def get_duet_status(self):
     url = f'http://{self.duet_ip}/rr_status?type=3'
     try:
@@ -211,8 +158,9 @@ def get_duet_status(self):
         if response.status_code == 200:
             data = response.json()
             x = data['coords']['xyz'][0]
+            geiger = data['sensors']['probeValue']
             t = time.time() - self.t0 + self.tprint
-            return t, x
+            return t, x, geiger
         else:
             print(f"Error: {response.status_code}")
     except Exception as e:
@@ -221,7 +169,7 @@ def get_duet_status(self):
 
 def update_MoVeData(self):
     try:
-        t, x = get_duet_status(self)
+        t, x, geiger = get_duet_status(self)
 
         if not self.MoVeAutoControl.isChecked():
             self.MoVeUserSetSpeed = self.MoVeSpeedFactor.value()
@@ -230,55 +178,56 @@ def update_MoVeData(self):
 
         self.time_buffer.append(t)
         self.x_buffer.append(x)
-        self.MoVeData['t'].append(t); self.MoVeData['x'].append(x)
+        self.MoVeData['t'].append(t)
+        self.MoVeData['x'].append(x)
         self.MoVeData['acq'].append(0)
+        self.MoVeData['geiger'].append(geiger)
         plot_MoVeData(self)
     except:
         return
     
 
 def calc_diff(self):
-    try:
-        t = self.time_buffer[-1]
-        x_meas = self.x_buffer[-1]
+    # Get the last time and position from the buffers
+    t = self.time_buffer[-1]
+    x_meas = self.x_buffer[-1]
 
-        t_offset = self.MoVeOffsetSlider.value() * UPDATE_INTERVAL
-        t0, t1 = t - 1.5, t + 1.5
+    t_offset = self.MoVeOffsetSlider.value() * UPDATE_INTERVAL
+    t0, t1 = t - 1.5, t + 1.5
 
-        t_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "timestamp"] - t_offset
-        x_plan = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "amplitude"]
+    df_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset)]
+    t_roi = df_roi["timestamp"] - t_offset
+    x_planned = df_roi["amplitude"]
 
-        # Calculate t_offset with minimum amplitude differences
-        ampl_diff = x_plan - x_meas
-        idx = ampl_diff.abs().idxmin()
-        t_diff = t - t_roi[idx]
+    # Calculate t_offset with minimum amplitude differences
+    ampl_diff = x_planned - x_meas
+    idx = ampl_diff.abs().idxmin()
+    t_diff = t - t_roi[idx]
 
-        # Calculate the speed factor adjustment, relative to user defined default 
-        sf = self.MoVeUserSetSpeed * (t_diff * np.median(self.MoVeData['x']) / 35 + 1)
-        # Clip between 90 - 120% to avoid explosive speed changes
-        sf = np.clip(sf, 0.9 * self.MoVeUserSetSpeed, 1.2 * self.MoVeUserSetSpeed)
+    # Calculate the speed factor adjustment, relative to user defined default 
+    sf = self.MoVeUserSetSpeed * (t_diff * np.median(self.MoVeData['x']) / 35 + 1)
 
-        # Set adjusted GCODE speed factor
-        set_GCODE_speed(self, sf)
-    except:
-        return
+    # Clip between 90 - 120% to avoid explosive speed changes
+    sf = np.clip(sf, 0.9 * self.MoVeUserSetSpeed, 1.2 * self.MoVeUserSetSpeed)
+
+    # Set adjusted GCODE speed factor
+    set_GCODE_speed(self, sf)
 
 
 def setAcqStart(self):
+    # Set the start of an acquisition
     self.MoVeData['acq'][-1] = 1
     QMessageBox.information(None, "Info", f"MoVe Acquistion time stamp added")
 
 
 def stop_threads(self):
-    if hasattr(self, "audio_thread") and self.audio_thread.isRunning():
-        self.audio_thread.stop()
-
+    # Set the threads to stop when MoVe is finished
     if hasattr(self, "move_thread") and self.move_thread.isRunning():
         self.move_thread.stop()
-        print('threads stopped')
 
 
 def exportMoVeData(self):
+    # Export the MoVe data to a CSV file
     csv_root = self.PhOperFolder.text()
     if not os.path.exists(csv_root):
         return
@@ -287,19 +236,13 @@ def exportMoVeData(self):
     if filename is None:
         return
     
-    if not (hasattr(self, 'MoVeData') and hasattr(self, 'audio_signal')):
+    if not hasattr(self, 'MoVeData'):
         return
 
-    now = datetime.now()
-    formatted_time = now.strftime("%Y%m%d_%H%M") 
+    formatted_time = datetime.now().strftime("%Y%m%d_%H%M") 
     filepath = os.path.join(csv_root, filename.replace(".gcode", f"_MoVe_{formatted_time}.csv"))
     df = pd.DataFrame(self.MoVeData)
     df.to_csv(filepath, index=False)
-
-    df = pd.DataFrame(self.audio_signal[0:-2])
-    df.to_csv(filepath.replace('MoVe', 'scan_intervals'))
-    QMessageBox.information(None, "Info", f"MoVe Data exported to {filepath}")
-    stop_threads(self)
 
     
 def plot_MoVeData(self):
@@ -309,18 +252,21 @@ def plot_MoVeData(self):
     # Plot measured signal from buffer
     ax.plot(self.time_buffer, self.x_buffer)
 
-    # Plot planned signal from csv data
+    # Plot past planned signal from csv data
     t0, t1 = min(self.time_buffer), max(self.time_buffer) 
     t_offset = self.MoVeOffsetSlider.value() * UPDATE_INTERVAL
-    t_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "timestamp"] - t_offset
-    x_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "amplitude"]
+    df_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset)]
+    t_roi = df_roi["timestamp"] - t_offset
+    x_roi = df_roi["amplitude"]
     ax.plot(t_roi, x_roi, color="pink")
 
-    t_roi = self.orig_data.loc[(self.orig_data["timestamp"] > t1 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset + 10), "timestamp"] - t_offset
-    x_roi = self.orig_data.loc[(self.orig_data["timestamp"] > t1 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset + 10), "amplitude"]
+    # Plot planned signal ahead of current time
+    df_roi = self.orig_data.loc[(self.orig_data["timestamp"] > t1 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset + 10)]
+    t_roi = df_roi["timestamp"] - t_offset
+    x_roi = df_roi["amplitude"]
     ax.plot(t_roi, x_roi, linestyle="--", color="pink")
 
-    # Plot timestamps of acquisition regions-of-interest
+    # Plot timestamps and window of acquisition regions-of-interest
     acq_timestamps = self.orig_data.loc[(self.orig_data["acq"] == 1) & \
                                         (self.orig_data["timestamp"] >= t0 + t_offset) & \
                                         (self.orig_data["timestamp"] <= t1 + t_offset + 10 + self.MoVeSystemLatency.value()), 
@@ -328,8 +274,8 @@ def plot_MoVeData(self):
 
     ax.vlines(acq_timestamps, 0, 20, color="red")
     ax.vlines(acq_timestamps - self.MoVeSystemLatency.value(), 0, 20, color="green")
-    [ax.axvspan(xmin=t_acq, xmax=t_acq + 6, color="lightblue") \
-     for t_acq in acq_timestamps]
+    for t_acq in acq_timestamps:
+        ax.axvspan(xmin=t_acq, xmax=t_acq + 6, color="lightblue") 
 
     # Plot timestamps of start of copies
     copy_timestamps = self.orig_data.loc[(self.orig_data["start"] == 1) & \
