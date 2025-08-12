@@ -121,6 +121,9 @@ class ContourWorker(QObject):
 
 
 def create_contour_masks(self):
+    if getattr(self, 'DataType', None) != "DICOM":
+        QMessageBox.warning(None, "Warning", "No DICOM data was found")
+        return
     # ─── 1) gather data ●────────────────────────────────────────────
     data_dict = self.dicom_data[self.patientID_struct][
         self.studyID_struct][self.modality_struct][self.series_index_struct]
