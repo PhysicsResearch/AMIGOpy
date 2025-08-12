@@ -21,10 +21,43 @@ def calculate_VMI(self):
 
     # list of attenuation coefficients (NIST) --> replace with calibration values
     energies = np.arange(40, 200, 10)
-    mu_water = np.array([0.208, 0.193, 0.184, 0.177, 0.172, 0.167, 0.164, 0.161,
-                        0.158, 0.156, 0.154, 0.152, 0.151, 0.149, 0.148, 0.147])
-    mu_iodine = np.array([3.1, 2.00, 1.55, 1.28, 1.10, 0.95, 0.85, 0.77,
-                        0.70, 0.64, 0.59, 0.54, 0.50, 0.47, 0.44, 0.41])
+    mu_water = np.array([
+    0.2683,  # 40 keV
+    0.2269,  # 50 keV
+    0.2059,  # 60 keV
+    0.1948,  # 70 keV (interp)
+    0.1837,  # 80 keV
+    0.1772,  # 90 keV (interp)
+    0.1707,  # 100 keV
+    0.1606,  # 110 keV (interp)
+    0.1505,  # 120 keV (approx, between 100 & 150)
+    0.1505,  # 130 keV (interp)
+    0.1505,  # 140 keV (interp)
+    0.1505,  # 150 keV
+    0.1438,  # 160 keV (interp)
+    0.1370,  # 170 keV (interp)
+    0.1370,  # 180 keV (interp)
+    0.1370   # 190 keV (interp)
+    ])
+
+    mu_iodine = np.array([
+    22.10,  # 40 keV
+    12.32,  # 50 keV
+    7.579,  # 60 keV
+    5.5445, # 70 keV (interp)
+    3.510,  # 80 keV
+    2.726,  # 90 keV (interp)
+    1.942,  # 100 keV
+    1.3199, # 110 keV (interp)
+    0.6978, # 120 keV (approx)
+    0.6978, # 130 keV (interp)
+    0.6978, # 140 keV (interp)
+    0.6978, # 150 keV
+    0.5310, # 160 keV (interp)
+    0.3663, # 170 keV (interp)
+    0.3663, # 180 keV (interp)
+    0.3663  # 190 keV (interp)
+    ])
 
     # indicate energies of used for decomposition
     i_low, i_high = energies.tolist().index(60), energies.tolist().index(100) # 60 keV and 100 keV
