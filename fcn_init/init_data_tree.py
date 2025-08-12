@@ -1,8 +1,13 @@
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMenu, QAction
+from PyQt5.QtWidgets import QMenu, QDialog, QMessageBox
 from fcn_display.Data_tree_general import on_DataTreeView_clicked
 from fcn_export.export_dcm import export_dicom_series
 from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_init.datatree_selection_box import SeriesPickerDialog
+import copy
+from fcn_load.populate_dcm_list import populate_DICOM_tree
+import numpy as np
+
 
 def set_context_menu(self):
     """
@@ -43,8 +48,8 @@ def on_tree_context_menu(self, pos):
     # Print the hierarchy for debugging
     print("Hierarchy:", hierarchy)
 
-    if len(hierarchy) >= 1:
-        Type = "DICOM"
+    if len(hierarchy) >= 1: 
+        Type = hierarchy[0]
     if len(hierarchy) >= 2:
         Patient = hierarchy[1].replace("PatientID: ", "")
     if len(hierarchy) >= 3:
@@ -53,6 +58,8 @@ def on_tree_context_menu(self, pos):
         Modality = hierarchy[3].replace("Modality: ", "")
     if len(hierarchy) >= 5:
         Series = hierarchy_indices[4].row()
+    if len(hierarchy) >= 6:
+        Series_sub_data = hierarchy[5]
 
     if Type == "DICOM" and len(hierarchy) == 5:
         # Build your menu
@@ -79,6 +86,80 @@ def on_tree_context_menu(self, pos):
             slice_thick = self.dicom_data[Patient][Study][Modality][Series]['metadata']['SliceThickness']
             export_dicom_series(meta_data, data, slice_thick, output_folder=None)
 
+    if Type == "DICOM" and len(hierarchy) == 6 and Series_sub_data == "Structures":
+        # Build your menu
+        menu = QMenu()
+        copy_action        = menu.addAction("Copy structures to…")
+        delete_action      = menu.addAction("Delete")
+        
+        # Pop up the menu at the global screen position
+        action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
+        if action == copy_action:
+            print("Copy action triggered")
+            on_copy_structures_from_tree_item(self, Patient, Study, Modality, Series)
+            # on_DataTreeView_clicked(self,idx)   
+        elif action == delete_action:
+            print("Delete action triggered")
+            delete_series(self, Patient, Study, Modality, Series)
+            populate_DICOM_tree(self)
+
+def on_copy_structures_from_tree_item(self, src_patient, src_study, src_modality, src_series_index):
+    excluded = {'RTPLAN','RTSTRUCT','RTDOSE'}
+    dlg = SeriesPickerDialog(
+        self.dicom_data,
+        excluded_modalities=excluded,
+        source_tuple=(src_patient, src_study, src_modality, src_series_index),
+        parent=self
+    )
+    if dlg.exec_() != QDialog.Accepted:
+        return
+
+    dst_patient = dlg.selected_patient
+    (series_label, dst_study, dst_modality, dst_series_index) = dlg.selected_series_tuple
+
+    # 1) compatibility check
+    compatible, diffs = check_series_compatibility(
+        self.dicom_data,
+        src=(src_patient, src_study, src_modality, src_series_index),
+        dst=(dst_patient, dst_study, dst_modality, dst_series_index),
+        tol=1e-6
+    )
+
+    if not compatible:
+        # Build warning text
+        details = ", ".join(diffs)
+        text = (
+            "Differences detected between original and destination.\n\n"
+            "Copy function does not account for different resolution, sizes and reference positions.\n"
+            "It is intended only for multiple reconstructions of the same image; this is NOT image registration.\n"
+            "Proceeding may cause other functions to crash.\n\n"
+            f"Differing fields: {details}\n\n"
+            "Do you want to proceed anyway?"
+        )
+        m = QMessageBox(self)
+        m.setIcon(QMessageBox.Warning)
+        m.setWindowTitle("Compatibility warning")
+        m.setText(text)
+        m.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        # rename buttons to Proceed / Cancel
+        yes_btn = m.button(QMessageBox.Yes); yes_btn.setText("Proceed")
+        no_btn  = m.button(QMessageBox.No);  no_btn.setText("Cancel")
+
+        if m.exec_() != QMessageBox.Yes:
+            return  # user cancelled
+
+    # 2) copy
+    ok, msg = copy_structures_between_series(
+        self.dicom_data,
+        src=(src_patient, src_study, src_modality, src_series_index),
+        dst=(dst_patient, dst_study, dst_modality, dst_series_index),
+        mode='overwrite'  # or 'merge'
+    )
+    print("Copy result:", ok, msg)
+
+    # 3) refresh tree if needed
+    if ok:
+        populate_DICOM_tree(self)
 
 
 def delete_series(self, Patient, Study, Modality, Series):
@@ -109,3 +190,107 @@ def delete_series(self, Patient, Study, Modality, Series):
             if not self.dicom_data[Patient]:
                 del self.dicom_data[Patient]
                 print(f"Patient '{Patient}' deleted (was empty).")
+
+
+
+
+def _equalish(a, b, tol=1e-6):
+    """Robust equality for numbers, lists/tuples, and numpy arrays."""
+    # handle None
+    if a is None or b is None:
+        return a is None and b is None
+
+    # numpy arrays
+    if isinstance(a, np.ndarray) or isinstance(b, np.ndarray):
+        a_arr = np.asarray(a)
+        b_arr = np.asarray(b)
+        if a_arr.shape != b_arr.shape:
+            return False
+        return np.allclose(a_arr, b_arr, atol=tol, rtol=0)
+
+    # sequences (PixelSpacing, ImagePositionPatient often lists/tuples)
+    if isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)):
+        if len(a) != len(b):
+            return False
+        return all(_equalish(x, y, tol) for x, y in zip(a, b))
+
+    # numbers (or strings fall back to ==)
+    try:
+        af = float(a); bf = float(b)
+        return abs(af - bf) <= tol
+    except Exception:
+        return a == b
+
+
+def check_series_compatibility(dicom_data, src, dst, tol=1e-6):
+    """
+    Return (compatible: bool, differences: list[str])
+    Compares SliceThickness, PixelSpacing, ImagePositionPatient, and 3DMatrix.
+    """
+    sp, ss, sm, si = src
+    dp, ds, dm, di = dst
+
+    s = dicom_data[sp][ss][sm][si]
+    d = dicom_data[dp][ds][dm][di]
+
+    diffs = []
+
+    # helpers to fetch safely
+    def get_meta(x, key, default=None):
+        return x.get('metadata', {}).get(key, default)
+
+    checks = [
+        ("SliceThickness", get_meta(s, "SliceThickness"), get_meta(d, "SliceThickness")),
+        ("PixelSpacing", get_meta(s, "PixelSpacing"), get_meta(d, "PixelSpacing")),
+        ("ImagePositionPatient", get_meta(s, "ImagePositionPatient"), get_meta(d, "ImagePositionPatient")),
+        ("3DMatrix", s.get("3DMatrix"), d.get("3DMatrix")),
+    ]
+
+    for name, sv, dv in checks:
+        if not _equalish(sv, dv, tol):
+            diffs.append(name)
+
+    return (len(diffs) == 0, diffs)
+
+
+def copy_structures_between_series(dicom_data, src, dst, mode='overwrite'):
+    """
+    src, dst: (patient_id, study_id, modality, series_index)
+    mode: 'overwrite' or 'merge'
+    (Same as before; no dialog logic in here so it's testable.)
+    """
+    sp, ss, sm, si = src
+    dp, ds, dm, di = dst
+
+    s_series = dicom_data[sp][ss][sm][si]
+    d_series = dicom_data[dp][ds][dm][di]
+
+    src_names = s_series.get('structures_names')
+    src_keys  = s_series.get('structures_keys')
+    src_dict  = s_series.get('structures')
+
+    if src_dict is None:
+        return False, "Source has no 'structures' to copy."
+
+    if src_names is None and isinstance(src_dict, dict):
+        src_names = [src_dict[k].get('Name', k) for k in src_dict.keys()]
+    if src_keys is None and isinstance(src_dict, dict):
+        src_keys = list(src_dict.keys())
+
+    if mode == 'overwrite':
+        d_series['structures'] = copy.deepcopy(src_dict)
+        if src_names is not None:
+            d_series['structures_names'] = copy.deepcopy(src_names)
+        if src_keys is not None:
+            d_series['structures_keys'] = copy.deepcopy(src_keys)
+    elif mode == 'merge':
+        d_series.setdefault('structures', {})
+        for k, v in src_dict.items():
+            d_series['structures'][k] = copy.deepcopy(v)
+        d_series['structures_keys']  = list(d_series['structures'].keys())
+        d_series['structures_names'] = [d_series['structures'][k].get('Name', k)
+                                        for k in d_series['structures_keys']]
+    else:
+        return False, f"Unknown mode: {mode}"
+
+    return True, "Structures copied."
