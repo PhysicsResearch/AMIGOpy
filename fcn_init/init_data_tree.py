@@ -191,41 +191,42 @@ def delete_series(self, Patient, Study, Modality, Series):
                 del self.dicom_data[Patient]
                 print(f"Patient '{Patient}' deleted (was empty).")
 
-
-
-
 def _equalish(a, b, tol=1e-6):
-    """Robust equality for numbers, lists/tuples, and numpy arrays."""
-    # handle None
     if a is None or b is None:
         return a is None and b is None
-
-    # numpy arrays
-    if isinstance(a, np.ndarray) or isinstance(b, np.ndarray):
-        a_arr = np.asarray(a)
-        b_arr = np.asarray(b)
-        if a_arr.shape != b_arr.shape:
-            return False
-        return np.allclose(a_arr, b_arr, atol=tol, rtol=0)
-
     # sequences (PixelSpacing, ImagePositionPatient often lists/tuples)
     if isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)):
         if len(a) != len(b):
             return False
-        return all(_equalish(x, y, tol) for x, y in zip(a, b))
-
-    # numbers (or strings fall back to ==)
+        # numeric tolerant compare where possible
+        def as_float(x):
+            try: return float(x)
+            except Exception: return x
+        aa = [as_float(x) for x in a]
+        bb = [as_float(x) for x in b]
+        return all((abs(x - y) <= tol) if isinstance(x,(int,float)) and isinstance(y,(int,float)) else (x == y)
+                   for x, y in zip(aa, bb))
+    # numbers (strings fall back to ==)
     try:
         af = float(a); bf = float(b)
         return abs(af - bf) <= tol
     except Exception:
         return a == b
 
+def _shape_of_3d(x):
+    if x is None:
+        return None
+    arr = np.asarray(x)
+    return tuple(arr.shape)
 
 def check_series_compatibility(dicom_data, src, dst, tol=1e-6):
     """
     Return (compatible: bool, differences: list[str])
-    Compares SliceThickness, PixelSpacing, ImagePositionPatient, and 3DMatrix.
+    Compares:
+      - metadata['SliceThickness'] (tolerant numeric compare)
+      - metadata['PixelSpacing'] (elementwise tolerant compare)
+      - metadata['ImagePositionPatient'] (elementwise tolerant compare)
+      - 3DMatrix **shape only** (no content check)
     """
     sp, ss, sm, si = src
     dp, ds, dm, di = dst
@@ -235,20 +236,22 @@ def check_series_compatibility(dicom_data, src, dst, tol=1e-6):
 
     diffs = []
 
-    # helpers to fetch safely
     def get_meta(x, key, default=None):
         return x.get('metadata', {}).get(key, default)
 
-    checks = [
-        ("SliceThickness", get_meta(s, "SliceThickness"), get_meta(d, "SliceThickness")),
-        ("PixelSpacing", get_meta(s, "PixelSpacing"), get_meta(d, "PixelSpacing")),
-        ("ImagePositionPatient", get_meta(s, "ImagePositionPatient"), get_meta(d, "ImagePositionPatient")),
-        ("3DMatrix", s.get("3DMatrix"), d.get("3DMatrix")),
-    ]
+    # Metadata value checks (as before)
+    if not _equalish(get_meta(s, "SliceThickness"), get_meta(d, "SliceThickness"), tol):
+        diffs.append("SliceThickness")
+    if not _equalish(get_meta(s, "PixelSpacing"), get_meta(d, "PixelSpacing"), tol):
+        diffs.append("PixelSpacing")
+    if not _equalish(get_meta(s, "ImagePositionPatient"), get_meta(d, "ImagePositionPatient"), tol):
+        diffs.append("ImagePositionPatient")
 
-    for name, sv, dv in checks:
-        if not _equalish(sv, dv, tol):
-            diffs.append(name)
+    # 3DMatrix: compare shapes only
+    s_shape = _shape_of_3d(s.get("3DMatrix"))
+    d_shape = _shape_of_3d(d.get("3DMatrix"))
+    if s_shape != d_shape:
+        diffs.append(f"3DMatrix shape {s_shape} vs {d_shape}")
 
     return (len(diffs) == 0, diffs)
 
