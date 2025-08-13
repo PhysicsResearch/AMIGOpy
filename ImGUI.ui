@@ -8608,6 +8608,13 @@ p, li { white-space: pre-wrap; }
                   </property>
                  </widget>
                 </item>
+                <item row="3" column="2">
+                 <widget class="QCheckBox" name="stop_until_radiation">
+                  <property name="text">
+                   <string>Stop until radiation</string>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </widget>
              </widget>
@@ -8633,7 +8640,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>213</width>
+             <width>172</width>
              <height>127</height>
             </rect>
            </property>
@@ -8775,7 +8782,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>159</width>
+             <width>141</width>
              <height>97</height>
             </rect>
            </property>
@@ -8842,8 +8849,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>206</width>
-             <height>139</height>
+             <width>174</width>
+             <height>135</height>
             </rect>
            </property>
            <attribute name="label">
