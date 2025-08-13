@@ -143,7 +143,7 @@ def on_DataTreeView_clicked(self,index):
                     update_structure_list_widget(self,
                                                 self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'],
                                                 self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys'],
-                                                )
+                                                mode=0)
                 # find reference series
                 Ref = None
                 if 'ReferencedFrameOfReferenceSequence' in self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']:
@@ -191,12 +191,20 @@ def on_DataTreeView_clicked(self,index):
             # check the current module
             if currentTabText == "View":
                 
-                if len(hierarchy) >= 6 and hierarchy[5] == "Structures": 
-                    # structures withing a SERIES
-                    update_structure_list_widget(self,
-                                self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'],
-                                self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys']
-                            )
+                try:
+                    series = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+                except (KeyError, IndexError, TypeError):
+                    if hasattr(self, 'STRUCTlist') and self.STRUCTlist is not None:
+                        self.STRUCTlist.clear()
+                else:
+                    if 'structures_names' in series:
+                        names = series['structures_names']
+                        keys  = series.get('structures_keys', [None] * len(names))
+                        # keep your existing call style
+                        update_structure_list_widget(self, names, keys)
+                    else:
+                        if hasattr(self, 'STRUCTlist') and self.STRUCTlist is not None:
+                            self.STRUCTlist.clear()
 
 
                 # list series from the same acquisition and populate a table so the user can pick what to display
@@ -371,12 +379,20 @@ def on_DataTreeView_clicked(self,index):
                 #
             if currentTabText == "Segmentation":
 
-                if len(hierarchy) >= 6 and hierarchy[5] == "Structures": 
-                    # structures withing a SERIES
-                    update_structure_list_widget(self,
-                                self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'],
-                                self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys']
-                            )
+                try:
+                    series = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+                except (KeyError, IndexError, TypeError):
+                    if hasattr(self, 'STRUCTlist') and self.STRUCTlist is not None:
+                        self.STRUCTlist.clear()
+                else:
+                    if 'structures_names' in series:
+                        names = series['structures_names']
+                        keys  = series.get('structures_keys', [None] * len(names))
+                        # keep your existing call style
+                        update_structure_list_widget(self, names, keys)
+                    else:
+                        if hasattr(self, 'STRUCTlist') and self.STRUCTlist is not None:
+                            self.STRUCTlist.clear()
                     
                 if self.series_changed:
                     update_seg_struct_list(self)
