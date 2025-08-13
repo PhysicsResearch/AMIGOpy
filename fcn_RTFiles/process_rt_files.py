@@ -15,62 +15,106 @@ from PyQt5.QtCore import Qt
 
 
 
-class ColorCheckItem(QWidget):
-    """
-    A custom widget that displays:
-      - A checkbox (to toggle the structure on/off),
-      - A label (for the structure name),
-      - A color-selection button,
-      - A 'Line Width' spinbox,
-      - A 'Transparency' spinbox,
-      - A 'Fill' checkbox (to indicate whether to display a filled polygon).
-    """
+from PyQt5.QtWidgets import (
+    QWidget, QHBoxLayout, QCheckBox, QLabel, QPushButton, QDoubleSpinBox, QColorDialog
+)
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import Qt
 
-    def __init__(self, text, parent=None):
+class set_struct_table(QWidget):
+    """
+    mode=0 → checkbox + name only
+    mode=1 → + color button, line width, transparency
+    """
+    def __init__(
+        self, text, idx, mode=1, parent=None,
+        on_toggle=None, on_color=None, on_line_width=None, on_transparency=None,
+        on_refresh=None,
+        init_color=None, init_line_width=None, init_transparency=None
+    ):
         super().__init__(parent)
+        self._on_refresh = on_refresh
+        self._on_color = on_color
         self.selectedColor = None
+        self.idx = idx
+        self._mode = 1 if mode else 0
 
-        # 1) Master checkbox to enable/disable the structure
+        # Always-visible
         self.checkbox = QCheckBox()
-        # 2) Label for the structure name
         self.label = QLabel(text)
 
-        # 3) Button to pick color
+        # Optional controls
+        self.controls_container = QWidget(self)
+        cc = QHBoxLayout(self.controls_container)
+        cc.setContentsMargins(0, 0, 0, 0)
+
         self.color_button = QPushButton("Select Color")
         self.color_button.setMaximumWidth(100)
         self.color_button.clicked.connect(self.openColorDialog)
 
-        # 4) Spinbox for line width
         self.line_width_spinbox = QDoubleSpinBox()
         self.line_width_spinbox.setRange(0.1, 50.0)
-        self.line_width_spinbox.setValue(2.0)
-        self.line_width_spinbox.setSingleStep(0.5)
         self.line_width_spinbox.setDecimals(1)
+        self.line_width_spinbox.setSingleStep(0.5)
 
-        # 5) Spinbox for transparency (0=opaque, 1=fully transparent)
         self.transparency_spinbox = QDoubleSpinBox()
         self.transparency_spinbox.setRange(0.0, 1.0)
-        self.transparency_spinbox.setValue(0.5)
-        self.transparency_spinbox.setSingleStep(0.1)
         self.transparency_spinbox.setDecimals(2)
+        self.transparency_spinbox.setSingleStep(0.1)
 
-        # 6) Checkbox to indicate whether to fill the contour
-        # self.fill_checkbox = QCheckBox("Fill")
-        # self.fill_checkbox.setChecked(False)  # default: wireframe
+        cc.addWidget(self.color_button)
+        cc.addWidget(QLabel("LineW:"))
+        cc.addWidget(self.line_width_spinbox)
+        cc.addWidget(QLabel("Transp:"))
+        cc.addWidget(self.transparency_spinbox)
 
-        # Lay out horizontally
-        layout = QHBoxLayout()
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.checkbox)
         layout.addWidget(self.label)
-        layout.addWidget(self.color_button)
-        layout.addWidget(QLabel("LineW:"))
-        layout.addWidget(self.line_width_spinbox)
-        layout.addWidget(QLabel("Transp:"))
-        layout.addWidget(self.transparency_spinbox)
-        # layout.addWidget(self.fill_checkbox)
+        layout.addWidget(self.controls_container)
+        layout.addStretch(1)
+        self.controls_container.setVisible(bool(self._mode))
 
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(layout)
+        # Callbacks
+        self._on_color = on_color
+
+        if self._mode == 1:
+            # one handler to do both: save flag + refresh views
+            if on_toggle is not None or on_refresh is not None:
+                def _on_toggled(checked, i=self.idx):
+                    if on_toggle is not None:
+                        on_toggle(i, checked)
+                    if on_refresh is not None:
+                        on_refresh()
+                self.checkbox.toggled.connect(_on_toggled)
+
+            if on_line_width is not None:
+                def _lw(v, i=self.idx):
+                    on_line_width(i, float(v))
+                    if self._on_refresh: self._on_refresh()
+                self.line_width_spinbox.valueChanged.connect(_lw)
+            if on_transparency is not None:
+                def _tr(v, i=self.idx):
+                    on_transparency(i, float(v))
+                    if self._on_refresh: self._on_refresh()
+                self.transparency_spinbox.valueChanged.connect(_tr)
+
+        # Initialize controls in mode=1
+        if self._mode == 1:
+            self.set_color(QColor(init_color) if init_color else QColor(Qt.white))
+            self.line_width_spinbox.setValue(2.0 if init_line_width is None else float(init_line_width))
+            self.transparency_spinbox.setValue(0.5 if init_transparency is None else float(init_transparency))
+
+    def set_checked(self, checked: bool):
+        # programmatic set without emitting signals (no redraw during init)
+        old = self.checkbox.blockSignals(True)
+        self.checkbox.setChecked(bool(checked))
+        self.checkbox.blockSignals(old)
+
+    def set_color(self, color: QColor):
+        self.selectedColor = color
+        self.color_button.setStyleSheet(f"background-color: {color.name()};")
 
     def openColorDialog(self):
         color = QColorDialog.getColor(
@@ -78,23 +122,140 @@ class ColorCheckItem(QWidget):
             parent=self
         )
         if color.isValid():
-            self.selectedColor = color
-            self.color_button.setStyleSheet(f"background-color: {color.name()};")
+            self.set_color(color)
+            if self._on_color is not None:
+                self._on_color(self.idx, color.name())
+            if self._on_refresh is not None:
+                self._on_refresh()
 
 
-def update_structure_list_widget(self, structure_names, structure_keys):
-    """
-    Update self.STRUCTlist (a QListWidget) with custom items that display the structure name,
-    a checkbox, and a color-selection button. The corresponding structure key is stored in the custom widget.
-    """
+def _refresh_all_views(self):
+    from fcn_display.display_images  import disp_structure_overlay_axial, disp_structure_overlay_coronal, disp_structure_overlay_sagittal
+    disp_structure_overlay_sagittal(self)
+    disp_structure_overlay_coronal(self)
+    disp_structure_overlay_axial(self)
+
+
+
+def update_structure_list_widget(self, structure_names, structure_keys, mode=1):
+    from functools import partial
     self.STRUCTlist.clear()
-    for name, key in zip(structure_names, structure_keys):
+    n = len(structure_names)
+
+    # ensure arrays exist
+    view_flags   = _ensure_structures_view(self, n)
+    colors       = _ensure_structures_color(self, n)
+    line_widths  = _ensure_structures_line_width(self, n)
+    transpars    = _ensure_structures_transparency(self, n)
+
+    for idx, (name, key) in enumerate(zip(structure_names, structure_keys)):
         list_item = QListWidgetItem(self.STRUCTlist)
-        custom_item = ColorCheckItem(name)
-        custom_item.structure_key = key  # Save the key for later lookup
+
+        on_toggle       = (lambda i, checked: _set_structure_view_flag(self, i, checked)) if mode == 1 else None
+        on_color        = (lambda i, hexstr:   _set_structure_color(self, i, hexstr))      if mode == 1 else None
+        on_line_width   = (lambda i, v:        _set_structure_line_width(self, i, v))      if mode == 1 else None
+        on_transparency = (lambda i, v:        _set_structure_transparency(self, i, v))    if mode == 1 else None
+        on_refresh = (partial(_refresh_all_views, self) if mode == 1 else None)
+
+        custom_item = set_struct_table(
+            name, idx=idx, mode=mode,
+            on_toggle=on_toggle,
+            on_color=on_color,
+            on_line_width=on_line_width,
+            on_transparency=on_transparency,
+            on_refresh=on_refresh,
+            init_color=colors[idx] if idx < len(colors) else "#ffffff",
+            init_line_width=line_widths[idx] if idx < len(line_widths) else 2.0,
+            init_transparency=transpars[idx] if idx < len(transpars) else 0.5
+        )
+        custom_item.structure_key = key
+
+        # programmatic init: won't trigger redraw thanks to blockSignals
+        custom_item.set_checked(bool(view_flags[idx]) if idx < len(view_flags) else False)
+
         list_item.setSizeHint(custom_item.sizeHint())
         self.STRUCTlist.addItem(list_item)
         self.STRUCTlist.setItemWidget(list_item, custom_item)
+
+    # ── Normalize widths across rows ───────────────────────────────────────────
+    rows = []
+    for i in range(self.STRUCTlist.count()):
+        item = self.STRUCTlist.item(i)
+        w = self.STRUCTlist.itemWidget(item)
+        if w is not None:
+            # make sure hints are up-to-date
+            if w.layout() is not None:
+                w.layout().activate()
+            w.adjustSize()
+            rows.append((item, w))
+
+    if rows:
+        # pick maximums
+        max_row_w      = max((w.sizeHint().width() for _, w in rows), default=0)
+        max_label_w    = max((w.label.sizeHint().width() for _, w in rows), default=0)
+        # controls_container might be hidden in mode=0
+        max_controls_w = max((w.controls_container.sizeHint().width()
+                              for _, w in rows if w.controls_container.isVisible()), default=0)
+
+        for item, w in rows:
+            # align columns
+            w.label.setMinimumWidth(max_label_w)
+            if w.controls_container.isVisible():
+                w.controls_container.setMinimumWidth(max_controls_w)
+            # enforce same total row width (prevents narrower rows)
+            w.setMinimumWidth(max_row_w)
+            # refresh item size hint (height primarily matters in QListWidget)
+            item.setSizeHint(w.sizeHint())
+
+
+
+def _series_dict(self):
+    return self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+
+def _ensure_array(self, key, n, default_value):
+    s = _series_dict(self)
+    arr = s.get(key)
+    if not isinstance(arr, list):
+        arr = []
+    # resize while preserving existing values
+    if len(arr) < n:
+        arr = arr + [default_value] * (n - len(arr))
+    elif len(arr) > n:
+        arr = arr[:n]
+    s[key] = arr
+    return arr
+
+# view flags (0/1)
+def _ensure_structures_view(self, n):           return _ensure_array(self, 'structures_view',         n, 0)
+
+def _set_structure_view_flag(self, idx, checked):
+    v = _ensure_structures_view(self, len(_series_dict(self).get('structures_names', [])))
+    if 0 <= idx < len(v):
+        v[idx] = 1 if checked else 0
+
+# colors as hex strings "#rrggbb"
+def _ensure_structures_color(self, n):          return _ensure_array(self, 'structures_color',        n, "#1b87ae")
+
+def _set_structure_color(self, idx, hexstr):
+    v = _ensure_structures_color(self, len(_series_dict(self).get('structures_names', [])))
+    if 0 <= idx < len(v):
+        v[idx] = hexstr
+
+# line widths as float
+def _ensure_structures_line_width(self, n):     return _ensure_array(self, 'structures_line_width',   n, 2.0)
+
+def _set_structure_line_width(self, idx, val):
+    v = _ensure_structures_line_width(self, len(_series_dict(self).get('structures_names', [])))
+    if 0 <= idx < len(v):
+        v[idx] = float(val)
+
+# transparency as float [0,1]
+def _ensure_structures_transparency(self, n):   return _ensure_array(self, 'structures_transparency', n, 0.5)
+
+def _set_structure_transparency(self, idx, val):
+    v = _ensure_structures_transparency(self, len(_series_dict(self).get('structures_names', [])))
+    if 0 <= idx < len(v):
+        v[idx] = float(val)
 
 def process_rt_struct(self, rtstruct, structured_data):
     """

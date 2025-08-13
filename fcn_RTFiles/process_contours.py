@@ -2,7 +2,7 @@ import numpy as np
 from skimage.draw import polygon
 from skimage.measure import find_contours
 from fcn_load.populate_dcm_list import populate_DICOM_tree
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QDialog
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
 import vtk
@@ -11,6 +11,7 @@ import vtk
 from PyQt5.QtCore import QObject, QThread, pyqtSignal, Qt
 from PyQt5.QtWidgets import QProgressDialog, QMessageBox
 from fcn_materialassignment.material_map import update_mat_struct_list
+from fcn_init.datatree_selection_box import SeriesPickerDialog
 
 
 def find_matching_series(self, Ref):
@@ -62,7 +63,7 @@ class ContourWorker(QObject):
 
     def __init__(self, parent, data_dict, target_series_dict,
                  structures_keys, structures_names,
-                 mask_shape, spacing, origin, start_index):
+                 mask_shape, spacing, origin, start_index, pixel_spac):
         super().__init__()
         self.parent = parent
         self.data_dict = data_dict
@@ -73,6 +74,7 @@ class ContourWorker(QObject):
         self.spacing = spacing
         self.origin = origin
         self.current_index = start_index
+        self.px_space = pixel_spac
         self._is_cancelled = False
 
     def cancel(self):
@@ -97,7 +99,7 @@ class ContourWorker(QObject):
             else:
                 mask, all_points = create_3d_mask_for_structure_simple(
                     self.parent, structure,
-                    self.mask_shape, self.spacing, self.origin
+                    self.mask_shape, self.spacing, self.origin, self.px_space
                 )
                 if not mask.any():
                     mask = np.zeros(self.mask_shape, dtype=np.uint8)
@@ -125,18 +127,33 @@ def create_contour_masks(self):
         QMessageBox.warning(None, "Warning", "No DICOM data was found")
         return
     # ─── 1) gather data ●────────────────────────────────────────────
-    data_dict = self.dicom_data[self.patientID_struct][
-        self.studyID_struct][self.modality_struct][self.series_index_struct]
-    target = self.dicom_data[self.patientID][
-        self.studyID][self.modality][self.series_index]
+    data_dict = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]
 
-    volume_3d = target.get('3DMatrix', None)
+    # ── 2) Ask user to pick the destination/target series ───────────
+    dlg = SeriesPickerDialog(
+        self.dicom_data,
+        excluded_modalities={'RTPLAN', 'RTSTRUCT', 'RTDOSE'},
+        source_tuple=(self.patientID_struct, self.studyID_struct, self.modality_struct, self.series_index_struct),
+        parent=self
+    )
 
-    
-    if volume_3d is None:
-        QMessageBox.warning(self, "Select an image series",
-                            "No image data found—did you select the correct series?")
+    if dlg.exec_() != QDialog.Accepted or dlg.selected_series_tuple is None:
+        QMessageBox.information(self, "Canceled", "No destination series selected.")
         return
+
+    dest_patient = dlg.selected_patient
+    _, dest_study, dest_modality, dest_index = dlg.selected_series_tuple
+
+    # Validate and fetch the selected target
+    try:
+        target = self.dicom_data[dest_patient][dest_study][dest_modality][dest_index]
+    except Exception:
+        QMessageBox.warning(self, "Error", "Selected destination series could not be loaded.")
+        return
+
+    pixel_spac     = np.array(self.dicom_data[dest_patient][dest_study][dest_modality][dest_index]['metadata']['PixelSpacing'])[None, :]
+    slice_thick    = np.array(self.dicom_data[dest_patient][dest_study][dest_modality][dest_index]['metadata']['SliceThickness'])
+    Im_PatPosition = np.array(self.dicom_data[dest_patient][dest_study][dest_modality][dest_index]['metadata']['ImagePositionPatient'])
 
     # ─── 2) Replace vs. Append ●────────────────────────────────────
     existing = target.get('structures', {})
@@ -164,10 +181,11 @@ def create_contour_masks(self):
         start_index = 1
 
     # ─── 3) geometry ●───────────────────────────────────────────────
+    volume_3d = target.get('3DMatrix', None)
     mask_shape = volume_3d.shape
-    z_sp, yx_sp = self.slice_thick[0], self.pixel_spac[0, :2]
+    z_sp, yx_sp = slice_thick, pixel_spac[0, :2]
     spacing = (z_sp, *yx_sp)
-    origin  = tuple(self.Im_PatPosition[0, :3])
+    origin  = tuple(Im_PatPosition)
 
     # ─── 4) filter by checkbox ●────────────────────────────────────
     all_keys  = data_dict.get('structures_keys', [])
@@ -197,7 +215,7 @@ def create_contour_masks(self):
     worker = ContourWorker(self, data_dict, target,
                            sel_keys, sel_names,
                            mask_shape, spacing, origin,
-                           start_index)
+                           start_index,pixel_spac)
     thread = QThread(self)
     worker.moveToThread(thread)
 
@@ -258,7 +276,7 @@ def build_contours_for_structure(mask_3d):
 
     return contours
 
-def create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, origin):
+def create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, origin, pixel_spac):
     mask_3d     = np.zeros(mask_shape, dtype=np.uint8)
     contour_seq = getattr(structure, 'ContourSequence', [])
     # Collect ALL original DICOM points in a list
@@ -289,7 +307,7 @@ def create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, or
         # Append all points to the big list
         all_original_points.append(points)
         # Need to flip y to match
-        points[:, 1] = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - points[:, 1]  # Y coordinate
+        points[:, 1] = (mask_3d.shape[1] * pixel_spac[0, 0]) - points[:, 1]  # Y coordinate
 
         indices_float = (points - np.array([origin_x, origin_y, origin_z])) / [x_spacing, y_spacing, z_spacing]
         indices = indices_float.round().astype(int)
