@@ -18,6 +18,7 @@ from fcn_segmentation.functions_segmentation import plot_hist, update_seg_struct
 from fcn_materialassignment.material_map import update_mat_struct_list
 from fcn_display.Data_tree_view_axes_update import update_axial_image, update_sagittal_image, update_coronal_image
 from fcn_display.Data_tree_3Dview import set_3DViewer_data
+from fcn_display.view_tab_compare_previous_image import compare_view_previous
 from fcn_3Dview.protons_3D_plan import add_beam_to_proton_table
 import vtk
 from vtkmodules.util.numpy_support import numpy_to_vtk
@@ -273,26 +274,8 @@ def on_DataTreeView_clicked(self,index):
                 self.SagittalSlider.setMaximum(self.display_data[idx].shape[2] - 1)
                 self.CoronalSlider.setMaximum(self.display_data[idx].shape[1] - 1)
                 #
-                self.AxialSlider.setValue(Ax_s)
-                self.SagittalSlider.setValue(Sa_s)
-                self.CoronalSlider.setValue(Co_s)
-                #
-                self.windowLevelAxial[idx].SetWindow(Window)
-                self.windowLevelAxial[idx].SetLevel(Level)
-                self.windowLevelSagittal[idx].SetWindow(Window)
-                self.windowLevelSagittal[idx].SetLevel(Level)
-                self.windowLevelCoronal[idx].SetWindow(Window)
-                self.windowLevelCoronal[idx].SetLevel(Level)
-                #   
-                #
-                self.textActorAxialWL.SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
-                self.textActorSagittalWL.SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
-                self.textActorCoronalWL.SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
-                #
-                self.renAxial.ResetCamera()
-                self.renSagittal.ResetCamera()
-                self.renCoronal.ResetCamera() 
-                #
+                # compare previous image agains current and reset camera update window/level if needed
+                compare_view_previous(self, Window, Level, idx)
                 #
                 displayaxial(self)
                 displaysagittal(self)
@@ -962,4 +945,6 @@ def populate_CT4D_table(self):
 
             # Increment the sequence ID for the next row
             sequence_id += 1
+
+
 

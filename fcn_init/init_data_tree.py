@@ -100,8 +100,93 @@ def on_tree_context_menu(self, pos):
             # on_DataTreeView_clicked(self,idx)   
         elif action == delete_action:
             print("Delete action triggered")
-            delete_series(self, Patient, Study, Modality, Series)
+            delete_structure_set(self, Patient, Study, Modality, Series)
             populate_DICOM_tree(self)
+
+def delete_structure_set(self, src_patient, src_study, src_modality, src_series_index):
+    """
+    Remove all structure-related data from a series, safely:
+      - 'structures', 'structures_names', 'structures_keys'
+      - 'structures_view', 'structures_color', 'structures_line_width', 'structures_transparency'
+    If the deleted series is the one currently displayed, remove overlay actors and clear the list UI.
+    Returns True if anything was deleted, else False.
+    """
+    # ---- locate the series dict safely ----
+    try:
+        s_series = self.dicom_data[src_patient][src_study][src_modality][src_series_index]
+    except (KeyError, IndexError, TypeError):
+        return False
+
+    # ---- if this is the currently displayed series, remove any overlay actors ----
+    is_current = (
+        getattr(self, 'patientID', None)   == src_patient  and
+        getattr(self, 'studyID', None)     == src_study    and
+        getattr(self, 'modality', None)    == src_modality and
+        getattr(self, 'series_index', None)== src_series_index
+    )
+    if is_current:
+        # Axial
+        try:
+            ren_ax = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+            for a in getattr(self, 'structure_actors_ax', []):
+                try: ren_ax.RemoveActor(a)
+                except Exception: pass
+            self.structure_actors_ax = []
+        except Exception:
+            pass
+        # Sagittal
+        try:
+            ren_sa = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+            for a in getattr(self, 'structure_actors_sa', []):
+                try: ren_sa.RemoveActor(a)
+                except Exception: pass
+            self.structure_actors_sa = []
+        except Exception:
+            pass
+        # Coronal
+        try:
+            ren_co = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+            for a in getattr(self, 'structure_actors_co', []):
+                try: ren_co.RemoveActor(a)
+                except Exception: pass
+            self.structure_actors_co = []
+        except Exception:
+            pass
+
+    # ---- delete structure-related keys safely ----
+    keys_to_delete = [
+        'structures',
+        'structures_names',
+        'structures_keys',
+        'structures_view',
+        'structures_color',
+        'structures_line_width',
+        'structures_transparency',
+    ]
+    deleted_any = False
+    for k in keys_to_delete:
+        if k in s_series:
+            s_series.pop(k, None)
+            deleted_any = True
+
+    # ---- clear the UI list if we’re looking at this series ----
+    if is_current and hasattr(self, 'STRUCTlist') and self.STRUCTlist is not None:
+        try:
+            self.STRUCTlist.clear()
+        except Exception:
+            pass
+
+    # ---- quick re-render of the three views (cheap) ----
+    if is_current:
+        try: self.vtkWidgetAxial.GetRenderWindow().Render()
+        except Exception: pass
+        try: self.vtkWidgetSagittal.GetRenderWindow().Render()
+        except Exception: pass
+        try: self.vtkWidgetCoronal.GetRenderWindow().Render()
+        except Exception: pass
+
+    return deleted_any
+
 
 def on_copy_structures_from_tree_item(self, src_patient, src_study, src_modality, src_series_index):
     excluded = {'RTPLAN','RTSTRUCT','RTDOSE'}
@@ -117,18 +202,18 @@ def on_copy_structures_from_tree_item(self, src_patient, src_study, src_modality
     dst_patient = dlg.selected_patient
     (series_label, dst_study, dst_modality, dst_series_index) = dlg.selected_series_tuple
 
-    # 1) compatibility check
     compatible, diffs = check_series_compatibility(
         self.dicom_data,
         src=(src_patient, src_study, src_modality, src_series_index),
         dst=(dst_patient, dst_study, dst_modality, dst_series_index),
         tol=1e-6
     )
-
     if not compatible:
-        # Build warning text
         details = ", ".join(diffs)
-        text = (
+        m = QMessageBox(self)
+        m.setIcon(QMessageBox.Warning)
+        m.setWindowTitle("Compatibility warning")
+        m.setText(
             "Differences detected between original and destination.\n\n"
             "Copy function does not account for different resolution, sizes and reference positions.\n"
             "It is intended only for multiple reconstructions of the same image; this is NOT image registration.\n"
@@ -136,31 +221,74 @@ def on_copy_structures_from_tree_item(self, src_patient, src_study, src_modality
             f"Differing fields: {details}\n\n"
             "Do you want to proceed anyway?"
         )
-        m = QMessageBox(self)
-        m.setIcon(QMessageBox.Warning)
-        m.setWindowTitle("Compatibility warning")
-        m.setText(text)
         m.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        # rename buttons to Proceed / Cancel
-        yes_btn = m.button(QMessageBox.Yes); yes_btn.setText("Proceed")
-        no_btn  = m.button(QMessageBox.No);  no_btn.setText("Cancel")
-
+        m.button(QMessageBox.Yes).setText("Proceed")
+        m.button(QMessageBox.No).setText("Cancel")
         if m.exec_() != QMessageBox.Yes:
-            return  # user cancelled
+            return
 
-    # 2) copy
+    # Destination series dict
+    try:
+        dst_series = self.dicom_data[dst_patient][dst_study][dst_modality][dst_series_index]
+    except (KeyError, IndexError, TypeError):
+        QMessageBox.warning(self, "Error", "Destination series not found.")
+        return
+
+    def _dst_has_structs(s):
+        return (
+            isinstance(s.get('structures'), dict) and s['structures'] or
+            (isinstance(s.get('structures_names'), list) and s['structures_names']) or
+            (isinstance(s.get('structures_keys'), list) and s['structures_keys'])
+        )
+
+    mode = 'overwrite'
+    if _dst_has_structs(dst_series):
+        q = QMessageBox(self)
+        q.setIcon(QMessageBox.Question)
+        q.setWindowTitle("Destination already has structures")
+        q.setText("The destination series already contains structures.\n\nHow would you like to proceed?")
+        merge_btn   = q.addButton("Merge", QMessageBox.ActionRole)
+        replace_btn = q.addButton("Replace", QMessageBox.DestructiveRole)
+        cancel_btn  = q.addButton(QMessageBox.Cancel)
+        q.setDefaultButton(merge_btn)
+        q.exec_()
+        clicked = q.clickedButton()
+        if clicked is cancel_btn:
+            return
+        mode = 'merge' if clicked is merge_btn else 'overwrite'
+
+        # Snapshot current key order + state to preserve on merge
+        if mode == 'merge':
+            dst_series['_prev_structures_keys'] = list(dst_series.get('structures_keys', []))
+        else:
+            # Replace: clear everything so state recreates fresh
+            try:
+                self.delete_structure_set(dst_patient, dst_study, dst_modality, dst_series_index)
+            except Exception:
+                pass
+
+    # Do the copy
     ok, msg = copy_structures_between_series(
         self.dicom_data,
         src=(src_patient, src_study, src_modality, src_series_index),
         dst=(dst_patient, dst_study, dst_modality, dst_series_index),
-        mode='overwrite'  # or 'merge'
+        mode=mode  # 'merge' or 'overwrite'
     )
     print("Copy result:", ok, msg)
+    if not ok:
+        return
 
-    # 3) refresh tree if needed
-    if ok:
-        populate_DICOM_tree(self)
+    # After successful copy:
+    _clear_structure_display_state(dst_series)
 
+
+    # Refresh UI
+    populate_DICOM_tree(self)
+
+
+def _clear_structure_display_state(series):
+    for k in ('structures_view','structures_color','structures_line_width','structures_transparency'):
+        series.pop(k, None)
 
 def delete_series(self, Patient, Study, Modality, Series):
     """
