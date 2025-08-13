@@ -133,7 +133,7 @@ def create_contour_masks(self):
     dlg = SeriesPickerDialog(
         self.dicom_data,
         excluded_modalities={'RTPLAN', 'RTSTRUCT', 'RTDOSE'},
-        source_tuple=(self.patientID_struct, self.studyID_struct, self.modality_struct, self.series_index_struct),
+        source_tuple=(self.patientID_struct, self.StructRefSeries.text()),
         parent=self
     )
 

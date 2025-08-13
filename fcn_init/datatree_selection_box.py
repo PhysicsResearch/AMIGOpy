@@ -23,8 +23,16 @@ class SeriesPickerDialog(QDialog):
         layout = QVBoxLayout(self)
 
         if source_tuple is not None:
-            sp, ss, sm, si = source_tuple
-            layout.addWidget(QLabel(f"Source: {sp} / {ss} / {sm} / idx {si}"))
+            if len(source_tuple) == 4:
+                sp, ss, sm, si = source_tuple
+                text = f"Reference: {sp} / {ss} / {sm} / {si}"
+            elif len(source_tuple) == 2:
+                sp, ss = source_tuple
+                text = f"Reference: {sp} / {ss}"
+            else:
+                # optional fallback
+                text = "Select"
+            layout.addWidget(QLabel(text))
 
         r1 = QHBoxLayout()
         r1.addWidget(QLabel("Patient:"))

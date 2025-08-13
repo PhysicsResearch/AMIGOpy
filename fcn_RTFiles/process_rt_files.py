@@ -207,7 +207,10 @@ def update_structure_list_widget(self, structure_names, structure_keys, mode=1):
             # refresh item size hint (height primarily matters in QListWidget)
             item.setSizeHint(w.sizeHint())
 
-
+    if mode ==1:
+        self.CreateMask_Structures.setVisible(False)
+    else:   
+        self.CreateMask_Structures.setVisible(True)
 
 def _series_dict(self):
     return self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
