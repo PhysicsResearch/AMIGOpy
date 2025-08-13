@@ -97,7 +97,8 @@ def init_MoVeTab(self):
     import_planned_curve(self, filename)
     if self.orig_data is None:
         return
-
+    
+    self.acq_timestamps = self.orig_data.loc[(self.orig_data["acq"] == 1), "timestamp"].tolist()
     self.MoVeOffsetSlider.setRange(-200, 200)
 
     self.t0 = time.time() 
@@ -167,9 +168,37 @@ def get_duet_status(self):
         print(f"Exception: {e}")
 
 
-def update_MoVeData(self):
+def pause_continue_GCODE(self, pause=True):
+    # Send a GCODE command to pause the current print on Duet
+    url = f'http://{self.duet_ip}/rr_gcode'
+
+    if pause:
+        code = "M25"
+    else:
+        code = "M24"
     try:
+        response = requests.get(url, {'gcode': code})
+        if response.status_code != 200:
+            print(f"Error pausing GCODE: {response.status_code}")
+    except Exception as e:
+        print(f"Exception while pausing GCODE: {e}")
+
+
+def update_MoVeData(self):
+    # try:
         t, x, geiger = get_duet_status(self)
+        if self.stop_until_radiation.isChecked():
+            if t > self.acq_timestamps[0] + self.MoVeOffsetSlider.value() * UPDATE_INTERVAL:
+                pause_continue_GCODE(self)
+                self.acq_timestamps.pop(0)
+                self.pause = time.time()
+                return
+            if geiger > 0 or self.pause > 5:
+                self.t0 += (time.time() - self.pause)
+                pause_continue_GCODE(self, False)
+                return
+            if geiger == 0:
+                return
 
         if not self.MoVeAutoControl.isChecked():
             self.MoVeUserSetSpeed = self.MoVeSpeedFactor.value()
@@ -183,8 +212,8 @@ def update_MoVeData(self):
         self.MoVeData['acq'].append(0)
         self.MoVeData['geiger'].append(geiger)
         plot_MoVeData(self)
-    except:
-        return
+    # except:
+    #     return
     
 
 def calc_diff(self):
