@@ -4,6 +4,7 @@ from PyQt5.QtGui import QColor
 import numpy as np
 from math import floor, ceil
 import functools
+import random
 
 def init_3D_proton_table(self):
     self._proton_spot_data = {}
@@ -205,17 +206,18 @@ def update_beam_transform_and_display(self, beam_name, *args):
     # Retrieve the lines for each spot in the beam (L(t) = P + t * v)
     v_vector = points - source_point
     lines = [(source_point, direction) for direction in v_vector]
-    random_points = np.random.choice(len(lines), size=6, replace=False)
-    #random_points = [10,6]
+    random_points = np.random.choice(len(lines), size=50, replace=False)
     lines_visual = []
     data_spots = []
     distances = np.arange(-200, 200.05, .05)
 
+    #for idx in range(len(lines)):
     for idx in random_points:
         spots = []
         P,v = lines[idx]
         loc = P + 1.1 * v
-        lines_visual.append([P,loc])
+        if idx == random_points[1]:
+            lines_visual.append([P,loc])
         spot = P + 1 * v
         for dist in distances:
             weight = (dist + 1850)/1850
@@ -236,7 +238,7 @@ def update_beam_transform_and_display(self, beam_name, *args):
     if point_size == 5:
         import matplotlib.pyplot as plt
         # Normalized dose tuples
-        dose_tuples = []
+        dose_characteristics_per_spot = {}
         for individual_spot in data_spots:
             spot_idx, spot_information = individual_spot
             # Retrieve the dose matrix and the dose voxel spacing
@@ -255,8 +257,6 @@ def update_beam_transform_and_display(self, beam_name, *args):
 
             # Retrieve each sampled point per proton spot
             for spot in spot_information:
-                # Generate image, where you will score 9 pixels and 3 slices above
-                mask_img = np.zeros((dose_img.shape))
                 # Distance from the proton spot
                 distance = spot[0]
                 # Translate the spot coordinates with the PatientPosition coordinates
@@ -269,11 +269,11 @@ def update_beam_transform_and_display(self, beam_name, *args):
                     dose_distance.append((distance, 0))
                 else:
                     z_min = max(z_c - 1, 0)
-                    z_max = min(z_c + 2, mask_img.shape[0])
+                    z_max = min(z_c + 2, val_img.shape[0])
                     y_min = max(y_c - 1, 0)
-                    y_max = min(y_c + 2, mask_img.shape[1])
+                    y_max = min(y_c + 2, val_img.shape[1])
                     x_min = max(x_c - 1, 0)
-                    x_max = min(x_c + 2, mask_img.shape[2])
+                    x_max = min(x_c + 2, val_img.shape[2])
 
                     # Weight the dose based on inverse distance
                     weights = []
@@ -322,22 +322,6 @@ def update_beam_transform_and_display(self, beam_name, *args):
             # Normalize doses
             max_dose = np.max(doses)
             doses_normalized = doses / max_dose
-            print("data length")
-            print(len(doses_normalized))
-
-            dose_tuples.append((spot_idx, distances, doses_normalized))
-        # Create figure with a name
-        fig_protons, ax_proton = plt.subplots(figsize=(6, 4), num="Proton Dose vs Distance")
-        cmap = plt.cm.viridis
-        info_to_display = []
-        # Loop over the different spots
-        for i, dose_plot in enumerate(dose_tuples):
-            spot_idx, distances, doses_normalized = dose_plot
-            # Plot
-            color = cmap(i/len(data_spots))
-            ax_proton.plot(distances, doses_normalized,
-                    marker=None,
-                    linestyle='-', color=color, linewidth=2, alpha = 0.5)
 
             # Find the last dose at 0.8
             # Reverse the dataset
@@ -353,11 +337,42 @@ def update_beam_transform_and_display(self, beam_name, *args):
             # Refer it back to the original index
             idx_rev = start_idx + local_idx
             idx_original = len(doses_normalized) - 1 - idx_rev
-            # Plot the marker
-            ax_proton.plot(distances[idx_original], doses_normalized[idx_original], marker = 'o', color = 'black')
 
-            dose_value = distances[idx_original]
-            info_to_display.append((spot_idx, dose_value, color))
+            dose_characteristics_per_spot[str(spot_idx)] = {
+                "dose_distance": distances,
+                "dose_per_distance": doses_normalized,
+                "R80_index": idx_original,
+                "R80_distance": distances[idx_original],
+                "R80_dose": doses_normalized[idx_original]
+            }
+        
+        del distances
+        del doses_normalized
+        del idx_original
+
+        spots_indexes = list(dose_characteristics_per_spot)
+        random_indexes = random.sample(spots_indexes, 6)
+        # Create figure with a name
+        fig_protons, ax_proton = plt.subplots(figsize=(6, 4), num="Proton Dose vs Distance")
+        cmap = plt.cm.viridis
+        info_to_display = []
+        # Loop over the different spots
+        for i, spot_idx in enumerate(random_indexes):
+            distances_of_dose = dose_characteristics_per_spot[spot_idx]['dose_distance']
+            doses_per_distance = dose_characteristics_per_spot[spot_idx]['dose_per_distance']
+            R80_distance = dose_characteristics_per_spot[spot_idx]['R80_distance']
+            R80_dose = dose_characteristics_per_spot[spot_idx]['R80_dose']
+
+            # Plot
+            color = cmap(i/len(random_indexes))
+            ax_proton.plot(distances_of_dose, doses_per_distance,
+                    marker=None,
+                    linestyle='-', color=color, linewidth=2, alpha = 0.5)
+
+            # Plot the marker
+            ax_proton.plot(R80_distance, R80_dose, marker = 'o', color = 'black')
+
+            info_to_display.append((spot_idx, R80_distance, color))
         
         # After the loop, plot the collected labels in the top right corner
         x_pos = 0.98  # Relative position near top right (axes coords)
@@ -380,6 +395,43 @@ def update_beam_transform_and_display(self, beam_name, *args):
         ax_proton.grid(True)
         ax_proton.set_ylim(0, 1.05)
 
+        plt.show(block=True)
+
+        fig_boxplot, ax_boxplot = plt.subplots(figsize=(6, 4), num="R80 boxplot")        
+        # Loop over the different spots
+        R80_distances = {}
+        for ix in range(3):
+            R80_info = []
+            for i, spot_idx in enumerate(spots_indexes):
+                R80_distance = dose_characteristics_per_spot[spot_idx]['R80_distance']
+                R80_dose = dose_characteristics_per_spot[spot_idx]['R80_dose']
+                R80_info.append(R80_distance)
+            R80_distances[str(ix)] = {"data": R80_info}
+        
+        # Prepare the data and labels
+        boxplot_data = [R80_distances[key]["data"] for key in R80_distances]
+        labels = list(R80_distances.keys())
+
+        # Define the colors for each box
+        colors = ['lightgreen', 'plum', 'lightsalmon']  # matches light green, light purple, light orange
+
+        # Create the boxplot
+        bp = ax_boxplot.boxplot(
+            boxplot_data,
+            labels=labels,
+            patch_artist=True,  # allows color fill
+            medianprops=dict(color="black", linewidth=2)  # median line
+        )
+
+        # Apply custom colors
+        for patch, color in zip(bp['boxes'], colors):
+            patch.set_facecolor(color)
+
+        # Labels and title
+        ax_boxplot.set_ylabel("Distance (mm)")
+        ax_boxplot.set_title("R80 Distance Distribution")
+        ax_boxplot.set_ylim(0, 40)
+        ax_boxplot.grid(True, linestyle="--", alpha=0.6)
         plt.show(block=True)
 
 
