@@ -21,19 +21,14 @@ def set_context_menu(self):
 
 
 def on_tree_context_menu(self, pos):
-    # Map the click into an index in the model
     idx = self.DataTreeView.indexAt(pos)
     if not idx.isValid():
         return
 
-    # Get the corresponding QStandardItem, if you need it
     item = self.model.itemFromIndex(idx)
-    print(item)
-
     model = self.DataTreeView.model()
-    #
-    # check file type
-    # Extract hierarchy information based on the clicked index
+
+    # Build hierarchy path and indices
     current_index = idx
     hierarchy = []
     hierarchy_indices = []
@@ -41,51 +36,106 @@ def on_tree_context_menu(self, pos):
         hierarchy.append(model.itemFromIndex(current_index).text())
         hierarchy_indices.append(current_index)
         current_index = current_index.parent()
-    # Reverse the hierarchy data so it starts from the topmost level
     hierarchy.reverse()
     hierarchy_indices.reverse()
 
     # Print the hierarchy for debugging
     print("Hierarchy:", hierarchy)
 
-    if len(hierarchy) >= 1: 
-        Type = hierarchy[0]
-    if len(hierarchy) >= 2:
-        Patient = hierarchy[1].replace("PatientID: ", "")
-    if len(hierarchy) >= 3:
-        Study = hierarchy[2].replace("StudyID: ", "")
-    if len(hierarchy) >= 4:     
-        Modality = hierarchy[3].replace("Modality: ", "")
-    if len(hierarchy) >= 5:
-        Series = hierarchy_indices[4].row()
-    if len(hierarchy) >= 6:
-        Series_sub_data = hierarchy[5]
+    # Parse levels
+    Type = hierarchy[0] if len(hierarchy) >= 1 else None
+    Patient = hierarchy[1].replace("PatientID: ", "") if len(hierarchy) >= 2 else None
+    Study = hierarchy[2].replace("StudyID: ", "") if len(hierarchy) >= 3 else None
+    Modality = hierarchy[3].replace("Modality: ", "") if len(hierarchy) >= 4 else None
+    Series = hierarchy_indices[4].row() if len(hierarchy) >= 5 else None
+    Series_sub_data = hierarchy[5] if len(hierarchy) >= 6 else None
 
+    # -------------------------
+    # Series-level 
+    # -------------------------
     if Type == "DICOM" and len(hierarchy) == 5:
-        # Build your menu
         menu = QMenu()
         open_action        = menu.addAction("Open…")
+
+        currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
+        reset_view = None
+        if currentTabText == "View":
+            reset_view = menu.addAction("Reset view …")
+
         exp_action_dcm     = menu.addAction("Export DCM")
-        exp_action_np      = menu.addAction("Export NumPy")
-        delete_action      = menu.addAction("Delete")
-        
-        # Pop up the menu at the global screen position
+        delete_action      = menu.addAction("Delete series")
+
         action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
         if action == open_action:
-            print("Open action triggered")
-            on_DataTreeView_clicked(self,idx)
-   
+            on_DataTreeView_clicked(self, idx)
+        elif reset_view and action == reset_view:
+            adjust_reset_view(self)
         elif action == delete_action:
-            print("Delete action triggered")
+            # optional confirm:
+            # if not _confirm(self, "Delete series", f"Delete series at {Patient}/{Study}/{Modality}[{Series}]?"): return
             delete_series(self, Patient, Study, Modality, Series)
             populate_DICOM_tree(self)
         elif action == exp_action_dcm:
-            print("Export action triggered")
-            meta_data   = self.dicom_data[Patient][Study][Modality][Series]['metadata']['DCM_Info']
+            meta_data   = self.dicom_data[Patient][Study][Modality][Series]['metadata'].get('DCM_Info')
             data        = self.dicom_data[Patient][Study][Modality][Series]['3DMatrix']
             slice_thick = self.dicom_data[Patient][Study][Modality][Series]['metadata']['SliceThickness']
-            export_dicom_series(meta_data, data, slice_thick, output_folder=None)
+            if meta_data is None:
+                print("No DICOM header available for export (likely NIfTI-derived).")
+            else:
+                export_dicom_series(meta_data, data, slice_thick, output_folder=None)
 
+
+    # -------------------------
+    # Modality-level
+    # -------------------------
+    if Type == "DICOM" and len(hierarchy) == 4:
+        menu = QMenu()
+        delete_action = menu.addAction(f"Delete modality '{Modality}' and all series")
+        action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
+        if action == delete_action:
+            # if not _confirm(self, "Delete modality", f"Delete {Patient}/{Study}/{Modality} (all series)?"): return
+            delete_modality(self, Patient, Study, Modality)
+            populate_DICOM_tree(self)
+
+    # -------------------------
+    # Study-level
+    # -------------------------
+    if Type == "DICOM" and len(hierarchy) == 3:
+        menu = QMenu()
+        delete_action = menu.addAction(f"Delete study '{Study}' and everything underneath")
+        action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
+        if action == delete_action:
+            # if not _confirm(self, "Delete study", f"Delete {Patient}/{Study} (all modalities/series)?"): return
+            delete_study(self, Patient, Study)
+            populate_DICOM_tree(self)
+
+    # -------------------------
+    # Patient-level
+    # -------------------------
+    if Type == "DICOM" and len(hierarchy) == 2:
+        menu = QMenu()
+        delete_action = menu.addAction(f"Delete patient '{Patient}' and everything underneath")
+        action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
+        if action == delete_action:
+            # if not _confirm(self, "Delete patient", f"Delete {Patient} (all studies/modalities/series)?"): return
+            delete_patient(self, Patient)
+            populate_DICOM_tree(self)
+
+    # -------------------------
+    # DICOM root-level
+    # -------------------------
+    if Type == "DICOM" and len(hierarchy) == 1:
+        menu = QMenu()
+        delete_action = menu.addAction("Delete ALL DICOM data")
+        action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
+        if action == delete_action:
+            # if not _confirm(self, "Delete all", "Delete ALL DICOM data?"): return
+            delete_all_dicom(self)
+            populate_DICOM_tree(self)
+
+
+
+    # -------------------------
     if Type == "DICOM" and len(hierarchy) == 6 and Series_sub_data == "Structures":
         # Build your menu
         menu = QMenu()
@@ -102,6 +152,72 @@ def on_tree_context_menu(self, pos):
             print("Delete action triggered")
             delete_structure_set(self, Patient, Study, Modality, Series)
             populate_DICOM_tree(self)
+
+
+def adjust_reset_view(self):
+    """
+    Reset the camera view in all three VTK widgets.
+    """
+    self.renAxial.ResetCamera()
+    self.renSagittal.ResetCamera()
+    self.renCoronal.ResetCamera()
+    self.vtkWidgetAxial.GetRenderWindow().Render()
+    self.vtkWidgetSagittal.GetRenderWindow().Render()
+    self.vtkWidgetCoronal.GetRenderWindow().Render()
+
+
+def _cleanup_empty_levels(self, patient_id, study_id=None):
+    """
+    After a deletion, remove any empty dict/list levels up the chain.
+    """
+    try:
+        if study_id is not None:
+            # If modality dict for this study is empty, drop the study
+            if not self.dicom_data.get(patient_id, {}).get(study_id, {}):
+                self.dicom_data.get(patient_id, {}).pop(study_id, None)
+        # If patient dict is now empty, drop the patient
+        if not self.dicom_data.get(patient_id, {}):
+            self.dicom_data.pop(patient_id, None)
+    except Exception:
+        pass
+
+def delete_series(self, patient_id, study_id, modality, series_index: int):
+    try:
+        series_list = self.dicom_data[patient_id][study_id][modality]
+        if 0 <= series_index < len(series_list):
+            series_list.pop(series_index)
+            # If modality list now empty, remove it and clean upwards
+            if not series_list:
+                self.dicom_data[patient_id][study_id].pop(modality, None)
+                _cleanup_empty_levels(self, patient_id, study_id)
+        else:
+            print(f"Series index {series_index} out of range.")
+    except KeyError:
+        print("Invalid path when deleting series.")
+
+def delete_modality(self, patient_id, study_id, modality):
+    try:
+        self.dicom_data[patient_id][study_id].pop(modality, None)
+        _cleanup_empty_levels(self, patient_id, study_id)
+    except KeyError:
+        print("Invalid path when deleting modality.")
+
+def delete_study(self, patient_id, study_id):
+    try:
+        self.dicom_data[patient_id].pop(study_id, None)
+        _cleanup_empty_levels(self, patient_id, study_id=None)
+    except KeyError:
+        print("Invalid path when deleting study.")
+
+def delete_patient(self, patient_id):
+    try:
+        self.dicom_data.pop(patient_id, None)
+    except KeyError:
+        print("Invalid path when deleting patient.")
+
+def delete_all_dicom(self):
+    self.dicom_data = {}
+
 
 def delete_structure_set(self, src_patient, src_study, src_modality, src_series_index):
     """
@@ -290,34 +406,6 @@ def _clear_structure_display_state(series):
     for k in ('structures_view','structures_color','structures_line_width','structures_transparency'):
         series.pop(k, None)
 
-def delete_series(self, Patient, Study, Modality, Series):
-    """
-    Deletes the series at index 'Series' (int) from self.dicom_data[Patient][Study][Modality] (a list).
-    After deletion, recursively removes empty parent containers: Modality, Study, Patient.
-    """
-    # Step 1: Try to delete the series
-    try:
-        series_list = self.dicom_data[Patient][Study][Modality]
-        del series_list[Series]
-        print(f"Series at index {Series} deleted.")
-    except (KeyError, IndexError):
-        print(f"Series index {Series} not found for {Patient}, {Study}, {Modality}.")
-        return
-
-    # Step 2: If the list is empty, delete the Modality key from the dict
-    if not series_list:
-        del self.dicom_data[Patient][Study][Modality]
-        print(f"Modality '{Modality}' deleted (was empty).")
-
-        # Step 3: If Study dict is now empty, delete Study key
-        if not self.dicom_data[Patient][Study]:
-            del self.dicom_data[Patient][Study]
-            print(f"Study '{Study}' deleted (was empty).")
-
-            # Step 4: If Patient dict is now empty, delete Patient key
-            if not self.dicom_data[Patient]:
-                del self.dicom_data[Patient]
-                print(f"Patient '{Patient}' deleted (was empty).")
 
 def _equalish(a, b, tol=1e-6):
     if a is None or b is None:
@@ -388,7 +476,7 @@ def copy_structures_between_series(dicom_data, src, dst, mode='overwrite'):
     """
     src, dst: (patient_id, study_id, modality, series_index)
     mode: 'overwrite' or 'merge'
-    (Same as before; no dialog logic in here so it's testable.)
+    Skips copying the 'VTKActors2D' and 'Contours2D' fields inside each structure.
     """
     sp, ss, sm, si = src
     dp, ds, dm, di = dst
@@ -408,19 +496,30 @@ def copy_structures_between_series(dicom_data, src, dst, mode='overwrite'):
     if src_keys is None and isinstance(src_dict, dict):
         src_keys = list(src_dict.keys())
 
+    # Helper: make a filtered deep copy
+    def filtered_copy(struct):
+        new_struct = {}
+        for key, value in struct.items():
+            if key not in ("VTKActors2D", "Contours2D"):
+                new_struct[key] = copy.deepcopy(value)
+        return new_struct
+
     if mode == 'overwrite':
-        d_series['structures'] = copy.deepcopy(src_dict)
+        d_series['structures'] = {k: filtered_copy(v) for k, v in src_dict.items()}
         if src_names is not None:
             d_series['structures_names'] = copy.deepcopy(src_names)
         if src_keys is not None:
             d_series['structures_keys'] = copy.deepcopy(src_keys)
+
     elif mode == 'merge':
         d_series.setdefault('structures', {})
         for k, v in src_dict.items():
-            d_series['structures'][k] = copy.deepcopy(v)
+            d_series['structures'][k] = filtered_copy(v)
         d_series['structures_keys']  = list(d_series['structures'].keys())
-        d_series['structures_names'] = [d_series['structures'][k].get('Name', k)
-                                        for k in d_series['structures_keys']]
+        d_series['structures_names'] = [
+            d_series['structures'][k].get('Name', k)
+            for k in d_series['structures_keys']
+        ]
     else:
         return False, f"Unknown mode: {mode}"
 

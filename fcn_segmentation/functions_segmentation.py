@@ -6,7 +6,6 @@ import numpy as np
 import SimpleITK as sitk
 
 from fcn_load.populate_dcm_list import populate_DICOM_tree
-from fcn_load.populate_nifti_list import populate_nifti_tree
 from fcn_display.disp_data_type import adjust_data_type_seg_input
 from fcn_display.display_images_seg import disp_seg_image_slice
 

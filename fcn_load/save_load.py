@@ -7,7 +7,6 @@ from PyQt5.QtWidgets import (QFileDialog, QProgressDialog,
 import joblib, pickle, importlib.util
 from pathlib import Path
 from fcn_load.load_dcm import populate_DICOM_tree
-from fcn_load.load_nifti import populate_nifti_tree
 import copy
 import numpy as np
 

@@ -55,9 +55,10 @@ def initializeMenuBar(self):
             action.setShortcut("Ctrl+O")    
         if item == "3mf":
             action.triggered.connect(lambda: load_3mf(self))
-            action.setShortcut("Ctrl+3")    
+            action.setShortcut("Ctrl+3+D")    
         if item == "NIfTI":
             action.triggered.connect(lambda: load_nifti_files(self))
+            action.setShortcut("Ctrl+N")    
         openMenu.addAction(action)
 
     ViewMenu      = self.menuBar().addMenu("View")
