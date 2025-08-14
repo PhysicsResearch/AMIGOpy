@@ -5,6 +5,7 @@ from collections import deque
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
 from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
@@ -41,8 +42,8 @@ def defineInputFolder(self):
 
 def get_curr_file(self, init=True):
     # Get the filename of the GCODE currently being executed on Duet
-    url = f'http://{self.duet_ip}/rr_fileinfo'
     try:
+        url = f'http://{self.duet_ip}/rr_fileinfo'
         response = requests.get(url, timeout=3)
         if response.status_code == 200:
             data = response.json()
@@ -83,9 +84,12 @@ def set_GCODE_speed(self, sf=None):
     else:
         speed_factor = sf
         self.MoVeSpeedFactor.setValue(int(speed_factor))
-    url = f'http://{self.duet_ip}/rr_gcode'
-    code = f"M220 S{speed_factor}"
-    requests.get(url, {'gcode': code})
+    try:
+        url = f'http://{self.duet_ip}/rr_gcode'
+        code = f"M220 S{speed_factor}"
+        requests.get(url, {'gcode': code})
+    except Exception as e:
+        print(f"Exception while sending GCODE: {e}")
 
 
 def init_MoVeTab(self):
@@ -128,8 +132,10 @@ def init_MoVeTab(self):
     plt.tight_layout()
 
     # Start MoVe data thread
-    self.move_thread = MoVeThread(self)
-    self.move_thread.start()
+    self.ani = FuncAnimation(self.fig_MoVe, lambda frame: update_MoVeData(self), interval=50)
+    plt.show()
+    # self.move_thread = MoVeThread(self)
+    # self.move_thread.start()
 
 
 class MoVeThread(QThread):
@@ -153,8 +159,8 @@ class MoVeThread(QThread):
 
 
 def get_duet_status(self):
-    url = f'http://{self.duet_ip}/rr_status?type=3'
     try:
+        url = f'http://{self.duet_ip}/rr_status?type=3'
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
@@ -164,19 +170,17 @@ def get_duet_status(self):
             return t, x, geiger
         else:
             print(f"Error: {response.status_code}")
+            return None, None, None
     except Exception as e:
-        print(f"Exception: {e}")
+        print(f"Exception while retrieving DUET data: {e}")
+        return None, None, None
 
 
 def pause_continue_GCODE(self, pause=True):
     # Send a GCODE command to pause the current print on Duet
-    url = f'http://{self.duet_ip}/rr_gcode'
-
-    if pause:
-        code = "M25"
-    else:
-        code = "M24"
     try:
+        code = "M25" if pause else "M24"
+        url = f'http://{self.duet_ip}/rr_gcode'
         response = requests.get(url, {'gcode': code})
         if response.status_code != 200:
             print(f"Error pausing GCODE: {response.status_code}")
@@ -185,21 +189,37 @@ def pause_continue_GCODE(self, pause=True):
 
 
 def update_MoVeData(self):
-    # try:
+    try:
         t, x, geiger = get_duet_status(self)
-        if self.stop_until_radiation.isChecked():
-            if t > self.acq_timestamps[0] + self.MoVeOffsetSlider.value() * UPDATE_INTERVAL:
-                pause_continue_GCODE(self)
-                self.acq_timestamps.pop(0)
-                self.pause = time.time()
-                return
-            if geiger > 0 or self.pause > 5:
-                self.t0 += (time.time() - self.pause)
-                pause_continue_GCODE(self, False)
-                return
-            if geiger == 0:
-                return
+        if t is None:
+            return
+        
+        if len(self.acq_timestamps) > 0 and \
+            t > self.acq_timestamps[0] - self.MoVeOffsetSlider.value() * UPDATE_INTERVAL:
+            self.acq_timestamps.pop(0)
 
+            if self.stop_until_radiation.isChecked():
+                # Pause if not paused yet
+                if not hasattr(self, 'pause'):
+                    pause_continue_GCODE(self)
+                    self.pause = time.time()
+                    return
+            
+        if self.stop_until_radiation.isChecked() and hasattr(self, 'pause'):
+            # Continue if paused and radiation detected
+            if hasattr(self, 'pause') and geiger > 0:
+                    self.t0 += (time.time() - self.pause)
+                    t       -= (time.time() - self.pause)
+                    pause_continue_GCODE(self, False)
+                    delattr(self, 'pause')
+                    self.MoVeData['t'].append(t)
+                    self.MoVeData['x'].append(x)
+                    self.MoVeData['acq'].append(1)
+                    self.MoVeData['geiger'].append(1000)
+                    return
+            else:  
+                return
+            
         if not self.MoVeAutoControl.isChecked():
             self.MoVeUserSetSpeed = self.MoVeSpeedFactor.value()
         if self.MoVeAutoControl.isChecked():
@@ -212,8 +232,8 @@ def update_MoVeData(self):
         self.MoVeData['acq'].append(0)
         self.MoVeData['geiger'].append(geiger)
         plot_MoVeData(self)
-    # except:
-    #     return
+    except:
+        return
     
 
 def calc_diff(self):
@@ -322,5 +342,6 @@ def plot_MoVeData(self):
 
     # Stop MoVe if end of curve is reached
     if self.orig_data['timestamp'].max() < t1 + t_offset:
-        stop_threads(self)
         exportMoVeData(self)
+        self.ani.event_source.stop()
+        
