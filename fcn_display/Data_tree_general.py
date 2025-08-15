@@ -102,29 +102,15 @@ def on_DataTreeView_clicked(self,index):
     elif hierarchy[0] == "DICOM" or hierarchy[0] == "Nifti":
         self.DataType =  hierarchy[0]  
 
-        # Extract hierarchy information based on the clicked index 
-        previous_series = getattr(self, 'series_index', None)
-        self.series_index = hierarchy_indices[1].row()
-
-        if previous_series is None or self.series_index != previous_series:
-            self.series_changed = True
-
-        # clear metadata search field
-        
         # Temporarily block signals so this won't fire textChanged again
         self.metadata_search.blockSignals(True)
         self.metadata_search.setText("")
         # Unblock signals
         self.metadata_search.blockSignals(False)
 
-
         if len(hierarchy) >= 5:
-            if hasattr(self, 'series_index'):
-                if hierarchy_indices[4].row() != self.series_index:
-                    self.series_changed = True
-                else:
-                    self.series_changed = False
             self.series_index = hierarchy_indices[4].row()
+
             # need to remove part of the tag otherwise it does not match with the key:
             self.patientID = hierarchy[1].replace("PatientID: ", "")
             self.studyID   = hierarchy[2].replace("StudyID: ", "")
@@ -387,9 +373,12 @@ def on_DataTreeView_clicked(self,index):
                     else:
                         if hasattr(self, 'STRUCTlist') and self.STRUCTlist is not None:
                             self.STRUCTlist.clear()
-                    
-                if self.series_changed:
-                    update_seg_struct_list(self)
+
+                if hasattr(self, 'slice_data_copy'):
+                    delattr(self, 'slice_data_copy')
+
+                self.curr_series_no = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['SeriesNumber']
+                update_seg_struct_list(self)
                     
                 if self.seg_win_lev[0] is not None and self.seg_win_lev[1] is not None:
                     Window = self.seg_win_lev[0]
@@ -408,9 +397,6 @@ def on_DataTreeView_clicked(self,index):
                     self.display_seg_data = {}
                     self.curr_struc_key = None
                     self.curr_struc_name = None
-
-                    if hasattr(self, 'slice_data_copy'):
-                        delattr(self, 'slice_data_copy')
 
                     # Get and store the selected series volume
                     self.display_seg_data[0] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
@@ -441,8 +427,6 @@ def on_DataTreeView_clicked(self,index):
                     self.Im_Offset_seg[1,0]    = (self.Im_PatPosition_seg[1,0]-self.Im_PatPosition_seg[0,0])
                     self.Im_Offset_seg[1,1]    = (self.display_seg_data[0].shape[1]*self.pixel_spac_seg[0,0]-self.display_seg_data[1].shape[1]*self.pixel_spac_seg[1,0])-(self.Im_PatPosition_seg[1,1]-self.Im_PatPosition[0,1])
                     self.Im_Offset_seg[1,2]    = (self.Im_PatPosition_seg[1,2]-self.Im_PatPosition_seg[0,2])
-
-                self.curr_series_no = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['SeriesNumber']
 
                 # Check if view needs to be initialized
                 self.seg_curr_data = {"Orientation": self.segSelectView.currentText(), 
@@ -698,124 +682,6 @@ def on_DataTreeView_clicked(self,index):
                 self.renAxComp[i].ResetCamera()
                 self.renAxComp[i].GetRenderWindow().Render() 
 
-            #
-        if currentTabText == "Segmentation":
-                    
-            if self.series_changed:
-                update_seg_struct_list(self)
-                
-            if self.seg_win_lev[0] is not None and self.seg_win_lev[1] is not None:
-                Window = self.seg_win_lev[0]
-                Level = self.seg_win_lev[1]
-            else:
-                Window = 100
-                Level = 0
-                
-            self.windowLevelSeg[0].SetWindow(Window)
-            self.windowLevelSeg[0].SetLevel(Level)
-            
-            # Accessing the values
-            for i in range(3):
-                self.slice_thick_seg[i]         = self.nifti_data[self.series_index]['metadata']['SliceThickness']
-                self.pixel_spac_seg[i, :2]      = self.nifti_data[self.series_index]['metadata']['PixelSpacing']
-                self.Im_PatPosition_seg[i, :3]  = [0,0,0]
-    
-            if len(hierarchy) == 2: # Series
-                self.display_seg_data = {}
-                self.curr_struc_key = None
-                self.curr_struc_name = None
-
-                if hasattr(self, 'slice_data_copy'):
-                    delattr(self, 'slice_data_copy')
-
-                # Get and store the selected series volume
-                self.display_seg_data[0] = self.nifti_data[self.series_index]['3DMatrix']
-                adjust_data_type_seg_input(self,0)
-                plot_hist(self)
-
-                self.display_seg_data[1] = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
-                adjust_data_type_seg_input(self,1)
-                
-            if len(hierarchy) == 4: # binary mask contour
-                self.display_seg_data = {}
-
-                # Get and store the selected structure 
-                s_key  = self.nifti_data[self.series_index]['structures_keys'][hierarchy_indices[3].row()]
-                s_name = self.nifti_data[self.series_index]['structures_names'][hierarchy_indices[3].row()]
-                self.curr_struc_key = s_key
-                self.curr_struc_name = s_name
-
-                # Get and store the corresponding series volume
-                self.display_seg_data[0] = self.nifti_data[self.series_index]['3DMatrix']
-                adjust_data_type_seg_input(self,0)
-                plot_hist(self)
-
-                self.slice_data_copy = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
-                self.display_seg_data[1] = self.nifti_data[self.series_index]['structures'][s_key]['Mask3D']
-                adjust_data_type_seg_input(self,1)
-
-                self.Im_Offset_seg[1,0]    = (self.Im_PatPosition_seg[1,0]-self.Im_PatPosition_seg[0,0])
-                self.Im_Offset_seg[1,1]    = (self.display_seg_data[0].shape[1]*self.pixel_spac_seg[0,0]-self.display_seg_data[1].shape[1]*self.pixel_spac_seg[1,0])-(self.Im_PatPosition_seg[1,1]-self.Im_PatPosition[0,1])
-                self.Im_Offset_seg[1,2]    = (self.Im_PatPosition_seg[1,2]-self.Im_PatPosition_seg[0,2])
-
-            self.seg_init_view = True
-            # check the selected view
-            if self.segSelectView.currentText() == "Axial":
-                self.im_ori_seg = "axial"
-                if self.seg_init_view == True:
-                    self.current_seg_slice_index   = int(self.display_seg_data[0].shape[0]/2)
-                    Ax_s = self.current_seg_slice_index
-                    self.segViewSlider.setMaximum(self.display_seg_data[0].shape[0] - 1)
-                    self.segViewSlider.setValue(int(Ax_s))   
-            elif self.segSelectView.currentText() == "Sagittal":
-                self.im_ori_seg = "sagittal"
-                if self.seg_init_view == True:
-                    self.current_seg_slice_index   = int(self.display_seg_data[0].shape[2]/2)
-                    Ax_s = self.current_seg_slice_index
-                    self.segViewSlider.setMaximum(self.display_seg_data[0].shape[2] - 1)  
-                    self.segViewSlider.setValue(int(Ax_s))   
-            elif self.segSelectView.currentText() == "Coronal":
-                self.im_ori_seg = "coronal"
-                if self.seg_init_view == True:
-                    self.current_seg_slice_index   = int(self.display_seg_data[0].shape[1]/2)
-                    Ax_s = self.current_seg_slice_index
-                    self.segViewSlider.setMaximum(self.display_seg_data[0].shape[1] - 1)  
-                    self.segViewSlider.setValue(int(Ax_s))      
-            #
-            self.indexMinThreshSeg.setMinimum(0)
-            self.indexMinThreshSeg.setValue(0)
-            self.indexMinThreshSeg.setMaximum(self.segViewSlider.maximum() - 1)
-            self.indexMaxThreshSeg.setMinimum(1)
-            self.indexMaxThreshSeg.setMaximum(self.segViewSlider.maximum())
-            self.indexMaxThreshSeg.setValue(self.segViewSlider.maximum())
-            # Add ID 
-            self.textActorSeg[0].SetInput(f"{hierarchy[1]}")
-            disp_seg_image_slice(self) 
-            
-            self.textActorSeg[1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
-            layer = self.layer_selection_box.currentIndex()
-
-            if self.seg_init_view == True:
-                self.renSeg.ResetCamera()
-                self.renSeg.GetRenderWindow().Render() 
-                self.seg_init_view = False
-                self.zoom_scale = None
-                self.zoom_center = (None, None, None)
-                self.camera_pos = (None, None, None)
-
-            if self.zoom_scale is not None:
-                renderer = self.renSeg.GetRenderWindow().GetRenderers().GetFirstRenderer()
-                camera = renderer.GetActiveCamera()
-                camera.SetParallelScale(self.zoom_scale)  # Smaller = more zoomed in
-                camera.SetFocalPoint(self.zoom_center)  # World-space center of zoom
-                camera.SetPosition(self.camera_pos)  # Also useful
-                renderer.ResetCameraClippingRange()
-                self.renSeg.GetRenderWindow().Render()
-    #
-
-
-      
-    
 
 def display_dicom_info(self):
     if self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'] is None:
