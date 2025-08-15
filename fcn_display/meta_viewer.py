@@ -193,12 +193,66 @@ def update_meta_view_table_dicom(self,ds, search_text=""):
     )
 
 
-def on_metadata_search_text_changed(self,text):
-    if self.patientID is not None:
-        update_meta_view_table_dicom(self,self.dicom_data[self.patientID][self.studyID][self.modality_metadata][self.series_index]['metadata']['DCM_Info'],text)
+def on_metadata_search_text_changed(self, text):
+    if self.patientID is None:
+        return
+
+    try:
+        md = self.dicom_data[self.patientID][self.studyID][self.modality_metadata][self.series_index]['metadata']
+    except Exception:
+        # If the path is invalid, just clear table and return
+        self.MetaViewTable.clear()
+        self.MetaViewTable.setColumnCount(2)
+        self.MetaViewTable.setHeaderLabels(["Element", "Value / Subitems"])
+        return
+
+    dcm_info = md.get('DCM_Info', None)
+
+    # 1) Prefer DICOM header if available
+    if isinstance(dcm_info, Dataset):
+        update_meta_view_table_dicom(self, dcm_info, text)
+        return
+
+    # 2) Otherwise try NIfTI header
+    nifti_meta = md.get('Nifiti_info', None)
+    if isinstance(nifti_meta, dict) and len(nifti_meta) > 0:
+        update_meta_view_table_nifti(self, nifti_meta, text)
+        return
+
+    # 3) Neither available -> clear and return
+    self.MetaViewTable.clear()
+    self.MetaViewTable.setColumnCount(2)
+    self.MetaViewTable.setHeaderLabels(["Element", "Value / Subitems"])
+    return
 
 
+# ------------------------------------------------------------
+# Render NIfTI (SimpleITK) key/value metadata dict
+# ------------------------------------------------------------
+def update_meta_view_table_nifti(self, meta_dict: dict, search_text: str = ""):
+    """
+    Build the QTreeWidget (self.MetaViewTable) from a NIfTI meta dict (key->str).
+    Supports case-insensitive filtering on key or value.
+    """
+    self.MetaViewTable.clear()
+    self.MetaViewTable.setColumnCount(2)
+    self.MetaViewTable.setHeaderLabels(["Key", "Value"])
 
+    if not meta_dict:
+        return
 
+    s = (search_text or "").lower().strip()
+
+    # Sort keys for stable view
+    for k in sorted(meta_dict.keys()):
+        v = meta_dict.get(k, "")
+        k_str = str(k)
+        v_str = _process_scalar(v)  # reuses your scalar shortener (ok for strings)
+
+        if s:
+            if s not in k_str.lower() and s not in str(v).lower():
+                continue
+
+        self.MetaViewTable.addTopLevelItem(QTreeWidgetItem([k_str, v_str]))
 
 

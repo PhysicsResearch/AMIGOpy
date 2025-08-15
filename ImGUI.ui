@@ -530,59 +530,15 @@
             <string>STRUCT</string>
            </attribute>
            <layout class="QGridLayout" name="gridLayout_47">
-            <item row="2" column="2">
-             <widget class="QLineEdit" name="lineEdit_69">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="3">
-             <widget class="QLineEdit" name="lineEdit_68">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QLineEdit" name="lineEdit_70">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLineEdit" name="lineEdit_67">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-              <property name="text">
-               <string>Shift  (x, y, z)</string>
-              </property>
-             </widget>
-            </item>
             <item row="0" column="0" colspan="4">
              <widget class="QListWidget" name="STRUCTlist"/>
+            </item>
+            <item row="1" column="3">
+             <widget class="QPushButton" name="CreateMask_Structures">
+              <property name="text">
+               <string>Create Mask</string>
+              </property>
+             </widget>
             </item>
             <item row="1" column="0">
              <widget class="QLineEdit" name="lineEdit_66">
@@ -599,64 +555,6 @@
               </property>
              </widget>
             </item>
-            <item row="3" column="0">
-             <widget class="QLineEdit" name="lineEdit_71">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-              <property name="text">
-               <string>Scale (x, y, z)</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QLineEdit" name="lineEdit_72">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="2">
-             <widget class="QLineEdit" name="lineEdit_73">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="3">
-             <widget class="QLineEdit" name="lineEdit_74">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="3">
-             <widget class="QPushButton" name="CreateMask_Structures">
-              <property name="text">
-               <string>Create Mask</string>
-              </property>
-             </widget>
-            </item>
             <item row="1" column="1" colspan="2">
              <widget class="QLineEdit" name="StructRefSeries">
               <property name="font">
@@ -665,6 +563,19 @@
                </font>
               </property>
              </widget>
+            </item>
+            <item row="2" column="1">
+             <spacer name="horizontalSpacer_80">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
             </item>
            </layout>
           </widget>
@@ -8633,8 +8544,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>213</width>
-             <height>127</height>
+             <width>442</width>
+             <height>370</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8658,7 +8569,7 @@ p, li { white-space: pre-wrap; }
               </property>
               <property name="icon">
                <iconset>
-                <normaloff>../Downloads/undo.png</normaloff>../Downloads/undo.png</iconset>
+                <normaloff>../Users/gabriel.paivafonseca/Downloads/undo.png</normaloff>../Users/gabriel.paivafonseca/Downloads/undo.png</iconset>
               </property>
              </widget>
             </item>
@@ -8669,7 +8580,7 @@ p, li { white-space: pre-wrap; }
               </property>
               <property name="icon">
                <iconset>
-                <normaloff>../Downloads/brush.png</normaloff>../Downloads/brush.png</iconset>
+                <normaloff>../Users/gabriel.paivafonseca/Downloads/brush.png</normaloff>../Users/gabriel.paivafonseca/Downloads/brush.png</iconset>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -8683,7 +8594,7 @@ p, li { white-space: pre-wrap; }
               </property>
               <property name="icon">
                <iconset>
-                <normaloff>../Downloads/eraser.png</normaloff>../Downloads/eraser.png</iconset>
+                <normaloff>../Users/gabriel.paivafonseca/Downloads/eraser.png</normaloff>../Users/gabriel.paivafonseca/Downloads/eraser.png</iconset>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -8775,8 +8686,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>159</width>
-             <height>97</height>
+             <width>193</width>
+             <height>119</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8842,8 +8753,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>206</width>
-             <height>139</height>
+             <width>241</width>
+             <height>179</height>
             </rect>
            </property>
            <attribute name="label">
