@@ -41,6 +41,7 @@ from fcn_3Dview.protons_3D_plan import init_3D_proton_table
 from fcn_init.init_data_tree import set_context_menu
 
 
+
 # ── constants in module / class scope ─────────────────────────────────────────
 _ORIG_POS = {                     # Designer coordinates
     "axial":     {"pane": (0, 0), "slider": (1, 0)},
