@@ -34,12 +34,7 @@ def InitSeg(self):
 
     if self.initStructCheck.isChecked():
         check_duplicates = True
-        if self.DataType == "DICOM":
-            target_series = self.dicom_data[self.patientID][self.studyID][self.modality]
-        elif self.DataType == "nifti":
-            target_series = self.nifti_data
-        else:
-            return
+        target_series = self.dicom_data[self.patientID][self.studyID][self.modality]
 
         for target_series_dict in target_series:
             mask_3d = np.zeros_like(target_series_dict["3DMatrix"])
@@ -83,12 +78,8 @@ def InitSeg(self):
             structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber'], self.patientID])
 
     else:
-        if self.DataType == "DICOM":
-            target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-        elif self.DataType == "nifti":
-            target_series_dict = self.nifti_data[self.series_index]
-        else:
-            return
+        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+
         
         mask_3d = np.zeros_like(target_series_dict["3DMatrix"])
         mask_3d = mask_3d.astype(np.uint8)
@@ -127,13 +118,9 @@ def InitSeg(self):
         target_series_dict['structures_keys'].append(new_s_key)
         target_series_dict['structures_names'].append(name)
         structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber'], self.patientID])
-    
-    if self.DataType == "DICOM":
-        populate_DICOM_tree(self)
-        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    elif self.DataType == "nifti":
-        populate_nifti_tree(self)
-        target_series_dict = self.nifti_data[self.series_index]
+            
+    populate_DICOM_tree(self)
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
 
     new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
     mask_3d = target_series_dict["structures"][new_s_key]["Mask3D"]
@@ -142,19 +129,14 @@ def InitSeg(self):
     self.curr_struc_key, self.curr_struc_name = None, None
     adjust_data_type_seg_input(self,1)
     disp_seg_image_slice(self)
-    update_seg_struct_list(self, structures_keys, delete=False)
+    update_seg_struct_list(self)
 
 
 def DeleteSeg(self):
     if 0 not in self.display_seg_data or self.curr_struc_key is None:
         return
-    
-    if self.DataType == "DICOM":
-        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    elif self.DataType == "nifti":
-        target_series_dict = self.nifti_data[self.series_index]
-    else:
-        return
+
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
     
     s_key = self.curr_struc_key
     structures_keys = []
@@ -171,12 +153,7 @@ def DeleteSeg(self):
         else:
             return
         
-        if self.DataType == "DICOM":
-            target_series = self.dicom_data[self.patientID][self.studyID][self.modality]
-        elif self.DataType == "nifti":
-            target_series = self.nifti_data
-        else:
-            return
+        target_series = self.dicom_data[self.patientID][self.studyID][self.modality]
             
         for target_series_dict in target_series:
             if 'structures' in target_series_dict:
@@ -200,10 +177,7 @@ def DeleteSeg(self):
     self.slice_data_copy = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
     adjust_data_type_seg_input(self,1)
 
-    if self.DataType == "DICOM":
-        populate_DICOM_tree(self)
-    elif self.DataType == "nifti":
-        populate_nifti_tree(self)
+    populate_DICOM_tree(self)
 
     self.curr_struc_key, self.curr_struc_name = None, None
 
@@ -220,7 +194,7 @@ def DeleteSeg(self):
     self.dataImporterSeg[1].Modified()    
     self.renSeg.GetRenderWindow().Render() 
 
-    update_seg_struct_list(self, structures_keys, delete=True)
+    update_seg_struct_list(self)
 
 
 def overwrite_dialog(self, all_series=False):
@@ -414,96 +388,41 @@ class ColorCheckItem(QWidget):
             self.color_button.setStyleSheet(f"background-color: {color.name()};")
 
 
-def update_seg_struct_list(self, structures_keys=None, delete=False):
+def update_seg_struct_list(self):
     """
     Update self.STRUCTlist (a QListWidget) with custom items that display the structure name,
     a checkbox, and a color-selection button. The corresponding structure key is stored in the custom widget.
     """
     if getattr(self, 'series_index', None) is None:
         return
-    if structures_keys is None:
-        self.segStructList.clear()
-        if self.segStructList.count() != 0 or not (self.DataType in ["DICOM", "nifti"]):
-            return
 
-        if self.DataType == "DICOM":
-            target_series = []
-            for patientID in self.dicom_data:
-                for studyID in self.dicom_data[patientID]:
-                    for modality in self.dicom_data[patientID][studyID]:
-                        if modality != "CT":
-                            continue
-                        if not hasattr(self, 'series_index') or self.series_index is None:
-                            continue
+    self.segStructList.clear()
+    if self.segStructList.count() != 0 or not (self.DataType in ["DICOM", "nifti"]):
+        return
 
-                        target_series_dict = self.dicom_data[patientID][studyID][modality][self.series_index]
-                        target_series_dict["PatientID"] = patientID
-                        target_series.append(target_series_dict)
-        elif self.DataType == "nifti":
-            target_series = self.nifti_data
-        else:
-            return
+    if self.modality not in ["CT", 'Medical']:
+        return
+    if not hasattr(self, 'series_index') or self.series_index is None:
+        return
+    
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+
+    if type(target_series_dict) is dict and 'structures' in target_series_dict:
+        for k in target_series_dict['structures']:
+            name = target_series_dict['structures'][k]['Name']
+            target_key = f"{self.patientID}_{self.curr_series_no}_{name}"
         
-        for target_series_dict in target_series:
-            if type(target_series_dict) is dict and 'structures' in target_series_dict:
-                if self.DataType == "nifti":
-                    if target_series_dict["SeriesNumber"] != target_series[self.series_index]["SeriesNumber"]:
-                        continue
-                patientID = target_series_dict.get("PatientID", "")
-                seriesID = target_series_dict.get("SeriesNumber", None)
-                for k in target_series_dict['structures']:
-                    name = target_series_dict['structures'][k]['Name']
-                    target_key = f"{patientID}_{seriesID}_{name}"
-                
-                    list_item = QListWidgetItem(self.segStructList)
-                    custom_item = ColorCheckItem([patientID, seriesID, name], self.struct_colors)
-                    custom_item.structure_key = target_key
-                    self.struct_colors = custom_item.struct_colors
-                    list_item.setSizeHint(custom_item.sizeHint())
+            list_item = QListWidgetItem(self.segStructList)
+            custom_item = ColorCheckItem([self.patientID, self.curr_series_no, name], self.struct_colors)
+            custom_item.structure_key = target_key
+            self.struct_colors = custom_item.struct_colors
+            list_item.setSizeHint(custom_item.sizeHint())
 
-                    # Append new item
-                    self.segStructList.addItem(list_item)
-                    self.segStructList.setItemWidget(list_item, custom_item)
-    else:
-        for key, name, series_id, patient_id in structures_keys:
-            target_key  = f"{patient_id}_{series_id}_{name}"
+            # Append new item
+            self.segStructList.addItem(list_item)
+            self.segStructList.setItemWidget(list_item, custom_item)
 
-            if delete:
-                for i in range(self.segStructList.count()):
-                    item = self.segStructList.item(i)
-                    widget = self.segStructList.itemWidget(item)
-                    if not widget:
-                        continue
-                    if getattr(widget, "structure_key", None) == target_key:
-                        self.segStructList.removeItemWidget(item)  # Detach widget
-                        widget.deleteLater()                       # Schedule widget for deletion
-                        self.segStructList.takeItem(i)             # Remove the QListWidgetItem
-                        break
-
-            else:
-                # Check if the item already exists and delete it first
-                for i in range(self.segStructList.count()):
-                    item = self.segStructList.item(i)
-                    widget = self.segStructList.itemWidget(item)
-                    if not widget:
-                        continue
-                    if getattr(widget, "structure_key", None) == target_key:
-                        self.segStructList.removeItemWidget(item)
-                        widget.deleteLater()
-                        self.segStructList.takeItem(i)
-                        break
-                list_item = QListWidgetItem(self.segStructList)
-                custom_item = ColorCheckItem([patient_id, series_id, name], self.struct_colors)
-                custom_item.structure_key = target_key
-                self.struct_colors = custom_item.struct_colors
-                
-                list_item.setSizeHint(custom_item.sizeHint())
-        
-                # Append new item
-                self.segStructList.addItem(list_item)
-                self.segStructList.setItemWidget(list_item, custom_item)
-
-        disp_seg_image_slice(self)
+    disp_seg_image_slice(self)
         
     for row in range(self.segStructList.count()):
         item = self.segStructList.item(row)
@@ -514,9 +433,6 @@ def update_seg_struct_list(self, structures_keys=None, delete=False):
         colorbutton.clicked.connect(lambda: disp_seg_image_slice(self))
         transparency_spinbox = getattr(widget, "transparency_spinbox", None)
         transparency_spinbox.valueChanged.connect(lambda: disp_seg_image_slice(self))
-
-    
-
 
 ##########################
 ### SEGMENTATION TOOLS ###
@@ -544,12 +460,7 @@ def threshSeg(self):
         QMessageBox.warning(None, "Warning", "No valid HU range was provided (ensure min HU < max HU)")
         return       
     
-    if self.DataType == "DICOM":
-        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    elif self.DataType == "nifti":
-        target_series_dict = self.nifti_data[self.series_index]
-    else:
-        return
+    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
 
     existing_structures = target_series_dict.get('structures', {})
     if len(existing_structures) == 0:
@@ -580,12 +491,8 @@ def threshSeg(self):
         
     mask_3d = ((self.display_seg_data[0] >= min_) * (self.display_seg_data[0] <= max_) * slice_mask).astype(np.uint8)
 
-    if self.DataType == "DICOM":
-        self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
-        self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = mask_3d
-    elif self.DataType == "nifti":
-        self.nifti_data[self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
-        self.nifti_data[self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = mask_3d
+    self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
+    self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = mask_3d
 
     self.display_seg_data[1] = mask_3d
 
@@ -610,12 +517,8 @@ def undo_brush_seg(self):
     if hasattr(self, 'slice_data_copy'):
         self.display_seg_data[1] = self.slice_data_copy.copy()  
         self.slice_data_copy = self.display_seg_data[1].copy()
-        if self.DataType == "DICOM":
-            self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = self.display_seg_data[1]
-        elif self.DataType == "nifti":
-            self.nifti_data[self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = self.display_seg_data[1]
-        else:
-            return
+        self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = self.display_seg_data[1]
+
         disp_seg_image_slice(self)
     else:
         return
@@ -636,26 +539,24 @@ def calcStrucStats(self):
     if self.DataType not in ["DICOM", "nifti"]:
         return
     
-    if self.DataType == "DICOM":
-        target_series = []
-        for patientID in self.dicom_data:
-            for studyID in self.dicom_data[patientID]:
-                for modality in self.dicom_data[patientID][studyID]:
-                    if modality != "CT":
+    target_series = []
+    for patientID in self.dicom_data:
+        for studyID in self.dicom_data[patientID]:
+            for modality in self.dicom_data[patientID][studyID]:
+                if modality not in ["CT", 'Medical']:
+                    continue
+                for target_series_dict in self.dicom_data[patientID][studyID][modality]:
+                    if len(target_series_dict.get('structures', {})) == 0:
                         continue
-                    for target_series_dict in self.dicom_data[patientID][studyID][modality]:
-                        if len(target_series_dict.get('structures', {})) == 0:
-                            continue
-                        target_series.append(target_series_dict)
-    elif self.DataType == "nifti":
-        target_series = self.nifti_data
-        patientID = ""
+                    target_series_dict['metadata']['PatientID'] = patientID
+                    target_series.append(target_series_dict)
 
     for target_series_dict in target_series:          
         slice_thick = target_series_dict['metadata']['SliceThickness']
         pixel_spac = target_series_dict['metadata']['PixelSpacing']
         Im_PatPosition = target_series_dict['metadata']['ImagePositionPatient']
         image_vol = target_series_dict['3DMatrix']
+        patientID = target_series_dict['metadata']['PatientID']
         if 'structures' not in target_series_dict:
             continue
 
@@ -794,30 +695,20 @@ def exportSegStruc(self):
             series_id = self.tableSegStrucStats.item(row, 2).text()
             s_key = self.tableSegStrucStats.item(row, 3).text()
             target_series = []
-            if self.DataType == "DICOM":
-                for studyID in self.dicom_data[patient_id]:
-                    for modality in self.dicom_data[patient_id][studyID]:
-                        for target_series_dict in self.dicom_data[patient_id][studyID][modality]:
-                            if not ('SeriesNumber' not in target_series_dict or \
-                                    str(target_series_dict['SeriesNumber']) != series_id or \
-                                    'structures' not in target_series_dict):
-                                target_series.append(target_series_dict) 
-            if self.DataType == "nifti":
-                for target_series_dict in self.nifti_data:
-                    if not ('SeriesNumber' not in target_series_dict or \
-                            str(target_series_dict['SeriesNumber']) != series_id or \
-                            'structures' not in target_series_dict):
-                        target_series.append(target_series_dict) 
+            for studyID in self.dicom_data[patient_id]:
+                for modality in self.dicom_data[patient_id][studyID]:
+                    for target_series_dict in self.dicom_data[patient_id][studyID][modality]:
+                        if not ('SeriesNumber' not in target_series_dict or \
+                                str(target_series_dict['SeriesNumber']) != series_id or \
+                                'structures' not in target_series_dict):
+                            target_series.append(target_series_dict) 
                     
             for target_series_dict in target_series:
                 for k in target_series_dict['structures']:
                     struct = target_series_dict['structures'][k]
                     if struct['Name'] == s_key:
                         mask = target_series_dict['structures'][k]["Mask3D"]
-                        if self.DataType == "DICOM":
-                            mask = np.flip(mask, axis=1)
-                        elif self.DataType == "nifti":
-                            mask = np.flip(mask, axis=1)
+                        mask = np.flip(mask, axis=1)
                             
                         img = sitk.GetImageFromArray(mask)
                         img.SetSpacing((*target_series_dict['metadata']['PixelSpacing'],
@@ -826,7 +717,3 @@ def exportSegStruc(self):
 
                         save_path = os.path.join(save_dir, f"{patient_id}_{series_id}_{s_key}.nii.gz")
                         sitk.WriteImage(img, save_path)
-
-                        # img = nib.Nifti1Image(mask, np.eye(4))
-                        # img.header.get_xyzt_units()
-                        # nib.save(img, os.path.join(save_dir, f"{patient_id}_{series_id}_{s_key}.nii.gz"))  

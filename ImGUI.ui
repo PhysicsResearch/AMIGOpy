@@ -4812,7 +4812,7 @@
                <height>30</height>
               </rect>
              </property>
-             <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,3,2">
+             <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,3">
               <property name="spacing">
                <number>8</number>
               </property>
@@ -4826,13 +4826,6 @@
               <item>
                <widget class="QComboBox" name="dose_list"/>
               </item>
-              <item>
-               <widget class="QPushButton" name="eqd2_update_dose_list">
-                <property name="text">
-                 <string>Update dose list</string>
-                </property>
-               </widget>
-              </item>
              </layout>
             </widget>
             <widget class="QWidget" name="layoutWidget">
@@ -4844,7 +4837,7 @@
                <height>61</height>
               </rect>
              </property>
-             <layout class="QHBoxLayout" name="chose_struct" stretch="0,8,4,0,0,0,0,0">
+             <layout class="QHBoxLayout" name="chose_struct" stretch="0,8,0,0,0,0,0">
               <property name="spacing">
                <number>8</number>
               </property>
@@ -4857,13 +4850,6 @@
               </item>
               <item>
                <widget class="QComboBox" name="eqd2_struct_list"/>
-              </item>
-              <item>
-               <widget class="QPushButton" name="eqd2_update_structure_list">
-                <property name="text">
-                 <string>Update structure list</string>
-                </property>
-               </widget>
               </item>
               <item>
                <spacer name="horizontalSpacer_47">

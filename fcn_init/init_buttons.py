@@ -259,8 +259,7 @@ def initialize_software_buttons(self):
     self.calc_eqd2.clicked.connect(lambda: generate_eqd2_dose(self))
     self.add_to_ab_list.clicked.connect(lambda: add_ab(self))
     self.delete_from_ab_list.clicked.connect(lambda: delete_ab(self))
-    self.eqd2_update_dose_list.clicked.connect(lambda: update_doses_list(self))
-    self.eqd2_update_structure_list.clicked.connect(lambda: update_structure_list(self))
+    
     self.calc_eqd2_2.clicked.connect(lambda: eqd2_calc(self))
 
     #CT CALIBRATION--------------------------------------------------------------------------
