@@ -1,13 +1,9 @@
 # segmentator_api.py
 # FastAPI wrapper for TotalSegmentator with:
 # - Safe CLI flags only: --fast, --ml, --resample, --output_type {nifti,dicom}
-# - Optional `targets` for subset runs:
-#     • If the installed CLI supports --roi_subset, pass it for speed.
-#     • Otherwise, run full segmentation and filter the returned ZIP server-side.
-# - Staging per request under %LOCALAPPDATA%\AMIGOpy, with cleanup controls:
-#     • persist_raw (default False) keeps the raw TS folder.
-#     • keep_only_selected (default True) prunes raw folder to selected targets when kept.
-# - Helpful error payloads: includes stderr tail and exact command on failure.
+# - Optional `targets` for subset runs (via --roi_subset if supported)
+# - Per-request staging under system TEMP, models under LOCALAPPDATA\AMIGOpy\Models
+# - Progress log per request + /progress/{req_id} endpoint
 
 from fastapi import FastAPI, UploadFile, File, Query
 from fastapi.responses import FileResponse, JSONResponse
@@ -16,51 +12,37 @@ import os, uuid, subprocess, shutil, zipfile, re, tempfile
 
 app = FastAPI()
 
-# ---------- Paths ----------
+# ---------- Persistent Models ----------
 BASE_DIR = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser("~")), "AMIGOpy")
+MODELS_DIR = os.path.join(BASE_DIR, "Models")
 os.makedirs(BASE_DIR, exist_ok=True)
+os.makedirs(MODELS_DIR, exist_ok=True)
 print(f"[Segmentator API] Using base directory: {BASE_DIR}")
+print(f"[Segmentator API] Using models directory: {MODELS_DIR}")
 
 # ---------- Helpers ----------
-def _map_output_type(v: Optional[str]) -> str:
-    s = (v or "").strip().lower()
-    if s in ("nifti", "nii", "nii.gz", "nifti_gz"): return "nifti"
-    if s in ("dicom", "dcm", "dicom_seg", "seg"):   return "dicom"
-    return "nifti"
-
 _normer_re = re.compile(r"[^a-z0-9]+")
+
 def _norm_label(s: str) -> str:
     s = (s or "").strip().lower()
     s = _normer_re.sub("_", s)
     return re.sub(r"_+", "_", s).strip("_")
 
-def _collect_nifti_files(root_dir: str) -> List[str]:
-    out = []
-    for r, _, files in os.walk(root_dir):
-        for fn in files:
-            low = fn.lower()
-            if low.endswith(".nii") or low.endswith(".nii.gz"):
-                out.append(os.path.join(r, fn))
-    return out
-
 def _double_ext_stem(fp: str) -> str:
-    """Return filename stem handling .nii.gz as a single extension."""
     base = os.path.basename(fp)
     if base.endswith(".nii.gz"): return base[:-7]
     if base.endswith(".nii"):    return base[:-4]
     return os.path.splitext(base)[0]
 
-def _zipdir(src_dir: str, zip_no_ext: str) -> str:
-    zpath = zip_no_ext + ".zip"
-    try:
-        if os.path.exists(zpath): os.remove(zpath)
-    except Exception:
-        pass
-    shutil.make_archive(zip_no_ext, "zip", src_dir)
-    return zpath
+def _collect_nifti_files(root_dir: str) -> List[str]:
+    out = []
+    for r, _, files in os.walk(root_dir):
+        for fn in files:
+            if fn.lower().endswith((".nii", ".nii.gz")):
+                out.append(os.path.join(r, fn))
+    return out
 
 def _cli_supports_roi_subset() -> bool:
-    """Detect once if TotalSegmentator provides --roi_subset."""
     try:
         h = subprocess.run(["TotalSegmentator", "-h"], capture_output=True, text=True, timeout=10)
         txt = (h.stdout or "") + (h.stderr or "")
@@ -71,17 +53,11 @@ def _cli_supports_roi_subset() -> bool:
 ROI_SUBSET_OK = _cli_supports_roi_subset()
 
 def _map_targets_for_cli(raw_targets: Optional[str]) -> List[str]:
-    """
-    Normalize incoming UI names to CLI-ish tokens.
-    Heuristics only (safe): lowercase, underscores, handle *_l/*_r -> left_*/right_*.
-    If your UI uses 'Kidney_L' -> 'left_kidney', this catches the common pattern.
-    """
     if not raw_targets: return []
     out = []
     for t in raw_targets.split(","):
         t0 = _norm_label(t)
         if not t0: continue
-        # Move trailing _l/_r to prefix left_/right_
         m = re.match(r"^(.*)_(l|r)$", t0)
         if m:
             core, side = m.group(1), m.group(2)
@@ -89,25 +65,39 @@ def _map_targets_for_cli(raw_targets: Optional[str]) -> List[str]:
         out.append(t0)
     return out
 
-def _stage_dirs() -> Tuple[str, str, str]:
+def _stage_dirs() -> Tuple[str, str, str, str, str]:
     """
-    Create a per-request staging directory:
-      req_dir: request root under BASE_DIR
-      input_path: where we store uploaded nii.gz
-      output_dir: TotalSegmentator output
+    Create a per-request staging directory under system TEMP.
+    Returns (req_id, req_dir, input_path, output_dir, log_path).
     """
-    req_dir = tempfile.mkdtemp(prefix="tsreq_", dir=BASE_DIR)
+    req_id = "tsreq_" + uuid.uuid4().hex
+    tmp_root = tempfile.gettempdir()
+    req_dir = os.path.join(tmp_root, req_id)
+    os.makedirs(req_dir, exist_ok=True)
     input_path = os.path.join(req_dir, "input_ct.nii.gz")
     output_dir = os.path.join(req_dir, "ts_out")
     os.makedirs(output_dir, exist_ok=True)
-    return req_dir, input_path, output_dir
+    log_path = os.path.join(req_dir, "ts_progress.log")
+    return req_id, req_dir, input_path, output_dir, log_path
 
 # ---------- Health ----------
 @app.get("/ping")
 def ping():
     return {"status": "Segmentator is running"}
 
-# ---------- Main endpoint ----------
+# ---------- Progress ----------
+@app.get("/progress/{req_id}")
+def get_progress(req_id: str):
+    req_dir = os.path.join(tempfile.gettempdir(), req_id)
+    log_file = os.path.join(req_dir, "ts_progress.log")
+    if not os.path.exists(log_file):
+        return {"status": "not_found", "lines": []}
+
+    with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
+        lines = f.readlines()
+    return {"status": "ok", "lines": lines[-10:]}  # last 10 lines
+
+# ---------- Main segmentation ----------
 @app.post("/segment/")
 async def segment_ct(
     file: UploadFile = File(...),
@@ -115,136 +105,151 @@ async def segment_ct(
     ml: bool = Query(False, description="--ml merge labels"),
     resample: Optional[float] = Query(None, description="--resample <mm>"),
     output_type: str = Query("nifti", description="nifti|dicom"),
-    targets: Optional[str] = Query(None, description="comma-separated organ names to include"),
-    persist_raw: bool = Query(False, description="keep the raw TS output directory on disk"),
-    keep_only_selected: bool = Query(True, description="when persisting raw and targets set, prune to selected"),
+    targets: Optional[str] = Query(None, description="comma-separated organ names"),
+    persist_raw: bool = Query(False, description="keep request folder"),
 ):
-    req_dir, input_path, output_dir = _stage_dirs()
+    req_id, req_dir, input_path, output_dir, log_path = _stage_dirs()
 
     try:
-        # 1) Save upload
+        # Save uploaded NIfTI
         with open(input_path, "wb") as f:
             f.write(await file.read())
 
-        # 2) Build CLI (safe flags only)
-        ot = _map_output_type(output_type)
+        # Build CLI
+        ot = (output_type or "nifti").lower()
         cmd = ["TotalSegmentator", "-i", input_path, "-o", output_dir, "--output_type", ot]
         if fast: cmd.append("--fast")
         if ml:   cmd.append("--ml")
         if resample and resample > 0:
             cmd += ["--resample", str(resample)]
 
-        # 3) Optional ROI subset (speed-up) if supported & per-organ NIfTI & targets provided
+        # ROI subset (only if supported & per-organ nifti)
         requested_cli: List[str] = []
         if not ml and ot == "nifti" and targets:
             requested_cli = _map_targets_for_cli(targets)
             if ROI_SUBSET_OK and requested_cli:
-                cmd += ["--roi_subset"] + requested_cli  # space-separated list after the flag
+                cmd += ["--roi_subset"] + requested_cli
 
-        # 4) Run and capture logs
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-        if proc.returncode != 0:
+        # Run with live log
+        with open(log_path, "w", encoding="utf-8") as logf:
+            proc = subprocess.Popen(cmd, stdout=logf, stderr=subprocess.STDOUT, text=True)
+            ret = proc.wait()
+
+        if ret != 0:
+            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
+                tail = f.readlines()[-20:]
             return JSONResponse(
                 status_code=500,
-                content={
-                    "error": f"TotalSegmentator failed (exit {proc.returncode})",
-                    "cmd": " ".join(cmd),
-                    "stderr_tail": (proc.stderr or "").splitlines()[-20:],
-                },
+                content={"error": f"TotalSegmentator failed (exit {ret})",
+                         "cmd": " ".join(cmd),
+                         "stderr_tail": tail,
+                         "req_id": req_id}
             )
 
-        # 5) Outputs
-        if ml:
-            # merged single file (try common names)
-            candidates = [
-                os.path.join(output_dir, "segmentations.nii.gz"),
-                os.path.join(output_dir, "merged_labels.nii.gz"),
-                os.path.join(output_dir, "segmentations.dcm"),
-            ]
-            for p in candidates:
-                if os.path.exists(p):
-                    final_path = os.path.join(BASE_DIR, f"{uuid.uuid4().hex}_{os.path.basename(p)}")
-                    try:
-                        shutil.move(p, final_path)
-                    except Exception:
-                        # fallback: copy if move fails across devices
-                        shutil.copy2(p, final_path)
-                    if not persist_raw:
-                        shutil.rmtree(req_dir, ignore_errors=True)
-                    return FileResponse(final_path, filename=os.path.basename(final_path))
-            return JSONResponse(status_code=500, content={"error": "Merged output file not found.", "outdir": output_dir})
-
-        # Per-organ outputs
-        if ot == "nifti":
-            seg_dir = os.path.join(output_dir, "segmentations")
-            search_dir = seg_dir if os.path.isdir(seg_dir) else output_dir
-            files = _collect_nifti_files(search_dir)
-
-            # If ROI_SUBSET not supported, do server-side filtering by targets
-            requested = set(_map_targets_for_cli(targets)) if targets else None
-            if requested and not ROI_SUBSET_OK:
-                files = [
-                    fp for fp in files
-                    if _norm_label(_double_ext_stem(fp)) in requested
-                ]
-
-            # Prepare ZIP in BASE_DIR
-            zip_no_ext = os.path.join(BASE_DIR, f"{uuid.uuid4().hex}_segmentations")
-            zpath = zip_no_ext + ".zip"
-            try:
-                if os.path.exists(zpath): os.remove(zpath)
-            except Exception:
-                pass
-
-            with zipfile.ZipFile(zpath, "w", compression=zipfile.ZIP_DEFLATED) as z:
-                added = 0
-                for fp in files:
-                    # if requested provided and ROI_SUBSET OK, files should already be a subset
-                    if (not requested) or (_norm_label(_double_ext_stem(fp)) in requested):
-                        arc = os.path.relpath(fp, output_dir)
-                        z.write(fp, arc)
-                        added += 1
-
-            if not os.path.exists(zpath) or os.path.getsize(zpath) == 0:
-                if not persist_raw:
-                    shutil.rmtree(req_dir, ignore_errors=True)
-                return JSONResponse(
-                    status_code=500,
-                    content={
-                        "error": "No matching organ files to zip.",
-                        "outdir": output_dir,
-                        "requested": list(requested or []),
-                        "roi_subset_used": ROI_SUBSET_OK and bool(requested_cli),
-                    },
-                )
-
-            # Optionally prune the raw dir if we keep it but only want selected
-            if persist_raw and requested and keep_only_selected:
-                keep = {os.path.abspath(fp) for fp in files}
-                for fp in _collect_nifti_files(search_dir):
-                    if os.path.abspath(fp) not in keep:
-                        try: os.remove(fp)
-                        except Exception: pass
-
-            if not persist_raw:
-                shutil.rmtree(req_dir, ignore_errors=True)
-
-            return FileResponse(zpath, filename=os.path.basename(zpath))
-
-        # DICOM outputs: zip entire TS folder (no per-organ filtering here)
-        zpath = _zipdir(output_dir, os.path.join(BASE_DIR, f"{uuid.uuid4().hex}_segmentations"))
-        if not persist_raw:
-            shutil.rmtree(req_dir, ignore_errors=True)
-        return FileResponse(zpath, filename=os.path.basename(zpath))
+        # Return ID + info about output directory
+        return {"req_id": req_id, "output_dir": output_dir}
 
     except Exception as e:
-        # Clean staging on error unless persistence requested
-        try:
-            if not persist_raw:
-                shutil.rmtree(req_dir, ignore_errors=True)
-        except Exception:
-            pass
+        if not persist_raw:
+            shutil.rmtree(req_dir, ignore_errors=True)
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+# ---------- Async segmentation (non-blocking) ----------
+@app.post("/segment_async/")
+async def segment_ct_async(
+    file: UploadFile = File(...),
+    fast: bool = Query(False, description="--fast"),
+    ml: bool = Query(False, description="--ml merge labels"),
+    resample: Optional[float] = Query(None, description="--resample <mm>"),
+    output_type: str = Query("nifti", description="nifti|dicom"),
+    targets: Optional[str] = Query(None, description="comma-separated organ names"),
+    persist_raw: bool = Query(False, description="keep request folder"),
+):
+    """
+    Starts TotalSegmentator in the background and returns immediately with req_id.
+    Use /progress/{req_id} to fetch log tails and /status/{req_id} to check completion.
+    """
+    req_id, req_dir, input_path, output_dir, log_path = _stage_dirs()
+
+    try:
+        # Save uploaded NIfTI
+        with open(input_path, "wb") as f:
+            f.write(await file.read())
+
+        # Build CLI
+        ot = (output_type or "nifti").lower()
+        cmd = ["TotalSegmentator", "-i", input_path, "-o", output_dir, "--output_type", ot]
+        if fast: cmd.append("--fast")
+        if ml:   cmd.append("--ml")
+        if resample and resample > 0:
+            cmd += ["--resample", str(resample)]
+
+        # ROI subset (only if supported & per-organ nifti)
+        requested_cli: List[str] = []
+        if not ml and ot == "nifti" and targets:
+            target_list = [t.strip() for t in (targets or "").split(",") if t.strip()]
+            if target_list and ROI_SUBSET_OK:
+                for t in target_list:
+                    requested_cli += ["--roi_subset", t]
+
+        if requested_cli:
+            cmd += requested_cli
+
+        # Launch in background with live log
+        with open(log_path, "w", encoding="utf-8") as logf:
+            proc = subprocess.Popen(cmd, stdout=logf, stderr=subprocess.STDOUT, text=True)
+
+        # Write a pid file so /status can find it
+        with open(os.path.join(req_dir, "pid.txt"), "w") as pf:
+            pf.write(str(proc.pid))
+
+        # In a background thread, wait and write a done marker
+        import threading
+        def _wait_and_mark():
+            ret = proc.wait()
+            marker = "done.ok" if ret == 0 else "done.err"
+            with open(os.path.join(req_dir, marker), "w") as mf:
+                mf.write(str(ret))
+            # Optionally cleanup raw folder on success
+            if not persist_raw and ret == 0:
+                # keep req_dir since user may still poll logs; but could cleanup later
+                pass
+
+        th = threading.Thread(target=_wait_and_mark, daemon=True)
+        th.start()
+
+        return {"req_id": req_id, "output_dir": output_dir}
+
+    except Exception as e:
+        if not persist_raw:
+            shutil.rmtree(req_dir, ignore_errors=True)
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+# ---------- Status ----------
+@app.get("/status/{req_id}")
+def get_status(req_id: str):
+    """
+    Returns {"state": "running"|"finished"|"failed"} and output_dir if known.
+    """
+    req_dir = os.path.join(tempfile.gettempdir(), req_id)
+    output_dir = os.path.join(req_dir, "ts_out")
+    ok = os.path.join(req_dir, "done.ok")
+    err = os.path.join(req_dir, "done.err")
+    if os.path.exists(ok):
+        return {"state": "finished", "output_dir": output_dir}
+    if os.path.exists(err):
+        # include last log lines
+        log_file = os.path.join(req_dir, "ts_progress.log")
+        tail = []
+        if os.path.exists(log_file):
+            with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
+                tail = f.readlines()[-20:]
+        return {"state": "failed", "output_dir": output_dir, "tail": tail}
+    # If neither marker exists but dir exists, assume running
+    if os.path.isdir(req_dir):
+        return {"state": "running", "output_dir": output_dir}
+    return {"state": "unknown"}
 
 # ---------- Entrypoint ----------
 if __name__ == "__main__":

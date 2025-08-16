@@ -175,75 +175,40 @@ def on_stop_api_requested(owner):
 
 
 
+from fcn_export.export_nii import export_nifti
 
-
-# ===================== helpers: series access & NIfTI I/O =====================
-
-def _get_series_dict(owner, patient, study, modality, index):
-    return owner.dicom_data[patient][study][modality][index]
-
-def _ensure_yxz(arr3d: np.ndarray):
+def _params_to_query_no_ml(params: dict) -> dict:
     """
-    Force array to (Y, X, Z) order = (rows, cols, slices).
-    This is the only layout we ever use for NIfTI I/O.
+    Build query for per-organ output (no merge). If the UI provided 'targets',
+    pass them along so the server can map to --roi_subset (speed-up).
     """
-    if arr3d.ndim != 3:
-        raise ValueError(f"Expected 3D array, got {arr3d.shape}")
+    q = {"ml": "false"}  # per-organ files
+    q["task"] = params.get("task", "total")  # keep 'total' (you said ignore 'body' for now)
 
-    # If it's (Z, Y, X) → (Y, X, Z)
-    if arr3d.shape[0] <= min(arr3d.shape[1], arr3d.shape[2]):
-        return np.transpose(arr3d, (1, 2, 0))
-    # If it's (X, Y, Z) → swap first two axes
-    if arr3d.shape[0] > arr3d.shape[1]:
-        return np.transpose(arr3d, (1, 0, 2))
-    return arr3d
+    if params.get("fast"):     q["fast"] = "true"
+    if params.get("no_crop"):  q["nr_crop"] = "true"
+    if params.get("resample"): q["resample"] = str(params["resample"])
+    q["output_type"] = _map_output_type(params.get("output_type"))
 
-def _dicom_affine_from_md(md: dict):
-    ps = md.get("PixelSpacing", [1.0, 1.0])
-    dy = float(ps[0]) if len(ps) > 0 else 1.0  # rows
-    dx = float(ps[1]) if len(ps) > 1 else 1.0  # cols
-    dz = float(md.get("SpacingBetweenSlices", md.get("SliceThickness", 1.0)))
+    # >>> IMPORTANT: include selected targets (comma-separated) if present
+    targets = params.get("targets") or []
+    if isinstance(targets, (list, tuple)) and len(targets) > 0:
+        # UI already provides canonical TS names; server will translate to --roi_subset
+        q["targets"] = ",".join(targets)
 
-    iop = md.get("ImageOrientationPatient", None)
-    ipp = md.get("ImagePositionPatient", [0.0, 0.0, 0.0])
+    return q
 
-    if iop and len(iop) >= 6:
-        xr, yr, zr, xc, yc, zc = map(float, iop[:6])
-        row_dir = np.array([xr, yr, zr], dtype=np.float32)
-        col_dir = np.array([xc, yc, zc], dtype=np.float32)
-        slc_dir = np.cross(row_dir, col_dir)
-
-        aff = np.eye(4, dtype=np.float32)
-        aff[:3, 0] = row_dir * dy
-        aff[:3, 1] = col_dir * dx
-        aff[:3, 2] = slc_dir * dz
-        aff[:3, 3] = np.array(ipp[:3], dtype=np.float32)
-    else:
-        aff = np.diag([dy, dx, dz, 1.0]).astype(np.float32)
-
-    return aff, (dy, dx, dz)
-
-
-def _write_temp_nifti_from_amigo(arr3d: np.ndarray, md: dict, tmpdir: str) -> str:
-    # Force (z,x,y) → (z,y,x) swap
-    arr_yxz = np.swapaxes(arr3d, 0, 2)  # swap X and Y in-plane
-    aff, (sy, sx, sz) = _dicom_affine_from_md(md)
-
-    img = nib.Nifti1Image(arr_yxz.astype(np.float32, copy=False), aff)
-    try:
-        img.header.set_zooms((sy, sx, sz))
-    except Exception:
-        pass
-    out_path = os.path.join(tmpdir, "input.nii.gz")
-    nib.save(img, out_path)
-    return out_path
-
-def _resample_nifti_mask_to_grid(mask_path: str, target_shape, md: dict):
-    aff, (sy, sx, sz) = _dicom_affine_from_md(md)  # keep (dy, dx, dz)
-    target = (tuple(int(v) for v in target_shape), aff)
-    src = nib.load(mask_path)
-    res = resample_from_to(src, target, order=0)
-    return (res.get_fdata() > 0.5).astype(np.uint8)
+def _params_to_query_singlefile(params: dict) -> dict:
+    q = {
+        "ml": "true",                 # <- single merged labelmap (one file)
+        "task": params.get("task", "total"),  # keep total task
+    }
+    if params.get("fast"):     q["fast"] = "true"
+    if params.get("no_crop"):  q["nr_crop"] = "true"
+    if params.get("resample"): q["resample"] = str(params["resample"])
+    q["output_type"] = _map_output_type(params.get("output_type"))
+    # IMPORTANT: do NOT set q["targets"] -> no subset; TS outputs all classes in one file
+    return q
 
 def _map_output_type(val: str) -> str:
     v = (val or "").strip().lower()
@@ -253,87 +218,13 @@ def _map_output_type(val: str) -> str:
         return "dicom"
     return "nifti"  # safe default
 
-def _params_to_query_no_ml(params: dict) -> dict:
-    q = {"ml": "false"}  # we want per-organ files
-    if params.get("fast"):     q["fast"] = "true"
-    if params.get("no_crop"):  q["nr_crop"] = "true"
-    if params.get("resample"): q["resample"] = str(params["resample"])
-    q["output_type"] = _map_output_type(params.get("output_type"))
-    if params.get("targets"):  q["targets"] = ",".join(params["targets"])
-    return q
 
-def _post_to_api(nifti_path: str, host: str, port: int, query: dict):
-    url = f"http://{host}:{port}/segment/"
-    with open(nifti_path, "rb") as f:
-        files = {"file": ("ct.nii.gz", f, "application/octet-stream")}
-        r = requests.post(url, params=query, files=files, timeout=None)
-    ct = r.headers.get("content-type", "").lower()
-    if ("application/json" in ct) or (not r.ok):
-        try:    return None, r.json()
-        except: return None, {"error": f"HTTP {r.status_code}"}
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
-    tmp.write(r.content); tmp.close()
-    return tmp.name, None
 
-# ===================== helpers: structures bookkeeping =====================
-
-def _ensure_structure_fields(series_dict: dict):
-    if "structures" not in series_dict or not isinstance(series_dict["structures"], dict):
-        series_dict["structures"] = {}
-    if "structures_keys" not in series_dict or not isinstance(series_dict["structures_keys"], list):
-        series_dict["structures_keys"] = []
-    if "structures_names" not in series_dict or not isinstance(series_dict["structures_names"], list):
-        series_dict["structures_names"] = []
-
-def _parse_struct_num(key: str):
-    # accepts "Structure_001" -> 1; else returns None
-    try:
-        if key.startswith("Structure_"):
-            return int(key.split("_", 1)[1])
-    except Exception:
-        pass
-    return None
-
-def _next_structure_key(series_dict: dict) -> str:
-    _ensure_structure_fields(series_dict)
-    nums = []
-    for k in series_dict["structures_keys"]:
-        n = _parse_struct_num(k)
-        if n is not None:
-            nums.append(n)
-    nxt = (max(nums) + 1) if nums else 1
-    return f"Structure_{nxt:03d}"
-
-def _append_structure(owner, patient, study, modality, index, organ_name: str, mask3d: np.ndarray):
-    sdict = _get_series_dict(owner, patient, study, modality, index)
-    _ensure_structure_fields(sdict)
-
-    mask3d = np.asarray(mask3d, dtype=np.uint8)
-    if mask3d.ndim != 3:
-        raise ValueError(f"Mask3D must be 3D; got shape {mask3d.shape}")
-
-    key = _next_structure_key(sdict)
-
-    # Create/overwrite the entry and set *name fields* explicitly
-    entry = {"Mask3D": mask3d}
-    organ_name = str(organ_name)
-    entry["Name"] = organ_name              # AMIGOpy readers commonly use this
-    entry["name"] = organ_name              # lowercase alias for robustness
-    entry["StructureName"] = organ_name     # legacy alias if any code expects it
-    sdict["structures"][key] = entry
-
-    # Keep your parallel lists in sync
-    sdict["structures_keys"].append(key)
-    sdict["structures_names"].append(organ_name)
-
-# ===================== main entry called by the UI =====================
+# Define your API working folder (same as your API startup)
+BASE_DIR = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser("~")), "AMIGOpy")
+os.makedirs(BASE_DIR, exist_ok=True)
 
 def on_run_segmentation_requested(owner, series_list, params):
-    """
-    series_list items: {patient, study, modality, index, label}
-    params: dict from SegmentatorWindow.build_params(); we force ml=False here.
-    """
-    # Host/port from the window
     host = "127.0.0.1"
     port = 5000
     if getattr(owner, "segwin", None):
@@ -343,133 +234,63 @@ def on_run_segmentation_requested(owner, series_list, params):
         except Exception:
             pass
 
-    # Force per-organ output
     params = dict(params or {})
     params["merge_labels"] = False
     query = _params_to_query_no_ml(params)
+    # query = _params_to_query_singlefile(params)
 
-    # Progress dialog
-    total = len(series_list)
-    dlg = QProgressDialog("Preparing…", "Cancel", 0, total, getattr(owner, "segwin", None) or owner)
-    dlg.setWindowTitle("Auto-Contouring")
-    dlg.setWindowModality(True)
-    dlg.setMinimumDuration(0)
-    dlg.setValue(0)
-    QApplication.processEvents()
+    for meta in series_list:
+        pid = meta["patient"]
+        study = meta["study"]
+        mod = meta["modality"]
+        idx = meta["index"]
 
-    for i, meta in enumerate(series_list, start=1):
-        if dlg.wasCanceled():
-            break
+        # Export NIfTI directly into BASE_DIR instead of a temp folder
+        nifti_path = export_nifti(owner,
+            pid, study, mod, idx,
+            output_folder=BASE_DIR,
+            file_name="input.nii.gz"
+        )
 
-        pid = meta["patient"]; study = meta["study"]; mod = meta["modality"]; idx = meta["index"]
-        dlg.setLabelText(f"Series {i}/{total}: {pid} / {study} / {mod} [{idx}]")
-        QApplication.processEvents()
-
-        # ---- 1) Fetch source volume + spacing from your structure ----
-        try:
-            sdict = _get_series_dict(owner, pid, study, mod, idx)
-            vol = sdict["3DMatrix"]  # your exact key (3D numpy array)
-            if not isinstance(vol, np.ndarray) or vol.ndim != 3:
-                raise ValueError(f"3DMatrix is not a 3D numpy array (got {type(vol)} shape={getattr(vol,'shape',None)})")
-            md = sdict["metadata"]
-            ps = md["PixelSpacing"]   # [sx, sy]
-            sx, sy = float(ps[0]), float(ps[1])
-            sz = float(md["SliceThickness"])
-            spacing = (sx, sy, sz)
-        except Exception as e:
-            print(f"[AutoContouring] Cannot read series for {pid}/{study}/{mod}[{idx}]: {e}")
-            dlg.setValue(i); QApplication.processEvents()
-            continue
-
-        # ---- 2) Write temp NIfTI and call API (expects ZIP) ----
-        with tempfile.TemporaryDirectory() as td:
-            nii_in = _write_temp_nifti_from_amigo(vol, sdict.get("metadata", {}), td)
-
-            dlg.setLabelText(f"Processing {pid} / {study} / {mod} [{idx}] …")
-            QApplication.processEvents()
-            zip_path, err = _post_to_api(nii_in, host, port, query)
+        if nifti_path:
+            # Send it to the API
+            zip_path, err = _post_to_api(nifti_path, host, port, query)
             if err:
                 _show_api_error(owner, f"API error for {pid}/{study}/{mod}[{idx}]", err)
-                dlg.setValue(i); QApplication.processEvents()
-                continue
-
-            # ---- 3) Read results: ZIP with one NIfTI per organ ----
-            if not zipfile.is_zipfile(zip_path):
-                # Likely an error JSON or unexpected file; try to show details
-                try:
-                    with open(zip_path, "rb") as f:
-                        payload = f.read()
-                    try:
-                        j = json.loads(payload.decode("utf-8", "ignore"))
-                        _show_api_error(owner, "Segmentator error", j)
-                    except Exception:
-                        _show_api_error(owner, "Unexpected response", {"error": f"Not a zip file: {zip_path}"})
-                except Exception:
-                    _show_api_error(owner, "Unexpected response", {"error": "No valid ZIP returned"})
-                dlg.setValue(i); QApplication.processEvents()
-                continue
-
-            try:
-                extract_dir = os.path.join(td, "seg_out")
-                os.makedirs(extract_dir, exist_ok=True)
-                with zipfile.ZipFile(zip_path, "r") as zf:
-                    zf.extractall(extract_dir)
-
-                # Collect all NIfTI masks
-                organ_files = []
-                for root, _, files in os.walk(extract_dir):
-                    for fname in files:
-                        low = fname.lower()
-                        if low.endswith(".nii") or low.endswith(".nii.gz"):
-                            organ_files.append(os.path.join(root, fname))
-                organ_files.sort()
-
-                for fpath in organ_files:
-                    organ = pathlib.Path(fpath).name
-                    if organ.endswith(".nii.gz"): organ = organ[:-7]
-                    elif organ.endswith(".nii"):  organ = organ[:-4]
-
-                    dlg.setLabelText(f"Importing {organ} for {pid} / {study} / {mod} [{idx}] …")
-                    QApplication.processEvents()
-
-                    nii = nib.load(fpath)
-                    mask = (nii.get_fdata() > 0).astype(np.uint8)
-
-                    # Resample every mask onto the original grid to guarantee identical size
-                    mask = _resample_nifti_mask_to_grid(
-                        mask_path=fpath,
-                        target_shape= _ensure_yxz(vol).shape,          # grid used for the input
-                        md=sdict.get("metadata", {})
-                    )
-                    # ---- 4) Append to your dicom_data structure ----
-                    _append_structure(owner, pid, study, mod, idx, organ, mask)
-
-            except Exception as e:
-                print(f"[AutoContouring] Failed to import results for {pid}/{study}/{mod}[{idx}]: {e}")
-
-        dlg.setValue(i)
-        QApplication.processEvents()
-
-    dlg.close()
-    # Optional completion toast
-    try:
-        QMessageBox.information(getattr(owner, "segwin", None) or owner,
-                                "Auto-Contouring",
-                                "Segmentation finished.")
-    except Exception:
-        pass
 
 
-# ===================== small UI helper =====================
+def _post_to_api(nifti_path: str, host: str, port: int, query: dict, out_dir: str = BASE_DIR):
+    """
+    POST the NIfTI to the TS API and save the binary ZIP response to out_dir.
+    Returns (zip_path, None) on success, or (None, err_dict) on failure.
+    """
+    url = f"http://{host}:{port}/segment/"
+    with open(nifti_path, "rb") as f:
+        files = {"file": (os.path.basename(nifti_path), f, "application/octet-stream")}
+        r = requests.post(url, params=query, files=files, timeout=None)
+
+    ct = (r.headers.get("content-type") or "").lower()
+    if not r.ok or ("application/json" in ct):
+        # Try to return structured error from API
+        try:
+            return None, r.json()
+        except Exception:
+            return None, {"error": f"HTTP {r.status_code}", "cmd": f"POST {url}"}
+
+    # Save the response body as a ZIP in the working folder
+    os.makedirs(out_dir, exist_ok=True)
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    zip_path = os.path.join(out_dir, f"ts_output_{ts}.zip")
+    with open(zip_path, "wb") as zf:
+        zf.write(r.content)
+    return zip_path, None
 
 def _show_api_error(owner, title: str, payload: dict):
-    # Short message
     try:
         msg = payload.get("error", str(payload))
     except Exception:
         msg = str(payload)
 
-    # Rich details (cmd + stderr tail)
     details = []
     if isinstance(payload, dict):
         if payload.get("cmd"):
@@ -480,7 +301,6 @@ def _show_api_error(owner, title: str, payload: dict):
         elif isinstance(st, str):
             details.append("stderr (tail):\n" + st)
 
-    # Qt dialog with a collapsible “Show Details”
     parent = getattr(owner, "segwin", None) or owner
     box = QMessageBox(QMessageBox.Warning, title, msg, parent=parent)
     if details:

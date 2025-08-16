@@ -1,4 +1,5 @@
-# segmentator_ui.py — TotalSegmentator UI with canonical TS labels, grouping, search, and refresh
+# segmentator_ui.py — TotalSegmentator UI with canonical TS labels, grouping, search,
+# quick-subgroup checkboxes, and select/unselect all series controls.
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
@@ -7,117 +8,164 @@ from PyQt5.QtWidgets import (
     QSplitter, QSizePolicy
 )
 from PyQt5.QtCore import Qt, pyqtSignal
-import os, json, pathlib, re
+import os
 
-# ------------------------------------------------------------
-# Label discovery (canonical TS names) and grouping heuristics
-# ------------------------------------------------------------
+# =============== Canonical TS label list (from your ZIP contents) ===============
+# NOTE: These are used as the authoritative set for your UI.
+TS_ALL_TARGETS = [
+    "adrenal_gland_left","adrenal_gland_right","aorta","atrial_appendage_left",
+    "autochthon_left","autochthon_right","brachiocephalic_trunk",
+    "brachiocephalic_vein_left","brachiocephalic_vein_right","brain",
+    "clavicula_left","clavicula_right","colon","common_carotid_artery_left",
+    "common_carotid_artery_right","costal_cartilages","duodenum","esophagus",
+    "femur_left","femur_right","gallbladder","gluteus_maximus_left",
+    "gluteus_maximus_right","gluteus_medius_left","gluteus_medius_right",
+    "gluteus_minimus_left","gluteus_minimus_right","heart","hip_left","hip_right",
+    "humerus_left","humerus_right","iliac_artery_left","iliac_artery_right",
+    "iliac_vena_left","iliac_vena_right","iliopsoas_left","iliopsoas_right",
+    "inferior_vena_cava","kidney_cyst_left","kidney_cyst_right","kidney_left",
+    "kidney_right","liver","lung_lower_lobe_left","lung_lower_lobe_right",
+    "lung_middle_lobe_right","lung_upper_lobe_left","lung_upper_lobe_right",
+    "pancreas","portal_vein_and_splenic_vein","prostate","pulmonary_vein",
+    "rib_left_1","rib_left_2","rib_left_3","rib_left_4","rib_left_5","rib_left_6",
+    "rib_left_7","rib_left_8","rib_left_9","rib_left_10","rib_left_11","rib_left_12",
+    "rib_right_1","rib_right_2","rib_right_3","rib_right_4","rib_right_5",
+    "rib_right_6","rib_right_7","rib_right_8","rib_right_9","rib_right_10",
+    "rib_right_11","rib_right_12","sacrum","scapula_left","scapula_right","skull",
+    "small_bowel","spinal_cord","spleen","sternum","stomach",
+    "subclavian_artery_left","subclavian_artery_right","superior_vena_cava",
+    "thyroid_gland","trachea","urinary_bladder",
+    "vertebrae_C1","vertebrae_C2","vertebrae_C3","vertebrae_C4","vertebrae_C5",
+    "vertebrae_C6","vertebrae_C7","vertebrae_T1","vertebrae_T2","vertebrae_T3",
+    "vertebrae_T4","vertebrae_T5","vertebrae_T6","vertebrae_T7","vertebrae_T8",
+    "vertebrae_T9","vertebrae_T10","vertebrae_T11","vertebrae_T12",
+    "vertebrae_L1","vertebrae_L2","vertebrae_L3","vertebrae_L4","vertebrae_L5",
+    "vertebrae_S1",
+]
+TS_ALL_SET = set(TS_ALL_TARGETS)
 
-def _discover_ts_labels():
-    """
-    Discover canonical label names from the installed TotalSegmentator package.
-    Returns a sorted list of label strings as they appear in TS (lowercase, underscores).
-    Fallback: a conservative built-in set if package resources are not found.
-    """
-    labels = set()
-    # Fallback minimal set (safe; TS v1/v2 use these names consistently)
-    fallback = {
-        # Thorax/heart/lungs
-        "left_lung","right_lung","heart","trachea","esophagus","aorta","aortic_arch","pulmonary_artery",
-        # Abdomen
-        "liver","spleen","pancreas","stomach","gallbladder",
-        "left_kidney","right_kidney","left_adrenal_gland","right_adrenal_gland",
-        "inferior_vena_cava","portal_vein","small_bowel","large_bowel","duodenum",
-        # Pelvis
-        "bladder","prostate","rectum","uterus","left_ovary","right_ovary","sacrum","pelvis",
-        "left_femur","right_femur","left_hip","right_hip",
-        # Head/Neck
-        "brain","brainstem","pituitary","left_eye","right_eye","left_lens","right_lens",
-        "left_optic_nerve","right_optic_nerve","left_parotid_gland","right_parotid_gland",
-        "left_submandibular_gland","right_submandibular_gland","mandible","nasal_cavity","larynx","thyroid","skull",
-        # Spine
-        "spinal_cord","spine_c","spine_t","spine_l","spine_s",
-    }
-    labels.update(fallback)
+# =============== Quick subgroup (subtask) presets ===============
+TS_SUBTASKS = {
+    # Thorax / lungs
+    "Lung lobes": [
+        "lung_upper_lobe_left","lung_upper_lobe_right",
+        "lung_middle_lobe_right",
+        "lung_lower_lobe_left","lung_lower_lobe_right",
+    ],
+    "Airways": ["trachea"],
+    "Heart + veins (basic)": ["heart","atrial_appendage_left","pulmonary_vein"],
 
-    try:
-        import totalsegmentator as ts  # noqa: F401
-        pkg_dir = pathlib.Path(ts.__file__).parent
+    # Great vessels
+    "Great vessels": [
+        "aorta","inferior_vena_cava","superior_vena_cava",
+        "brachiocephalic_trunk","brachiocephalic_vein_left","brachiocephalic_vein_right",
+        "common_carotid_artery_left","common_carotid_artery_right",
+        "subclavian_artery_left","subclavian_artery_right",
+        "portal_vein_and_splenic_vein",
+    ],
 
-        candidates = [
-            pkg_dir / "resources" / "labels_total.json",     # TS >= v2 (typical)
-            pkg_dir / "resources" / "labels.json",
-            pkg_dir / "map_to_binary" / "labels_total.json",
-            pkg_dir / "map_to_binary" / "labels.json",
-        ]
-        for c in candidates:
-            if c.exists():
-                with open(c, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                # common shapes: dict[label]->id ; or {"labels":[...]} ; or plain list
-                if isinstance(data, dict):
-                    if "labels" in data and isinstance(data["labels"], list):
-                        labels.update(map(str, data["labels"]))
-                    else:
-                        labels.update(map(str, data.keys()))
-                elif isinstance(data, list):
-                    labels.update(map(str, data))
-                break
-    except Exception:
-        # TS not installed or resource not found: fallback set is already populated
-        pass
+    # Abdomen solid organs
+    "Liver/Pancreas/Spleen/GB": ["liver","pancreas","spleen","gallbladder"],
 
-    # Normalize: TS canonical names are lowercase underscore — keep as-is if they already are,
-    # otherwise lower+underscore (if older file variants had spaces).
-    norm = set()
-    for s in labels:
-        s = s.strip()
-        s = re.sub(r"\s+", "_", s)
-        norm.add(s.lower())
-    return sorted(norm)
+    # Kidneys + adrenals
+    "Kidneys/Adrenals": [
+        "kidney_left","kidney_right","kidney_cyst_left","kidney_cyst_right",
+        "adrenal_gland_left","adrenal_gland_right",
+    ],
 
+    # GI
+    "GI (tube)": ["esophagus","stomach","duodenum","small_bowel","colon"],
 
-# Regex-based grouping (robust across TS versions)
-_PATTERNS = [
+    # Pelvis
+    "Pelvis (urology)": ["urinary_bladder","prostate"],
+
+    # Muscles (pelvis/hips/back)
+    "Pelvis/Back muscles": [
+        "iliopsoas_left","iliopsoas_right",
+        "gluteus_maximus_left","gluteus_maximus_right",
+        "gluteus_medius_left","gluteus_medius_right",
+        "gluteus_minimus_left","gluteus_minimus_right",
+        "autochthon_left","autochthon_right",
+    ],
+
+    # Bones
+    "Shoulder girdle": ["clavicula_left","clavicula_right","scapula_left","scapula_right"],
+    "Arms": ["humerus_left","humerus_right"],
+    "Legs + hips + sacrum": ["femur_left","femur_right","hip_left","hip_right","sacrum"],
+    "Skull/Sternum/Cartilage": ["skull","sternum","costal_cartilages"],
+
+    # Vertebrae & ribs
+    "Vertebrae (all)": [
+        "vertebrae_C1","vertebrae_C2","vertebrae_C3","vertebrae_C4","vertebrae_C5","vertebrae_C6","vertebrae_C7",
+        "vertebrae_T1","vertebrae_T2","vertebrae_T3","vertebrae_T4","vertebrae_T5","vertebrae_T6","vertebrae_T7","vertebrae_T8","vertebrae_T9","vertebrae_T10","vertebrae_T11","vertebrae_T12",
+        "vertebrae_L1","vertebrae_L2","vertebrae_L3","vertebrae_L4","vertebrae_L5","vertebrae_S1",
+    ],
+    "Ribs (left all)": [
+        "rib_left_1","rib_left_2","rib_left_3","rib_left_4","rib_left_5","rib_left_6",
+        "rib_left_7","rib_left_8","rib_left_9","rib_left_10","rib_left_11","rib_left_12",
+    ],
+    "Ribs (right all)": [
+        "rib_right_1","rib_right_2","rib_right_3","rib_right_4","rib_right_5","rib_right_6",
+        "rib_right_7","rib_right_8","rib_right_9","rib_right_10","rib_right_11","rib_right_12",
+    ],
+
+    # Misc / Endocrine / Neuro
+    "Thyroid/Spinal cord/Brain": ["thyroid_gland","spinal_cord","brain"],
+}
+
+# =============== Grouping for the right-hand list (visual organization) ===============
+_GROUPS = [
     ("Head / Neck", [
-        r"^brain$", r"^brainstem$", r"^pituitary$",
-        r"^(left|right)_eye$", r"^(left|right)_lens$", r"^(left|right)_optic_nerve$",
-        r"^(left|right)_parotid_gland$", r"^(left|right)_submandibular_gland$",
-        r"^mandible$", r"^maxillary_sinus(_(left|right))?$", r"^nasal_cavity$",
-        r"^larynx$", r"^thyroid$", r"^skull$",
-        r"^spinal_cord_cervical$",  # sometimes present
+        "brain","thyroid_gland","skull","spinal_cord"
     ]),
     ("Thorax", [
-        r"^(left|right)_lung$", r"^heart$", r"^trachea$", r"^esophagus$",
-        r"^aorta$", r"^aortic_arch$", r"^pulmonary_artery$",
-        r"^(left|right)_subclavian_artery$", r"^(left|right)_subclavian_vein$",
-        r"^(left|right)_brachiocephalic_vein$", r"^sternum$",
-        r"^clavicle_(left|right)$|^(left|right)_clavicle$",
-        r"^rib_(left|right)_[0-9]+$",
+        "heart","atrial_appendage_left","trachea","esophagus",
+        "aorta","inferior_vena_cava","superior_vena_cava",
+        "brachiocephalic_trunk","brachiocephalic_vein_left","brachiocephalic_vein_right",
+        "common_carotid_artery_left","common_carotid_artery_right",
+        "subclavian_artery_left","subclavian_artery_right",
+        "pulmonary_vein",
+        "lung_upper_lobe_left","lung_upper_lobe_right","lung_middle_lobe_right",
+        "lung_lower_lobe_left","lung_lower_lobe_right",
+        "clavicula_left","clavicula_right","scapula_left","scapula_right",
+        "sternum","costal_cartilages",
+        # ribs are many; handled in separate "Ribs" groups for readability
     ]),
     ("Abdomen", [
-        r"^liver$", r"^gallbladder$", r"^pancreas$", r"^spleen$",
-        r"^(left|right)_kidney$", r"^(left|right)_adrenal_gland$",
-        r"^large_bowel$", r"^small_bowel$", r"^duodenum$", r"^stomach$",
-        r"^inferior_vena_cava$", r"^portal_vein$",
+        "liver","pancreas","spleen","gallbladder",
+        "kidney_left","kidney_right","kidney_cyst_left","kidney_cyst_right",
+        "adrenal_gland_left","adrenal_gland_right",
+        "stomach","duodenum","small_bowel","colon",
+        "portal_vein_and_splenic_vein",
+        "iliac_artery_left","iliac_artery_right","iliac_vena_left","iliac_vena_right",
     ]),
     ("Pelvis", [
-        r"^bladder$", r"^prostate$", r"^rectum$", r"^uterus$",
-        r"^(left|right)_ovary$", r"^(left|right)_hip$", r"^(left|right)_femur$",
-        r"^sacrum$", r"^pelvis$",
+        "urinary_bladder","prostate",
+        "hip_left","hip_right","sacrum",
+        "iliopsoas_left","iliopsoas_right",
+        "gluteus_maximus_left","gluteus_maximus_right",
+        "gluteus_medius_left","gluteus_medius_right",
+        "gluteus_minimus_left","gluteus_minimus_right",
+        "autochthon_left","autochthon_right",
     ]),
-    ("Spine & Vertebrae", [
-        r"^vertebra_[ctl][0-9]+$",        # vertebra_c1..c7 / t1..t12 / l1..l5
-        r"^spine_[ctls]$", r"^spinal_cord$",
+    ("Vertebrae", [
+        "vertebrae_C1","vertebrae_C2","vertebrae_C3","vertebrae_C4","vertebrae_C5","vertebrae_C6","vertebrae_C7",
+        "vertebrae_T1","vertebrae_T2","vertebrae_T3","vertebrae_T4","vertebrae_T5","vertebrae_T6","vertebrae_T7","vertebrae_T8","vertebrae_T9","vertebrae_T10","vertebrae_T11","vertebrae_T12",
+        "vertebrae_L1","vertebrae_L2","vertebrae_L3","vertebrae_L4","vertebrae_L5",
+        "vertebrae_S1",
+    ]),
+    ("Ribs (Left)", [
+        "rib_left_1","rib_left_2","rib_left_3","rib_left_4","rib_left_5","rib_left_6",
+        "rib_left_7","rib_left_8","rib_left_9","rib_left_10","rib_left_11","rib_left_12",
+    ]),
+    ("Ribs (Right)", [
+        "rib_right_1","rib_right_2","rib_right_3","rib_right_4","rib_right_5","rib_right_6",
+        "rib_right_7","rib_right_8","rib_right_9","rib_right_10","rib_right_11","rib_right_12",
     ]),
 ]
 
-def _group_for_label(lbl: str) -> str:
-    for group_name, pats in _PATTERNS:
-        for p in pats:
-            if re.match(p, lbl):
-                return group_name
-    return "Other / Ungrouped"
+# Any labels not covered above will appear here:
+OTHER_GROUP_TITLE = "Other / Ungrouped"
 
 
 class SegmentatorWindow(QWidget):
@@ -138,7 +186,25 @@ class SegmentatorWindow(QWidget):
         self.setWindowFlags(self.windowFlags() | Qt.Window)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.setWindowTitle("Auto-Contouring (TotalSegmentator)")
-        self.setMinimumSize(1280, 780)
+        self.setMinimumSize(1320, 820)
+
+        # Global button style: white text on blue background
+        self.setStyleSheet("""
+            QPushButton {
+                background-color: #1976D2;
+                color: white;
+                padding: 6px 12px;
+                border-radius: 6px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #1565C0;
+            }
+            QPushButton:disabled {
+                background-color: #90A4AE;
+                color: #ECEFF1;
+            }
+        """)
 
         self.dicom_data = dicom_data or {}
         self.excluded_modalities = excluded_modalities or set()
@@ -201,15 +267,20 @@ class SegmentatorWindow(QWidget):
         splitter.setHandleWidth(8)
         splitter.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        # Left pane: series table + refresh
+        # Left pane: series table + refresh + select/unselect all
         left = QWidget(); left_v = QVBoxLayout(left)
         left_v.setContentsMargins(0, 0, 0, 0); left_v.setSpacing(6)
         row_hdr = QHBoxLayout()
         row_hdr.addWidget(QLabel("Select series to send:")); row_hdr.addStretch()
+        self.btn_select_all_series = QPushButton("Select All Series")
+        self.btn_clear_all_series  = QPushButton("Clear All Series")
         self.btn_refresh_series = QPushButton("Refresh Series")
+        self.btn_select_all_series.clicked.connect(lambda: self._select_all_series(True))
+        self.btn_clear_all_series.clicked.connect(lambda: self._select_all_series(False))
         self.btn_refresh_series.setToolTip("Reload series list from the app")
         self.btn_refresh_series.clicked.connect(self._reload_series)
-        row_hdr.addWidget(self.btn_refresh_series)
+        for b in (self.btn_select_all_series, self.btn_clear_all_series, self.btn_refresh_series):
+            row_hdr.addWidget(b)
         left_v.addLayout(row_hdr)
 
         self.tbl = QTableWidget(0, 5)
@@ -224,7 +295,7 @@ class SegmentatorWindow(QWidget):
 
         self._populate_series_table()
 
-        # Right pane: structures with search + global controls + grouped checkboxes
+        # Right pane: structures with search + quick groups + grouped checkboxes
         right = QWidget(); right_v = QVBoxLayout(right)
         right_v.setContentsMargins(0, 0, 0, 0); right_v.setSpacing(6)
 
@@ -239,15 +310,28 @@ class SegmentatorWindow(QWidget):
 
         self.btn_select_all = QPushButton("Select All")
         self.btn_clear_all  = QPushButton("Clear All")
-        self.btn_expand_all = QPushButton("Expand All")
-        self.btn_collapse_all = QPushButton("Collapse All")
-        self.btn_select_all.clicked.connect(lambda: self._select_all(True))
-        self.btn_clear_all.clicked.connect(lambda: self._select_all(False))
-        self.btn_expand_all.clicked.connect(lambda: self._expand_collapse_all(True))
-        self.btn_collapse_all.clicked.connect(lambda: self._expand_collapse_all(False))
-        for b in (self.btn_select_all, self.btn_clear_all, self.btn_expand_all, self.btn_collapse_all):
-            controls.addWidget(b)
+        self.btn_select_all.clicked.connect(lambda: self._select_all_labels(True))
+        self.btn_clear_all.clicked.connect(lambda: self._select_all_labels(False))
+        controls.addWidget(self.btn_select_all)
+        controls.addWidget(self.btn_clear_all)
         right_v.addLayout(controls)
+
+        # Quick subgroup presets
+        quick = QGroupBox("Quick Groups")
+        quick_l = QGridLayout(); quick_l.setHorizontalSpacing(12); quick_l.setVerticalSpacing(6)
+        self.quick_checks = {}  # name -> QCheckBox
+        col = 0; row = 0
+        for name in TS_SUBTASKS.keys():
+            cb = QCheckBox(name)
+            cb.stateChanged.connect(self._on_quick_group_changed)
+            self.quick_checks[name] = cb
+            quick_l.addWidget(cb, row, col)
+            col += 1
+            if col >= 3:
+                col = 0
+                row += 1
+        quick.setLayout(quick_l)
+        right_v.addWidget(quick)
 
         # scrollable groups
         self.scroll = QScrollArea(); self.scroll.setWidgetResizable(True)
@@ -255,7 +339,7 @@ class SegmentatorWindow(QWidget):
         self.groups_layout = QVBoxLayout(holder)
         self.groups_layout.setContentsMargins(6, 6, 6, 6); self.groups_layout.setSpacing(8)
 
-        self._build_groups_with_ts_labels()
+        self._build_groups_with_labels()
 
         right_v.addWidget(self.scroll)
 
@@ -326,6 +410,12 @@ class SegmentatorWindow(QWidget):
             return base.strip()
         return f"{modality}_Series: {series_data.get('SeriesNumber','?')}"
 
+    def _select_all_series(self, state: bool):
+        for meta in self.series_rows:
+            cb = self.tbl.cellWidget(meta["row"], 0)
+            if cb:
+                cb.setChecked(state)
+
     def get_selected_series(self):
         selected = []
         for meta in self.series_rows:
@@ -335,23 +425,18 @@ class SegmentatorWindow(QWidget):
         return selected
 
     # -------------------- structures UI --------------------
-    def _build_groups_with_ts_labels(self):
-        # 1) discover label universe
-        labels = _discover_ts_labels()
+    def _build_groups_with_labels(self):
+        covered = set()
+        for group_title, labels in _GROUPS:
+            labs = [lab for lab in labels if lab in TS_ALL_SET]
+            if labs:
+                self._add_contour_group(group_title, sorted(labs))
+                covered.update(labs)
 
-        # 2) group them
-        grouped = {}
-        for lbl in labels:
-            g = _group_for_label(lbl)
-            grouped.setdefault(g, []).append(lbl)
-
-        # 3) build groups in fixed order + Other
-        order = ["Head / Neck", "Thorax", "Abdomen", "Pelvis", "Spine & Vertebrae", "Other / Ungrouped"]
-        for group in order:
-            labs = sorted(grouped.get(group, []), key=str.lower)
-            if not labs:
-                continue
-            self._add_contour_group(group, labs)
+        # Ribs & Vertebrae already handled. Add any remaining labels to "Other"
+        remaining = sorted([lab for lab in TS_ALL_TARGETS if lab not in covered])
+        if remaining:
+            self._add_contour_group(OTHER_GROUP_TITLE, remaining)
 
     def _add_contour_group(self, title, labels):
         group = QGroupBox(title)
@@ -361,12 +446,13 @@ class SegmentatorWindow(QWidget):
         header = QHBoxLayout()
         header.addWidget(QLabel(f"<b>{title}</b>"))
         header.addStretch()
-        btn_toggle = QPushButton("Check All"); btn_toggle.setFixedWidth(100)
+        btn_toggle = QPushButton("Check All"); btn_toggle.setFixedWidth(110)
         header.addWidget(btn_toggle)
         outer.addLayout(header)
 
         grid = QGridLayout(); grid.setHorizontalSpacing(18); grid.setVerticalSpacing(4)
         cbs = []
+        # 2 columns for readability
         for i, lab in enumerate(labels):
             cb = QCheckBox(lab)  # lab is the EXACT TS name
             cbs.append(cb)
@@ -384,32 +470,36 @@ class SegmentatorWindow(QWidget):
             for cb in cbs:
                 cb.setChecked(not all_on)
             btn_toggle.setText("Uncheck All" if not all_on else "Check All")
-        btn_toggle.clicked.connect(toggle)
+        # Simpler, robust version:
+        def toggle_simple():
+            all_on = all(cb.isChecked() for cb in cbs)
+            for cb in cbs:
+                cb.setChecked(not all_on)
+            btn_toggle.setText("Uncheck All" if not all_on else "Check All")
+        btn_toggle.clicked.connect(toggle_simple)
 
     def _apply_filter(self, text: str):
-        """Hide labels (checkboxes) that don't match the filter string."""
         pat = text.strip().lower()
         for lab, cb in self.label_to_checkbox.items():
-            if not pat:
-                cb.parentWidget().setVisible(True)
-                cb.setVisible(True)
-                continue
-            show = pat in lab.lower()
+            show = (pat in lab.lower()) if pat else True
             cb.setVisible(show)
 
-    def _select_all(self, state: bool):
+    def _select_all_labels(self, state: bool):
         for cb in self.label_to_checkbox.values():
             if cb.isVisible():  # respect current filter
                 cb.setChecked(state)
 
-    def _expand_collapse_all(self, expand: bool):
-        # QGroupBox doesn't have collapse; emulate by showing/hiding the content layout
-        for i in range(self.groups_layout.count()):
-            w = self.groups_layout.itemAt(i).widget()
-            if isinstance(w, QGroupBox):
-                w.setVisible(True)  # keep group headers visible
-                # If you prefer true collapse, you can setFlat(True/False) or reparent inner layout.
-                # Here, we do nothing (Qt widgets inside remain), but could be extended if needed.
+    # Quick groups behavior
+    def _on_quick_group_changed(self, *_):
+        # Clear all visible first? No—act as additive toggles:
+        # if a quick group is checked, ensure its labels are checked;
+        # if unchecked, uncheck its labels.
+        for name, cb in self.quick_checks.items():
+            labs = TS_SUBTASKS.get(name, [])
+            for lab in labs:
+                w = self.label_to_checkbox.get(lab)
+                if w and w.isVisible():
+                    w.setChecked(cb.isChecked())
 
     def get_selected_labels(self):
         return [lab for lab, cb in self.label_to_checkbox.items() if cb.isChecked() and cb.isVisible()]
@@ -469,7 +559,7 @@ class SegmentatorWindow(QWidget):
             )
             if reply == QMessageBox.Yes:
                 # select all visible boxes (respecting filter)
-                self._select_all(True)
+                self._select_all_labels(True)
                 params = self.build_params()
             else:
                 return

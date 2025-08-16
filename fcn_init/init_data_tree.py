@@ -2,6 +2,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMenu, QDialog, QMessageBox
 from fcn_display.Data_tree_general import on_DataTreeView_clicked
 from fcn_export.export_dcm import export_dicom_series
+from fcn_export.export_nii import export_nifti
 from fcn_load.populate_dcm_list import populate_DICOM_tree
 from fcn_init.datatree_selection_box import SeriesPickerDialog
 import copy
@@ -63,6 +64,7 @@ def on_tree_context_menu(self, pos):
             reset_view = menu.addAction("Reset view …")
 
         exp_action_dcm     = menu.addAction("Export DCM")
+        exp_action_nii     = menu.addAction("Export Nifti")
         delete_action      = menu.addAction("Delete series")
 
         action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
@@ -83,6 +85,8 @@ def on_tree_context_menu(self, pos):
                 print("No DICOM header available for export (likely NIfTI-derived).")
             else:
                 export_dicom_series(meta_data, data, slice_thick, output_folder=None)
+        elif action == exp_action_nii:
+            export_nifti(self, Patient, Study, Modality, Series,output_folder=None, file_name=None)
 
 
     # -------------------------
