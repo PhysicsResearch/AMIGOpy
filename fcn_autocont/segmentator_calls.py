@@ -3,10 +3,12 @@ import os, sys, time, requests, io, tempfile, zipfile, pathlib
 from PyQt5.QtCore import QProcess, QTimer, Qt, QProcessEnvironment
 from PyQt5.QtWidgets import QMessageBox, QProgressDialog, QApplication
 from fcn_autocont.segmentator_ui import SegmentatorWindow
+from fcn_load.populate_dcm_list import populate_DICOM_tree
 import numpy as np
-import nibabel as nib
-from nibabel.processing import resample_from_to
+import SimpleITK as sitk
 import sip
+from pathlib import Path
+from typing import Dict, List, Any
 
 
 def open_segmentator_tab(self):
@@ -245,45 +247,58 @@ def on_run_segmentation_requested(owner, series_list, params):
         mod = meta["modality"]
         idx = meta["index"]
 
-        # Export NIfTI directly into BASE_DIR instead of a temp folder
-        nifti_path = export_nifti(owner,
-            pid, study, mod, idx,
+        # Export NIfTI directly into BASE_DIR (or wherever you prefer)
+        nifti_path = export_nifti(
+            owner, pid, study, mod, idx,
             output_folder=BASE_DIR,
             file_name="input.nii.gz"
         )
 
-        if nifti_path:
-            # Send it to the API
-            zip_path, err = _post_to_api(nifti_path, host, port, query)
-            if err:
-                _show_api_error(owner, f"API error for {pid}/{study}/{mod}[{idx}]", err)
+        if not nifti_path:
+            _show_api_error(owner, "Export error",
+                            {"error": f"Failed to export NIfTI for {pid}/{study}/{mod}[{idx}]"})
+            continue
+
+        # Send to API → JSON with {"req_id","output_dir"} (per your server)
+        info, err = _post_to_api(nifti_path, host, port, query)
+        if err:
+            _show_api_error(owner, f"API error for {pid}/{study}/{mod}[{idx}]", err)
+            continue
+
+        # Use the output folder immediately
+        # info looks like {"req_id": "...", "output_dir": "C:\\...\\ts_out"}
+        count = process_output(
+            owner, info,
+            patient_id=pid, study_id=study, modality=mod, series_index=idx
+        )
+        print(f"[Segmentator] Imported {count} structure(s) from {info.get('output_dir')}")
+        populate_DICOM_tree(owner)
 
 
-def _post_to_api(nifti_path: str, host: str, port: int, query: dict, out_dir: str = BASE_DIR):
+def _post_to_api(nifti_path: str, host: str, port: int, query: dict):
     """
-    POST the NIfTI to the TS API and save the binary ZIP response to out_dir.
-    Returns (zip_path, None) on success, or (None, err_dict) on failure.
+    POST the NIfTI to the TS API /segment/ endpoint.
+    Your API returns JSON: {"req_id": "...", "output_dir": "<folder>"}.
+    Returns (info_dict, None) on success, or (None, err_dict) on failure.
     """
     url = f"http://{host}:{port}/segment/"
     with open(nifti_path, "rb") as f:
         files = {"file": (os.path.basename(nifti_path), f, "application/octet-stream")}
-        r = requests.post(url, params=query, files=files, timeout=None)
-
-    ct = (r.headers.get("content-type") or "").lower()
-    if not r.ok or ("application/json" in ct):
-        # Try to return structured error from API
         try:
-            return None, r.json()
-        except Exception:
-            return None, {"error": f"HTTP {r.status_code}", "cmd": f"POST {url}"}
+            r = requests.post(url, params=query, files=files, timeout=None)
+        except Exception as ex:
+            return None, {"error": f"POST failed: {ex}", "cmd": f"POST {url}"}
 
-    # Save the response body as a ZIP in the working folder
-    os.makedirs(out_dir, exist_ok=True)
-    ts = time.strftime("%Y%m%d-%H%M%S")
-    zip_path = os.path.join(out_dir, f"ts_output_{ts}.zip")
-    with open(zip_path, "wb") as zf:
-        zf.write(r.content)
-    return zip_path, None
+    # Expect JSON containing req_id + output_dir
+    try:
+        data = r.json()
+    except Exception:
+        return None, {"error": f"Unexpected response (HTTP {r.status_code})", "cmd": f"POST {url}"}
+
+    if not r.ok or (isinstance(data, dict) and data.get("error")):
+        return None, data if isinstance(data, dict) else {"error": "Unknown error"}
+
+    return data, None
 
 def _show_api_error(owner, title: str, payload: dict):
     try:
@@ -306,3 +321,126 @@ def _show_api_error(owner, title: str, payload: dict):
     if details:
         box.setDetailedText("\n\n".join(details))
     box.exec_()
+
+
+def _ensure_series_struct_containers(
+    owner,
+    patient_id: str = None,
+    study_id: str = None,
+    modality: str = None,
+    series_index: int = None,
+) -> Dict[str, Any]:
+    """
+    Ensure the AMIGOpy structure containers exist for the given series and return that series dict.
+    Tries explicit ids first; if None, falls back to owner.patientID / owner.studyID / owner.modality / owner.series_index.
+    """
+    pid  = patient_id  if patient_id  is not None else getattr(owner, "patientID", None)
+    sid  = study_id    if study_id    is not None else getattr(owner, "studyID", None)
+    mod  = modality    if modality    is not None else getattr(owner, "modality", None)
+    sidx = series_index if series_index is not None else getattr(owner, "series_index", None)
+
+    if pid is None or sid is None or mod is None or sidx is None:
+        raise RuntimeError("Current series identifiers (patientID, studyID, modality, series_index) are not set on owner or were not provided.")
+
+    dicom = getattr(owner, "dicom_data", None)
+    if dicom is None:
+        dicom = {}
+        setattr(owner, "dicom_data", dicom)
+
+    dicom.setdefault(pid, {})
+    dicom[pid].setdefault(sid, {})
+    dicom[pid][sid].setdefault(mod, [])
+
+    while len(dicom[pid][sid][mod]) <= int(sidx):
+        dicom[pid][sid][mod].append({})
+
+    series = dicom[pid][sid][mod][int(sidx)]
+    if not isinstance(series, dict):
+        series = dicom[pid][sid][mod][int(sidx)] = {}
+
+    series.setdefault("structures", {})
+    series.setdefault("structures_keys", [])
+    series.setdefault("structures_names", [])
+
+    # Keep lists consistent
+    sk = series["structures_keys"]
+    sn = series["structures_names"]
+    if len(sn) < len(sk):
+        sn.extend([""] * (len(sk) - len(sn)))
+    elif len(sk) < len(sn):
+        del sn[len(sk):]
+
+    return series
+
+
+def process_output(
+    owner,
+    info: dict,
+    patient_id: str = None,
+    study_id: str = None,
+    modality: str = None,
+    series_index: int = None,
+):
+    """
+    Use info['output_dir'] from the API, open all .nii/.nii.gz masks, convert to uint8,
+    and store them into AMIGOpy structures for the specified (or current) series.
+    """
+    output_dir = info.get("output_dir")
+    if not output_dir or not os.path.isdir(output_dir):
+        print("[Segmentator] No valid output directory.")
+        return 0
+
+    if owner is None:
+        print("[Segmentator][import] No owner provided; cannot attach structures.")
+        return 0
+
+    series = _ensure_series_struct_containers(
+        owner,
+        patient_id=patient_id,
+        study_id=study_id,
+        modality=modality,
+        series_index=series_index,
+    )
+    structures = series["structures"]
+    keys_list: List[str] = series["structures_keys"]
+    names_list: List[str] = series["structures_names"]
+
+    start_idx = len(keys_list)
+
+    all_files = []
+    for root, _, files in os.walk(output_dir):
+        for fn in files:
+            lf = fn.lower()
+            if lf.endswith(".nii") or lf.endswith(".nii.gz"):
+                all_files.append(os.path.join(root, fn))
+    all_files.sort()
+
+    imported = 0
+    for fpath in all_files:
+        try:
+            img = sitk.ReadImage(fpath)
+            arr = sitk.GetArrayFromImage(img)      # (z, y, x)
+            # Apply same flip as in read_nifti_series
+            arr = np.flip(arr, axis=1)
+            mask = (arr > 0).astype(np.uint8)
+            mask = (arr > 0).astype(np.uint8)
+
+            s_idx = start_idx + imported
+            s_key = f"Structure_{s_idx:03d}"
+            s_name = Path(fpath).stem
+            if s_name.endswith(".nii"):
+                s_name = s_name[:-4]
+
+            keys_list.append(s_key)
+            names_list.append(s_name)
+            if s_key not in structures:
+                structures[s_key] = {}
+            structures[s_key]["Mask3D"] = mask
+            structures[s_key]["Name"]   = s_name
+
+            imported += 1
+            print(f"[Segmentator][import] Added {s_key} = {s_name} from {fpath}")
+        except Exception as e:
+            print(f"[Segmentator][import] Failed to import {fpath}: {e}")
+
+    return imported
