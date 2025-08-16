@@ -21,12 +21,12 @@ def to_EQD2(D,fractions,ab):
 
 def convert_dose_matrix_to_EQD2(dose_matrix,structures,ab_values,fractions,default_ab=3):
     #create ab matrix
-    ab_matrix=np.full(dose_matrix.shape, default_ab)
+    ab_matrix=np.full(dose_matrix.shape, float(default_ab))
     
     for structure,ab in zip(structures,ab_values):
         ab_matrix[structure==1]=ab
     #plt.imshow(ab_matrix[73,:,:])
-    return to_EQD2(dose_matrix,fractions,ab_matrix)
+    return to_EQD2(dose_matrix,fractions,ab_matrix),ab_matrix
 
 
 
@@ -190,9 +190,36 @@ def generate_eqd2_dose(self):
                          QMessageBox.warning(self,'invalid input', 'select a valid number of fractions')
                          return
                 
-                     dose_matrix_eqd2=convert_dose_matrix_to_EQD2(dose_matrix,masks,ab_coeff,fractions,default_ab=3)
+                     dose_matrix_eqd2,ab_matrix=convert_dose_matrix_to_EQD2(dose_matrix,masks,ab_coeff,fractions,default_ab=3)
                      
                      #add dose to the tree
+                     
+                     #####TESTING#########
+                     #Get z coordinates of the GTV
+                     index_GTV=struct_used.index('GTVp1')
+                     gtv_mask=masks[index_GTV]
+                     coor=np.argwhere(gtv_mask!=0)
+                     z_coor=coor[:,0]
+                     from numpy.random import randint
+                     #Sampling a random point inside the GTV
+                     rand_idx =randint(0,len(coor)-1)
+                     z,x,y=coor[rand_idx]
+                     print(f'GTV: {z},{x},{y}, physical= {dose_matrix[z,x,y]}, ab= {ab_matrix[z,x,y]}, eqd2= {dose_matrix_eqd2[z,x,y]}')
+                     range_slices=(min(z_coor),max(z_coor))
+                     for i in range(10):
+                         dim=dose_matrix.shape
+                         z=randint(range_slices[0],range_slices[1])
+                         x=randint(0,dim[1]-1)
+                         y=randint(0,dim[2]-1)
+                         
+                         print(f'point {i+1}: {z},{x},{y}, physical= {dose_matrix[z,x,y]}, ab= {ab_matrix[z,x,y]}, eqd2= {dose_matrix_eqd2[z,x,y]}')
+                     
+                     
+                     
+                     
+                     
+                     
+                     #####################
             
                      eqd2_dose=deepcopy(dose)
             
