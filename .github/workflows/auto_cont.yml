@@ -27,7 +27,7 @@ jobs:
         shell: powershell
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller uvicorn fastapi starlette pydantic
+          pip install pyinstaller uvicorn fastapi starlette pydantic python-multipart
 
       # === 1) Build AMIGOpy (GUI) from your existing .spec ===
       - name: Run PyInstaller (AMIGOpy GUI)
@@ -42,10 +42,14 @@ jobs:
         run: |
           pyinstaller --noconfirm --clean `
             --name segmentator_api `
-            --onefile --console `
+            --onefile `
+            --noconsole `
+            --icon assets\segmentator_api.ico `
             --hidden-import uvicorn `
             --hidden-import fastapi `
-            segmentator_api/segmentator_api.py
+            --hidden-import starlette `
+            --hidden-import multipart `
+            segmentator_api\segmentator_api.py
 
       # === 3) Build AMIGOpy Windows installer via Inno Setup (unchanged) ===
       - name: Install Inno Setup

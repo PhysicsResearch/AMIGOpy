@@ -9,6 +9,7 @@ from fastapi import FastAPI, UploadFile, File, Query
 from fastapi.responses import FileResponse, JSONResponse
 from typing import Optional, List, Tuple
 import os, uuid, subprocess, shutil, zipfile, re, tempfile
+import multipart 
 
 app = FastAPI()
 
