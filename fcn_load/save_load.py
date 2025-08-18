@@ -123,6 +123,21 @@ class SaveWorker(QObject):
         finally:
             self.finished.emit()
 
+def _shim_pydicom_pickle():
+    """
+    Provide a stub for pydicom.sequence.validate_dataset if missing,
+    so old pickles can unpickle under pydicom ≥3.0.
+    """
+    try:
+        import pydicom.sequence as seq
+        if not hasattr(seq, "validate_dataset"):
+            def validate_dataset(x):  # no-op stub
+                return x
+            seq.validate_dataset = validate_dataset
+    except Exception:
+        # If pydicom isn't installed in this env, just skip.
+        pass
+
 class LoadWorker(QObject):
     result   = pyqtSignal(object)    # loaded dicom_data
     finished = pyqtSignal()
@@ -134,6 +149,7 @@ class LoadWorker(QObject):
 
     def run(self):
         try:
+            _shim_pydicom_pickle()
             data = joblib.load(self._path, mmap_mode=None)
             self.result.emit(data)
         except Exception as e:
@@ -239,14 +255,10 @@ def load_amigo_bundle(self, path: str | None = None):
         except:
             self.DataType = "DICOM"
 
-        if self.DataType == "DICOM":
+        if self.DataType == "DICOM" or self.DataType == "nifti":
             self.dicom_data = data
             self.DataType = "DICOM"
             populate_DICOM_tree(self)        # refresh your UI
-        elif self.DataType == "nifti": 
-            self.nifti_data = data
-            self.DataType = "nifti"
-            populate_nifti_tree(self)
         else:
             return
 

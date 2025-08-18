@@ -1,0 +1,92 @@
+name: Build AMIGOpy installer
+
+on:
+  push:
+    branches:
+      - auto_cont
+  workflow_dispatch:
+
+jobs:
+  build-and-sign-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniconda-version: "latest"
+          python-version: "3.11"
+          environment-file: amigo.yml
+          activate-environment: amigo
+
+      # Ensure PyInstaller and the API's runtime deps are present in the build env
+      - name: Install build dependencies
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller uvicorn fastapi starlette pydantic
+
+      # === 1) Build AMIGOpy (GUI) from your existing .spec ===
+      - name: Run PyInstaller (AMIGOpy GUI)
+        shell: powershell
+        run: |
+          pyinstaller Launch_ImGUI.spec
+
+      # === 2) Build Segmentator API (separate, onefile console exe) ===
+      # Adjust the path if your server file lives elsewhere.
+      - name: Build Segmentator API exe
+        shell: powershell
+        run: |
+          pyinstaller --noconfirm --clean `
+            --name segmentator_api `
+            --onefile --console `
+            --hidden-import uvicorn `
+            --hidden-import fastapi `
+            segmentator_api/segmentator_api.py
+
+      # === 3) Build AMIGOpy Windows installer via Inno Setup (unchanged) ===
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Build Windows installer (AMIGOpy)
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
+
+      # === 4) Package BOTH outputs into a single zip for signing ===
+      # - AMIGOpy installer: Output\mysetup.exe (as produced by your .iss)
+      # - Segmentator API exe: dist\segmentator_api.exe
+      - name: Create unsigned bundle (zip for signature)
+        shell: powershell
+        run: |
+          if (!(Test-Path -LiteralPath "unsigned")) { New-Item -ItemType Directory -Path "unsigned" | Out-Null }
+          if (!(Test-Path -LiteralPath "Output\mysetup.exe")) { throw "AMIGOpy installer not found at Output\mysetup.exe" }
+          if (!(Test-Path -LiteralPath "dist\segmentator_api.exe")) { throw "Segmentator API exe not found at dist\segmentator_api.exe" }
+          Compress-Archive -Force -Path "Output\mysetup.exe","dist\segmentator_api.exe" -DestinationPath "unsigned\unsigned_for_signing.zip"
+
+      - name: Upload unsigned bundle artifact
+        id: upload_unsigned_zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-bundle
+          path: unsigned/unsigned_for_signing.zip
+
+      # === 5) Sign the zip (SignPath will sign supported binaries inside the artifact) ===
+      - name: Submit bundle to SignPath
+        uses: signpath/github-action-submit-signing-request@v1.1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload_unsigned_zip.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      # === 6) Upload the signed result (zip containing the signed files) ===
+      - name: Upload signed bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-bundle
+          path: signed/

@@ -6,7 +6,6 @@ from fcn_autocont.segmentator_ui import SegmentatorWindow
 from fcn_load.populate_dcm_list import populate_DICOM_tree
 import numpy as np
 import SimpleITK as sitk
-import sip
 from pathlib import Path
 from typing import Dict, List, Any
 from fcn_autocont.segmentator_ui import TS_ALL_SET  # canonical case-sensitive set
@@ -70,60 +69,156 @@ def _api_is_up(host, port, timeout_s=0.5):
         return False
 
 def on_start_api_requested(owner, host: str, port: int):
-    if _api_is_up(host, port):
-        if getattr(owner, "segwin", None): owner.segwin.set_api_running(True)
-        QMessageBox.information(owner, "Segmentator", f"API already running at {host}:{port}")
+    # Block re-entry / double-clicks
+    if getattr(owner, "_api_starting", False):
         return
 
-    app_root   = _get_appdata_root()
-    print(app_root)
-    log_path   = os.path.join(app_root, "segmentator_api.log")
+    # If already up, reflect UI and lock buttons
+    if _api_is_up(host, port):
+        if getattr(owner, "segwin", None):
+            owner.segwin.set_api_running(True)
+            try:
+                owner.segwin.btn_start_api.setEnabled(False)
+                owner.segwin.btn_stop_api.setEnabled(True)
+            except Exception:
+                pass
+        print(f"[Segmentator] API already running at {host}:{port}")
+        return
 
-    module_dir = os.path.dirname(os.path.abspath(__file__))
+    owner._api_starting = True
+    if getattr(owner, "segwin", None):
+        try:
+            owner.segwin.btn_start_api.setEnabled(False)
+            owner.segwin.btn_stop_api.setEnabled(False)
+        except Exception:
+            pass
 
+    # Non-blocking "Starting..." dialog
+    start_dlg = QDialog(getattr(owner, "segwin", owner))
+    start_dlg.setWindowTitle("Segmentator")
+    start_dlg.setModal(False)
+    lay = QVBoxLayout(start_dlg)
+    lbl = QLabel(f"Starting API at {host}:{port}…", start_dlg)
+    pgb = QProgressBar(start_dlg); pgb.setRange(0, 0)
+    lay.addWidget(lbl); lay.addWidget(pgb)
+    start_dlg.show()
+    owner._seg_start_dlg = start_dlg
+
+    app_root = _get_appdata_root()                      # e.g. C:\Users\...\AppData\Local\AMIGOpy
+    log_path = os.path.join(app_root, "segmentator_api.log")
+    models_dir = os.path.join(app_root, "Models")
+    tmp_dir    = os.path.join(app_root, "tmp")
+    os.makedirs(models_dir, exist_ok=True)
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    # Prepare QProcess
     proc = QProcess(owner)
     env = QProcessEnvironment.systemEnvironment()
-    # ensure the folder containing segmentator_api.py is importable
-    env.insert("PYTHONPATH",
-               module_dir if not env.value("PYTHONPATH") else
-               module_dir + os.pathsep + env.value("PYTHONPATH"))
+    env.insert("AMIGO_SEG_HOST", host)
+    env.insert("AMIGO_SEG_PORT", str(port))
+    env.insert("TOTALSEG_HOME", models_dir)
+    env.insert("TMPDIR", tmp_dir); env.insert("TEMP", tmp_dir); env.insert("TMP", tmp_dir)
     proc.setProcessEnvironment(env)
-
-    proc.setWorkingDirectory(module_dir)
-    proc.setProgram(sys.executable)
-    proc.setArguments([
-        "-m", "uvicorn", "segmentator_api:app",
-        "--host", host, "--port", str(port),
-        "--log-level", "warning"
-    ])
-
     proc.setStandardOutputFile(log_path)
     proc.setStandardErrorFile(log_path)
 
-    owner.segmentator_proc = proc
-    proc.start()
+    # -------- PREFER COMPILED EXE (HERE IS YOUR SNIPPET) --------
+    exe_path = os.path.join(app_root, "Segmentator", "segmentator_api.exe")
+    if os.path.exists(exe_path):
+        # Use compiled API first
+        proc.setProgram(exe_path)
+        proc.setArguments([])  # host/port passed via env vars
+        proc.setWorkingDirectory(os.path.dirname(exe_path))
+    else:
+        # Fallback: run the .py script from the repo
+        # This file lives in ...\AMIGOpy\fcn_autocont\*.py  -> root is one level up
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))  # C:\AMIGOpy
+        api_dir  = os.path.join(root_dir, "segmentator_api")                            # ...\segmentator_api
+        api_py   = os.path.join(api_dir, "segmentator_api.py")
+        if not os.path.exists(api_py):
+            # Clean up UI if path missing
+            try: start_dlg.close()
+            except Exception: pass
+            owner._api_starting = False
+            if getattr(owner, "segwin", None):
+                try: owner.segwin.btn_start_api.setEnabled(True)
+                except Exception: pass
+            QMessageBox.critical(owner, "Segmentator",
+                f"segmentator_api.py not found at:\n{api_py}\n"
+                f"Checked because compiled exe was not found at:\n{exe_path}")
+            return
 
-    # same tiny poll as above
-    owner._api_timer = QTimer(owner); owner._api_timer.setInterval(250)
-    owner._api_checks = 0
+        proc.setWorkingDirectory(api_dir)
+        proc.setProgram(sys.executable)
+        proc.setArguments([api_py])  # run "python segmentator_api.py"
+    # ------------------------------------------------------------
+
+    # Keep a handle so it isn't GC'd
+    owner.segmentator_proc = proc
+
     def _on_finished(*_):
+        owner._api_starting = False
+        try:
+            if hasattr(owner, "_seg_start_dlg") and owner._seg_start_dlg:
+                owner._seg_start_dlg.close()
+        except Exception:
+            pass
         if getattr(owner, "segwin", None):
             owner.segwin.set_api_running(False)
+            try:
+                owner.segwin.btn_start_api.setEnabled(True)
+                owner.segwin.btn_stop_api.setEnabled(False)
+            except Exception:
+                pass
+        print("[Segmentator] API process finished.")
     proc.finished.connect(_on_finished)
+
+    proc.start()
+
+    # Poll /ping for readiness
+    owner._api_timer = QTimer(owner)
+    owner._api_timer.setInterval(250)
+    owner._api_checks = 0
 
     def _poll():
         owner._api_checks += 1
         if _api_is_up(host, port):
             owner._api_timer.stop()
+            owner._api_starting = False
+            try:
+                if hasattr(owner, "_seg_start_dlg") and owner._seg_start_dlg:
+                    owner._seg_start_dlg.close()
+            except Exception:
+                pass
             if getattr(owner, "segwin", None):
                 owner.segwin.set_api_running(True)
-                QMessageBox.information(owner, "Segmentator", f"API is running at {host}:{port}")
-        elif owner._api_checks >= 60:
+                try:
+                    owner.segwin.btn_start_api.setEnabled(False)
+                    owner.segwin.btn_stop_api.setEnabled(True)
+                except Exception:
+                    pass
+            print(f"[Segmentator] API is running at {host}:{port}")
+            return
+
+        if owner._api_checks >= 60:  # ~15s timeout
             owner._api_timer.stop()
+            owner._api_starting = False
+            try:
+                if hasattr(owner, "_seg_start_dlg") and owner._seg_start_dlg:
+                    owner._seg_start_dlg.close()
+            except Exception:
+                pass
             if getattr(owner, "segwin", None):
                 owner.segwin.set_api_running(False)
+                try:
+                    owner.segwin.btn_start_api.setEnabled(True)
+                    owner.segwin.btn_stop_api.setEnabled(False)
+                except Exception:
+                    pass
+            print("[Segmentator] API failed to start (timeout). See log:", log_path)
             QMessageBox.warning(owner, "Segmentator",
-                "API failed to start. Check log:\n" + log_path)
+                                "API failed to start (timeout).\nCheck log:\n" + log_path)
+
     owner._api_timer.timeout.connect(_poll)
     owner._api_timer.start()
 

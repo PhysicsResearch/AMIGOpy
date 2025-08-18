@@ -257,9 +257,12 @@ def get_status(req_id: str):
         return {"state": "running", "output_dir": output_dir}
     return {"state": "unknown"}
 
-# ---------- Entrypoint ----------
 if __name__ == "__main__":
-    import uvicorn
+    import uvicorn, os, sys
     host = os.getenv("AMIGO_SEG_HOST", "127.0.0.1")
     port = int(os.getenv("AMIGO_SEG_PORT", "5000"))
-    uvicorn.run("segmentator_api:app", host=host, port=port, reload=False)
+    # When frozen, run the object directly (no import string issues)
+    if getattr(sys, "frozen", False):
+        uvicorn.run(app, host=host, port=port, reload=False, log_level="warning")
+    else:
+        uvicorn.run("segmentator_api:app", host=host, port=port, reload=False, log_level="warning")
