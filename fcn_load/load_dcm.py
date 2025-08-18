@@ -89,6 +89,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         'ImageComments': getattr(dicom_file, "ImageComments", ''),
                         'DoseGridScaling': getattr(dicom_file, "DoseGridScaling", "N/A"),
                         'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),
+                        'DataType': 'DICOM',
                         'Modality': modality,
                         'DCM_Info': Header
                     },
@@ -307,42 +308,45 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
     return structured_data, non_im_files 
  
 
-def load_all_dcm(self,folder_path=None, progress_callback=None, update_label=None):
+def load_all_dcm(self, folder_path=None, progress_callback=None, update_label=None):
     """
-    Master function that facilitates loading, extraction, and organization of DICOM data.
-
-    This function calls the necessary sub-functions to process and organize the DICOM data 
-    in a hierarchical manner.
-
-    Args:
-        folder_path (str, optional): Path to the directory with DICOM files.
-        progress_callback (function, optional): Optional callback function for tracking progress.
-        update_label (label, optional): UI label to display progress updates.
-
-    Returns:
-        dicom_data (dict): Hierarchical representation of DICOM data.
+    Load and append DICOM data into self.dicom_data without overwriting existing entries.
     """
-    detailed_files_info, unique_files_info, folder = get_data_description(folder_path, self.progressBar.setValue, update_label)
+    detailed_files_info, unique_files_info, folder = get_data_description(
+        folder_path, self.progressBar.setValue, update_label
+    )
     self.files_info = detailed_files_info
     if detailed_files_info is None:
-        # user cacled or folder does not exist
         return
+
     total_steps = len(detailed_files_info)
-    
+
     if update_label:
         update_label.setText(f"Loading {total_steps} files")
-        
-    self.dicom_data, non_im_files = load_images(self,detailed_files_info, self.progressBar.setValue, total_steps)
-    # Clear the lists of segmentation structures 
+
+    # ✅ Only create if not present
+    if not hasattr(self, 'dicom_data') or self.dicom_data is None or not isinstance(self.dicom_data, dict):
+        self.dicom_data = {}
+
+    # Load into a temporary dict
+    new_data, non_im_files = load_images(
+        self, detailed_files_info, self.progressBar.setValue, total_steps
+    )
+
+    # ✅ Merge new data into existing self.dicom_data
+    for patient_id, studies in new_data.items():
+        patient_data = self.dicom_data.setdefault(patient_id, {})
+        for study_id, modalities in studies.items():
+            study_data = patient_data.setdefault(study_id, {})
+            for modality, series_list in modalities.items():
+                modality_data = study_data.setdefault(modality, [])
+                modality_data.extend(series_list)  # append series
+
+    # Clear the segmentation structure list
     self.segStructList.clear()
 
     self.DataType = "DICOM"
     populate_DICOM_tree(self)
-    
-    # for index, file_info in enumerate(non_im_files):
-    #     print(f"{file_info['FilePath']} {file_info['Modality']}")
-    #return dicom_data
-
 
 
 if __name__ == "__main__":

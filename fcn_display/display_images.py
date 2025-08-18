@@ -90,17 +90,11 @@ def displayaxial(self, Im = None):
 
 def disp_structure_overlay_axial(self):
     """
-    Show checked structures on the axial renderer.
-
-    • If VTK actors are already cached under
-      structure_data['VTKActors2D']['axial'], reuse them.
-
-    • If *only* Contours2D are present (freshly loaded bundle),
-      lazily convert those contours → vtkActors and cache them,
-      so next call is instant.
-
-    The bundle itself stays pickle-safe because actors are never stored
-    back to disk.
+    Show selected structures (structures_view==1) on the axial renderer.
+    Uses saved per-structure appearance:
+      - structures_color        -> hex "#rrggbb"
+      - structures_line_width   -> float
+      - structures_transparency -> float in [0,1]
     """
     renderer = (
         self.vtkWidgetAxial.GetRenderWindow()
@@ -119,35 +113,68 @@ def disp_structure_overlay_axial(self):
                        [self.modality][self.series_index]
     )
     if not series_dict.get("structures"):
-        return                              # nothing to draw yet
+        return  # nothing to draw yet
 
-    slice_idx = self.current_axial_slice_index[0]     # current Z
+    slice_idx = self.current_axial_slice_index[0]  # current Z
 
-    # pixel spacing (row, col)  →  (y, x) in mm
+    # pixel spacing (row, col) → (y, x) in mm
     px_spacing = (self.pixel_spac[0, 1], self.pixel_spac[0, 0])
 
-    # ─── WARNDLG SETUP ──────────────────────────────────────────────
-    warn_dlg = None
-    for i in range(self.STRUCTlist.count()):
-        item_widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
-        if not item_widget.checkbox.isChecked():
-            continue                      # structure not selected
+    names = series_dict.get('structures_names', [])
+    keys  = series_dict.get('structures_keys', [])
+    view  = series_dict.get('structures_view', [0]*len(names))
 
-        s_key = getattr(item_widget, "structure_key", None)
-        if s_key is None:
+    # keep arrays aligned; avoid IndexError
+    n = min(len(view), len(keys), len(names))
+
+    # Saved appearance with safe defaults
+    def _align(arr, default):
+        arr = arr if isinstance(arr, list) else []
+        if len(arr) < n:
+            arr = arr + [default] * (n - len(arr))
+        else:
+            arr = arr[:n]
+        return arr
+
+    colors_hex   = _align(series_dict.get('structures_color'),        "#ffffff")
+    line_widths  = _align(series_dict.get('structures_line_width'),   2.0)
+    transpars    = _align(series_dict.get('structures_transparency'), 0.5)
+
+    def _hex_to_rgbf(h):
+        try:
+            s = (h or "").strip()
+            if s.startswith("#"):
+                s = s[1:]
+            if len(s) == 3:  # e.g. "abc" → "aabbcc"
+                s = "".join(c*2 for c in s)
+            r = int(s[0:2], 16) / 255.0
+            g = int(s[2:4], 16) / 255.0
+            b = int(s[4:6], 16) / 255.0
+            return (r, g, b)
+        except Exception:
+            return (1.0, 1.0, 1.0)
+
+    warn_dlg = None
+
+    # ─── main loop over selected structures ───────────────────────────
+    for i in range(n):
+        if view[i] != 1:
             continue
 
-        s_data = series_dict["structures"].get(s_key, {})
+        s_key = keys[i]
+        if not s_key:
+            continue
+
+        s_data = series_dict.get("structures", {}).get(s_key, {})
         if not s_data:
-            return
-        # ── 1) make sure axial actors exist  if not create all ──────────────────────────
-        if 'Contours2D' not in s_data:
-            s_data['Contours2D'] = {'axial':{}, 'sagittal':{}, 'coronal':{}},
-        if not s_data['Contours2D']:
-            return
-        
+            continue
+
+        # Ensure contour containers exist
+        if 'Contours2D' not in s_data or not isinstance(s_data['Contours2D'], dict):
+            s_data['Contours2D'] = {'axial': {}, 'sagittal': {}, 'coronal': {}}
+
+        # First-time creation of actors dict
         if "VTKActors2D" not in s_data:
-            # show the warn dialog once
             if warn_dlg is None:
                 warn_dlg = QProgressDialog(
                     "Pre-loading contours… it may take a few seconds",
@@ -160,51 +187,59 @@ def disp_structure_overlay_axial(self):
                 warn_dlg.show()
             s_data["VTKActors2D"] = {}
 
-        if not s_data['Contours2D']['axial'] or s_data['Modified'] == 1:          # still empty?
+        # Build contours if missing or marked modified
+        if not s_data['Contours2D'].get('axial') or s_data.get('Modified', 0) == 1:
             s_data['Contours2D'] = build_contours_for_structure(s_data['Mask3D'])
 
-        if "axial" not in s_data["VTKActors2D"] or s_data['Modified'] == 1:
-            # build once, cache forever (in RAM only)
+        # Rebuild actors (axial) if missing or modified
+        if "axial" not in s_data["VTKActors2D"] or s_data.get('Modified', 0) == 1:
             contours_axial = s_data.get("Contours2D", {}).get("axial", {})
             s_data["VTKActors2D"]["axial"] = actors_from_contours(
-                contours_axial, px_spacing,
-                line_width=item_widget.line_width_spinbox.value(),
-                color=item_widget.selectedColor.getRgbF()[:3]
-                      if item_widget.selectedColor else (1, 0, 0),
+                contours_axial,
+                px_spacing,
+                line_width=float(line_widths[i]),
+                color=_hex_to_rgbf(colors_hex[i]),
             )
 
+        if s_data.get('Modified', 0) == 1:
+            s_data['Modified'] = 0  # reset modified flag
+
         actors_dict = s_data["VTKActors2D"]["axial"]
-
-        if s_data['Modified'] == 1:
-            s_data['Modified'] = 0          # reset modified flag
-
         if slice_idx not in actors_dict:
-            continue                          # no contour on this slice
+            continue  # no contour on this slice
 
         src_actor = actors_dict[slice_idx]
 
-        # ── 2) customise appearance per-widget (colour, opacity …) ───
+        # ── customise appearance from saved arrays ────────────────────
         actor = vtk.vtkActor()
         actor.ShallowCopy(src_actor)
-        actor.GetProperty().SetColor(
-            item_widget.selectedColor.getRgbF()[:3]
-            if item_widget.selectedColor else (1, 1, 1)
-        )
-        actor.GetProperty().SetOpacity(1 - item_widget.transparency_spinbox.value())
-        actor.GetProperty().SetLineWidth(item_widget.line_width_spinbox.value())
+        actor.GetProperty().SetColor(_hex_to_rgbf(colors_hex[i]))
+        actor.GetProperty().SetOpacity(1.0 - float(transpars[i]))       # 0→opaque,1→transparent in UI
+        actor.GetProperty().SetLineWidth(float(line_widths[i]))
         actor.GetProperty().SetRepresentationToWireframe()
 
-        # move a little above the image plane so contours are visible
+        # Lift above the image plane so contours are visible
         actor.SetPosition(self.Im_Offset[0, 0],
                           self.Im_Offset[0, 1],
-                          2000)
+                          _overlay_epsilon(self))
 
         renderer.AddActor(actor)
         self.structure_actors_ax.append(actor)
+
     # ─── CLOSE THE WARNDLG ──────────────────────────────────────────
     if warn_dlg is not None and warn_dlg.isVisible():
         warn_dlg.close()
+
+    renderer.ResetCameraClippingRange()
     self.vtkWidgetAxial.GetRenderWindow().Render()
+
+def _overlay_epsilon(self):
+    # small positive offset (mm) so wireframe floats above the slice
+    try:
+        st = float(self.slice_thick[0]) if self.slice_thick is not None else 1.0
+    except Exception:
+        st = 1.0
+    return max(0.1, 0.05 * (st if st > 0 else 1.0))
 
 
 def disp_roi_axial(self):
@@ -566,13 +601,11 @@ def displaycoronal(self, Im = None):
 
 def disp_structure_overlay_coronal(self):
     """
-    Show checked structures in the *coronal* renderer.
-
-    * Actors are created on-demand from stored Contours2D and cached
-      in RAM (structure_data['VTKActors2D']['coronal']).
-
-    * No VTK objects are ever written back to disk, so the bundle
-      remains pickle-safe.
+    Show selected structures (structures_view==1) on the coronal renderer.
+    Uses saved per-structure appearance:
+      - structures_color        -> hex "#rrggbb"
+      - structures_line_width   -> float
+      - structures_transparency -> float in [0,1]
     """
     renderer = (
         self.vtkWidgetCoronal.GetRenderWindow()
@@ -580,81 +613,137 @@ def disp_structure_overlay_coronal(self):
         .GetFirstRenderer()
     )
 
-
     # ─── clear previous overlay ───────────────────────────────────────
     for actor in getattr(self, "structure_actors_co", []):
         renderer.RemoveActor(actor)
     self.structure_actors_co = []
 
-    # ─── fetch data for current series ────────────────────────────────
+    # ─── fetch current series ────────────────────────────────────────
     series_dict = (
         self.dicom_data[self.patientID][self.studyID]
                        [self.modality][self.series_index]
     )
     if not series_dict.get("structures"):
-        return                         # nothing to draw
+        return  # nothing to draw
 
     slice_idx = self.current_coronal_slice_index[0]   # Y index
 
     # pixel spacing for coronal slices: (row = z, col = x)
     px_spacing = (self.slice_thick[0], self.pixel_spac[0, 0])
 
-    for i in range(self.STRUCTlist.count()):
-        widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
-        if not widget.checkbox.isChecked():
+    names = series_dict.get('structures_names', [])
+    keys  = series_dict.get('structures_keys', [])
+    view  = series_dict.get('structures_view', [0]*len(names))
+
+    # keep arrays aligned; avoid IndexError
+    n = min(len(view), len(keys), len(names))
+
+    # Saved appearance with safe defaults
+    def _align(arr, default):
+        arr = arr if isinstance(arr, list) else []
+        if len(arr) < n:
+            arr = arr + [default] * (n - len(arr))
+        else:
+            arr = arr[:n]
+        return arr
+
+    colors_hex   = _align(series_dict.get('structures_color'),        "#ffffff")
+    line_widths  = _align(series_dict.get('structures_line_width'),   2.0)
+    transpars    = _align(series_dict.get('structures_transparency'), 0.5)
+
+    def _hex_to_rgbf(h):
+        try:
+            s = (h or "").strip()
+            if s.startswith("#"):
+                s = s[1:]
+            if len(s) == 3:  # "abc" → "aabbcc"
+                s = "".join(c*2 for c in s)
+            r = int(s[0:2], 16) / 255.0
+            g = int(s[2:4], 16) / 255.0
+            b = int(s[4:6], 16) / 255.0
+            return (r, g, b)
+        except Exception:
+            return (1.0, 1.0, 1.0)
+
+    warn_dlg = None
+
+    # ─── loop over selected structures ───────────────────────────────
+    for i in range(n):
+        if view[i] != 1:
             continue
 
-        s_key = getattr(widget, "structure_key", None)
-        if s_key is None:
+        s_key = keys[i]
+        if not s_key:
             continue
 
-        s_data = series_dict["structures"].get(s_key, {})
+        s_data = series_dict.get("structures", {}).get(s_key, {})
+        if not s_data:
+            continue
 
-        # ── 1) make sure axial actors exist  if not create all ──────────────────────────
-        if 'Contours2D' not in s_data:
-            return
-        if not s_data['Contours2D']:
-            return
+        # Ensure contour containers exist
+        if 'Contours2D' not in s_data or not isinstance(s_data['Contours2D'], dict):
+            s_data['Contours2D'] = {'axial': {}, 'sagittal': {}, 'coronal': {}}
 
-        # ── 1) make sure coronal actors exist ─────────────────────────
+        # First-time actors dict
         if "VTKActors2D" not in s_data:
+            if warn_dlg is None:
+                warn_dlg = QProgressDialog(
+                    "Pre-loading contours… it may take a few seconds",
+                    None, 0, 0, self
+                )
+                warn_dlg.setWindowTitle("Please wait")
+                warn_dlg.setWindowModality(Qt.WindowModal)
+                warn_dlg.setAutoClose(False)
+                warn_dlg.setMinimumDuration(0)
+                warn_dlg.show()
             s_data["VTKActors2D"] = {}
 
-        if "coronal" not in s_data["VTKActors2D"]:
+        # Build contours if missing or modified
+        if not s_data['Contours2D'].get('coronal') or s_data.get('Modified', 0) == 1:
+            s_data['Contours2D'] = build_contours_for_structure(s_data['Mask3D'])
+
+        # Rebuild actors (coronal) if missing or modified
+        if "coronal" not in s_data["VTKActors2D"] or s_data.get('Modified', 0) == 1:
             contours_cor = s_data.get("Contours2D", {}).get("coronal", {})
             s_data["VTKActors2D"]["coronal"] = actors_from_contours(
-                contours_cor, px_spacing,
-                line_width=widget.line_width_spinbox.value(),
-                color=widget.selectedColor.getRgbF()[:3]
-                      if widget.selectedColor else (1, 0, 0),
+                contours_cor,
+                px_spacing,
+                line_width=float(line_widths[i]),
+                color=_hex_to_rgbf(colors_hex[i]),
             )
+
+        if s_data.get('Modified', 0) == 1:
+            s_data['Modified'] = 0  # reset modified flag
 
         actors_dict = s_data["VTKActors2D"]["coronal"]
         if slice_idx not in actors_dict:
-            continue                    # no contour on this Y slice
+            continue  # no contour on this Y slice
 
         src_actor = actors_dict[slice_idx]
 
-        # ── 2) customise per-UI-settings ─────────────────────────────
+        # ── style from saved arrays ───────────────────────────────────
         actor = vtk.vtkActor()
         actor.ShallowCopy(src_actor)
-        actor.GetProperty().SetColor(
-            widget.selectedColor.getRgbF()[:3]
-            if widget.selectedColor else (1, 1, 1)
-        )
-        actor.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
-        actor.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+        actor.GetProperty().SetColor(_hex_to_rgbf(colors_hex[i]))
+        actor.GetProperty().SetOpacity(1.0 - float(transpars[i]))   # 0→opaque,1→transparent in UI
+        actor.GetProperty().SetLineWidth(float(line_widths[i]))
         actor.GetProperty().SetRepresentationToWireframe()
 
-        # place slightly above image plane so wireframe is visible
+        # place slightly above image plane for visibility
         actor.SetPosition(self.Im_Offset[0, 0],    # X shift
-                          self.Im_Offset[0, 2],    # Z shift (coronal view)
-                          2000)
+                          self.Im_Offset[0, 2],    # Z shift
+                          _overlay_epsilon(self))
 
         renderer.AddActor(actor)
         self.structure_actors_co.append(actor)
 
+    # ─── CLOSE THE WARNDLG ──────────────────────────────────────────
+    if warn_dlg is not None and warn_dlg.isVisible():
+        warn_dlg.close()
+
+    renderer.ResetCameraClippingRange()
     self.vtkWidgetCoronal.GetRenderWindow().Render()
+
 
 def disp_roi_coronal(self):
     for row in range(self.table_circ_roi.rowCount()):
@@ -1047,11 +1136,11 @@ def displaysagittal(self,Im = None):
 
 def disp_structure_overlay_sagittal(self):
     """
-    Show checked structures in the *sagittal* renderer.
-
-    • Creates actors on-demand from Contours2D → vtkActor, caches them.
-    • Reuses cached actors on subsequent calls for speed.
-    • UI controls (colour, opacity, line-width) still work per structure.
+    Show selected structures (structures_view==1) on the sagittal renderer.
+    Uses saved per-structure appearance:
+      - structures_color        -> hex "#rrggbb"
+      - structures_line_width   -> float
+      - structures_transparency -> float in [0,1]
     """
     renderer = (
         self.vtkWidgetSagittal.GetRenderWindow()
@@ -1059,80 +1148,136 @@ def disp_structure_overlay_sagittal(self):
         .GetFirstRenderer()
     )
 
-
-    # ── clear existing overlay ────────────────────────────────────────
+    # ─── clear any actors from the previous draw ──────────────────────
     for actor in getattr(self, "structure_actors_sa", []):
         renderer.RemoveActor(actor)
     self.structure_actors_sa = []
 
-    # ── fetch current series data ─────────────────────────────────────
+    # ─── grab data for the currently displayed image series ───────────
     series_dict = (
         self.dicom_data[self.patientID][self.studyID]
                        [self.modality][self.series_index]
     )
     if not series_dict.get("structures"):
-        return                              # nothing to draw
+        return  # nothing to draw yet
 
-    slice_idx = self.current_sagittal_slice_index[0]   # X index
+    slice_idx = self.current_sagittal_slice_index[0]  # X index
 
-    # pixel spacing for sagittal slices: (row = z, col = y)
+    # pixel spacing for sagittal slices: (row = z, col = y) in mm
     px_spacing = (self.slice_thick[0], self.pixel_spac[0, 1])
 
-    for i in range(self.STRUCTlist.count()):
-        widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
-        if not widget.checkbox.isChecked():
+    names = series_dict.get('structures_names', [])
+    keys  = series_dict.get('structures_keys', [])
+    view  = series_dict.get('structures_view', [0]*len(names))
+
+    # keep arrays aligned; avoid IndexError
+    n = min(len(view), len(keys), len(names))
+
+    # Saved appearance with safe defaults
+    def _align(arr, default):
+        arr = arr if isinstance(arr, list) else []
+        if len(arr) < n:
+            arr = arr + [default] * (n - len(arr))
+        else:
+            arr = arr[:n]
+        return arr
+
+    colors_hex   = _align(series_dict.get('structures_color'),        "#ffffff")
+    line_widths  = _align(series_dict.get('structures_line_width'),   2.0)
+    transpars    = _align(series_dict.get('structures_transparency'), 0.5)
+
+    def _hex_to_rgbf(h):
+        try:
+            s = (h or "").strip()
+            if s.startswith("#"):
+                s = s[1:]
+            if len(s) == 3:  # "abc" → "aabbcc"
+                s = "".join(c*2 for c in s)
+            r = int(s[0:2], 16) / 255.0
+            g = int(s[2:4], 16) / 255.0
+            b = int(s[4:6], 16) / 255.0
+            return (r, g, b)
+        except Exception:
+            return (1.0, 1.0, 1.0)
+
+    warn_dlg = None
+
+    # ─── main loop over selected structures ───────────────────────────
+    for i in range(n):
+        if view[i] != 1:
             continue
 
-        s_key = getattr(widget, "structure_key", None)
-        if s_key is None:
+        s_key = keys[i]
+        if not s_key:
             continue
 
-        s_data = series_dict["structures"].get(s_key, {})
+        s_data = series_dict.get("structures", {}).get(s_key, {})
+        if not s_data:
+            continue
 
-        # ── 1) make sure sagittal actors exist ───────────────────────
-        if 'Contours2D' not in s_data:
-            return
-        if not s_data['Contours2D']:
-            return
-            
+        # Ensure contour containers exist
+        if 'Contours2D' not in s_data or not isinstance(s_data['Contours2D'], dict):
+            s_data['Contours2D'] = {'axial': {}, 'sagittal': {}, 'coronal': {}}
+
+        # First-time creation of actors dict
         if "VTKActors2D" not in s_data:
+            if warn_dlg is None:
+                warn_dlg = QProgressDialog(
+                    "Pre-loading contours… it may take a few seconds",
+                    None, 0, 0, self
+                )
+                warn_dlg.setWindowTitle("Please wait")
+                warn_dlg.setWindowModality(Qt.WindowModal)
+                warn_dlg.setAutoClose(False)
+                warn_dlg.setMinimumDuration(0)
+                warn_dlg.show()
             s_data["VTKActors2D"] = {}
 
-        if "sagittal" not in s_data["VTKActors2D"]:
-            # build once, cache in RAM
+        # Build contours if missing or marked modified
+        if not s_data['Contours2D'].get('sagittal') or s_data.get('Modified', 0) == 1:
+            s_data['Contours2D'] = build_contours_for_structure(s_data['Mask3D'])
+
+        # Rebuild actors (sagittal) if missing or modified
+        if "sagittal" not in s_data["VTKActors2D"] or s_data.get('Modified', 0) == 1:
             contours_sag = s_data.get("Contours2D", {}).get("sagittal", {})
             s_data["VTKActors2D"]["sagittal"] = actors_from_contours(
-                contours_sag, px_spacing,
-                line_width=widget.line_width_spinbox.value(),
-                color=widget.selectedColor.getRgbF()[:3]
-                      if widget.selectedColor else (1, 0, 0),
+                contours_sag,
+                px_spacing,
+                line_width=float(line_widths[i]),
+                color=_hex_to_rgbf(colors_hex[i]),
             )
+
+        if s_data.get('Modified', 0) == 1:
+            s_data['Modified'] = 0  # reset modified flag
 
         actors_dict = s_data["VTKActors2D"]["sagittal"]
         if slice_idx not in actors_dict:
-            continue                          # no contour on this X slice
+            continue  # no contour on this X slice
 
         src_actor = actors_dict[slice_idx]
 
-        # ── 2) clone & style according to UI ─────────────────────────
+        # ── customise appearance from saved arrays ────────────────────
         actor = vtk.vtkActor()
         actor.ShallowCopy(src_actor)
-        actor.GetProperty().SetColor(
-            widget.selectedColor.getRgbF()[:3]
-            if widget.selectedColor else (1, 1, 1)
-        )
-        actor.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
-        actor.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+        actor.GetProperty().SetColor(_hex_to_rgbf(colors_hex[i]))
+        actor.GetProperty().SetOpacity(1.0 - float(transpars[i]))       # 0→opaque,1→transparent in UI
+        actor.GetProperty().SetLineWidth(float(line_widths[i]))
         actor.GetProperty().SetRepresentationToWireframe()
 
         # place slightly above image plane for visibility
         actor.SetPosition(self.Im_Offset[0, 1],    # Y shift
                           self.Im_Offset[0, 2],    # Z shift
-                          2000)
+                          _overlay_epsilon(self))
 
         renderer.AddActor(actor)
         self.structure_actors_sa.append(actor)
 
+    # ─── CLOSE THE WARNDLG ──────────────────────────────────────────
+    if warn_dlg is not None and warn_dlg.isVisible():
+        warn_dlg.close()
+
+        
+    renderer.ResetCameraClippingRange()
     self.vtkWidgetSagittal.GetRenderWindow().Render()
 
 
