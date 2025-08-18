@@ -44,7 +44,6 @@ jobs:
             --name segmentator_api `
             --onefile `
             --noconsole `
-            --icon assets\segmentator_api.ico `
             --hidden-import uvicorn `
             --hidden-import fastapi `
             --hidden-import starlette `
