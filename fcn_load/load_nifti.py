@@ -48,7 +48,6 @@ def read_nifti_series(path):
     size      = image.GetSize()                # (x, y, z) ints
     origin    = image.GetOrigin()              # (x0, y0, z0)
     direction = image.GetDirection()           # len=9 row-major 3x3
-
     # ---- NIfTI header/meta (strings) ----
     try:
         nifti_meta = {k: image.GetMetaData(k) for k in image.GetMetaDataKeys()}

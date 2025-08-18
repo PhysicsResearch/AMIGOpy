@@ -53,16 +53,22 @@ def _cli_supports_roi_subset() -> bool:
 ROI_SUBSET_OK = _cli_supports_roi_subset()
 
 def _map_targets_for_cli(raw_targets: Optional[str]) -> List[str]:
-    if not raw_targets: return []
-    out = []
+    """
+    Preserve case (TS class names are case-sensitive).
+    Only map a trailing '_l'/'_r' (any case) to 'left_'/ 'right_'.
+    """
+    if not raw_targets:
+        return []
+    out: List[str] = []
     for t in raw_targets.split(","):
-        t0 = _norm_label(t)
-        if not t0: continue
-        m = re.match(r"^(.*)_(l|r)$", t0)
+        t = (t or "").strip()
+        if not t:
+            continue
+        m = re.match(r"^(.*)_(l|r)$", t, flags=re.IGNORECASE)
         if m:
             core, side = m.group(1), m.group(2)
-            t0 = ("left_" if side == "l" else "right_") + core
-        out.append(t0)
+            t = ("left_" if side.lower() == "l" else "right_") + core
+        out.append(t)
     return out
 
 def _stage_dirs() -> Tuple[str, str, str, str, str]:
@@ -187,10 +193,10 @@ async def segment_ct_async(
         # ROI subset (only if supported & per-organ nifti)
         requested_cli: List[str] = []
         if not ml and ot == "nifti" and targets:
-            target_list = [t.strip() for t in (targets or "").split(",") if t.strip()]
-            if target_list and ROI_SUBSET_OK:
-                for t in target_list:
-                    requested_cli += ["--roi_subset", t]
+            requested_cli = _map_targets_for_cli(targets)
+            if ROI_SUBSET_OK and requested_cli:
+                cmd += ["--roi_subset"] + requested_cli
+                print("[Segmentator API] roi_subset (async):", requested_cli)
 
         if requested_cli:
             cmd += requested_cli

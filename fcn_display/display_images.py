@@ -138,7 +138,7 @@ def disp_structure_overlay_axial(self):
 
     colors_hex   = _align(series_dict.get('structures_color'),        "#ffffff")
     line_widths  = _align(series_dict.get('structures_line_width'),   2.0)
-    transpars    = _align(series_dict.get('structures_transparency'), 0.5)
+    transpars    = _align(series_dict.get('structures_transparency'), 0.1)
 
     def _hex_to_rgbf(h):
         try:
@@ -168,6 +168,7 @@ def disp_structure_overlay_axial(self):
         s_data = series_dict.get("structures", {}).get(s_key, {})
         if not s_data:
             continue
+
 
         # Ensure contour containers exist
         if 'Contours2D' not in s_data or not isinstance(s_data['Contours2D'], dict):

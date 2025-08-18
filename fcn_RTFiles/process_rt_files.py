@@ -103,8 +103,8 @@ class set_struct_table(QWidget):
         # Initialize controls in mode=1
         if self._mode == 1:
             self.set_color(QColor(init_color) if init_color else QColor(Qt.white))
-            self.line_width_spinbox.setValue(2.0 if init_line_width is None else float(init_line_width))
-            self.transparency_spinbox.setValue(0.5 if init_transparency is None else float(init_transparency))
+            self.line_width_spinbox.setValue(3.0 if init_line_width is None else float(init_line_width))
+            self.transparency_spinbox.setValue(0.1 if init_transparency is None else float(init_transparency))
 
     def set_checked(self, checked: bool):
         # programmatic set without emitting signals (no redraw during init)
@@ -166,7 +166,7 @@ def update_structure_list_widget(self, structure_names, structure_keys, mode=1):
             on_refresh=on_refresh,
             init_color=colors[idx] if idx < len(colors) else "#ffffff",
             init_line_width=line_widths[idx] if idx < len(line_widths) else 2.0,
-            init_transparency=transpars[idx] if idx < len(transpars) else 0.5
+            init_transparency=transpars[idx] if idx < len(transpars) else 0.0
         )
         custom_item.structure_key = key
 

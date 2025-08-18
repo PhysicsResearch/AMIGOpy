@@ -1,7 +1,7 @@
 # in your main window module
 import os, sys, time, requests, io, tempfile, zipfile, pathlib
 from PyQt5.QtCore import QProcess, QTimer, Qt, QProcessEnvironment
-from PyQt5.QtWidgets import QMessageBox, QProgressDialog, QApplication
+from PyQt5.QtWidgets import QMessageBox, QProgressDialog, QApplication, QDialog, QVBoxLayout, QLabel, QProgressBar
 from fcn_autocont.segmentator_ui import SegmentatorWindow
 from fcn_load.populate_dcm_list import populate_DICOM_tree
 import numpy as np
@@ -9,6 +9,7 @@ import SimpleITK as sitk
 import sip
 from pathlib import Path
 from typing import Dict, List, Any
+from fcn_autocont.segmentator_ui import TS_ALL_SET  # canonical case-sensitive set
 
 
 def open_segmentator_tab(self):
@@ -69,70 +70,47 @@ def _api_is_up(host, port, timeout_s=0.5):
         return False
 
 def on_start_api_requested(owner, host: str, port: int):
-    """Start the API as a background QProcess with working dir in AppData."""
-    # Already running?
     if _api_is_up(host, port):
         if getattr(owner, "segwin", None): owner.segwin.set_api_running(True)
         QMessageBox.information(owner, "Segmentator", f"API already running at {host}:{port}")
         return
 
-    app_root   = _get_appdata_root()                              # C:\Users\...\AppData\Local\AMIGOpy
-    plugin_dir = os.path.join(app_root, "Segmentator")            # working dir
-    models_dir = os.path.join(app_root, "Models")
-    tmp_dir    = os.path.join(app_root, "tmp")
-    os.makedirs(plugin_dir, exist_ok=True)
-    os.makedirs(models_dir, exist_ok=True)
-    os.makedirs(tmp_dir, exist_ok=True)
-    log_path = os.path.join(app_root, "segmentator_api.log")
+    app_root   = _get_appdata_root()
+    print(app_root)
+    log_path   = os.path.join(app_root, "segmentator_api.log")
 
-    # Prepare process & env
+    module_dir = os.path.dirname(os.path.abspath(__file__))
+
     proc = QProcess(owner)
     env = QProcessEnvironment.systemEnvironment()
-    env.insert("TOTALSEG_HOME", models_dir)   # TotalSegmentator model cache
-    env.insert("TMPDIR", tmp_dir); env.insert("TEMP", tmp_dir); env.insert("TMP", tmp_dir)
+    # ensure the folder containing segmentator_api.py is importable
+    env.insert("PYTHONPATH",
+               module_dir if not env.value("PYTHONPATH") else
+               module_dir + os.pathsep + env.value("PYTHONPATH"))
     proc.setProcessEnvironment(env)
 
-    exe_path = os.path.join(plugin_dir, "segmentator_api.exe")
-    if os.path.exists(exe_path):
-        # Compiled plugin present
-        proc.setProgram(exe_path)
-        proc.setArguments([f"--host={host}", f"--port={port}"])
-        proc.setWorkingDirectory(plugin_dir)
-    else:
-        # Dev fallback: run uvicorn against your source tree in repo
-        # Adjust this path if segmentator_api.py lives elsewhere in your repo
-        repo_plugin_dir = os.path.join(os.path.dirname(__file__), "segmentator_api")
-        proc.setWorkingDirectory(repo_plugin_dir)
-        proc.setProgram(sys.executable)
-        proc.setArguments([
-            "-m", "uvicorn",
-            "segmentator_api:app",
-            "--host", host,
-            "--port", str(port),
-            "--log-level", "warning"
-        ])
+    proc.setWorkingDirectory(module_dir)
+    proc.setProgram(sys.executable)
+    proc.setArguments([
+        "-m", "uvicorn", "segmentator_api:app",
+        "--host", host, "--port", str(port),
+        "--log-level", "warning"
+    ])
 
-    # Log stdout/stderr to AppData
     proc.setStandardOutputFile(log_path)
     proc.setStandardErrorFile(log_path)
 
-    # Keep handles on owner so GC won't kill them
     owner.segmentator_proc = proc
-    owner._api_timer = QTimer(owner)
-    owner._api_timer.setInterval(250)
-    owner._api_checks = 0
+    proc.start()
 
-    # When the process exits unexpectedly, reflect in UI
+    # same tiny poll as above
+    owner._api_timer = QTimer(owner); owner._api_timer.setInterval(250)
+    owner._api_checks = 0
     def _on_finished(*_):
         if getattr(owner, "segwin", None):
             owner.segwin.set_api_running(False)
-
     proc.finished.connect(_on_finished)
 
-    # Start non-blocking
-    proc.start()
-
-    # Poll readiness without blocking UI
     def _poll():
         owner._api_checks += 1
         if _api_is_up(host, port):
@@ -140,14 +118,12 @@ def on_start_api_requested(owner, host: str, port: int):
             if getattr(owner, "segwin", None):
                 owner.segwin.set_api_running(True)
                 QMessageBox.information(owner, "Segmentator", f"API is running at {host}:{port}")
-        elif owner._api_checks >= 60:  # ~15s
+        elif owner._api_checks >= 60:
             owner._api_timer.stop()
             if getattr(owner, "segwin", None):
                 owner.segwin.set_api_running(False)
-            QMessageBox.warning(
-                owner, "Segmentator",
-                "API failed to start (timeout). Check firewall and log:\n" + log_path
-            )
+            QMessageBox.warning(owner, "Segmentator",
+                "API failed to start. Check log:\n" + log_path)
     owner._api_timer.timeout.connect(_poll)
     owner._api_timer.start()
 
@@ -226,6 +202,50 @@ def _map_output_type(val: str) -> str:
 BASE_DIR = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser("~")), "AMIGOpy")
 os.makedirs(BASE_DIR, exist_ok=True)
 
+
+
+
+
+
+def _get_or_make_step_dialog(owner) -> QDialog:
+    dlg = getattr(owner, "_seg_step_dlg", None)
+    if dlg is None or sip.isdeleted(dlg):
+        dlg = QDialog(getattr(owner, "segwin", owner))
+        dlg.setWindowTitle("Segmentator")
+        dlg.setModal(False)
+
+        lay = QVBoxLayout(dlg)
+        lbl = QLabel("Starting…", dlg)
+        pgb = QProgressBar(dlg)
+        pgb.setRange(0, 100)
+        pgb.setValue(0)
+
+        lay.addWidget(lbl)
+        lay.addWidget(pgb)
+
+        dlg._lbl = lbl           # stash widgets for quick access
+        dlg._pgb = pgb
+
+        owner._seg_step_dlg = dlg
+    return dlg
+
+def _step_update(dlg: QDialog, text: str, value: int = None):
+    try:
+        dlg._lbl.setText(text)
+        if value is not None:
+            dlg._pgb.setValue(max(0, min(100, int(value))))
+        dlg.show()
+        QApplication.processEvents()
+    except Exception:
+        pass
+
+
+
+
+
+
+
+
 def on_run_segmentation_requested(owner, series_list, params):
     host = "127.0.0.1"
     port = 5000
@@ -239,40 +259,60 @@ def on_run_segmentation_requested(owner, series_list, params):
     params = dict(params or {})
     params["merge_labels"] = False
     query = _params_to_query_no_ml(params)
-    # query = _params_to_query_singlefile(params)
+    _warn_on_unknown_targets(query.get("targets", ""))
+
+    dlg = _get_or_make_step_dialog(owner)
 
     for meta in series_list:
-        pid = meta["patient"]
+        pid   = meta["patient"]
         study = meta["study"]
-        mod = meta["modality"]
-        idx = meta["index"]
+        mod   = meta["modality"]
+        idx   = meta["index"]
 
-        # Export NIfTI directly into BASE_DIR (or wherever you prefer)
+        series_tag = f"{pid}/{study}/{mod}[{idx}]"
+
+        # Step 1: write NIfTI input
+        _step_update(dlg, f"Writing input for TS…\n{series_tag}", 10)
         nifti_path = export_nifti(
             owner, pid, study, mod, idx,
             output_folder=BASE_DIR,
             file_name="input.nii.gz"
         )
-
         if not nifti_path:
             _show_api_error(owner, "Export error",
-                            {"error": f"Failed to export NIfTI for {pid}/{study}/{mod}[{idx}]"})
+                            {"error": f"Failed to export NIfTI for {series_tag}"})
+            _step_update(dlg, f"Export failed — continuing…\n{series_tag}", 0)
             continue
 
-        # Send to API → JSON with {"req_id","output_dir"} (per your server)
+        # Step 2: call TS
+        _step_update(dlg, f"Calling TS…\n{series_tag}", 40)
+        # if "targets" in query:
+        #     print("[Segmentator][client] targets (as sent):", query["targets"])
         info, err = _post_to_api(nifti_path, host, port, query)
         if err:
-            _show_api_error(owner, f"API error for {pid}/{study}/{mod}[{idx}]", err)
+            _show_api_error(owner, f"API error for {series_tag}", err)
+            _step_update(dlg, f"TS call failed — continuing…\n{series_tag}", 0)
             continue
 
-        # Use the output folder immediately
-        # info looks like {"req_id": "...", "output_dir": "C:\\...\\ts_out"}
+        # Step 3: process outputs
+        outdir = info.get("output_dir")
+        _step_update(dlg, f"Processing output folder…\n{outdir or '(none)'}", 75)
         count = process_output(
             owner, info,
             patient_id=pid, study_id=study, modality=mod, series_index=idx
         )
-        print(f"[Segmentator] Imported {count} structure(s) from {info.get('output_dir')}")
-        populate_DICOM_tree(owner)
+        print(f"[Segmentator] Imported {count} structure(s) from {outdir}")
+        try:
+            populate_DICOM_tree(owner)
+        except Exception:
+            pass
+
+        # Finish this series
+        _step_update(dlg, f"Done: {series_tag}", 100)
+
+    # Optional: leave dialog showing “All done”, or close it
+    _step_update(dlg, "All series processed.", 100)
+    # dlg.close()  # uncomment if you prefer it to close automatically
 
 
 def _post_to_api(nifti_path: str, host: str, port: int, query: dict):
@@ -383,7 +423,8 @@ def process_output(
 ):
     """
     Use info['output_dir'] from the API, open all .nii/.nii.gz masks, convert to uint8,
-    and store them into AMIGOpy structures for the specified (or current) series.
+    flip in Y (axis=1) to match your load pipeline, and store them into AMIGOpy structures
+    for the specified (or current) series. Skip masks that are entirely zero.
     """
     output_dir = info.get("output_dir")
     if not output_dir or not os.path.isdir(output_dir):
@@ -407,6 +448,7 @@ def process_output(
 
     start_idx = len(keys_list)
 
+    # Gather NIfTI files
     all_files = []
     for root, _, files in os.walk(output_dir):
         for fn in files:
@@ -419,10 +461,15 @@ def process_output(
     for fpath in all_files:
         try:
             img = sitk.ReadImage(fpath)
-            arr = sitk.GetArrayFromImage(img)      # (z, y, x)
-            # Apply same flip as in read_nifti_series
+            arr = sitk.GetArrayFromImage(img)  # (z, y, x)
+            # Apply same flip as in your reader
             arr = np.flip(arr, axis=1)
-            mask = (arr > 0).astype(np.uint8)
+
+            # Fast skip if mask is entirely zero
+            if not np.any(arr):
+                print(f"[Segmentator][import] Skipped (all zeros): {fpath}")
+                continue
+
             mask = (arr > 0).astype(np.uint8)
 
             s_idx = start_idx + imported
@@ -431,6 +478,7 @@ def process_output(
             if s_name.endswith(".nii"):
                 s_name = s_name[:-4]
 
+            # Append lists and dicts
             keys_list.append(s_key)
             names_list.append(s_name)
             if s_key not in structures:
@@ -443,4 +491,22 @@ def process_output(
         except Exception as e:
             print(f"[Segmentator][import] Failed to import {fpath}: {e}")
 
+    try:
+        for root, _, _ in os.walk(output_dir, topdown=False):
+            if not os.listdir(root):
+                os.rmdir(root)
+                print(f"[Segmentator][cleanup] Removed empty folder {root}")
+    except Exception as e:
+        print(f"[Segmentator][cleanup] Folder cleanup failed: {e}")
+
     return imported
+
+def _warn_on_unknown_targets(targets_csv: str):
+    try:
+        if not targets_csv:
+            return
+        bad = [t for t in (x.strip() for x in targets_csv.split(",")) if t and t not in TS_ALL_SET]
+        if bad:
+            print("[Segmentator][client][warn] Unknown or wrong-case targets:", bad)
+    except Exception:
+        pass

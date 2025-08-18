@@ -20,11 +20,24 @@ def export_nifti(self, Patient, Study, Modality, Series,
     image = sitk.GetImageFromArray(unflipped)  # shape: (z, y, x)
 
     # ---- 3) Restore metadata ----
-    spacing = md.get("ITKSpacing", (1.0, 1.0, 1.0))
-    origin  = md.get("ImagePositionPatient", (0.0, 0.0, 0.0))
-    direction = md.get("Direction", [1.0, 0.0, 0.0,
-                                     0.0, 1.0, 0.0,
-                                     0.0, 0.0, 1.0])
+    spacing   = None
+    sp        = self.dicom_data[Patient][Study][Modality][Series]['metadata']['PixelSpacing']
+    sx        = float(sp[0])
+    sy        = float(sp[1])
+    st        = self.dicom_data[Patient][Study][Modality][Series]['metadata']['SliceThickness']
+    spacing   = (sx, sy, st)
+    origin    = self.dicom_data[Patient][Study][Modality][Series]['metadata']['ImagePositionPatient']
+    direction = [1.0, 0.0, 0.0,
+                 0.0, 1.0, 0.0,
+                 0.0, 0.0, 1.0]
+    
+
+    
+    # spacing = md.get("ITKSpacing", (1.0, 1.0, 1.0))
+    # origin  = md.get("ImagePositionPatient", (0.0, 0.0, 0.0))
+    # direction = md.get("Direction", [1.0, 0.0, 0.0,
+    #                                  0.0, 1.0, 0.0,
+    #                                  0.0, 0.0, 1.0])
 
     image.SetSpacing(tuple(spacing))
     image.SetOrigin(tuple(origin))
