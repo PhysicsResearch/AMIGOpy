@@ -51,8 +51,6 @@ a = Analysis(
         # Web API (not needed by GUI)
         'fastapi', 'starlette', 'uvicorn', 'pydantic', 'multipart',
 
-        # Big Qt modules you likely don't use
-        'PyQt5.QtWebEngine', 'PyQt5.QtWebEngineCore', 'PyQt5.QtWebEngineWidgets',
     ],
 
     win_no_prefer_redirects=False,
