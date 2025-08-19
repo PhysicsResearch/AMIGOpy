@@ -1,4 +1,4 @@
-name: Build AMIGOpy installer
+name: Build AMIGOpy (unsigned)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-sign-windows:
+  build-windows:
     runs-on: windows-latest
 
     steps:
@@ -28,14 +28,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller uvicorn fastapi starlette pydantic python-multipart
 
-      # === 1) Build AMIGOpy (GUI) ===
-      - name: Run PyInstaller (AMIGOpy GUI)
+      # 1) Build AMIGOpy GUI from your existing .spec
+      - name: PyInstaller (AMIGOpy GUI)
         shell: powershell
         run: |
           pyinstaller Launch_ImGUI.spec
 
-      # === 2) Build Segmentator API ===
-      - name: Build Segmentator API exe
+      # 2) Build Segmentator API as a separate exe
+      - name: PyInstaller (Segmentator API)
         shell: powershell
         run: |
           pyinstaller --noconfirm --clean `
@@ -48,47 +48,24 @@ jobs:
             --hidden-import multipart `
             segmentator_api\segmentator_api.py
 
-      # === 3) Build Windows installer ===
+      # 3) Build AMIGOpy Windows installer via Inno Setup (unchanged)
       - name: Install Inno Setup
         run: choco install innosetup -y
 
       - name: Build Windows installer (AMIGOpy)
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
 
-      # === 4) Stage unsigned bundle ===
-      - name: Stage unsigned bundle (folder, not zip)
-        shell: powershell
-        run: |
-          if (Test-Path -LiteralPath "unsigned") { Remove-Item -Recurse -Force "unsigned" }
-          New-Item -ItemType Directory -Path "unsigned" | Out-Null
-          if (!(Test-Path -LiteralPath "Output\mysetup.exe")) { throw "AMIGOpy installer not found at Output\mysetup.exe" }
-          if (!(Test-Path -LiteralPath "dist\segmentator_api.exe")) { throw "Segmentator API exe not found at dist\segmentator_api.exe" }
-          Copy-Item "Output\mysetup.exe" "unsigned\mysetup.exe"
-          Copy-Item "dist\segmentator_api.exe" "unsigned\segmentator_api.exe"
-
-      - name: Upload unsigned bundle artifact
-        id: upload_unsigned_bundle
+      # 4) Upload artifacts separately (no signing)
+      - name: Upload AMIGOpy installer (unsigned)
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-bundle
-          path: unsigned/
+          name: AMIGOpy-Installer-unsigned
+          path: Output/mysetup.exe
           if-no-files-found: error
 
-      # === 5) Submit to SignPath ===
-      - name: Submit bundle to SignPath
-        uses: signpath/github-action-submit-signing-request@v1.1
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
-          signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
-          github-artifact-id: ${{ steps.upload_unsigned_bundle.outputs.artifact-id }}
-          wait-for-completion: true
-          output-artifact-directory: signed
-
-      # === 6) Upload signed bundle (directly, no renaming) ===
-      - name: Upload signed bundle
+      - name: Upload Segmentator API exe (unsigned)
         uses: actions/upload-artifact@v4
         with:
-          name: signed-bundle
-          path: signed/signed-bundle.zip
+          name: SegmentatorAPI-unsigned
+          path: dist/segmentator_api.exe
+          if-no-files-found: error
