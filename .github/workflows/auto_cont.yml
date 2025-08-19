@@ -28,7 +28,7 @@ jobs:
       # ---- Minimal deps for AMIGOpy GUI ----
       - name: Install build dependency (PyInstaller for GUI)
         shell: powershell
-        run: pip install pyinstaller
+        run: pyinstaller Launch_ImGUI.spec --clean --distpath dist_gui --workpath build_gui
 
       # ---- Build AMIGOpy GUI from your existing spec ----
       - name: PyInstaller (AMIGOpy GUI)
