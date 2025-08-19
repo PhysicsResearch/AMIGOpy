@@ -27,8 +27,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "dist_gui\Launch_ImGUI\Launch_ImGUI.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "dist_gui\Launch_ImGUI\*";               DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; 
+Source: "dist\Launch_ImGUI\Launch_ImGUI.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\Launch_ImGUI\*";               DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; \
+  Excludes: "segmentator_api\*"
 Source: "AMBpy.ico";                   DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]

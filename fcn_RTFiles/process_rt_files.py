@@ -165,7 +165,7 @@ def update_structure_list_widget(self, structure_names, structure_keys, mode=1):
             on_transparency=on_transparency,
             on_refresh=on_refresh,
             init_color=colors[idx] if idx < len(colors) else "#ffffff",
-            init_line_width=line_widths[idx] if idx < len(line_widths) else 2.0,
+            init_line_width=line_widths[idx] if idx < len(line_widths) else 3.0,
             init_transparency=transpars[idx] if idx < len(transpars) else 0.0
         )
         custom_item.structure_key = key

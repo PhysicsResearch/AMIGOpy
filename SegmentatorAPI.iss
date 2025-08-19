@@ -29,7 +29,7 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 [Files]
 ; Install the PyInstaller OneDir output (must exist at build time)
 ; e.g., dist\segmentator_api\segmentator_api.exe and its files
-Source: "dist_api\segmentator_api\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
+Source: "dist\segmentator_api\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 
 [Icons]
 Name: "{group}\Segmentator API (console)"; Filename: "{app}\segmentator_api.exe"
