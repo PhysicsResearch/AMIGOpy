@@ -25,52 +25,39 @@ jobs:
         shell: powershell
         run: python -m pip install --upgrade pip wheel setuptools
 
-      # ---------- Build AMIGOpy GUI (keep it slim) ----------
-      # Only install what's needed to freeze the GUI; avoid TS stack here.
-      - name: Install build deps (GUI only)
+      # ---- Minimal deps for AMIGOpy GUI ----
+      - name: Install build dependency (PyInstaller for GUI)
         shell: powershell
-        run: |
-          pip install pyinstaller
-          # If your amigo.yml already provides GUI deps (PyQt5, requests, etc.), you don't need to add them here.
+        run: pip install pyinstaller
 
-      - name: Clean old build artifacts (GUI)
-        shell: powershell
-        run: |
-          if (Test-Path build) { Remove-Item build -Recurse -Force }
-          if (Test-Path dist\Launch_ImGUI) { Remove-Item dist\Launch_ImGUI -Recurse -Force }
-
+      # ---- Build AMIGOpy GUI from your existing spec ----
       - name: PyInstaller (AMIGOpy GUI)
         shell: powershell
         run: pyinstaller Launch_ImGUI.spec --clean
 
-      # ---------- Build Segmentator API (heavy stack) ----------
-      - name: Install build deps (API + TS stack)
+      # ---- Now install heavy deps for the Segmentator API only ----
+      - name: Install build dependencies (API + TS stack)
         shell: powershell
         run: |
           # Web stack for API
           pip install fastapi uvicorn[standard] starlette pydantic python-multipart
-          # Imaging / scientific pieces the API might use
-          pip install nibabel scikit-image scipy tqdm einops packaging
+          # Imaging + scientific stack used by API
+          pip install SimpleITK nibabel scikit-image scipy tqdm einops packaging
           # MONAI / nnUNet / TotalSegmentator
           pip install monai==1.* nnunetv2
           # CPU-only PyTorch wheels
           pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-          # TotalSegmentator itself
+          # TotalSegmentator itself (pulls extras)
           pip install totalsegmentator
-          # Freezer
-          pip install pyinstaller
+          # (PyInstaller already installed above)
 
-      - name: Clean old build artifacts (API)
-        shell: powershell
-        run: |
-          if (Test-Path build) { Remove-Item build -Recurse -Force }
-          if (Test-Path dist\segmentator_api) { Remove-Item dist\segmentator_api -Recurse -Force }
-
+      # ---- Build Segmentator API (bundled) from .spec ----
+      # Make sure segmentator_api.spec is in the repo root
       - name: PyInstaller (Segmentator API, OneDir)
         shell: powershell
         run: pyinstaller segmentator_api.spec --clean
 
-      # ---------- Build Windows installers via Inno Setup ----------
+      # ---- Build Windows installers via Inno Setup ----
       - name: Install Inno Setup
         shell: powershell
         run: choco install innosetup -y
@@ -85,7 +72,7 @@ jobs:
         shell: powershell
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" SegmentatorAPI.iss'
 
-      # ---------- Upload artifacts ----------
+      # ---- Upload artifacts ----
       - name: Upload AMIGOpy installer (unsigned)
         uses: actions/upload-artifact@v4
         with:
@@ -100,6 +87,3 @@ jobs:
           path: Output/SegmentatorAPI-Setup.exe
           if-no-files-found: error
 
-      # (Optional) also upload the raw PyInstaller folders for debugging
-      - name: Upload PyInstaller dist (GUI)
-        uses: actions/upload-artifact@v
