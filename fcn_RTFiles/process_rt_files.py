@@ -245,7 +245,7 @@ def _set_structure_color(self, idx, hexstr):
         v[idx] = hexstr
 
 # line widths as float
-def _ensure_structures_line_width(self, n):     return _ensure_array(self, 'structures_line_width',   n, 2.0)
+def _ensure_structures_line_width(self, n):     return _ensure_array(self, 'structures_line_width',   n, 3.0)
 
 def _set_structure_line_width(self, idx, val):
     v = _ensure_structures_line_width(self, len(_series_dict(self).get('structures_names', [])))
@@ -253,7 +253,7 @@ def _set_structure_line_width(self, idx, val):
         v[idx] = float(val)
 
 # transparency as float [0,1]
-def _ensure_structures_transparency(self, n):   return _ensure_array(self, 'structures_transparency', n, 0.5)
+def _ensure_structures_transparency(self, n):   return _ensure_array(self, 'structures_transparency', n, 0.1)
 
 def _set_structure_transparency(self, idx, val):
     v = _ensure_structures_transparency(self, len(_series_dict(self).get('structures_names', [])))

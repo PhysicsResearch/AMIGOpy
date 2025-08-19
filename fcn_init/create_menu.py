@@ -13,6 +13,7 @@ from fcn_load.load_STL import load_stl_files
 from fcn_load.load_OBJ import load_obj_files
 from fcn_load.load_nifti import load_nifti_files
 from fcn_autocont.segmentator_calls import open_segmentator_tab
+from functools import partial
 
 
 def initializeMenuBar(self):
@@ -170,15 +171,11 @@ def initializeMenuBar(self):
         SeriesMenu.addAction(action)
         
     # Add items 
-    items = ["Segmentator"]
-    for item in items:
-        action = QAction(item, self)
-        # Connect the Folder action to the load_dcm function
-        if item == "Segmentator":
-            action.triggered.connect(lambda: open_segmentator_tab(self))
-        SeriesMenu.addAction(action)
-        
-  
+    # 2) Single action directly under Tools, below Series
+    total_seg_action = QAction("TotalSegmentator", self)
+    total_seg_action.triggered.connect(partial(open_segmentator_tab, self))
+    ToolsMenu.addAction(total_seg_action)
+    
     ExportMenu = self.menuBar().addMenu("Export")
     TypeMenu = ExportMenu.addMenu("IrIS")
     # Add items 

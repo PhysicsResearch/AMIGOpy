@@ -1,4 +1,3 @@
-# segmentator_api.spec
 # -*- mode: python ; coding: utf-8 -*-
 
 import os
@@ -6,50 +5,66 @@ from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 block_cipher = None
 
-# --- Hidden imports for TS stack ---
-_pkgs = [
-    "totalsegmentator",
-    "nnunet",
-    "monai",
-    "torch",
-    "torchvision",
-    "nibabel",
-    "SimpleITK",
-    "scipy",
-    "skimage",
-    "tqdm",
-    "einops",
-    "packaging",
+# -------------------------------
+# Hidden imports for your stack
+# -------------------------------
+BASE_PKGS = [
+    # your app stack
+    "fastapi", "starlette", "uvicorn", "h11", "anyio", "sniffio", "pydantic",
+    "typing_extensions", "python_multipart",
+
+    # TS + nnUNet/Monai + friends
+    "totalsegmentator", "nnunet", "nnunetv2", "monai", "torch", "torchvision",
+    "nibabel", "SimpleITK", "scipy", "skimage", "tqdm", "einops", "packaging",
+
+    # DICOM/NIfTI toolchain
+    "pydicom", "dicom2nifti",
+
+    # often pulled at runtime by subpackages
+    "filelock", "requests", "yaml", "numpy",
 ]
+
 hiddenimports = []
-for p in _pkgs:
+for pkg in BASE_PKGS:
     try:
-        hiddenimports += collect_submodules(p)
+        hiddenimports += collect_submodules(pkg)
     except Exception:
         pass
 
-# --- Data files (non-code assets) ---
+# Pydicom’s pixel pipelines sometimes need explicit submodules
+for extra in ["pydicom.encaps", "pydicom.pixels", "pydicom.pixels.decoders"]:
+    try:
+        hiddenimports += collect_submodules(extra)
+    except Exception:
+        pass
+
+# -------------------------------
+# Data files (non-code assets)
+# -------------------------------
 datas = []
-for p in ["totalsegmentator", "nnunet", "monai", "torch", "torchvision", "skimage", "SimpleITK"]:
+for pkg in ["totalsegmentator", "nnunet", "nnunetv2", "monai", "torch", "torchvision",
+            "skimage", "SimpleITK", "nibabel"]:
     try:
-        datas += collect_data_files(p, include_py_files=False)
+        # include package data (e.g., resources, DLLs shipped as data, configs)
+        datas += collect_data_files(pkg, include_py_files=False)
     except Exception:
         pass
 
-# If you ship pre-downloaded models, uncomment:
+# If you want to ship pre-downloaded TS models, uncomment and adjust:
 # models_dir = r"C:\Models\TotalSegmentator"
 # if os.path.isdir(models_dir):
+#     # they'll end up under: <dist>/segmentator_api/models/TotalSegmentator
 #     datas += [(models_dir, "models/TotalSegmentator")]
 
 a = Analysis(
-    ['segmentator_api/segmentator_api.py'],   # <-- adjust if your path is different
-    pathex=['segmentator_api'],               # <-- folder containing the script
+    ['segmentator_api/segmentator_api.py'],   # adjust path if needed
+    pathex=['segmentator_api'],               # folder containing the script
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
-    hookspath=[],     # default hooks include torch/monai
+    hookspath=[],     # torch/monai hooks are built-in
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=['runtime_hooks/set_env.py'],  # <— see hook below
     excludes=[],
     noarchive=False,
 )
@@ -67,7 +82,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=True,  # set False if you want no console window
+    console=True,  # False if you want a windowless build
     disable_windowed_traceback=False,
     target_arch=None,
 )
