@@ -282,6 +282,7 @@ dependencies:
       - fonttools==4.42.1
       - fsspec==2025.7.0
       - future==1.0.0
+      - graphviz==0.20.3
       - h11==0.16.0
       - huggingface-hub==0.34.4
       - kiwisolver==1.4.5
@@ -300,7 +301,6 @@ dependencies:
       - pydicom==3.0.1
       - pyparsing==3.1.1
       - python-gdcm==3.0.24.1
-      - python-graphviz==0.21
       - python-multipart==0.0.20
       - safetensors==0.6.2
       - scikit-learn==1.7.1
