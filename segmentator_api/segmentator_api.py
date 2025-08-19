@@ -1,57 +1,40 @@
 # segmentator_api.py
-# FastAPI wrapper for TotalSegmentator with:
-# - Safe CLI flags only: --fast, --ml, --resample, --output_type {nifti,dicom}
-# - Optional `targets` for subset runs (via --roi_subset if supported)
-# - Per-request staging under system TEMP, models under LOCALAPPDATA\AMIGOpy\Models
-# - Progress log per request + /progress/{req_id} endpoint
-import multipart 
-from fastapi import FastAPI, UploadFile, File, Query
-from fastapi.responses import FileResponse, JSONResponse
+# FastAPI wrapper for TotalSegmentator with direct Python API calls
+# - Safe flags: fast, ml, resample, output_type {nifti,dicom}
+# - Optional targets for subset runs (via roi_subset)
+# - Per-request staging under system TEMP
+# - Progress log + /progress/{req_id}, /status/{req_id}
+
+import os, sys, uuid, shutil, re, tempfile, logging, threading
 from typing import Optional, List, Tuple
-import os, uuid, subprocess, shutil, zipfile, re, tempfile
 
+from fastapi import FastAPI, UploadFile, File, Query
+from fastapi.responses import JSONResponse
 
+from totalsegmentator.python_api import totalseg
+
+# -------------------------------------------------------------------------
+# App setup
+# -------------------------------------------------------------------------
 app = FastAPI()
 
-# ---------- Persistent Models ----------
 BASE_DIR = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser("~")), "AMIGOpy")
 MODELS_DIR = os.path.join(BASE_DIR, "Models")
 os.makedirs(BASE_DIR, exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
+
 print(f"[Segmentator API] Using base directory: {BASE_DIR}")
 print(f"[Segmentator API] Using models directory: {MODELS_DIR}")
 
-# ---------- Helpers ----------
+# -------------------------------------------------------------------------
+# Helpers
+# -------------------------------------------------------------------------
 _normer_re = re.compile(r"[^a-z0-9]+")
 
 def _norm_label(s: str) -> str:
     s = (s or "").strip().lower()
     s = _normer_re.sub("_", s)
     return re.sub(r"_+", "_", s).strip("_")
-
-def _double_ext_stem(fp: str) -> str:
-    base = os.path.basename(fp)
-    if base.endswith(".nii.gz"): return base[:-7]
-    if base.endswith(".nii"):    return base[:-4]
-    return os.path.splitext(base)[0]
-
-def _collect_nifti_files(root_dir: str) -> List[str]:
-    out = []
-    for r, _, files in os.walk(root_dir):
-        for fn in files:
-            if fn.lower().endswith((".nii", ".nii.gz")):
-                out.append(os.path.join(r, fn))
-    return out
-
-def _cli_supports_roi_subset() -> bool:
-    try:
-        h = subprocess.run(["TotalSegmentator", "-h"], capture_output=True, text=True, timeout=10)
-        txt = (h.stdout or "") + (h.stderr or "")
-        return "--roi_subset" in txt
-    except Exception:
-        return False
-
-ROI_SUBSET_OK = _cli_supports_roi_subset()
 
 def _map_targets_for_cli(raw_targets: Optional[str]) -> List[str]:
     """
@@ -87,24 +70,49 @@ def _stage_dirs() -> Tuple[str, str, str, str, str]:
     log_path = os.path.join(req_dir, "ts_progress.log")
     return req_id, req_dir, input_path, output_dir, log_path
 
-# ---------- Health ----------
+# -------------------------------------------------------------------------
+# Totalseg runner
+# -------------------------------------------------------------------------
+def run_totalseg(input_path, output_dir, fast=False, ml=False,
+                 resample=None, output_type="nifti", targets=None, log_path=None):
+    args = {
+        "input": input_path,
+        "output": output_dir,
+        "task": "total",
+        "output_type": output_type,
+        "fast": fast,
+        "ml": ml,
+        "resample": resample,
+        "roi_subset": targets or [],
+    }
+    if log_path:
+        sys.stdout = open(log_path, "w", encoding="utf-8")
+        sys.stderr = sys.stdout
+    totalseg(**args)
+
+# -------------------------------------------------------------------------
+# Health
+# -------------------------------------------------------------------------
 @app.get("/ping")
 def ping():
     return {"status": "Segmentator is running"}
 
-# ---------- Progress ----------
+# -------------------------------------------------------------------------
+# Progress
+# -------------------------------------------------------------------------
 @app.get("/progress/{req_id}")
 def get_progress(req_id: str):
     req_dir = os.path.join(tempfile.gettempdir(), req_id)
     log_file = os.path.join(req_dir, "ts_progress.log")
     if not os.path.exists(log_file):
         return {"status": "not_found", "lines": []}
-
     with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
         lines = f.readlines()
     return {"status": "ok", "lines": lines[-10:]}  # last 10 lines
 
-# ---------- Main segmentation ----------
+# -------------------------------------------------------------------------
+# Main segmentation
+# -------------------------------------------------------------------------
 @app.post("/segment/")
 async def segment_ct(
     file: UploadFile = File(...),
@@ -122,46 +130,37 @@ async def segment_ct(
         with open(input_path, "wb") as f:
             f.write(await file.read())
 
-        # Build CLI
-        ot = (output_type or "nifti").lower()
-        cmd = ["TotalSegmentator", "-i", input_path, "-o", output_dir, "--output_type", ot]
-        if fast: cmd.append("--fast")
-        if ml:   cmd.append("--ml")
-        if resample and resample > 0:
-            cmd += ["--resample", str(resample)]
+        # Map targets
+        targets_cli = []
+        if not ml and (output_type or "nifti").lower() == "nifti" and targets:
+            targets_cli = _map_targets_for_cli(targets)
 
-        # ROI subset (only if supported & per-organ nifti)
-        requested_cli: List[str] = []
-        if not ml and ot == "nifti" and targets:
-            requested_cli = _map_targets_for_cli(targets)
-            if ROI_SUBSET_OK and requested_cli:
-                cmd += ["--roi_subset"] + requested_cli
+        # Run segmentation
+        run_totalseg(
+            input_path=input_path,
+            output_dir=output_dir,
+            fast=fast,
+            ml=ml,
+            resample=resample,
+            output_type=output_type,
+            targets=targets_cli,
+            log_path=log_path
+        )
 
-        # Run with live log
-        with open(log_path, "w", encoding="utf-8") as logf:
-            proc = subprocess.Popen(cmd, stdout=logf, stderr=subprocess.STDOUT, text=True)
-            ret = proc.wait()
-
-        if ret != 0:
-            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
-                tail = f.readlines()[-20:]
-            return JSONResponse(
-                status_code=500,
-                content={"error": f"TotalSegmentator failed (exit {ret})",
-                         "cmd": " ".join(cmd),
-                         "stderr_tail": tail,
-                         "req_id": req_id}
-            )
-
-        # Return ID + info about output directory
         return {"req_id": req_id, "output_dir": output_dir}
 
     except Exception as e:
         if not persist_raw:
             shutil.rmtree(req_dir, ignore_errors=True)
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        tail = []
+        if os.path.exists(log_path):
+            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
+                tail = f.readlines()[-20:]
+        return JSONResponse(status_code=500, content={"error": str(e), "stderr_tail": tail})
 
-# ---------- Async segmentation (non-blocking) ----------
+# -------------------------------------------------------------------------
+# Async segmentation
+# -------------------------------------------------------------------------
 @app.post("/segment_async/")
 async def segment_ct_async(
     file: UploadFile = File(...),
@@ -172,10 +171,6 @@ async def segment_ct_async(
     targets: Optional[str] = Query(None, description="comma-separated organ names"),
     persist_raw: bool = Query(False, description="keep request folder"),
 ):
-    """
-    Starts TotalSegmentator in the background and returns immediately with req_id.
-    Use /progress/{req_id} to fetch log tails and /status/{req_id} to check completion.
-    """
     req_id, req_dir, input_path, output_dir, log_path = _stage_dirs()
 
     try:
@@ -183,46 +178,29 @@ async def segment_ct_async(
         with open(input_path, "wb") as f:
             f.write(await file.read())
 
-        # Build CLI
-        ot = (output_type or "nifti").lower()
-        cmd = ["TotalSegmentator", "-i", input_path, "-o", output_dir, "--output_type", ot]
-        if fast: cmd.append("--fast")
-        if ml:   cmd.append("--ml")
-        if resample and resample > 0:
-            cmd += ["--resample", str(resample)]
+        targets_cli = []
+        if not ml and (output_type or "nifti").lower() == "nifti" and targets:
+            targets_cli = _map_targets_for_cli(targets)
 
-        # ROI subset (only if supported & per-organ nifti)
-        requested_cli: List[str] = []
-        if not ml and ot == "nifti" and targets:
-            requested_cli = _map_targets_for_cli(targets)
-            if ROI_SUBSET_OK and requested_cli:
-                cmd += ["--roi_subset"] + requested_cli
-                print("[Segmentator API] roi_subset (async):", requested_cli)
+        def _worker():
+            try:
+                run_totalseg(
+                    input_path=input_path,
+                    output_dir=output_dir,
+                    fast=fast,
+                    ml=ml,
+                    resample=resample,
+                    output_type=output_type,
+                    targets=targets_cli,
+                    log_path=log_path
+                )
+                with open(os.path.join(req_dir, "done.ok"), "w") as mf:
+                    mf.write("0")
+            except Exception as e:
+                with open(os.path.join(req_dir, "done.err"), "w") as mf:
+                    mf.write(str(e))
 
-        if requested_cli:
-            cmd += requested_cli
-
-        # Launch in background with live log
-        with open(log_path, "w", encoding="utf-8") as logf:
-            proc = subprocess.Popen(cmd, stdout=logf, stderr=subprocess.STDOUT, text=True)
-
-        # Write a pid file so /status can find it
-        with open(os.path.join(req_dir, "pid.txt"), "w") as pf:
-            pf.write(str(proc.pid))
-
-        # In a background thread, wait and write a done marker
-        import threading
-        def _wait_and_mark():
-            ret = proc.wait()
-            marker = "done.ok" if ret == 0 else "done.err"
-            with open(os.path.join(req_dir, marker), "w") as mf:
-                mf.write(str(ret))
-            # Optionally cleanup raw folder on success
-            if not persist_raw and ret == 0:
-                # keep req_dir since user may still poll logs; but could cleanup later
-                pass
-
-        th = threading.Thread(target=_wait_and_mark, daemon=True)
+        th = threading.Thread(target=_worker, daemon=True)
         th.start()
 
         return {"req_id": req_id, "output_dir": output_dir}
@@ -232,8 +210,9 @@ async def segment_ct_async(
             shutil.rmtree(req_dir, ignore_errors=True)
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-
-# ---------- Status ----------
+# -------------------------------------------------------------------------
+# Status
+# -------------------------------------------------------------------------
 @app.get("/status/{req_id}")
 def get_status(req_id: str):
     """
@@ -246,23 +225,23 @@ def get_status(req_id: str):
     if os.path.exists(ok):
         return {"state": "finished", "output_dir": output_dir}
     if os.path.exists(err):
-        # include last log lines
-        log_file = os.path.join(req_dir, "ts_progress.log")
         tail = []
+        log_file = os.path.join(req_dir, "ts_progress.log")
         if os.path.exists(log_file):
             with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
                 tail = f.readlines()[-20:]
         return {"state": "failed", "output_dir": output_dir, "tail": tail}
-    # If neither marker exists but dir exists, assume running
     if os.path.isdir(req_dir):
         return {"state": "running", "output_dir": output_dir}
     return {"state": "unknown"}
 
+# -------------------------------------------------------------------------
+# Entrypoint
+# -------------------------------------------------------------------------
 if __name__ == "__main__":
-    import uvicorn, os, sys
+    import uvicorn
     host = os.getenv("AMIGO_SEG_HOST", "127.0.0.1")
     port = int(os.getenv("AMIGO_SEG_PORT", "5000"))
-    # When frozen, run the object directly (no import string issues)
     if getattr(sys, "frozen", False):
         uvicorn.run(app, host=host, port=port, reload=False, log_level="warning")
     else:

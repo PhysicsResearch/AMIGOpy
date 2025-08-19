@@ -8,6 +8,8 @@ import numpy as np
 import SimpleITK as sitk
 from pathlib import Path
 from typing import Dict, List, Any
+import sip
+import winreg  # <-- registry lookup
 from fcn_autocont.segmentator_ui import TS_ALL_SET  # canonical case-sensitive set
 
 
@@ -54,7 +56,6 @@ def open_segmentator_tab(self):
     self.segwin.activateWindow()
 
 
-
 def _get_appdata_root():
     base = os.getenv("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), "AppData", "Local")
     root = os.path.join(base, "AMIGOpy")
@@ -63,10 +64,96 @@ def _get_appdata_root():
 
 def _api_is_up(host, port, timeout_s=0.5):
     try:
+        # First try /ping
         r = requests.get(f"http://{host}:{port}/ping", timeout=timeout_s)
-        return r.ok
+        if r.ok:
+            return True
     except requests.RequestException:
+        pass
+
+    try:
+        # Fallback to /health (used by some builds)
+        r = requests.get(f"http://{host}:{port}/health", timeout=timeout_s)
+        if r.ok:
+            return True
+    except requests.RequestException:
+        pass
+
+    return False
+
+
+def _ensure_dir(p: Path) -> bool:
+    try:
+        p.mkdir(parents=True, exist_ok=True)
+        # writeability probe (works even on redirected folders)
+        test = p / ".amigo_write_test"
+        test.write_text("ok", encoding="utf-8")
+        test.unlink(missing_ok=True)
+        return True
+    except Exception:
         return False
+
+def _get_paths_for_segmentator() -> dict:
+    """
+    Compute per-user log/tmp dirs and a writable models dir with smart fallbacks.
+    Returns: dict with keys: app_root, log_path, tmp_dir, models_dir
+    """
+    # Per-user base (no admin needed)
+    app_root = Path(os.getenv("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "AMIGOpy"
+    _ensure_dir(app_root)
+
+    # Logs & temp are always per-user
+    log_path = app_root / "segmentator_api.log"
+    tmp_dir  = app_root / "tmp"
+    _ensure_dir(tmp_dir)
+
+    # 1) If TOTALSEG_HOME is set and writable, respect it
+    env_home = os.getenv("TOTALSEG_HOME")
+    if env_home:
+        models_dir = Path(env_home)
+        if _ensure_dir(models_dir):
+            return {
+                "app_root": app_root, "log_path": log_path,
+                "tmp_dir": tmp_dir, "models_dir": models_dir
+            }
+
+    # 2) Prefer machine-wide ProgramData (nice for shared caches)
+    progdata = Path(os.getenv("PROGRAMDATA", r"C:\ProgramData"))
+    pd_models = progdata / "AMIGOpy" / "Models" / "TotalSegmentator"
+    if _ensure_dir(pd_models):
+        return {
+            "app_root": app_root, "log_path": log_path,
+            "tmp_dir": tmp_dir, "models_dir": pd_models
+        }
+
+    # 3) Fallback to per-user models (works in dev / no admin)
+    user_models = app_root / "Models" / "TotalSegmentator"
+    _ensure_dir(user_models)
+    return {
+        "app_root": app_root, "log_path": log_path,
+        "tmp_dir": tmp_dir, "models_dir": user_models
+    }
+
+
+def _get_segmentator_from_registry() -> str:
+    """
+    Look in HKLM\SOFTWARE\AMIGOpy\Segmentator for InstalledPath (set by installer).
+    Returns full path to segmentator_api.exe if present and valid, else "".
+    """
+    try:
+        with winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\AMIGOpy\Segmentator"
+        ) as key:
+            val, _ = winreg.QueryValueEx(key, "InstalledPath")
+            if val and os.path.exists(val):
+                return os.path.normpath(val)
+    except FileNotFoundError:
+        return ""
+    except OSError:
+        return ""
+    return ""
+
 
 def on_start_api_requested(owner, host: str, port: int):
     # Block re-entry / double-clicks
@@ -104,10 +191,11 @@ def on_start_api_requested(owner, host: str, port: int):
     start_dlg.show()
     owner._seg_start_dlg = start_dlg
 
-    app_root = _get_appdata_root()                      # e.g. C:\Users\...\AppData\Local\AMIGOpy
-    log_path = os.path.join(app_root, "segmentator_api.log")
-    models_dir = os.path.join(app_root, "Models")
-    tmp_dir    = os.path.join(app_root, "tmp")
+    paths = _get_paths_for_segmentator()
+    app_root  = str(paths["app_root"])
+    log_path  = str(paths["log_path"])
+    tmp_dir   = str(paths["tmp_dir"])
+    models_dir= str(paths["models_dir"])
     os.makedirs(models_dir, exist_ok=True)
     os.makedirs(tmp_dir, exist_ok=True)
 
@@ -116,41 +204,81 @@ def on_start_api_requested(owner, host: str, port: int):
     env = QProcessEnvironment.systemEnvironment()
     env.insert("AMIGO_SEG_HOST", host)
     env.insert("AMIGO_SEG_PORT", str(port))
-    env.insert("TOTALSEG_HOME", models_dir)
+
+    # Only set TOTALSEG_HOME if caller/OS hasn't already set it
+    if not env.contains("TOTALSEG_HOME"):
+        env.insert("TOTALSEG_HOME", models_dir)
+
     env.insert("TMPDIR", tmp_dir); env.insert("TEMP", tmp_dir); env.insert("TMP", tmp_dir)
     proc.setProcessEnvironment(env)
     proc.setStandardOutputFile(log_path)
     proc.setStandardErrorFile(log_path)
 
-    # -------- PREFER COMPILED EXE (HERE IS YOUR SNIPPET) --------
-    exe_path = os.path.join(app_root, "Segmentator", "segmentator_api.exe")
-    if os.path.exists(exe_path):
-        # Use compiled API first
+    # -------- Prefer compiled API (search multiple locations) --------
+    candidate_paths = []
+    _norm = lambda p: os.path.normpath(p)
+
+    # 0) If installer registered the API path (env var), prefer it
+    env_api = os.getenv("AMIGO_API_EXE")
+    if env_api:
+        env_api = _norm(env_api.strip().strip('"'))
+        if os.path.exists(env_api):
+            candidate_paths.append(env_api)
+
+    # 0b) If installer wrote registry key, prefer that next
+    reg_api = _get_segmentator_from_registry()
+    if reg_api:
+        candidate_paths.append(reg_api)
+
+    # 1) Next to AMIGOpy.exe (typical for the small installer)
+    try:
+        appdir = os.path.dirname(os.path.abspath(sys.argv[0]))
+        candidate_paths.append(_norm(os.path.join(appdir, "segmentator", "segmentator_api.exe")))
+        candidate_paths.append(_norm(os.path.join(appdir, "segmentator_api.exe")))
+    except Exception:
+        pass
+
+    # 1b) Common Program Files location (if the small installer put it there)
+    for pf in (os.environ.get("ProgramFiles"), os.environ.get("ProgramW6432")):
+        if pf:
+            candidate_paths.append(_norm(os.path.join(pf, "AMIGOpy", "segmentator", "segmentator_api.exe")))
+            candidate_paths.append(_norm(os.path.join(pf, "AMIGOpy", "segmentator_api.exe")))
+
+    # 2) Previous per-user location (still check it)
+    app_root_legacy = _get_appdata_root()
+    candidate_paths.append(_norm(os.path.join(app_root_legacy, "Segmentator", "segmentator_api.exe")))
+
+    # 3) Fallback: developer layout (python script)
+    if getattr(sys, "frozen", False):
+        base_dir = os.path.dirname(os.path.abspath(sys.executable))
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir   = _norm(os.path.join(base_dir, os.pardir))      # repo root
+    api_dir    = _norm(os.path.join(root_dir, "segmentator_api"))
+    fallback_py = _norm(os.path.join(api_dir, "segmentator_api.py"))
+
+    exe_path = next((p for p in candidate_paths if os.path.exists(p)), None)
+    if exe_path:
         proc.setProgram(exe_path)
-        proc.setArguments([])  # host/port passed via env vars
+        proc.setArguments([])  # host/port via env
         proc.setWorkingDirectory(os.path.dirname(exe_path))
     else:
-        # Fallback: run the .py script from the repo
-        # This file lives in ...\AMIGOpy\fcn_autocont\*.py  -> root is one level up
-        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))  # C:\AMIGOpy
-        api_dir  = os.path.join(root_dir, "segmentator_api")                            # ...\segmentator_api
-        api_py   = os.path.join(api_dir, "segmentator_api.py")
-        if not os.path.exists(api_py):
-            # Clean up UI if path missing
+        if not os.path.exists(fallback_py):
             try: start_dlg.close()
             except Exception: pass
             owner._api_starting = False
             if getattr(owner, "segwin", None):
                 try: owner.segwin.btn_start_api.setEnabled(True)
                 except Exception: pass
-            QMessageBox.critical(owner, "Segmentator",
-                f"segmentator_api.py not found at:\n{api_py}\n"
-                f"Checked because compiled exe was not found at:\n{exe_path}")
+            QMessageBox.critical(
+                owner, "Segmentator",
+                "Segmentator API not found.\n\n"
+                "Install the AMIGOpy Segmentator add-on or provide a dev copy at:\n" + fallback_py
+            )
             return
-
         proc.setWorkingDirectory(api_dir)
         proc.setProgram(sys.executable)
-        proc.setArguments([api_py])  # run "python segmentator_api.py"
+        proc.setArguments([fallback_py])  # run "python segmentator_api.py"
     # ------------------------------------------------------------
 
     # Keep a handle so it isn't GC'd
@@ -190,6 +318,7 @@ def on_start_api_requested(owner, host: str, port: int):
                     owner._seg_start_dlg.close()
             except Exception:
                 pass
+        # set UI
             if getattr(owner, "segwin", None):
                 owner.segwin.set_api_running(True)
                 try:
@@ -200,8 +329,8 @@ def on_start_api_requested(owner, host: str, port: int):
             print(f"[Segmentator] API is running at {host}:{port}")
             return
 
-        if owner._api_checks >= 60:  # ~15s timeout
-            owner._api_timer.stop()
+        if owner._api_checks >= 480:  # ~2 minutes at 250 ms interval
+            owner._api_timer.stop()    # ensure timer stops on timeout
             owner._api_starting = False
             try:
                 if hasattr(owner, "_seg_start_dlg") and owner._seg_start_dlg:
@@ -222,6 +351,7 @@ def on_start_api_requested(owner, host: str, port: int):
     owner._api_timer.timeout.connect(_poll)
     owner._api_timer.start()
 
+
 def on_stop_api_requested(owner):
     """Terminate the API process if running and update UI."""
     # Stop timer if present
@@ -231,7 +361,6 @@ def on_stop_api_requested(owner):
     except Exception:
         pass
 
-    stopped = False
     try:
         proc = getattr(owner, "segmentator_proc", None)
         if proc and proc.state() != QProcess.NotRunning:
@@ -239,13 +368,11 @@ def on_stop_api_requested(owner):
             proc.waitForFinished(2000)
             if proc.state() != QProcess.NotRunning:
                 proc.kill()
-            stopped = True
     except Exception:
         pass
 
     if getattr(owner, "segwin", None):
         owner.segwin.set_api_running(False)
-
 
 
 from fcn_export.export_nii import export_nifti
@@ -256,31 +383,30 @@ def _params_to_query_no_ml(params: dict) -> dict:
     pass them along so the server can map to --roi_subset (speed-up).
     """
     q = {"ml": "false"}  # per-organ files
-    q["task"] = params.get("task", "total")  # keep 'total' (you said ignore 'body' for now)
+    q["task"] = params.get("task", "total")  # keep 'total'
 
     if params.get("fast"):     q["fast"] = "true"
     if params.get("no_crop"):  q["nr_crop"] = "true"
     if params.get("resample"): q["resample"] = str(params["resample"])
     q["output_type"] = _map_output_type(params.get("output_type"))
 
-    # >>> IMPORTANT: include selected targets (comma-separated) if present
+    # include selected targets (comma-separated) if present
     targets = params.get("targets") or []
     if isinstance(targets, (list, tuple)) and len(targets) > 0:
-        # UI already provides canonical TS names; server will translate to --roi_subset
         q["targets"] = ",".join(targets)
 
     return q
 
 def _params_to_query_singlefile(params: dict) -> dict:
     q = {
-        "ml": "true",                 # <- single merged labelmap (one file)
-        "task": params.get("task", "total"),  # keep total task
+        "ml": "true",                 # single merged labelmap (one file)
+        "task": params.get("task", "total"),
     }
     if params.get("fast"):     q["fast"] = "true"
     if params.get("no_crop"):  q["nr_crop"] = "true"
     if params.get("resample"): q["resample"] = str(params["resample"])
     q["output_type"] = _map_output_type(params.get("output_type"))
-    # IMPORTANT: do NOT set q["targets"] -> no subset; TS outputs all classes in one file
+    # no q["targets"] in ML mode
     return q
 
 def _map_output_type(val: str) -> str:
@@ -292,14 +418,9 @@ def _map_output_type(val: str) -> str:
     return "nifti"  # safe default
 
 
-
 # Define your API working folder (same as your API startup)
 BASE_DIR = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser("~")), "AMIGOpy")
 os.makedirs(BASE_DIR, exist_ok=True)
-
-
-
-
 
 
 def _get_or_make_step_dialog(owner) -> QDialog:
@@ -333,12 +454,6 @@ def _step_update(dlg: QDialog, text: str, value: int = None):
         QApplication.processEvents()
     except Exception:
         pass
-
-
-
-
-
-
 
 
 def on_run_segmentation_requested(owner, series_list, params):
@@ -381,8 +496,6 @@ def on_run_segmentation_requested(owner, series_list, params):
 
         # Step 2: call TS
         _step_update(dlg, f"Calling TS…\n{series_tag}", 40)
-        # if "targets" in query:
-        #     print("[Segmentator][client] targets (as sent):", query["targets"])
         info, err = _post_to_api(nifti_path, host, port, query)
         if err:
             _show_api_error(owner, f"API error for {series_tag}", err)
@@ -405,7 +518,6 @@ def on_run_segmentation_requested(owner, series_list, params):
         # Finish this series
         _step_update(dlg, f"Done: {series_tag}", 100)
 
-    # Optional: leave dialog showing “All done”, or close it
     _step_update(dlg, "All series processed.", 100)
     # dlg.close()  # uncomment if you prefer it to close automatically
 

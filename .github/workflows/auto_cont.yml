@@ -2,8 +2,7 @@ name: Build AMIGOpy (unsigned)
 
 on:
   push:
-    branches:
-      - auto_cont
+    branches: [ auto_cont ]
   workflow_dispatch:
 
 jobs:
@@ -22,50 +21,79 @@ jobs:
           environment-file: amigo.yml
           activate-environment: amigo
 
-      - name: Install build dependencies
+      - name: Upgrade pip
+        shell: powershell
+        run: python -m pip install --upgrade pip wheel setuptools
+
+      # ---- Build-time Python deps (GUI + API) ----
+      - name: Install build dependencies (GUI + API)
         shell: powershell
         run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller uvicorn fastapi starlette pydantic python-multipart
+          # Web stack for API
+          pip install fastapi uvicorn[standard] starlette pydantic python-multipart
+          # Imaging + scientific stack
+          pip install SimpleITK nibabel scikit-image scipy tqdm einops packaging
+          # MONAI / nnUNet / TotalSegmentator
+          pip install monai==1.* nnunetv2
+          # CPU-only PyTorch wheels
+          pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+          # TotalSegmentator itself (pulls extras)
+          pip install totalsegmentator
+          # Freezer
+          pip install pyinstaller
 
-      # 1) Build AMIGOpy GUI from your existing .spec
+      # ---- Build AMIGOpy GUI from your existing spec ----
       - name: PyInstaller (AMIGOpy GUI)
         shell: powershell
-        run: |
-          pyinstaller Launch_ImGUI.spec
+        run: pyinstaller Launch_ImGUI.spec
 
-      # 2) Build Segmentator API as a separate exe
-      - name: PyInstaller (Segmentator API)
+      # ---- Build Segmentator API (bundled) from .spec ----
+      # Make sure segmentator_api.spec is in the repo root (as provided earlier)
+      - name: PyInstaller (Segmentator API, OneDir)
         shell: powershell
-        run: |
-          pyinstaller --noconfirm --clean `
-            --name segmentator_api `
-            --onefile `
-            --noconsole `
-            --hidden-import uvicorn `
-            --hidden-import fastapi `
-            --hidden-import starlette `
-            --hidden-import multipart `
-            segmentator_api\segmentator_api.py
+        run: pyinstaller segmentator_api.spec
 
-      # 3) Build AMIGOpy Windows installer via Inno Setup (unchanged)
+      # ---- Build Windows installers via Inno Setup ----
       - name: Install Inno Setup
+        shell: powershell
         run: choco install innosetup -y
 
+      # AMIGOpy installer (your existing script)
       - name: Build Windows installer (AMIGOpy)
+        shell: powershell
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
 
-      # 4) Upload artifacts separately (no signing)
+      # Segmentator API installer (you said it's named SegmentatorAPI.iss)
+        - name: Build Windows installer (Segmentator API)
+          shell: powershell
+          run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" SegmentatorAPI.iss'
+
+      # ---- Upload artifacts ----
       - name: Upload AMIGOpy installer (unsigned)
         uses: actions/upload-artifact@v4
         with:
           name: AMIGOpy-Installer-unsigned
-          path: Output/mysetup.exe
+          path: Output/*.exe
           if-no-files-found: error
 
-      - name: Upload Segmentator API exe (unsigned)
+        - name: Upload Segmentator API installer (unsigned)
+          uses: actions/upload-artifact@v4
+          with:
+            name: SegmentatorAPI-Installer-unsigned
+            path: Output/SegmentatorAPI-Setup.exe
+            if-no-files-found: error
+
+      # (Optional) also upload the raw PyInstaller folders for debugging
+      - name: Upload PyInstaller dist (GUI)
         uses: actions/upload-artifact@v4
         with:
-          name: SegmentatorAPI-unsigned
-          path: dist/segmentator_api.exe
-          if-no-files-found: error
+          name: dist-AMIGOpy
+          path: dist/Launch_ImGUI/**
+          if-no-files-found: warn
+
+      - name: Upload PyInstaller dist (Segmentator API)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-segmentator_api
+          path: dist/segmentator_api/**
+          if-no-files-found: warn

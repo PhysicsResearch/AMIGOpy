@@ -1,43 +1,59 @@
-; SegmentatorAPI.iss — installs the API plugin only into LocalAppData (no admin)
+; SegmentatorAPI.iss — Inno Setup script for the bundled Segmentator API
 
 [Setup]
-AppId={{A9838E7C-2BBB-4C52-AB9C-8B2B8F2F7F10}}
+AppId={{76C6B1B7-5F7C-4E3D-9B95-1E43B0C2B9D9}
 AppName=AMIGOpy Segmentator API
-AppVersion=0.1.0
-AppPublisher=GPF
-AppPublisherURL=https://www.amigo-medphys.com/
-DefaultDirName={localappdata}\AMIGOpy\Segmentator
+AppVersion=1.0.0
+AppPublisher=AMIGO
+DefaultDirName={pf}\AMIGOpy\SegmentatorAPI
 DefaultGroupName=AMIGOpy
-OutputBaseFilename=AMIGOpy_SegmentatorAPI_Setup
-Compression=lzma
+OutputDir=Output
+OutputBaseFilename=SegmentatorAPI-Setup
+Compression=lzma2
 SolidCompression=yes
-WizardStyle=modern
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
+PrivilegesRequired=admin
+DisableDirPage=no
 DisableProgramGroupPage=yes
-PrivilegesRequired=lowest
-UsePreviousPrivileges=yes
-LicenseFile=LICENSE.txt
+CloseApplications=yes
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[Tasks]
+Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional icons:"; Flags: unchecked
+
 [Files]
-; Put your built onefile console exe here:
-; dist\segmentator_api.exe is the PyInstaller output from your API build
-Source: "dist\segmentator_api.exe"; DestDir: "{app}"; Flags: ignoreversion
+; Install the PyInstaller OneDir output (must exist at build time)
+; e.g., dist\segmentator_api\segmentator_api.exe and its files
+Source: "dist\segmentator_api\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 
 [Icons]
 Name: "{group}\Segmentator API (console)"; Filename: "{app}\segmentator_api.exe"
-; No desktop icon by default—API is a background tool
+Name: "{userdesktop}\Segmentator API"; Filename: "{app}\segmentator_api.exe"; Tasks: desktopicon
 
-[Tasks]
-Name: "runapi"; Description: "Start API now"; Flags: unchecked
+[Registry]
+; AMIGOpy looks up this HKLM key (your code already supports it)
+Root: HKLM; Subkey: "SOFTWARE\AMIGOpy\Segmentator"; ValueType: string; ValueName: "InstalledPath"; ValueData: "{app}\segmentator_api.exe"; Flags: uninsdeletevalue
+
+; Optional: write a per-user env var (AMIGOpy also checks this)
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "AMIGO_API_EXE"; ValueData: "{app}\segmentator_api.exe"; Flags: preservestringtype
+
+; (Optional) set TOTALSEG_HOME if you ship models with the installer
+; Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "TOTALSEG_HOME"; ValueData: "{app}\models\TotalSegmentator"; Flags: preservestringtype
 
 [Run]
-; Allow user to start it immediately after install (unchecked by default)
-Filename: "{app}\segmentator_api.exe"; Tasks: runapi; Flags: nowait postinstall skipifsilent
+; Make sure the current user session sees the new env var immediately
+Filename: "{cmd}"; Parameters: "/C setx AMIGO_API_EXE ""{app}\segmentator_api.exe"""; Flags: runhidden
 
-[UninstallDelete]
-; Clean up empty parent folder if it becomes empty
-Type: filesandordirs; Name: "{localappdata}\AMIGOpy\Segmentator"
+; Notify running processes (including AMIGOpy) that environment variables changed
+Filename: "{cmd}"; Parameters: "/C powershell -NoProfile -Command ""$sig = '[DllImport(\"user32.dll\", SetLastError=true)]public static extern int SendMessageTimeout(IntPtr hWnd, int Msg, IntPtr wParam, string lParam, int fuFlags, int uTimeout, out IntPtr lpdwResult);'; Add-Type -MemberDefinition $sig -Name X -Namespace Y; [Y.X]::SendMessageTimeout([IntPtr]0xffff, 0x1A, [IntPtr]0, 'Environment', 2, 1000, [ref]([IntPtr]::Zero))"""; Flags: runhidden
+
+; (Optional) Launch API after install
+; Filename: "{app}\segmentator_api.exe"; Description: "Start Segmentator API"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+; Clean up per-user env var on uninstall
+Filename: "{cmd}"; Parameters: "/C reg delete HKCU\Environment /v AMIGO_API_EXE /f"; Flags: runhidden

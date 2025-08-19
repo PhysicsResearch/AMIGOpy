@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1745</width>
+    <width>2033</width>
     <height>1192</height>
    </rect>
   </property>
@@ -313,18 +313,24 @@
         <string>View</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_4" rowstretch="1,0,1,0,0,0" columnstretch="1,1">
-        <item row="1" column="1">
-         <widget class="QSlider" name="SagittalSlider">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-         </widget>
+        <item row="0" column="0">
+         <widget class="QWidget" name="VTK_view_01" native="true"/>
         </item>
         <item row="1" column="0">
          <widget class="QSlider" name="AxialSlider">
           <property name="singleStep">
            <number>25</number>
           </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QWidget" name="VTK_view_02" native="true"/>
+        </item>
+        <item row="1" column="1">
+         <widget class="QSlider" name="SagittalSlider">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
@@ -339,12 +345,6 @@
            <enum>Qt::Horizontal</enum>
           </property>
          </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QWidget" name="VTK_view_02" native="true"/>
-        </item>
-        <item row="0" column="0">
-         <widget class="QWidget" name="VTK_view_01" native="true"/>
         </item>
         <item row="5" column="1">
          <widget class="QLabel" name="label_2">
@@ -576,6 +576,299 @@
                </size>
               </property>
              </spacer>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="tab_44">
+           <attribute name="title">
+            <string>Reg.</string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_82">
+            <item row="0" column="1">
+             <spacer name="horizontalSpacer_82">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="5" column="1" rowspan="2">
+             <spacer name="verticalSpacer_25">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="0" column="2">
+             <spacer name="horizontalSpacer_83">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="1" column="2">
+             <widget class="QGroupBox" name="groupBox_15">
+              <property name="title">
+               <string>Target</string>
+              </property>
+              <widget class="QComboBox" name="comboBox_2">
+               <property name="geometry">
+                <rect>
+                 <x>10</x>
+                 <y>30</y>
+                 <width>221</width>
+                 <height>22</height>
+                </rect>
+               </property>
+              </widget>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QGroupBox" name="groupBox_12">
+              <property name="title">
+               <string>Translation</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_79">
+               <item row="1" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_2"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QSlider" name="horizontalSlider_2">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QSlider" name="horizontalSlider_3">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_3"/>
+               </item>
+               <item row="0" column="0">
+                <widget class="QSlider" name="horizontalSlider">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="3" column="3">
+             <widget class="QGroupBox" name="groupBox_14">
+              <property name="title">
+               <string>Scale</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_81">
+               <item row="0" column="0">
+                <widget class="QSlider" name="horizontalSlider_11">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_11"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QSlider" name="horizontalSlider_12">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_12"/>
+               </item>
+               <item row="2" column="0">
+                <widget class="QSlider" name="horizontalSlider_13">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_13"/>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="1" column="3">
+             <widget class="QGroupBox" name="groupBox_16">
+              <property name="title">
+               <string>Moving</string>
+              </property>
+              <widget class="QComboBox" name="comboBox_3">
+               <property name="geometry">
+                <rect>
+                 <x>10</x>
+                 <y>30</y>
+                 <width>221</width>
+                 <height>22</height>
+                </rect>
+               </property>
+              </widget>
+             </widget>
+            </item>
+            <item row="6" column="3">
+             <spacer name="verticalSpacer_27">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="3" column="0">
+             <spacer name="verticalSpacer_24">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="1" column="1">
+             <widget class="QGroupBox" name="groupBox_17">
+              <property name="title">
+               <string>Method</string>
+              </property>
+              <widget class="QComboBox" name="comboBox">
+               <property name="geometry">
+                <rect>
+                 <x>20</x>
+                 <y>30</y>
+                 <width>211</width>
+                 <height>22</height>
+                </rect>
+               </property>
+              </widget>
+             </widget>
+            </item>
+            <item row="0" column="3">
+             <spacer name="horizontalSpacer_81">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="5" column="2" rowspan="2">
+             <spacer name="verticalSpacer_26">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="1" column="0">
+             <spacer name="verticalSpacer_23">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="3" column="2">
+             <widget class="QGroupBox" name="groupBox_13">
+              <property name="title">
+               <string>Rotation</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_80">
+               <item row="0" column="0">
+                <widget class="QSlider" name="horizontalSlider_4">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_4"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QSlider" name="horizontalSlider_6">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_5"/>
+               </item>
+               <item row="2" column="0">
+                <widget class="QSlider" name="horizontalSlider_7">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_6"/>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="4" column="3">
+             <widget class="QPushButton" name="pushButton_2">
+              <property name="text">
+               <string>Register</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QPushButton" name="pushButton_3">
+              <property name="text">
+               <string>Undo</string>
+              </property>
+             </widget>
             </item>
            </layout>
           </widget>
@@ -8530,7 +8823,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>442</width>
+             <width>519</width>
              <height>370</height>
             </rect>
            </property>
@@ -8672,7 +8965,7 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>193</width>
+             <width>188</width>
              <height>119</height>
             </rect>
            </property>
@@ -8740,7 +9033,7 @@ p, li { white-space: pre-wrap; }
              <x>0</x>
              <y>0</y>
              <width>241</width>
-             <height>179</height>
+             <height>175</height>
             </rect>
            </property>
            <attribute name="label">
