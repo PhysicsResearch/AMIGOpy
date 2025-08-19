@@ -21,176 +21,25 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_3">
-    <item row="0" column="3">
-     <spacer name="horizontalSpacer_84">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>126</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="0" column="0">
-     <spacer name="horizontalSpacer_81">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>126</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="0" column="8">
-     <spacer name="horizontalSpacer_89">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>125</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="0" column="5">
-     <spacer name="horizontalSpacer_86">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>126</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="2" column="0" colspan="3">
+    <item row="1" column="0" colspan="2">
      <widget class="QGroupBox" name="groupBox">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
         <horstretch>1</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
       <property name="minimumSize">
        <size>
-        <width>300</width>
+        <width>350</width>
         <height>0</height>
        </size>
       </property>
       <property name="title">
-       <string>GroupBox</string>
+       <string/>
       </property>
       <layout class="QGridLayout" name="gridLayout_14">
-       <item row="11" column="6">
-        <widget class="QDoubleSpinBox" name="doubleSpinBox_7"/>
-       </item>
-       <item row="12" column="5">
-        <spacer name="horizontalSpacer_13">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="11" column="2" colspan="4">
-        <widget class="QSlider" name="horizontalSlider_5">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QLineEdit" name="lineEdit_18">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>Layer 0</string>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QLineEdit" name="lineEdit_19">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>Layer 1</string>
-         </property>
-        </widget>
-       </item>
-       <item row="8" column="6">
-        <widget class="QDoubleSpinBox" name="Layer_3_alpha_spin">
-         <property name="maximum">
-          <double>1.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>5.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLineEdit" name="lineEdit_24">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>Active layer</string>
-         </property>
-        </widget>
-       </item>
-       <item row="7" column="6">
-        <widget class="QDoubleSpinBox" name="Layer_2_alpha_spin">
-         <property name="maximum">
-          <double>1.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.050000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="12" column="1">
-        <spacer name="horizontalSpacer_10">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="4" column="6">
-        <widget class="QDoubleSpinBox" name="Layer_0_alpha_spin">
-         <property name="maximum">
-          <double>1.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.050000000000000</double>
-         </property>
-         <property name="value">
-          <double>1.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="8" column="2" colspan="4">
+       <item row="7" column="2" colspan="2">
         <widget class="QSlider" name="Layer_3_alpha_sli">
          <property name="maximum">
           <number>100</number>
@@ -200,27 +49,27 @@
          </property>
         </widget>
        </item>
-       <item row="9" column="1" colspan="6">
-        <widget class="Line" name="line_10">
+       <item row="5" column="2" colspan="2">
+        <widget class="QSlider" name="Layer_1_alpha_sli">
+         <property name="maximum">
+          <number>100</number>
+         </property>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
         </widget>
        </item>
-       <item row="12" column="3">
-        <spacer name="horizontalSpacer_11">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+       <item row="7" column="1">
+        <widget class="QLineEdit" name="lineEdit_21">
+         <property name="enabled">
+          <bool>false</bool>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
+         <property name="text">
+          <string>Layer 3</string>
          </property>
-        </spacer>
+        </widget>
        </item>
-       <item row="3" column="1" colspan="6">
+       <item row="2" column="1" colspan="4">
         <widget class="QLineEdit" name="lineEdit_23">
          <property name="enabled">
           <bool>false</bool>
@@ -238,17 +87,20 @@
          </property>
         </widget>
        </item>
-       <item row="6" column="2" colspan="4">
-        <widget class="QSlider" name="Layer_1_alpha_sli">
+       <item row="3" column="4">
+        <widget class="QDoubleSpinBox" name="Layer_0_alpha_spin">
          <property name="maximum">
-          <number>100</number>
+          <double>1.000000000000000</double>
          </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+         <property name="singleStep">
+          <double>0.050000000000000</double>
+         </property>
+         <property name="value">
+          <double>1.000000000000000</double>
          </property>
         </widget>
        </item>
-       <item row="6" column="6">
+       <item row="5" column="4">
         <widget class="QDoubleSpinBox" name="Layer_1_alpha_spin">
          <property name="maximum">
           <double>1.000000000000000</double>
@@ -258,24 +110,24 @@
          </property>
         </widget>
        </item>
-       <item row="11" column="1">
+       <item row="10" column="1">
         <widget class="QLineEdit" name="lineEdit_22">
          <property name="text">
           <string>PMI</string>
          </property>
         </widget>
        </item>
-       <item row="7" column="2" colspan="4">
-        <widget class="QSlider" name="Layer_2_alpha_sli">
-         <property name="maximum">
-          <number>100</number>
-         </property>
+       <item row="10" column="2" colspan="2">
+        <widget class="QSlider" name="horizontalSlider_5">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
+       <item row="0" column="4">
+        <widget class="QComboBox" name="Layer_selection"/>
+       </item>
+       <item row="6" column="1">
         <widget class="QLineEdit" name="lineEdit_20">
          <property name="enabled">
           <bool>false</bool>
@@ -285,50 +137,17 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="1" colspan="6">
-        <widget class="Line" name="line_11">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+       <item row="7" column="4">
+        <widget class="QDoubleSpinBox" name="Layer_3_alpha_spin">
+         <property name="maximum">
+          <double>1.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>5.000000000000000</double>
          </property>
         </widget>
        </item>
-       <item row="12" column="4">
-        <spacer name="horizontalSpacer_12">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="12" column="6">
-        <spacer name="horizontalSpacer_14">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="8" column="1">
-        <widget class="QLineEdit" name="lineEdit_21">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>Layer 3</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="2" colspan="4">
+       <item row="3" column="2" colspan="2">
         <widget class="QSlider" name="Layer_0_alpha_sli">
          <property name="maximum">
           <number>100</number>
@@ -344,53 +163,97 @@
          </property>
         </widget>
        </item>
-       <item row="12" column="2">
-        <spacer name="horizontalSpacer_15">
+       <item row="6" column="2" colspan="2">
+        <widget class="QSlider" name="Layer_2_alpha_sli">
+         <property name="maximum">
+          <number>100</number>
+         </property>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
+        </widget>
        </item>
-       <item row="1" column="6">
-        <widget class="QComboBox" name="Layer_selection"/>
+       <item row="10" column="4">
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_7"/>
+       </item>
+       <item row="1" column="1" colspan="4">
+        <widget class="Line" name="line_11">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="4">
+        <widget class="QDoubleSpinBox" name="Layer_2_alpha_spin">
+         <property name="maximum">
+          <double>1.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.050000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="lineEdit_24">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Active layer</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1" colspan="4">
+        <widget class="Line" name="line_10">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLineEdit" name="lineEdit_18">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Layer 0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QLineEdit" name="lineEdit_19">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Layer 1</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
     </item>
-    <item row="0" column="2">
-     <spacer name="horizontalSpacer_83">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
+    <item row="2" column="0" colspan="2">
+     <widget class="QProgressBar" name="progressBar">
+      <property name="minimumSize">
        <size>
-        <width>92</width>
-        <height>20</height>
+        <width>300</width>
+        <height>0</height>
        </size>
       </property>
-     </spacer>
-    </item>
-    <item row="0" column="4">
-     <spacer name="horizontalSpacer_85">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
+      <property name="value">
+       <number>24</number>
       </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>126</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
+     </widget>
     </item>
-    <item row="1" column="3" rowspan="2" colspan="7">
+    <item row="0" column="2" rowspan="2" colspan="3">
      <widget class="QTabWidget" name="tabModules">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="currentIndex">
        <number>0</number>
       </property>
@@ -431,7 +294,7 @@
         <item row="0" column="0" rowspan="3">
          <widget class="QWidget" name="VTK_view_01" native="true">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
             <horstretch>1</horstretch>
             <verstretch>1</verstretch>
            </sizepolicy>
@@ -8872,7 +8735,7 @@ p, li { white-space: pre-wrap; }
              <x>0</x>
              <y>0</y>
              <width>363</width>
-             <height>290</height>
+             <height>303</height>
             </rect>
            </property>
            <attribute name="label">
@@ -9227,93 +9090,15 @@ p, li { white-space: pre-wrap; }
       </widget>
      </widget>
     </item>
-    <item row="1" column="0" colspan="3">
-     <widget class="QTreeView" name="DataTreeView">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-        <horstretch>1</horstretch>
-        <verstretch>1</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="minimumSize">
-       <size>
-        <width>300</width>
-        <height>0</height>
-       </size>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="7">
-     <spacer name="horizontalSpacer_88">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>126</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="0" column="9">
-     <spacer name="horizontalSpacer_90">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>126</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="0" column="1">
-     <spacer name="horizontalSpacer_82">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>126</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="0" column="6">
-     <spacer name="horizontalSpacer_87">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>126</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="3" column="3" colspan="3">
+    <item row="2" column="2" colspan="2">
      <widget class="QLabel" name="label">
       <property name="text">
        <string>AMIGOpy</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="0" colspan="2">
-     <widget class="QProgressBar" name="progressBar">
-      <property name="minimumSize">
-       <size>
-        <width>300</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="value">
-       <number>24</number>
-      </property>
-     </widget>
+    <item row="0" column="0" colspan="2">
+     <widget class="QTreeView" name="DataTreeView"/>
     </item>
    </layout>
   </widget>
