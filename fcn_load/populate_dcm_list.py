@@ -18,6 +18,8 @@ def populate_DICOM_tree(self):
     self.DECT_list_02.clear()
     self.scatter_plot_im_01.clear()
     self.scatter_plot_im_02.clear()
+    self.Reg_target_box.clear()
+    self.Reg_moving_box.clear()
     # Dictionary to store series_label and related information
     self.series_info_dict = {}
     
@@ -115,6 +117,8 @@ def populate_DICOM_tree(self):
                     self.DECT_list_02.addItem(series_label)
                     self.scatter_plot_im_01.addItem(series_label)
                     self.scatter_plot_im_02.addItem(series_label)
+                    self.Reg_target_box.addItem(series_label)
+                    self.Reg_moving_box.addItem(series_label)
 
                     # Store information in the dictionary
                     self.series_info_dict[combo_index] = (series_label, patient_id, study_id, modality, item_index)
