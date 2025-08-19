@@ -35,42 +35,16 @@ jobs:
         shell: powershell
         run: pyinstaller Launch_ImGUI.spec --clean
 
-      # ---- Now install heavy deps for the Segmentator API only ----
-      - name: Install build dependencies (API + TS stack)
-        shell: powershell
-        run: |
-          # Web stack for API
-          pip install fastapi uvicorn[standard] starlette pydantic python-multipart
-          # Imaging + scientific stack used by API
-          pip install SimpleITK nibabel scikit-image scipy tqdm einops packaging
-          # MONAI / nnUNet / TotalSegmentator
-          pip install monai==1.* nnunetv2
-          # CPU-only PyTorch wheels
-          pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-          # TotalSegmentator itself (pulls extras)
-          pip install totalsegmentator
-          # (PyInstaller already installed above)
-
-      # ---- Build Segmentator API (bundled) from .spec ----
-      # Make sure segmentator_api.spec is in the repo root
-      - name: PyInstaller (Segmentator API, OneDir)
-        shell: powershell
-        run: pyinstaller segmentator_api.spec --clean
-
       # ---- Build Windows installers via Inno Setup ----
       - name: Install Inno Setup
         shell: powershell
         run: choco install innosetup -y
 
-      # AMIGOpy installer (your existing script)
+      # AMIGOpy installer 
       - name: Build Windows installer (AMIGOpy)
         shell: powershell
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
 
-      # Segmentator API installer (SegmentatorAPI.iss)
-      - name: Build Windows installer (Segmentator API)
-        shell: powershell
-        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" SegmentatorAPI.iss'
 
       # ---- Upload artifacts ----
       - name: Upload AMIGOpy installer (unsigned)
@@ -80,10 +54,4 @@ jobs:
           path: Output/*.exe
           if-no-files-found: error
 
-      - name: Upload Segmentator API installer (unsigned)
-        uses: actions/upload-artifact@v4
-        with:
-          name: SegmentatorAPI-Installer-unsigned
-          path: Output/SegmentatorAPI-Setup.exe
-          if-no-files-found: error
 

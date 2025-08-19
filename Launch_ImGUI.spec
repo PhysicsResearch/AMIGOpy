@@ -32,8 +32,8 @@ a = Analysis(
     binaries=[],
     datas=datas,
     hiddenimports=[
-        # keep empty unless you know a module is imported dynamically
-        # (you asked to keep nibabel available, so we DO NOT exclude it below)
+        # keep empty unless something is imported dynamically
+        # nibabel is intentionally NOT excluded
     ],
     hookspath=[os.path.join(BASE_DIR, 'hooks')],
     runtime_hooks=[],
@@ -51,6 +51,8 @@ a = Analysis(
         # Web API (not needed by GUI)
         'fastapi', 'starlette', 'uvicorn', 'pydantic', 'multipart',
 
+        # Big Qt modules you likely don't use
+        'PyQt5.QtWebEngine', 'PyQt5.QtWebEngineCore', 'PyQt5.QtWebEngineWidgets',
     ],
 
     win_no_prefer_redirects=False,
@@ -79,4 +81,10 @@ exe = EXE(
 # ─── Collect everything into dist/Launch_ImGUI ───────────────────────────────
 coll = COLLECT(
     exe,
-    a.binar
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    name='Launch_ImGUI',
+)
