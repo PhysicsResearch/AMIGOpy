@@ -64,7 +64,7 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],     # torch/monai hooks are built-in
     hooksconfig={},
-    runtime_hooks=['runtime_hooks/set_env.py'],  # <— see hook below
+    # runtime_hooks=['runtime_hooks/set_env.py'],  # <— see hook below
     excludes=[],
     noarchive=False,
 )
