@@ -22,20 +22,19 @@ jobs:
           environment-file: amigo.yml
           activate-environment: amigo
 
-      # Ensure PyInstaller and the API's runtime deps are present in the build env
       - name: Install build dependencies
         shell: powershell
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller uvicorn fastapi starlette pydantic python-multipart
 
-      # 1) Build AMIGOpy (GUI) from your existing .spec
+      # === 1) Build AMIGOpy (GUI) ===
       - name: Run PyInstaller (AMIGOpy GUI)
         shell: powershell
         run: |
           pyinstaller Launch_ImGUI.spec
 
-      # 2) Build Segmentator API (separate onefile exe; no icon)
+      # === 2) Build Segmentator API ===
       - name: Build Segmentator API exe
         shell: powershell
         run: |
@@ -49,14 +48,14 @@ jobs:
             --hidden-import multipart `
             segmentator_api\segmentator_api.py
 
-      # 3) Build AMIGOpy Windows installer via Inno Setup
+      # === 3) Build Windows installer ===
       - name: Install Inno Setup
         run: choco install innosetup -y
 
       - name: Build Windows installer (AMIGOpy)
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
 
-      # 4) Stage unsigned bundle (folder, not zip)
+      # === 4) Stage unsigned bundle ===
       - name: Stage unsigned bundle (folder, not zip)
         shell: powershell
         run: |
@@ -67,7 +66,7 @@ jobs:
           Copy-Item "Output\mysetup.exe" "unsigned\mysetup.exe"
           Copy-Item "dist\segmentator_api.exe" "unsigned\segmentator_api.exe"
 
-      - name: Upload unsigned bundle artifact (folder)
+      - name: Upload unsigned bundle artifact
         id: upload_unsigned_bundle
         uses: actions/upload-artifact@v4
         with:
@@ -75,7 +74,7 @@ jobs:
           path: unsigned/
           if-no-files-found: error
 
-      # 5) Sign with SignPath (it signs both EXEs found in the uploaded artifact)
+      # === 5) Submit to SignPath ===
       - name: Submit bundle to SignPath
         uses: signpath/github-action-submit-signing-request@v1.1
         with:
@@ -87,35 +86,9 @@ jobs:
           wait-for-completion: true
           output-artifact-directory: signed
 
-      # 6) Extract the signed ZIP so we can upload each EXE individually
-      - name: Extract signed files
-        shell: powershell
-        run: |
-          if (Test-Path -LiteralPath "signed_extracted") { Remove-Item -Recurse -Force "signed_extracted" }
-          New-Item -ItemType Directory -Path "signed_extracted" | Out-Null
-          $zip = Get-ChildItem -Path "signed" -Filter *.zip | Select-Object -First 1
-          if (-not $zip) { throw "No signed zip found in 'signed' folder." }
-          Expand-Archive -Path $zip.FullName -DestinationPath "signed_extracted" -Force
-          Get-ChildItem -Path "signed_extracted" -Recurse
-
-      # 7) Upload each signed EXE separately for easy download
-      - name: Upload signed AMIGOpy installer
+      # === 6) Upload signed bundle (directly, no renaming) ===
+      - name: Upload signed bundle
         uses: actions/upload-artifact@v4
         with:
-          name: AMIGOpy_installer_signed.exe
-          path: signed_extracted/mysetup.exe
-          if-no-files-found: error
-
-      - name: Upload signed Segmentator API
-        uses: actions/upload-artifact@v4
-        with:
-          name: Segmentator_API_signed.exe
-          path: signed_extracted/segmentator_api.exe
-          if-no-files-found: error
-
-      # (Optional) also keep the original signed zip if you want
-      - name: Upload signed bundle (zip)
-        uses: actions/upload-artifact@v4
-        with:
-          name: signed-bundle-zip
-          path: signed/
+          name: signed-bundle
+          path: signed/signed-bundle.zip
