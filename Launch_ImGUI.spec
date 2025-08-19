@@ -49,7 +49,7 @@ a = Analysis(
         'tqdm',
 
         # Web API (not needed by GUI)
-        'fastapi', 'starlette', 'uvicorn', 'pydantic', 'multipart',
+        'fastapi', 'starlette', 'uvicorn', 'pydantic',
 
     ],
 
@@ -78,11 +78,9 @@ exe = EXE(
 
 # ─── Collect everything into dist/Launch_ImGUI ───────────────────────────────
 coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=True,
+    exe, a.binaries, a.zipfiles, a.datas,
+    strip=False, upx=True,
     name='Launch_ImGUI',
+    distpath=os.path.join(BASE_DIR, 'dist_gui'),
+    workpath=os.path.join(BASE_DIR, 'build_gui'),
 )
