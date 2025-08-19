@@ -48,7 +48,7 @@ jobs:
         run: pyinstaller Launch_ImGUI.spec
 
       # ---- Build Segmentator API (bundled) from .spec ----
-      # Make sure segmentator_api.spec is in the repo root (as provided earlier)
+      # Make sure segmentator_api.spec is in the repo root
       - name: PyInstaller (Segmentator API, OneDir)
         shell: powershell
         run: pyinstaller segmentator_api.spec
@@ -63,10 +63,10 @@ jobs:
         shell: powershell
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
 
-      # Segmentator API installer (you said it's named SegmentatorAPI.iss)
-        - name: Build Windows installer (Segmentator API)
-          shell: powershell
-          run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" SegmentatorAPI.iss'
+      # Segmentator API installer (SegmentatorAPI.iss)
+      - name: Build Windows installer (Segmentator API)
+        shell: powershell
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" SegmentatorAPI.iss'
 
       # ---- Upload artifacts ----
       - name: Upload AMIGOpy installer (unsigned)
@@ -76,12 +76,12 @@ jobs:
           path: Output/*.exe
           if-no-files-found: error
 
-        - name: Upload Segmentator API installer (unsigned)
-          uses: actions/upload-artifact@v4
-          with:
-            name: SegmentatorAPI-Installer-unsigned
-            path: Output/SegmentatorAPI-Setup.exe
-            if-no-files-found: error
+      - name: Upload Segmentator API installer (unsigned)
+        uses: actions/upload-artifact@v4
+        with:
+          name: SegmentatorAPI-Installer-unsigned
+          path: Output/SegmentatorAPI-Setup.exe
+          if-no-files-found: error
 
       # (Optional) also upload the raw PyInstaller folders for debugging
       - name: Upload PyInstaller dist (GUI)

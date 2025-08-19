@@ -628,7 +628,7 @@
               <property name="title">
                <string>Target</string>
               </property>
-              <widget class="QComboBox" name="comboBox_2">
+              <widget class="QComboBox" name="Reg_target_box">
                <property name="geometry">
                 <rect>
                  <x>10</x>
@@ -647,34 +647,34 @@
               </property>
               <layout class="QGridLayout" name="gridLayout_79">
                <item row="1" column="1">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_2"/>
+                <widget class="QDoubleSpinBox" name="Reg_Trans02_SpinBox"/>
                </item>
                <item row="1" column="0">
-                <widget class="QSlider" name="horizontalSlider_2">
+                <widget class="QSlider" name="Reg_Trans02_Slider">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
                 </widget>
                </item>
                <item row="2" column="0">
-                <widget class="QSlider" name="horizontalSlider_3">
+                <widget class="QSlider" name="Reg_Trans03_Slider">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
                 </widget>
                </item>
                <item row="2" column="1">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_3"/>
+                <widget class="QDoubleSpinBox" name="Reg_Trans03_SpinBox"/>
                </item>
                <item row="0" column="0">
-                <widget class="QSlider" name="horizontalSlider">
+                <widget class="QSlider" name="Reg_Trans01_Slider">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
                 </widget>
                </item>
                <item row="0" column="1">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
+                <widget class="QDoubleSpinBox" name="Reg_Trans01_SpinBox"/>
                </item>
               </layout>
              </widget>
@@ -686,34 +686,34 @@
               </property>
               <layout class="QGridLayout" name="gridLayout_81">
                <item row="0" column="0">
-                <widget class="QSlider" name="horizontalSlider_11">
+                <widget class="QSlider" name="Reg_Scale01_Slider">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
                 </widget>
                </item>
                <item row="0" column="1">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_11"/>
+                <widget class="QDoubleSpinBox" name="Reg_Scale01_SpinBox"/>
                </item>
                <item row="1" column="0">
-                <widget class="QSlider" name="horizontalSlider_12">
+                <widget class="QSlider" name="Reg_Scale02_Slider">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
                 </widget>
                </item>
                <item row="1" column="1">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_12"/>
+                <widget class="QDoubleSpinBox" name="Reg_Scale02_SpinBox"/>
                </item>
                <item row="2" column="0">
-                <widget class="QSlider" name="horizontalSlider_13">
+                <widget class="QSlider" name="Reg_Scale03_Slider">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
                 </widget>
                </item>
                <item row="2" column="1">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_13"/>
+                <widget class="QDoubleSpinBox" name="Reg_Scale03_SpinBox"/>
                </item>
               </layout>
              </widget>
@@ -723,7 +723,7 @@
               <property name="title">
                <string>Moving</string>
               </property>
-              <widget class="QComboBox" name="comboBox_3">
+              <widget class="QComboBox" name="Reg_moving_box">
                <property name="geometry">
                 <rect>
                  <x>10</x>
@@ -766,7 +766,7 @@
               <property name="title">
                <string>Method</string>
               </property>
-              <widget class="QComboBox" name="comboBox">
+              <widget class="QComboBox" name="Reg_method_box">
                <property name="geometry">
                 <rect>
                  <x>20</x>
@@ -824,47 +824,47 @@
               </property>
               <layout class="QGridLayout" name="gridLayout_80">
                <item row="0" column="0">
-                <widget class="QSlider" name="horizontalSlider_4">
+                <widget class="QSlider" name="Reg_Rot01_Slider">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
                 </widget>
                </item>
                <item row="0" column="1">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_4"/>
+                <widget class="QDoubleSpinBox" name="Reg_Rot01_SpinBox"/>
                </item>
                <item row="1" column="0">
-                <widget class="QSlider" name="horizontalSlider_6">
+                <widget class="QSlider" name="Reg_Rot02_Slider">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
                 </widget>
                </item>
                <item row="1" column="1">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_5"/>
+                <widget class="QDoubleSpinBox" name="Reg_Rot02_SpinBox"/>
                </item>
                <item row="2" column="0">
-                <widget class="QSlider" name="horizontalSlider_7">
+                <widget class="QSlider" name="Reg_Rot03_Slider">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
                 </widget>
                </item>
                <item row="2" column="1">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_6"/>
+                <widget class="QDoubleSpinBox" name="Reg_Rot03_SpinBox"/>
                </item>
               </layout>
              </widget>
             </item>
             <item row="4" column="3">
-             <widget class="QPushButton" name="pushButton_2">
+             <widget class="QPushButton" name="Reg_Register_Button">
               <property name="text">
                <string>Register</string>
               </property>
              </widget>
             </item>
             <item row="4" column="1">
-             <widget class="QPushButton" name="pushButton_3">
+             <widget class="QPushButton" name="Reg_Undo_Button">
               <property name="text">
                <string>Undo</string>
               </property>
