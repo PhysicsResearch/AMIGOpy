@@ -80,15 +80,30 @@ jobs:
         with:
           miniconda-version: "latest"
           python-version: "3.11"
-          environment-file: amigo_api.yml      # <- includes PyTorch CPU index line via --extra-index-url
+          environment-file: amigo_api.yml      # <- uses --extra-index-url for torch CPU
           activate-environment: amigo_api
           auto-update-conda: true
 
       - name: Show key versions
         shell: powershell
+        continue-on-error: true
         run: |
-          python -c "import torch,sys; print('python',sys.version); print('torch',torch.__version__); print('cuda',getattr(torch.version,'cuda',None))"
-          python -c "import totalsegmentator, monai, nnunetv2; print('ts',totalsegmentator.__version__, 'monai',monai.__version__)"
+          $code = @"
+          import sys, importlib
+          from importlib import metadata as md
+          import torch
+          print('python', sys.version)
+          print('torch', torch.__version__, 'cuda', getattr(torch.version, 'cuda', None))
+          def ver(pkg):
+              try:
+                  print(pkg, md.version(pkg))
+              except Exception as e:
+                  print(pkg, 'n/a')
+          for pkg in ['TotalSegmentator','totalsegmentator','monai','nnunetv2','dicom2nifti','pydicom']:
+              ver(pkg)
+          "@
+          Set-Content -Path version_check.py -Value $code
+          python version_check.py
 
       - name: Ensure PyInstaller (API)
         shell: powershell
