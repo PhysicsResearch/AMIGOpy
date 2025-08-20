@@ -18,21 +18,31 @@ jobs:
         with:
           miniconda-version: "latest"
           python-version: "3.11"
-          environment-file: amigo.yml        # <- light env for GUI only
+          environment-file: amigo.yml          # <- light GUI env
           activate-environment: amigo
           auto-update-conda: true
+
+      # If graphviz is in amigo.yml, add its bin to PATH so dot.exe is found
+      - name: Add Graphviz to PATH (conda)
+        shell: powershell
+        run: echo "$env:CONDA_PREFIX\Library\bin" >> $env:GITHUB_PATH
 
       - name: Upgrade pip tooling
         shell: powershell
         run: python -m pip install --upgrade pip wheel setuptools
 
-      - name: Install PyInstaller for GUI
+      - name: Ensure PyInstaller (GUI)
         shell: powershell
         run: pip install pyinstaller
 
       - name: Build AMIGOpy GUI (PyInstaller onedir)
         shell: powershell
         run: pyinstaller Launch_ImGUI.spec --clean
+
+      - name: Verify GUI dist contents
+        shell: powershell
+        run: |
+          Get-ChildItem -Recurse dist\Launch_ImGUI | Select-Object -First 30 | Format-List -Property FullName,Length
 
       - name: Install Inno Setup
         shell: powershell
@@ -41,6 +51,10 @@ jobs:
       - name: Build AMIGOpy installer (compile.iss)
         shell: powershell
         run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" compile.iss'
+
+      - name: List installer outputs
+        shell: powershell
+        run: Get-ChildItem -Recurse Output | Format-List -Property FullName,Length
 
       - name: Upload AMIGOpy installer (unsigned)
         uses: actions/upload-artifact@v4
@@ -52,39 +66,42 @@ jobs:
 
   build-segmentator-api:
     runs-on: windows-latest
-    needs: []   # independent from GUI build
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Use the dedicated heavy env
       - name: Setup Miniconda (API env)
         uses: conda-incubator/setup-miniconda@v3
         with:
           miniconda-version: "latest"
           python-version: "3.11"
-          # you can use a separate env file amigo_api.yml if you prefer
+          environment-file: amigo_api.yml      # <- includes PyTorch CPU index line
           activate-environment: amigo_api
           auto-update-conda: true
 
-      - name: Create API env
+      - name: Show key versions
         shell: powershell
         run: |
-          conda create -y -n amigo_api python=3.11
-          conda activate amigo_api
-          python -m pip install --upgrade pip wheel setuptools
-          pip install pyinstaller
-          pip install fastapi uvicorn[standard] starlette pydantic typing_extensions python-multipart
-          pip install SimpleITK nibabel scikit-image scipy tqdm einops packaging
-          pip install monai==1.* nnunetv2
-          pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-          pip install totalsegmentator dicom2nifti "pydicom>=2.4,<3"
+          python -c "import torch,sys; print('python',sys.version); print('torch',torch.__version__); print('cuda',getattr(torch.version,'cuda',None))"
+          python -c "import totalsegmentator, monai, nnunetv2; print('ts',totalsegmentator.__version__, 'monai',monai.__version__)"
+
+      - name: Ensure PyInstaller (API)
+        shell: powershell
+        run: pip install pyinstaller
 
       - name: Build Segmentator API (PyInstaller onedir)
         shell: powershell
+        run: pyinstaller segmentator_api.spec --clean --paths "$env:CONDA_PREFIX\Lib\site-packages"
+
+      - name: Verify API dist contents (TS/torch present)
+        shell: powershell
         run: |
-          conda activate amigo_api
-          pyinstaller segmentator_api.spec --clean
+          if (!(Test-Path dist\segmentator_api\totalsegmentator)) { throw 'totalsegmentator missing in dist' }
+          if (!(Test-Path dist\segmentator_api\torch)) { throw 'torch missing in dist' }
+          Get-ChildItem dist\segmentator_api\totalsegmentator | Select-Object -First 10
+          Get-ChildItem dist\segmentator_api\torch           | Select-Object -First 10
 
       - name: Install Inno Setup
         shell: powershell
@@ -93,6 +110,10 @@ jobs:
       - name: Build Segmentator API installer (SegmentatorAPI.iss)
         shell: powershell
         run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" SegmentatorAPI.iss'
+
+      - name: List installer outputs
+        shell: powershell
+        run: Get-ChildItem -Recurse Output | Format-List -Property FullName,Length
 
       - name: Upload Segmentator API installer (unsigned)
         uses: actions/upload-artifact@v4

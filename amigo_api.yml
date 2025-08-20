@@ -1,0 +1,31 @@
+name: amigo_api
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - scipy
+  - scikit-image
+  - nibabel
+  - simpleitk
+  - pydicom>=2.4,<3
+  - dicom2nifti
+  - tqdm
+  - einops
+  - python-multipart
+  - requests
+  - pip:
+      # Use CPU wheels from the official PyTorch index (no "+cu118" spec):
+      - --index-url=https://download.pytorch.org/whl/cpu
+      - torch
+      - torchvision
+      # Segmentation stack
+      - monai==1.*
+      - nnunetv2
+      - totalsegmentator==2.10.0
+      # API stack
+      - fastapi
+      - uvicorn[standard]
+      - starlette

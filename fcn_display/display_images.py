@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QProgressDialog
+from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
 import vtk
 import numpy as np
@@ -30,10 +31,11 @@ def displayaxial(self, Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_ax(self)
-        if i == 3 and self.DataType == "DICOM":
+        if i == 3 and (self.DataType == "DICOM" or self.DataType == "Nifti"):
             # Check if the required fields exist in dicom_data
                 # First, clear previous overlays explicitly
                 disp_structure_overlay_axial(self)
+                _update_axial_mask_overlay(self)
 
   
         if self.slice_thick[i] ==0:
@@ -87,6 +89,7 @@ def displayaxial(self, Im = None):
         self.vtkWidgetSagittal.GetRenderWindow().Render()
         self.vtkWidgetCoronal.GetRenderWindow().Render()
         self.sliceChanged.emit("axial", self.current_axial_slice_index)
+
 
 def disp_structure_overlay_axial(self):
     """
@@ -242,6 +245,145 @@ def _overlay_epsilon(self):
         st = 1.0
     return max(0.1, 0.05 * (st if st > 0 else 1.0))
 
+
+def _ensure_axial_mask_overlay(self):
+    if hasattr(self, "maskOverlayImporterAxial"):
+        return
+
+    self.maskOverlayImporterAxial = vtk.vtkImageImport()
+    self.maskOverlayImporterAxial.SetDataScalarTypeToUnsignedChar()
+    self.maskOverlayImporterAxial.SetNumberOfScalarComponents(4)  # RGBA
+
+    # 🔧 CRITICAL: match base axial spacing (x = col, y = row)
+    self.maskOverlayImporterAxial.SetDataSpacing(self.pixel_spac[0,1], self.pixel_spac[0,0], 1.0)
+    self.maskOverlayImporterAxial.SetDataOrigin(0.0, 0.0, 0.0)
+
+    self.maskOverlayActorAxial = vtk.vtkImageActor()
+    self.maskOverlayActorAxial.GetMapper().SetInputConnection(
+        self.maskOverlayImporterAxial.GetOutputPort()
+    )
+    self.maskOverlayActorAxial.InterpolateOff()
+    self.maskOverlayActorAxial.SetPickable(False)
+
+    # Position is handled in _update_axial_mask_overlay each frame
+    renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    renderer.AddActor(self.maskOverlayActorAxial)
+
+def _to_rgbf(color):
+    """(r,g,b) in [0,1] from '#hex', '#rgb', QColor, or tuple/list."""
+    if isinstance(color, QColor):
+        r, g, b, _ = color.getRgbF()
+        return r, g, b
+    if isinstance(color, (tuple, list)) and len(color) >= 3:
+        r, g, b = color[:3]
+        if max(r, g, b) > 1.0:  # 0-255 input
+            return float(r)/255.0, float(g)/255.0, float(b)/255.0
+        return float(r), float(g), float(b)
+    if isinstance(color, str):
+        s = color.strip()
+        if s.startswith("#"):
+            s = s[1:]
+        if len(s) == 3:
+            s = "".join(c*2 for c in s)
+        try:
+            return int(s[0:2],16)/255.0, int(s[2:4],16)/255.0, int(s[4:6],16)/255.0
+        except Exception:
+            pass
+    return 1.0, 0.0, 0.0
+
+def _build_axial_mask_rgba(self):
+    # base geometry from layer 0 axial slice
+    z = int(self.current_axial_slice_index[0])
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0 or
+        self.display_data[0].ndim < 2):
+        return None
+
+    if self.display_data[0].ndim == 2:
+        h, w = self.display_data[0].shape
+    else:
+        h, w = self.display_data[0].shape[1], self.display_data[0].shape[2]
+
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+
+    series = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    if not series.get("structures"):
+        return rgba
+
+    names  = series.get('structures_names', [])
+    keys   = series.get('structures_keys', [])
+    view   = series.get('structures_view', [0]*len(names))
+    colors = series.get('structures_color', ["#ff0000"]*len(names))
+    widths = series.get('structures_line_width', [2.0]*len(names))      # not used here
+    trans  = series.get('structures_transparency', [0.1]*len(names))    # 0→opaque, 1→transparent
+
+    n = min(len(names), len(keys), len(view), len(colors), len(trans))
+    if n == 0:
+        return rgba
+
+    layer_opacity = 1.0  # global multiplier if you have one; otherwise keep 1
+
+    for i in range(n):
+        if view[i] != 1:
+            continue
+
+        s_key = keys[i]
+        sdat = series["structures"].get(s_key, {})
+        mask3d = sdat.get("Mask3D")
+        if mask3d is None:
+            continue
+        if z < 0 or z >= mask3d.shape[0]:
+            continue
+
+        mask2d = mask3d[z, :, :] > 0
+        if not np.any(mask2d):
+            continue
+
+        r, g, b = _to_rgbf(colors[i])
+        # effective alpha: UI transparency means 1-transparency
+        a = np.clip(layer_opacity * (1.0 - float(trans[i])), 0.0, 0.99)
+
+        R = int(r * 255); G = int(g * 255); B = int(b * 255); A = int(a * 255)
+
+        # simple max-over for colors & alpha to keep the dominant color where masks overlap
+        m = mask2d
+        rgba[m, 0] = np.maximum(rgba[m, 0], R)
+        rgba[m, 1] = np.maximum(rgba[m, 1], G)
+        rgba[m, 2] = np.maximum(rgba[m, 2], B)
+        rgba[m, 3] = np.maximum(rgba[m, 3], A)
+
+    return rgba
+
+def _update_axial_mask_overlay(self):
+    _ensure_axial_mask_overlay(self)
+    rgba = _build_axial_mask_rgba(self)
+    if rgba is None:
+        self.maskOverlayActorAxial.GetProperty().SetOpacity(0.0)
+        return
+
+    h, w, _ = rgba.shape
+    data = rgba.tobytes()
+
+    imp = self.maskOverlayImporterAxial
+    # 🔧 Keep spacing synced in case series/layer changed
+    imp.SetDataSpacing(self.pixel_spac[0,1], self.pixel_spac[0,0], 1.0)
+    imp.SetDataOrigin(0.0, 0.0, 0.0)
+
+    imp.CopyImportVoidPointer(data, len(data))
+    imp.SetWholeExtent(0, w-1, 0, h-1, 0, 0)
+    imp.SetDataExtent (0, w-1, 0, h-1, 0, 0)
+    imp.SetNumberOfScalarComponents(4)
+    imp.SetDataScalarTypeToUnsignedChar()
+    imp.Modified()
+
+    # 🔧 EXACTLY match layer-0 image position
+    self.maskOverlayActorAxial.SetPosition(
+        self.Im_Offset[0, 0],
+        self.Im_Offset[0, 1],
+        _overlay_epsilon(self) * 0.5
+    )
+    self.maskOverlayActorAxial.SetOpacity(1.0)
 
 def disp_roi_axial(self):
     for row in range(self.table_circ_roi.rowCount()):
