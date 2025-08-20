@@ -113,59 +113,40 @@ jobs:
         shell: powershell
         run: |
           $dist = "dist\segmentator_api"
-  
-          function Test-InArchives($dist, $pattern) {
+      
+          function Test-InArchives($root, $pattern) {
             Add-Type -AssemblyName System.IO.Compression.FileSystem
-            $archives = @(Get-ChildItem $dist -Recurse -Include *.pyz,*library*.zip -ErrorAction SilentlyContinue)
+            $archives = Get-ChildItem $root -Recurse -Include *.pyz,*library*.zip -ErrorAction SilentlyContinue
             foreach ($a in $archives) {
               $zip = [System.IO.Compression.ZipFile]::OpenRead($a.FullName)
               try {
-                $entry = $zip.Entries | Where-Object { $_.FullName -like $pattern } | Select-Object -First 1
-                if ($entry) { return $true }
+                $hit = $zip.Entries | Where-Object { $_.FullName -like $pattern } | Select-Object -First 1
+                if ($hit) { return $true }
               } finally { $zip.Dispose() }
             }
             return $false
           }
-  
-          # ---- TORCH: directory OR DLLs OR inside an archive ----
+      
+          # ---- torch: dir OR DLLs OR in archive ----
           $torchDir = Get-ChildItem $dist -Recurse -Directory -Filter torch -ErrorAction SilentlyContinue | Select-Object -First 1
           $torchDll = Get-ChildItem $dist -Recurse -Include torch_cpu*.dll,libtorch*.dll,c10*.dll -ErrorAction SilentlyContinue | Select-Object -First 1
           $torchArc = Test-InArchives $dist 'torch/*'
-  
-          # ---- TOTALSEGMENTATOR: directory OR inside an archive ----
-          $tsDir   = Test-Path "$dist\totalsegmentator"
-          $tsArc   = Test-InArchives $dist 'totalsegmentator/*'
-  
+      
+          # ---- totalsegmentator: dir OR in archive ----
+          $tsDir  = Get-ChildItem $dist -Recurse -Directory -Filter totalsegmentator -ErrorAction SilentlyContinue | Select-Object -First 1
+          $tsArc  = Test-InArchives $dist 'totalsegmentator/*'
+      
           if (-not $torchDir -and -not $torchDll -and -not $torchArc) {
             Write-Host "torch not found (no dir, no DLLs, not in archive)"
-            Write-Host "`n--- dist tree (first 120) ---"
-            Get-ChildItem -Recurse $dist | Select-Object -First 120 FullName,Length
-            Write-Host "`n--- archive listing (first 50 entries each) ---"
-            Get-ChildItem $dist -Recurse -Include *.pyz,*library*.zip -ErrorAction SilentlyContinue | ForEach-Object {
-              Write-Host "Archive:" $_.FullName
-              Add-Type -AssemblyName System.IO.Compression.FileSystem
-              $zip = [System.IO.Compression.ZipFile]::OpenRead($_.FullName)
-              try { $zip.Entries | Select-Object -First 50 FullName | ForEach-Object { $_.FullName } } finally { $zip.Dispose() }
-            }
             throw "torch missing in dist"
           }
-  
           if (-not $tsDir -and -not $tsArc) {
             Write-Host "totalsegmentator not found (neither folder nor in archive)"
-            Write-Host "`n--- dist tree (first 120) ---"
-            Get-ChildItem -Recurse $dist | Select-Object -First 120 FullName,Length
-            Write-Host "`n--- archive listing (first 50 entries each) ---"
-            Get-ChildItem $dist -Recurse -Include *.pyz,*library*.zip -ErrorAction SilentlyContinue | ForEach-Object {
-              Write-Host "Archive:" $_.FullName
-              Add-Type -AssemblyName System.IO.Compression.FileSystem
-              $zip = [System.IO.Compression.ZipFile]::OpenRead($_.FullName)
-              try { $zip.Entries | Select-Object -First 50 FullName | ForEach-Object { $_.FullName } } finally { $zip.Dispose() }
-            }
             throw "totalsegmentator missing in dist"
           }
-  
+      
           Write-Host "torch OK (dir: $([bool]$torchDir), dll: $([bool]$torchDll), archive: $([bool]$torchArc))"
-          Write-Host "TotalSegmentator OK (dir: $tsDir, archive: $tsArc)"
+          Write-Host "TotalSegmentator OK (dir: $([bool]$tsDir), archive: $([bool]$tsArc))"
   
       - name: Install Inno Setup
         shell: powershell
