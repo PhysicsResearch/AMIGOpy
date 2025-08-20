@@ -49,7 +49,7 @@ def create_ab_matrix(self,default_ab=3):
         QMessageBox.warning(self,'missing structures',f"The structures: {','.join(missing_struct)} were not found in the CT set. \nThey will be ignored in the EQD2 calculation")
     
     ab_coeff=[v for v in struct_list.values()]
-    for structure,ab in zip(struct_used,ab_coeff):
+    for structure,ab in zip(masks,ab_coeff):
         ab_matrix[structure==1]=ab
         print(ab)
 
@@ -183,10 +183,10 @@ def generate_eqd2_dose(self):
      if self.patientID:
          target_dict=self.dicom_data[self.patientID][self.studyID]['RTDOSE']
          dose_selected = self.dose_list.currentText()
-         ab_matrix=self.dicom_data[self.patientID][self.studyID]['CT'][self.series_index].get('ab_matrix')
+         ab_matrix=self.dicom_data[self.patientID][self.studyID]['CT'][self.series_index].get('ab_matrix',[])
          
          if dose_selected!='None':
-             if ab_matrix:
+             if len(ab_matrix):
                  
                  dose_idx=dose_selected.split(':')[1].strip()
                  dose = next( d for d in target_dict if d['SeriesNumber'] == dose_idx)
@@ -233,7 +233,7 @@ def generate_eqd2_dose(self):
                  else:
                      QMessageBox.warning(self,'missing input data', 'enter the number of fractions')
              else:
-                QMessageBox.warning(self,'missing input data', 'define α/β ratios first')
+                QMessageBox.warning(self,'missing input data', 'No α/β ratios associated with this CT')
              
     
          else:
