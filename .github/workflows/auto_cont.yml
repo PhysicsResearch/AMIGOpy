@@ -117,17 +117,26 @@ jobs:
         shell: powershell
         run: |
           $dist = "dist\segmentator_api"
-
-          # torch should be a directory (has DLLs)
-          if (!(Test-Path "$dist\torch")) {
-            throw "torch missing in dist"
-          }
-
-          # totalsegmentator may be inside the PYZ archive; check both places
-          $tsDir = Test-Path "$dist\totalsegmentator"
-
-          # Find the PYZ (name can vary; e.g., PYZ-00.pyz)
+      
+          # ---- check torch (dir OR DLLs OR inside PYZ) ----
+          $torchDir = Get-ChildItem $dist -Recurse -Directory -Filter torch -ErrorAction SilentlyContinue | Select-Object -First 1
+          $torchDll = Get-ChildItem $dist -Recurse -Include torch_cpu*.dll,c10*.dll,libtorch*.dll -ErrorAction SilentlyContinue | Select-Object -First 1
+          $torchInPyz = $false
           $pyz = Get-ChildItem $dist -Filter *.pyz -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($pyz) {
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($pyz.FullName)
+            try {
+              $entry = $zip.Entries | Where-Object { $_.FullName -like 'torch/*' } | Select-Object -First 1
+              if ($entry) { $torchInPyz = $true }
+            } finally { $zip.Dispose() }
+          }
+          if (-not $torchDir -and -not $torchDll -and -not $torchInPyz) {
+            throw "torch not found (no dir, no DLLs, not in PYZ)"
+          }
+      
+          # ---- check TotalSegmentator (dir OR inside PYZ) ----
+          $tsDir = Test-Path "$dist\totalsegmentator"
           $tsInPyz = $false
           if ($pyz) {
             Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -137,14 +146,12 @@ jobs:
               if ($entry) { $tsInPyz = $true }
             } finally { $zip.Dispose() }
           }
-
           if (-not $tsDir -and -not $tsInPyz) {
-            throw "totalsegmentator not found (neither as folder nor in $($pyz.Name))"
+            throw "totalsegmentator not found (neither as folder nor in PYZ)"
           }
-
-          Write-Host "torch OK"
-          if ($tsDir) { Write-Host "totalsegmentator present as directory" }
-          elseif ($tsInPyz) { Write-Host "totalsegmentator present inside $($pyz.Name)" }
+      
+          Write-Host "torch OK (dir: $([bool]$torchDir), dll: $([bool]$torchDll), pyz: $([bool]$torchInPyz))"
+          Write-Host "TotalSegmentator OK (dir: $tsDir, pyz: $tsInPyz)"
 
       - name: Install Inno Setup
         shell: powershell
