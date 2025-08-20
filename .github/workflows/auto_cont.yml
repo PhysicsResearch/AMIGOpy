@@ -111,7 +111,7 @@ jobs:
 
       - name: Build Segmentator API (PyInstaller onedir)
         shell: powershell
-        run: pyinstaller segmentator_api.spec --clean --paths "$env:CONDA_PREFIX\Lib\site-packages"
+        run: pyinstaller segmentator_api.spec --clean
 
       - name: Verify API dist contents (TS/torch present)
         shell: powershell
