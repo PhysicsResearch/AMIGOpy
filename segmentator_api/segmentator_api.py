@@ -242,6 +242,15 @@ def _run_totalseg_inproc(
                 lf.write(f"[Segmentator API] Console script failed: {e}\n")
 
     # ---------- 4) Subprocess: python -m totalsegmentator ----------
+    # IMPORTANT: In a frozen EXE, sys.executable == our EXE. Calling "python -m"
+    # would just relaunch *ourselves* and collide on the uvicorn port.
+    if getattr(sys, "frozen", False):
+        with open(log_path or os.devnull, "a", encoding="utf-8", errors="ignore") as lf:
+            lf.write("[Segmentator API] Skipping 'python -m totalsegmentator' in frozen build "
+                     "(would recurse into this exe). Ensure totalsegmentator is packaged, or "
+                     "install the console script in PATH.\n")
+        return 127
+
     try:
         with open(log_path or os.devnull, "a", encoding="utf-8", errors="ignore") as lf:
             cmd = [sys.executable, "-m", "totalsegmentator"] + cli_argv
@@ -250,9 +259,8 @@ def _run_totalseg_inproc(
             return int(proc.returncode or 0)
     except Exception as e:
         with open(log_path or os.devnull, "a", encoding="utf-8", errors="ignore") as lf:
-            lf.write(f"[Segmentator API] Module execution failed: {e}\n")
-            lf.write("[Segmentator API] No runnable TotalSegmentator entrypoint found.\n")
-        # 127 is the classic "command not found"
+            lf.write(f"[Segmentator API] Module execution failed: {e}\n"
+                     "[Segmentator API] No runnable TotalSegmentator entrypoint found.\n")
         return 127
 
 # -----------------------------------------------------------------------------

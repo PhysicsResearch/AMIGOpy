@@ -306,7 +306,7 @@
     <item row="0" column="1" rowspan="5" colspan="2">
      <widget class="QTabWidget" name="tabModules">
       <property name="currentIndex">
-       <number>4</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="im_display_tab">
        <attribute name="title">
@@ -3365,7 +3365,7 @@
         <item row="0" column="0">
          <widget class="QTabWidget" name="Plan_tabs">
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="Brachy_plan_tab">
            <attribute name="title">
@@ -8543,8 +8543,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>442</width>
-             <height>370</height>
+             <width>261</width>
+             <height>152</height>
             </rect>
            </property>
            <attribute name="label">
