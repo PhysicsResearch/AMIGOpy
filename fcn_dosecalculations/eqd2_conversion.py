@@ -17,17 +17,50 @@ def to_EQD2(D,fractions,ab):
     dose_EQD2=D*((d+ab)/(2+ab))
     return dose_EQD2
 
-
-
-def convert_dose_matrix_to_EQD2(dose_matrix,structures,ab_values,fractions,default_ab=3):
-    #create ab matrix
-    ab_matrix=np.full(dose_matrix.shape, float(default_ab))
+def create_ab_matrix(self,default_ab=3):
+    if self.modality!='CT':
+        QMessageBox.warning(self,'invalid input', 'please select a valid CT')
+        return
     
-    for structure,ab in zip(structures,ab_values):
+    try: 
+        ct_shape=self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'].shape
+    except:
+        QMessageBox.warning(self,'invalid input', 'please select a valid CT')
+        return
+    struct_list=self.dicom_data[self.patientID][self.studyID]['CT'][self.series_index].get('ab_values',{})
+    if len(struct_list)==0:
+        QMessageBox.warning(self,'missing α/β values', 'please assign at least one structure to one α/β value')
+    ab_matrix=np.full(ct_shape, float(default_ab))
+    #Retrive binary masks
+    masks=[]
+    struct_used=[]
+    for s in self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'].values():
+        if s.get('Name') in struct_list:
+            masks.append(s['Mask3D'])
+            struct_used.append(s.get('Name'))
+   
+    if len(masks)==0:
+       QMessageBox.warning(self,'no structure found','None of the structure selected was found in the CT set.\nMake sure you are selecting the correct one!')
+       return
+   
+    #Display warning for missing structures
+    missing_struct=[struct for struct in struct_list.keys() if struct not in struct_used]
+    if len(missing_struct):
+        QMessageBox.warning(self,'missing structures',f"The structures: {','.join(missing_struct)} were not found in the CT set. \nThey will be ignored in the EQD2 calculation")
+    
+    ab_coeff=[v for v in struct_list.values()]
+    for structure,ab in zip(struct_used,ab_coeff):
         ab_matrix[structure==1]=ab
         print(ab)
-    #plt.imshow(ab_matrix[73,:,:])
-    return to_EQD2(dose_matrix,fractions,ab_matrix),ab_matrix
+
+
+    self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['ab_matrix']=ab_matrix
+    populate_DICOM_tree(self)
+    
+        
+
+
+
 
 
 
@@ -150,10 +183,10 @@ def generate_eqd2_dose(self):
      if self.patientID:
          target_dict=self.dicom_data[self.patientID][self.studyID]['RTDOSE']
          dose_selected = self.dose_list.currentText()
-         struct_list=self.dicom_data[self.patientID][self.studyID]['CT'][self.series_index].get('ab_values',{})
-         print(struct_list)
+         ab_matrix=self.dicom_data[self.patientID][self.studyID]['CT'][self.series_index].get('ab_matrix')
+         
          if dose_selected!='None':
-             if len(struct_list):
+             if ab_matrix:
                  
                  dose_idx=dose_selected.split(':')[1].strip()
                  dose = next( d for d in target_dict if d['SeriesNumber'] == dose_idx)
@@ -163,27 +196,12 @@ def generate_eqd2_dose(self):
                      dose_matrix=scale_dose_to_CT(self,dose)
                      print('dose rescaled')
                  
-                 #Retrive binary masks
-                 masks=[]
-                 struct_used=[]
-                 for s in self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'].values():
-                     if s.get('Name') in struct_list:
-                         masks.append(s['Mask3D'])
-                         struct_used.append(s.get('Name'))
-                
-                 if len(masks)==0:
-                    QMessageBox.warning(self,'no structure found','None of the structure selected was found in the CT set.\nMake sure you are selecting the correct one!')
-                    return
-                
-                 #Display warning for missing structures
-                 missing_struct=[struct for struct in struct_list.keys() if struct not in struct_used]
-                 if len(missing_struct):
-                     QMessageBox.warning(self,'missing structures',f"The structures: {','.join(missing_struct)} were not found in the CT set. \nThey will be ignored in the EQD2 calculation")
-                 # masks = [s['Mask3D'] for s in self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'].values() if s.get('Name') in struct_list]
-                 ab_coeff=[v for v in struct_list.values()]
+
                  
                  #add here EQD2 
                  fractions=self.input_fractions.text()
+                 #check it the current CT has ab values associated
+                 
                  if fractions:
                      try:
                          fractions=float(fractions)
@@ -191,39 +209,12 @@ def generate_eqd2_dose(self):
                          QMessageBox.warning(self,'invalid input', 'select a valid number of fractions')
                          return
                 
-                     dose_matrix_eqd2,ab_matrix=convert_dose_matrix_to_EQD2(dose_matrix,masks,ab_coeff,fractions,default_ab=3)
-                     fig,ax=plt.subplots()
-                     ax.imshow(self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'][54,:,:],cmap='grey')
-                     ax.imshow(ab_matrix[54,:,:],cmap='jet',alpha=0.5)
-                     plt.show()
+                     dose_matrix_eqd2=to_EQD2(dose_matrix,fractions,ab_matrix)
+
+
                      #add dose to the tree
                      
-                     #####TESTING#########
-                     #Get z coordinates of the GTV
-                     index_GTV=struct_used.index('GTVp1')
-                     gtv_mask=masks[index_GTV]
-                     coor=np.argwhere(gtv_mask!=0)
-                     z_coor=coor[:,0]
-                     from numpy.random import randint
-                     #Sampling a random point inside the GTV
-                     rand_idx =randint(0,len(coor)-1)
-                     z,x,y=coor[rand_idx]
-                     print(f'GTV: {z},{x},{y}, physical= {dose_matrix[z,x,y]}, ab= {ab_matrix[z,x,y]}, eqd2= {dose_matrix_eqd2[z,x,y]}')
-                     range_slices=(min(z_coor),max(z_coor))
-                     for i in range(10):
-                         dim=dose_matrix.shape
-                         z=randint(range_slices[0],range_slices[1])
-                         x=randint(0,dim[1]-1)
-                         y=randint(0,dim[2]-1)
-                         
-                         print(f'point {i+1}: {z},{x},{y}, physical= {dose_matrix[z,x,y]}, ab= {ab_matrix[z,x,y]}, eqd2= {dose_matrix_eqd2[z,x,y]}')
-                     
-                     
-                     
-                     
-                     
-                     
-                     #####################
+                    
             
                      eqd2_dose=deepcopy(dose)
             

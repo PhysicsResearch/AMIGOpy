@@ -108,6 +108,12 @@ def populate_DICOM_tree(self):
                                     mat_item = QStandardItem(name)
                                     mat_parent_item.appendRow(mat_item)
                                 
+                        #If ab map exists, add it as sublevel
+                        ab_matrix = series_data.get('ab_matrix')
+                        if ab_matrix:
+                            ab_parent_item = QStandardItem("α/β")
+                            series_item.appendRow(ab_parent_item)
+                            
                             
 
                     # Add to comboBox

@@ -221,6 +221,8 @@ def on_DataTreeView_clicked(self,index):
                     elif hierarchy[5]=='Material maps':
                        self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['mat_maps'][hierarchy[6]]['3DMatrix']
                         
+                if len(hierarchy)==6:#ab values
+                    self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['ab_matrix']
                     
                 adjust_data_type_input(self,idx)
                 #
