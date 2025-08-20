@@ -65,110 +65,124 @@ jobs:
           overwrite: true
 
   build-segmentator-api:
-    runs-on: windows-latest
-    env:
-      # Workaround for Windows OpenMP runtime clashes (ITK/MKL vs LLVM OMP)
-      KMP_DUPLICATE_LIB_OK: "TRUE"
+  runs-on: windows-latest
+  env:
+    # Workaround for Windows OpenMP runtime clashes (ITK/MKL vs LLVM OMP)
+    KMP_DUPLICATE_LIB_OK: "TRUE"
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      # Use the dedicated heavy env
-      - name: Setup Miniconda (API env)
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          miniconda-version: "latest"
-          python-version: "3.11"
-          environment-file: amigo_api.yml      # <- uses --extra-index-url for torch CPU
-          activate-environment: amigo_api
-          auto-update-conda: true
+    # Heavy env for the API (torch CPU via --extra-index-url in amigo_api.yml)
+    - name: Setup Miniconda (API env)
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        miniconda-version: "latest"
+        python-version: "3.11"
+        environment-file: amigo_api.yml
+        activate-environment: amigo_api
+        auto-update-conda: true
 
-      - name: Show key versions
-        shell: powershell
-        continue-on-error: true
-        run: |
-          $code = @"
-          import sys, importlib
-          from importlib import metadata as md
-          import torch
-          print('python', sys.version)
-          print('torch', torch.__version__, 'cuda', getattr(torch.version, 'cuda', None))
-          def ver(pkg):
-              try:
-                  print(pkg, md.version(pkg))
-              except Exception as e:
-                  print(pkg, 'n/a')
-          for pkg in ['TotalSegmentator','totalsegmentator','monai','nnunetv2','dicom2nifti','pydicom']:
-              ver(pkg)
-          "@
-          Set-Content -Path version_check.py -Value $code
-          python version_check.py
+    - name: Show key versions (non-fatal)
+      shell: powershell
+      continue-on-error: true
+      run: |
+        $code = @"
+        import sys
+        from importlib import metadata as md
+        import torch
+        print('python', sys.version)
+        print('torch', torch.__version__, 'cuda', getattr(torch.version,'cuda',None))
+        for pkg in ['TotalSegmentator','totalsegmentator','monai','nnunetv2','dicom2nifti','pydicom']:
+            try: print(pkg, md.version(pkg))
+            except Exception: print(pkg, 'n/a')
+        "@
+        Set-Content version_check.py $code
+        python version_check.py
 
-      - name: Ensure PyInstaller (API)
-        shell: powershell
-        run: pip install pyinstaller
+    - name: Ensure PyInstaller (API)
+      shell: powershell
+      run: pip install pyinstaller
 
-      - name: Build Segmentator API (PyInstaller onedir)
-        shell: powershell
-        run: pyinstaller segmentator_api.spec --clean
+    - name: Build Segmentator API (PyInstaller onedir)
+      shell: powershell
+      run: pyinstaller segmentator_api.spec --clean
 
-      - name: Verify API dist contents (TS/torch present)
-        shell: powershell
-        run: |
-          $dist = "dist\segmentator_api"
-      
-          # ---- check torch (dir OR DLLs OR inside PYZ) ----
-          $torchDir = Get-ChildItem $dist -Recurse -Directory -Filter torch -ErrorAction SilentlyContinue | Select-Object -First 1
-          $torchDll = Get-ChildItem $dist -Recurse -Include torch_cpu*.dll,c10*.dll,libtorch*.dll -ErrorAction SilentlyContinue | Select-Object -First 1
-          $torchInPyz = $false
-          $pyz = Get-ChildItem $dist -Filter *.pyz -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($pyz) {
-            Add-Type -AssemblyName System.IO.Compression.FileSystem
-            $zip = [System.IO.Compression.ZipFile]::OpenRead($pyz.FullName)
+    - name: Verify API dist contents (TS/torch present)
+      shell: powershell
+      run: |
+        $dist = "dist\segmentator_api"
+
+        function Test-InArchives($dist, $pattern) {
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archives = @(Get-ChildItem $dist -Recurse -Include *.pyz,*library*.zip -ErrorAction SilentlyContinue)
+          foreach ($a in $archives) {
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($a.FullName)
             try {
-              $entry = $zip.Entries | Where-Object { $_.FullName -like 'torch/*' } | Select-Object -First 1
-              if ($entry) { $torchInPyz = $true }
+              $entry = $zip.Entries | Where-Object { $_.FullName -like $pattern } | Select-Object -First 1
+              if ($entry) { return $true }
             } finally { $zip.Dispose() }
           }
-          if (-not $torchDir -and -not $torchDll -and -not $torchInPyz) {
-            throw "torch not found (no dir, no DLLs, not in PYZ)"
-          }
-      
-          # ---- check TotalSegmentator (dir OR inside PYZ) ----
-          $tsDir = Test-Path "$dist\totalsegmentator"
-          $tsInPyz = $false
-          if ($pyz) {
+          return $false
+        }
+
+        # ---- TORCH: directory OR DLLs OR inside an archive ----
+        $torchDir = Get-ChildItem $dist -Recurse -Directory -Filter torch -ErrorAction SilentlyContinue | Select-Object -First 1
+        $torchDll = Get-ChildItem $dist -Recurse -Include torch_cpu*.dll,libtorch*.dll,c10*.dll -ErrorAction SilentlyContinue | Select-Object -First 1
+        $torchArc = Test-InArchives $dist 'torch/*'
+
+        # ---- TOTALSEGMENTATOR: directory OR inside an archive ----
+        $tsDir   = Test-Path "$dist\totalsegmentator"
+        $tsArc   = Test-InArchives $dist 'totalsegmentator/*'
+
+        if (-not $torchDir -and -not $torchDll -and -not $torchArc) {
+          Write-Host "torch not found (no dir, no DLLs, not in archive)"
+          Write-Host "`n--- dist tree (first 120) ---"
+          Get-ChildItem -Recurse $dist | Select-Object -First 120 FullName,Length
+          Write-Host "`n--- archive listing (first 50 entries each) ---"
+          Get-ChildItem $dist -Recurse -Include *.pyz,*library*.zip -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Host "Archive:" $_.FullName
             Add-Type -AssemblyName System.IO.Compression.FileSystem
-            $zip = [System.IO.Compression.ZipFile]::OpenRead($pyz.FullName)
-            try {
-              $entry = $zip.Entries | Where-Object { $_.FullName -like 'totalsegmentator/*' } | Select-Object -First 1
-              if ($entry) { $tsInPyz = $true }
-            } finally { $zip.Dispose() }
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($_.FullName)
+            try { $zip.Entries | Select-Object -First 50 FullName | ForEach-Object { $_.FullName } } finally { $zip.Dispose() }
           }
-          if (-not $tsDir -and -not $tsInPyz) {
-            throw "totalsegmentator not found (neither as folder nor in PYZ)"
+          throw "torch missing in dist"
+        }
+
+        if (-not $tsDir -and -not $tsArc) {
+          Write-Host "totalsegmentator not found (neither folder nor in archive)"
+          Write-Host "`n--- dist tree (first 120) ---"
+          Get-ChildItem -Recurse $dist | Select-Object -First 120 FullName,Length
+          Write-Host "`n--- archive listing (first 50 entries each) ---"
+          Get-ChildItem $dist -Recurse -Include *.pyz,*library*.zip -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Host "Archive:" $_.FullName
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($_.FullName)
+            try { $zip.Entries | Select-Object -First 50 FullName | ForEach-Object { $_.FullName } } finally { $zip.Dispose() }
           }
-      
-          Write-Host "torch OK (dir: $([bool]$torchDir), dll: $([bool]$torchDll), pyz: $([bool]$torchInPyz))"
-          Write-Host "TotalSegmentator OK (dir: $tsDir, pyz: $tsInPyz)"
+          throw "totalsegmentator missing in dist"
+        }
 
-      - name: Install Inno Setup
-        shell: powershell
-        run: choco install innosetup -y
+        Write-Host "torch OK (dir: $([bool]$torchDir), dll: $([bool]$torchDll), archive: $([bool]$torchArc))"
+        Write-Host "TotalSegmentator OK (dir: $tsDir, archive: $tsArc)"
 
-      - name: Build Segmentator API installer (SegmentatorAPI.iss)
-        shell: powershell
-        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" SegmentatorAPI.iss'
+    - name: Install Inno Setup
+      shell: powershell
+      run: choco install innosetup -y
 
-      - name: List installer outputs
-        shell: powershell
-        run: Get-ChildItem -Recurse Output | Format-List -Property FullName,Length
+    - name: Build Segmentator API installer (SegmentatorAPI.iss)
+      shell: powershell
+      run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" SegmentatorAPI.iss'
 
-      - name: Upload Segmentator API installer (unsigned)
-        uses: actions/upload-artifact@v4
-        with:
-          name: SegmentatorAPI-Installer-unsigned
-          path: Output/SegmentatorAPI-Setup.exe
-          if-no-files-found: error
-          overwrite: true
+    - name: List installer outputs
+      shell: powershell
+      run: Get-ChildItem -Recurse Output | Format-List -Property FullName,Length
+
+    - name: Upload Segmentator API installer (unsigned)
+      uses: actions/upload-artifact@v4
+      with:
+        name: SegmentatorAPI-Installer-unsigned
+        path: Output/SegmentatorAPI-Setup.exe
+        if-no-files-found: error
+        overwrite: true
