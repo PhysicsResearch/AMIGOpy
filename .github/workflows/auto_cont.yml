@@ -113,38 +113,38 @@ jobs:
         shell: powershell
         run: pyinstaller segmentator_api.spec --clean
 
-        - name: Verify API dist contents (TS/torch present)
-          shell: powershell
-          run: |
-            $dist = "dist\segmentator_api"
+      - name: Verify API dist contents (TS/torch present)
+        shell: powershell
+        run: |
+          $dist = "dist\segmentator_api"
 
-            # torch should be a directory (has DLLs)
-            if (!(Test-Path "$dist\torch")) {
-              throw "torch missing in dist"
-            }
+          # torch should be a directory (has DLLs)
+          if (!(Test-Path "$dist\torch")) {
+            throw "torch missing in dist"
+          }
 
-            # totalsegmentator may be inside the PYZ archive; check both places
-            $tsDir = Test-Path "$dist\totalsegmentator"
+          # totalsegmentator may be inside the PYZ archive; check both places
+          $tsDir = Test-Path "$dist\totalsegmentator"
 
-            # Find the PYZ (name can vary; e.g., PYZ-00.pyz)
-            $pyz = Get-ChildItem $dist -Filter *.pyz -ErrorAction SilentlyContinue | Select-Object -First 1
-            $tsInPyz = $false
-            if ($pyz) {
-              Add-Type -AssemblyName System.IO.Compression.FileSystem
-              $zip = [System.IO.Compression.ZipFile]::OpenRead($pyz.FullName)
-              try {
-                $entry = $zip.Entries | Where-Object { $_.FullName -like 'totalsegmentator/*' } | Select-Object -First 1
-                if ($entry) { $tsInPyz = $true }
-              } finally { $zip.Dispose() }
-            }
+          # Find the PYZ (name can vary; e.g., PYZ-00.pyz)
+          $pyz = Get-ChildItem $dist -Filter *.pyz -ErrorAction SilentlyContinue | Select-Object -First 1
+          $tsInPyz = $false
+          if ($pyz) {
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($pyz.FullName)
+            try {
+              $entry = $zip.Entries | Where-Object { $_.FullName -like 'totalsegmentator/*' } | Select-Object -First 1
+              if ($entry) { $tsInPyz = $true }
+            } finally { $zip.Dispose() }
+          }
 
-            if (-not $tsDir -and -not $tsInPyz) {
-              throw "totalsegmentator not found (neither as folder nor in $($pyz.Name))"
-            }
+          if (-not $tsDir -and -not $tsInPyz) {
+            throw "totalsegmentator not found (neither as folder nor in $($pyz.Name))"
+          }
 
-            Write-Host "torch OK"
-            if ($tsDir) { Write-Host "totalsegmentator present as directory" }
-            elseif ($tsInPyz) { Write-Host "totalsegmentator present inside $($pyz.Name)" }
+          Write-Host "torch OK"
+          if ($tsDir) { Write-Host "totalsegmentator present as directory" }
+          elseif ($tsInPyz) { Write-Host "totalsegmentator present inside $($pyz.Name)" }
 
       - name: Install Inno Setup
         shell: powershell
