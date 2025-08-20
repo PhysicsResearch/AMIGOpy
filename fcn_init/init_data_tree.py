@@ -407,7 +407,7 @@ def on_copy_structures_from_tree_item(self, src_patient, src_study, src_modality
 
 
 def _clear_structure_display_state(series):
-    for k in ('structures_view','structures_color','structures_line_width','structures_transparency'):
+    for k in ('structures_view','structures_color','structures_line_width','structures_transparency','structures_mask_transparency'):
         series.pop(k, None)
 
 

@@ -31,11 +31,12 @@ def displayaxial(self, Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_ax(self)
-        if i == 3 and (self.DataType == "DICOM" or self.DataType == "Nifti"):
+        if i == 3 and self.DataType in ("DICOM", "Nifti"):
             # Check if the required fields exist in dicom_data
                 # First, clear previous overlays explicitly
-                disp_structure_overlay_axial(self)
                 _update_axial_mask_overlay(self)
+                disp_structure_overlay_axial(self)
+                
 
   
         if self.slice_thick[i] ==0:
@@ -317,36 +318,37 @@ def _build_axial_mask_rgba(self):
     colors = series.get('structures_color', ["#ff0000"]*len(names))
     widths = series.get('structures_line_width', [2.0]*len(names))      # not used here
     trans  = series.get('structures_transparency', [0.1]*len(names))    # 0→opaque, 1→transparent
+    mtr    = series.get('structures_mask_transparency', [1.0]*len(names))  # NEW
 
-    n = min(len(names), len(keys), len(view), len(colors), len(trans))
+    n = min(len(names), len(keys), len(view), len(colors), len(mtr))
     if n == 0:
         return rgba
 
-    layer_opacity = 1.0  # global multiplier if you have one; otherwise keep 1
+    layer_opacity = 1.0  # keep as your global multiplier if needed
 
     for i in range(n):
-        if view[i] != 1:
+        if view[i] != 1:      # ← gate by checkbox
             continue
-
         s_key = keys[i]
         sdat = series["structures"].get(s_key, {})
         mask3d = sdat.get("Mask3D")
-        if mask3d is None:
+        if mask3d is None or z < 0 or z >= mask3d.shape[0]:
             continue
-        if z < 0 or z >= mask3d.shape[0]:
+
+        # skip if mask transparency is 1.0 (fully hidden)
+        mt = float(mtr[i])
+        if mt >= 0.999:     # small epsilon to avoid flicker
             continue
 
         mask2d = mask3d[z, :, :] > 0
         if not np.any(mask2d):
             continue
 
+        # color from the contour color
         r, g, b = _to_rgbf(colors[i])
-        # effective alpha: UI transparency means 1-transparency
-        a = np.clip(layer_opacity * (1.0 - float(trans[i])), 0.0, 0.99)
+        a = np.clip(layer_opacity * (1.0 - mt), 0.0, 0.99)
 
         R = int(r * 255); G = int(g * 255); B = int(b * 255); A = int(a * 255)
-
-        # simple max-over for colors & alpha to keep the dominant color where masks overlap
         m = mask2d
         rgba[m, 0] = np.maximum(rgba[m, 0], R)
         rgba[m, 1] = np.maximum(rgba[m, 1], G)
@@ -687,7 +689,8 @@ def displaycoronal(self, Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_co(self)
-        if i == 3 and self.DataType == "DICOM":
+        if i == 3 and self.DataType in ("DICOM", "Nifti"):
+                _update_coronal_mask_overlay(self)
                 disp_structure_overlay_coronal(self)
 
         if self.slice_thick[i] ==0:
@@ -741,6 +744,144 @@ def displaycoronal(self, Im = None):
     self.vtkWidgetCoronal.GetRenderWindow().Render()
     self.vtkWidgetAxial.GetRenderWindow().Render()
     self.sliceChanged.emit("coronal", self.current_coronal_slice_index)
+
+
+
+def _ensure_coronal_mask_overlay(self):
+    if hasattr(self, "maskOverlayImporterCoronal"):
+        return
+    self.maskOverlayImporterCoronal = vtk.vtkImageImport()
+    self.maskOverlayImporterCoronal.SetDataScalarTypeToUnsignedChar()
+    self.maskOverlayImporterCoronal.SetNumberOfScalarComponents(4)  # RGBA
+    # (col=x, row=z)
+    self.maskOverlayImporterCoronal.SetDataSpacing(self.pixel_spac[0,1], self.slice_thick[0], 1.0)
+    self.maskOverlayImporterCoronal.SetDataOrigin(0.0, 0.0, 0.0)
+
+    self.maskOverlayActorCoronal = vtk.vtkImageActor()
+    self.maskOverlayActorCoronal.GetMapper().SetInputConnection(
+        self.maskOverlayImporterCoronal.GetOutputPort()
+    )
+    self.maskOverlayActorCoronal.InterpolateOff()
+    self.maskOverlayActorCoronal.SetPickable(False)
+
+    renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    renderer.AddActor(self.maskOverlayActorCoronal)
+
+
+def _build_coronal_mask_rgba(self):
+    # Y slice index (coronal)
+    y = int(self.current_coronal_slice_index[0])
+
+    # geometry: display_data[0][:, y, :] is (z, x)
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0 or
+        self.display_data[0].ndim < 3):
+        return None
+
+    h, w = self.display_data[0].shape[0], self.display_data[0].shape[2]  # (z, x)
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+
+    series = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    if not series.get("structures"):
+        return rgba
+
+    names  = series.get('structures_names', [])
+    keys   = series.get('structures_keys',  [])
+    view   = series.get('structures_view',  [0]*len(names))
+    colors = series.get('structures_color', ["#ff0000"]*len(names))
+    mtr    = series.get('structures_mask_transparency', [1.0]*len(names))
+
+    n = min(len(names), len(keys), len(colors), len(mtr))
+    if n == 0:
+        return rgba
+
+    for i in range(n):
+        if view[i] != 1:      # ← gate by checkbox
+            continue
+        s_key = keys[i]
+        sdat  = series["structures"].get(s_key, {})
+        mask3d = sdat.get("Mask3D")
+        if mask3d is None or y < 0 or y >= mask3d.shape[1]:
+            continue
+
+        mt = float(mtr[i])
+        if mt >= 0.999:       # 1.0 → hidden
+            continue
+
+        mask2d = mask3d[:, y, :] > 0   # (z, x)
+        if not np.any(mask2d):
+            continue
+
+        r, g, b = _to_rgbf(colors[i])
+        a = np.clip(1.0 - mt, 0.0, 0.99)
+
+        R = int(r*255); G = int(g*255); B = int(b*255); A = int(a*255)
+        m = mask2d
+        rgba[m, 0] = np.maximum(rgba[m, 0], R)
+        rgba[m, 1] = np.maximum(rgba[m, 1], G)
+        rgba[m, 2] = np.maximum(rgba[m, 2], B)
+        rgba[m, 3] = np.maximum(rgba[m, 3], A)
+
+    return rgba
+
+
+def _update_coronal_mask_overlay(self):
+    _ensure_coronal_mask_overlay(self)
+    rgba = _build_coronal_mask_rgba(self)
+    if rgba is None:
+        self.maskOverlayActorCoronal.GetProperty().SetOpacity(0.0)
+        return
+
+    h, w, _ = rgba.shape
+    data = rgba.tobytes()
+
+    imp = self.maskOverlayImporterCoronal
+    imp.SetDataSpacing(self.pixel_spac[0,1], self.slice_thick[0], 1.0)  # (x, z)
+    imp.SetDataOrigin(0.0, 0.0, 0.0)
+    imp.CopyImportVoidPointer(data, len(data))
+    imp.SetWholeExtent(0, w-1, 0, h-1, 0, 0)
+    imp.SetDataExtent (0, w-1, 0, h-1, 0, 0)
+    imp.SetNumberOfScalarComponents(4)
+    imp.SetDataScalarTypeToUnsignedChar()
+    imp.Modified()
+
+    # Match coronal image actor position (x,z)
+    self.maskOverlayActorCoronal.SetPosition(
+        self.Im_Offset[0, 0],
+        self.Im_Offset[0, 2],
+        _overlay_epsilon(self) * 0.5
+    )
+    self.maskOverlayActorCoronal.SetOpacity(1.0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def disp_structure_overlay_coronal(self):
     """
@@ -1226,7 +1367,8 @@ def displaysagittal(self,Im = None):
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in dicom_data
                 display_brachy_channel_overlay_sa(self)    
-        if i == 3 and self.DataType == "DICOM":
+        if i == 3 and self.DataType in ("DICOM", "Nifti"):
+            _update_sagittal_mask_overlay(self)
             disp_structure_overlay_sagittal(self)
 
         if self.slice_thick[i] ==0:
@@ -1276,6 +1418,127 @@ def displaysagittal(self,Im = None):
     self.vtkWidgetAxial.GetRenderWindow().Render()
     self.sliceChanged.emit("coronal", self.current_sagittal_slice_index)
     
+
+
+def _ensure_sagittal_mask_overlay(self):
+    if hasattr(self, "maskOverlayImporterSagittal"):
+        return
+    self.maskOverlayImporterSagittal = vtk.vtkImageImport()
+    self.maskOverlayImporterSagittal.SetDataScalarTypeToUnsignedChar()
+    self.maskOverlayImporterSagittal.SetNumberOfScalarComponents(4)  # RGBA
+    # (col=y, row=z)
+    self.maskOverlayImporterSagittal.SetDataSpacing(self.pixel_spac[0,0], self.slice_thick[0], 1.0)
+    self.maskOverlayImporterSagittal.SetDataOrigin(0.0, 0.0, 0.0)
+
+    self.maskOverlayActorSagittal = vtk.vtkImageActor()
+    self.maskOverlayActorSagittal.GetMapper().SetInputConnection(
+        self.maskOverlayImporterSagittal.GetOutputPort()
+    )
+    self.maskOverlayActorSagittal.InterpolateOff()
+    self.maskOverlayActorSagittal.SetPickable(False)
+
+    renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    renderer.AddActor(self.maskOverlayActorSagittal)
+
+
+def _build_sagittal_mask_rgba(self):
+    # X slice index (sagittal)
+    x = int(self.current_sagittal_slice_index[0])
+
+    # geometry: display_data[0][:, :, x] is (z, y)
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0 or
+        self.display_data[0].ndim < 3):
+        return None
+
+    h, w = self.display_data[0].shape[0], self.display_data[0].shape[1]  # (z, y)
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+
+    series = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    if not series.get("structures"):
+        return rgba
+
+    names  = series.get('structures_names', [])
+    keys   = series.get('structures_keys',  [])
+    view   = series.get('structures_view',  [0]*len(names))
+    colors = series.get('structures_color', ["#ff0000"]*len(names))
+    mtr    = series.get('structures_mask_transparency', [1.0]*len(names))
+
+    n = min(len(names), len(keys), len(colors), len(mtr))
+    if n == 0:
+        return rgba
+
+    for i in range(n):
+        if view[i] != 1:      # ← gate by checkbox
+            continue
+        s_key = keys[i]
+        sdat  = series["structures"].get(s_key, {})
+        mask3d = sdat.get("Mask3D")
+        if mask3d is None or x < 0 or x >= mask3d.shape[2]:
+            continue
+
+        mt = float(mtr[i])
+        if mt >= 0.999:
+            continue
+
+        mask2d = mask3d[:, :, x] > 0   # (z, y)
+        if not np.any(mask2d):
+            continue
+
+        r, g, b = _to_rgbf(colors[i])
+        a = np.clip(1.0 - mt, 0.0, 0.99)
+
+        R = int(r*255); G = int(g*255); B = int(b*255); A = int(a*255)
+        m = mask2d
+        rgba[m, 0] = np.maximum(rgba[m, 0], R)
+        rgba[m, 1] = np.maximum(rgba[m, 1], G)
+        rgba[m, 2] = np.maximum(rgba[m, 2], B)
+        rgba[m, 3] = np.maximum(rgba[m, 3], A)
+
+    return rgba
+
+
+def _update_sagittal_mask_overlay(self):
+    _ensure_sagittal_mask_overlay(self)
+    rgba = _build_sagittal_mask_rgba(self)
+    if rgba is None:
+        self.maskOverlayActorSagittal.GetProperty().SetOpacity(0.0)
+        return
+
+    h, w, _ = rgba.shape
+    data = rgba.tobytes()
+
+    imp = self.maskOverlayImporterSagittal
+    imp.SetDataSpacing(self.pixel_spac[0,0], self.slice_thick[0], 1.0)  # (y, z)
+    imp.SetDataOrigin(0.0, 0.0, 0.0)
+    imp.CopyImportVoidPointer(data, len(data))
+    imp.SetWholeExtent(0, w-1, 0, h-1, 0, 0)
+    imp.SetDataExtent (0, w-1, 0, h-1, 0, 0)
+    imp.SetNumberOfScalarComponents(4)
+    imp.SetDataScalarTypeToUnsignedChar()
+    imp.Modified()
+
+    # Match sagittal image actor position (y,z)
+    self.maskOverlayActorSagittal.SetPosition(
+        self.Im_Offset[0, 1],
+        self.Im_Offset[0, 2],
+        _overlay_epsilon(self) * 0.5
+    )
+    self.maskOverlayActorSagittal.SetOpacity(1.0)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def disp_structure_overlay_sagittal(self):
     """

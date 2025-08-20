@@ -24,13 +24,15 @@ from PyQt5.QtCore import Qt
 class set_struct_table(QWidget):
     """
     mode=0 → checkbox + name only
-    mode=1 → + color button, line width, transparency
+    mode=1 → + color button, line width, contour transparency, mask transparency
     """
     def __init__(
         self, text, idx, mode=1, parent=None,
         on_toggle=None, on_color=None, on_line_width=None, on_transparency=None,
         on_refresh=None,
-        init_color=None, init_line_width=None, init_transparency=None
+        on_mask_transparency=None,                       # NEW
+        init_color=None, init_line_width=None, init_transparency=None,
+        init_mask_transparency=None                      # NEW
     ):
         super().__init__(parent)
         self._on_refresh = on_refresh
@@ -39,11 +41,9 @@ class set_struct_table(QWidget):
         self.idx = idx
         self._mode = 1 if mode else 0
 
-        # Always-visible
-        self.checkbox = QCheckBox()
+        self.checkbox = QCheckBox()     # contour visibility
         self.label = QLabel(text)
 
-        # Optional controls
         self.controls_container = QWidget(self)
         cc = QHBoxLayout(self.controls_container)
         cc.setContentsMargins(0, 0, 0, 0)
@@ -57,16 +57,25 @@ class set_struct_table(QWidget):
         self.line_width_spinbox.setDecimals(1)
         self.line_width_spinbox.setSingleStep(0.5)
 
-        self.transparency_spinbox = QDoubleSpinBox()
+        self.transparency_spinbox = QDoubleSpinBox()  # contour transparency
         self.transparency_spinbox.setRange(0.0, 1.0)
         self.transparency_spinbox.setDecimals(2)
         self.transparency_spinbox.setSingleStep(0.1)
 
+        # NEW: mask transparency (1.0 => hidden)
+        self.mask_transparency_spinbox = QDoubleSpinBox()
+        self.mask_transparency_spinbox.setRange(0.0, 1.0)
+        self.mask_transparency_spinbox.setDecimals(2)
+        self.mask_transparency_spinbox.setSingleStep(0.1)
+
         cc.addWidget(self.color_button)
         cc.addWidget(QLabel("LineW:"))
         cc.addWidget(self.line_width_spinbox)
-        cc.addWidget(QLabel("Transp:"))
+        cc.addWidget(QLabel("Transp:"))     # contour
         cc.addWidget(self.transparency_spinbox)
+        cc.addSpacing(8)
+        cc.addWidget(QLabel("Mask Transp:"))       # NEW label
+        cc.addWidget(self.mask_transparency_spinbox)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -76,11 +85,7 @@ class set_struct_table(QWidget):
         layout.addStretch(1)
         self.controls_container.setVisible(bool(self._mode))
 
-        # Callbacks
-        self._on_color = on_color
-
         if self._mode == 1:
-            # one handler to do both: save flag + refresh views
             if on_toggle is not None or on_refresh is not None:
                 def _on_toggled(checked, i=self.idx):
                     if on_toggle is not None:
@@ -94,17 +99,26 @@ class set_struct_table(QWidget):
                     on_line_width(i, float(v))
                     if self._on_refresh: self._on_refresh()
                 self.line_width_spinbox.valueChanged.connect(_lw)
+
             if on_transparency is not None:
                 def _tr(v, i=self.idx):
                     on_transparency(i, float(v))
                     if self._on_refresh: self._on_refresh()
                 self.transparency_spinbox.valueChanged.connect(_tr)
 
-        # Initialize controls in mode=1
+            #  mask transparency only
+            if on_mask_transparency is not None:
+                def _mtr(v, i=self.idx):
+                    on_mask_transparency(i, float(v))
+                    if self._on_refresh: self._on_refresh()
+                self.mask_transparency_spinbox.valueChanged.connect(_mtr)
+
         if self._mode == 1:
             self.set_color(QColor(init_color) if init_color else QColor(Qt.white))
             self.line_width_spinbox.setValue(3.0 if init_line_width is None else float(init_line_width))
             self.transparency_spinbox.setValue(0.1 if init_transparency is None else float(init_transparency))
+            self.mask_transparency_spinbox.setValue(0.5 if init_mask_transparency is None else float(init_mask_transparency))
+
 
     def set_checked(self, checked: bool):
         # programmatic set without emitting signals (no redraw during init)
@@ -130,9 +144,13 @@ class set_struct_table(QWidget):
 
 
 def _refresh_all_views(self):
-    from fcn_display.display_images  import disp_structure_overlay_axial, disp_structure_overlay_coronal, disp_structure_overlay_sagittal
+    from fcn_display.display_images  import (disp_structure_overlay_axial, disp_structure_overlay_coronal, disp_structure_overlay_sagittal,
+                                            _update_axial_mask_overlay,_update_sagittal_mask_overlay,_update_coronal_mask_overlay)
+    _update_sagittal_mask_overlay(self)
     disp_structure_overlay_sagittal(self)
+    _update_coronal_mask_overlay(self)
     disp_structure_overlay_coronal(self)
+    _update_axial_mask_overlay(self)
     disp_structure_overlay_axial(self)
 
 
@@ -147,6 +165,7 @@ def update_structure_list_widget(self, structure_names, structure_keys, mode=1):
     colors       = _ensure_structures_color(self, n)
     line_widths  = _ensure_structures_line_width(self, n)
     transpars    = _ensure_structures_transparency(self, n)
+    mask_trs     = _ensure_structures_mask_transparency(self, n) 
 
     for idx, (name, key) in enumerate(zip(structure_names, structure_keys)):
         list_item = QListWidgetItem(self.STRUCTlist)
@@ -155,6 +174,7 @@ def update_structure_list_widget(self, structure_names, structure_keys, mode=1):
         on_color        = (lambda i, hexstr:   _set_structure_color(self, i, hexstr))      if mode == 1 else None
         on_line_width   = (lambda i, v:        _set_structure_line_width(self, i, v))      if mode == 1 else None
         on_transparency = (lambda i, v:        _set_structure_transparency(self, i, v))    if mode == 1 else None
+        on_mask_tr      = (lambda i, v:        _set_structure_mask_transparency(self, i, v)) if mode == 1 else None
         on_refresh = (partial(_refresh_all_views, self) if mode == 1 else None)
 
         custom_item = set_struct_table(
@@ -163,10 +183,12 @@ def update_structure_list_widget(self, structure_names, structure_keys, mode=1):
             on_color=on_color,
             on_line_width=on_line_width,
             on_transparency=on_transparency,
+            on_mask_transparency=on_mask_tr,
             on_refresh=on_refresh,
             init_color=colors[idx] if idx < len(colors) else "#ffffff",
             init_line_width=line_widths[idx] if idx < len(line_widths) else 3.0,
-            init_transparency=transpars[idx] if idx < len(transpars) else 0.0
+            init_transparency=transpars[idx] if idx < len(transpars) else 0.0,
+            init_mask_transparency=mask_trs[idx] if idx < len(mask_trs) else 0.5
         )
         custom_item.structure_key = key
 
@@ -259,6 +281,20 @@ def _set_structure_transparency(self, idx, val):
     v = _ensure_structures_transparency(self, len(_series_dict(self).get('structures_names', [])))
     if 0 <= idx < len(v):
         v[idx] = float(val)
+
+
+def _ensure_structures_mask_transparency(self, n):
+    # default 1.0 → mask not shown
+    return _ensure_array(self, 'structures_mask_transparency', n, 0.5)
+
+def _set_structure_mask_transparency(self, idx, val):
+    v = _ensure_structures_mask_transparency(self, len(_series_dict(self).get('structures_names', [])))
+    if 0 <= idx < len(v):
+        v[idx] = float(val)
+
+
+
+
 
 def process_rt_struct(self, rtstruct, structured_data):
     """
