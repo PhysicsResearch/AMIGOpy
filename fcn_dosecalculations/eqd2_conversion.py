@@ -25,6 +25,7 @@ def convert_dose_matrix_to_EQD2(dose_matrix,structures,ab_values,fractions,defau
     
     for structure,ab in zip(structures,ab_values):
         ab_matrix[structure==1]=ab
+        print(ab)
     #plt.imshow(ab_matrix[73,:,:])
     return to_EQD2(dose_matrix,fractions,ab_matrix),ab_matrix
 
@@ -191,7 +192,10 @@ def generate_eqd2_dose(self):
                          return
                 
                      dose_matrix_eqd2,ab_matrix=convert_dose_matrix_to_EQD2(dose_matrix,masks,ab_coeff,fractions,default_ab=3)
-                     
+                     fig,ax=plt.subplots()
+                     ax.imshow(self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'][54,:,:],cmap='grey')
+                     ax.imshow(ab_matrix[54,:,:],cmap='jet',alpha=0.5)
+                     plt.show()
                      #add dose to the tree
                      
                      #####TESTING#########
