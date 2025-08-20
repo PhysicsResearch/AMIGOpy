@@ -306,7 +306,7 @@
     <item row="0" column="1" rowspan="5" colspan="2">
      <widget class="QTabWidget" name="tabModules">
       <property name="currentIndex">
-       <number>4</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="im_display_tab">
        <attribute name="title">
@@ -3365,7 +3365,7 @@
         <item row="0" column="0">
          <widget class="QTabWidget" name="Plan_tabs">
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="Brachy_plan_tab">
            <attribute name="title">
@@ -4928,7 +4928,7 @@
               </item>
              </layout>
             </widget>
-            <widget class="QPushButton" name="pushButton_2">
+            <widget class="QPushButton" name="ab_matrix">
              <property name="geometry">
               <rect>
                <x>10</x>
