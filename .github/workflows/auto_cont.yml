@@ -66,6 +66,9 @@ jobs:
 
   build-segmentator-api:
     runs-on: windows-latest
+    env:
+      # Workaround for Windows OpenMP runtime clashes (ITK/MKL vs LLVM OMP)
+      KMP_DUPLICATE_LIB_OK: "TRUE"
 
     steps:
       - name: Checkout repository
@@ -77,7 +80,7 @@ jobs:
         with:
           miniconda-version: "latest"
           python-version: "3.11"
-          environment-file: amigo_api.yml      # <- includes PyTorch CPU index line
+          environment-file: amigo_api.yml      # <- includes PyTorch CPU index line via --extra-index-url
           activate-environment: amigo_api
           auto-update-conda: true
 
