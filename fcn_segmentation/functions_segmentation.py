@@ -1,7 +1,5 @@
 import os
 import csv
-import nibabel as nib
-# from rt_utils import RTStructBuilder
 import numpy as np
 import SimpleITK as sitk
 from scipy.ndimage import generate_binary_structure, binary_erosion, binary_dilation, binary_opening, binary_closing
