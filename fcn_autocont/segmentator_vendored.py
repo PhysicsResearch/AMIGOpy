@@ -297,8 +297,9 @@ def _run_ts_subprocess(owner, kwargs: Dict[str, Any], log_dir: Path, env_extra: 
     _write_json(args_json, kwargs)
 
     runner_py.write_text(
-        # Force stdlib 'statistics' by loading it from the stdlib directory path
-        "import json, sys, os, sysconfig, importlib.util\n"
+        "import json, sys, os, sysconfig, importlib.util, multiprocessing\n"
+        "if os.name == 'nt':\n"
+        "    multiprocessing.freeze_support()\n"
         "stdlib_dir = sysconfig.get_paths().get('stdlib') or ''\n"
         "stats_path = os.path.join(stdlib_dir, 'statistics.py')\n"
         "if os.path.isfile(stats_path):\n"
@@ -310,9 +311,12 @@ def _run_ts_subprocess(owner, kwargs: Dict[str, Any], log_dir: Path, env_extra: 
         "    import statistics as mod\n"
         "    sys.modules['statistics'] = mod\n"
         "from totalsegmentator import python_api as ts\n"
-        "with open(sys.argv[1], 'r', encoding='utf-8') as f:\n"
-        "    k = json.load(f)\n"
-        "ts.totalsegmentator(**k)\n",
+        "def _main():\n"
+        "    with open(sys.argv[1], 'r', encoding='utf-8') as f:\n"
+        "        k = json.load(f)\n"
+        "    ts.totalsegmentator(**k)\n"
+        "if __name__ == '__main__':\n"
+        "    _main()\n",
         encoding='utf-8'
     )
 
@@ -361,16 +365,29 @@ def _run_totalseg(owner, input_nii: Path, out_dir: Path, params: Dict[str, Any])
     env_extra = {}
     if "TOTALSEG_HOME" not in os.environ:
         env_extra["TOTALSEG_HOME"] = str(ap["models"])
+    
+    # >>> ADD THIS BLOCK <<<
+    # Keep TS/nnU-Net single-threaded on CPU and avoid Windows multiprocessing grief
+    dev = _device_from_params(params)          # "cpu" / "gpu" / ...
+    if dev == "cpu":
+        env_extra.update({
+            "OMP_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "NUMEXPR_NUM_THREADS": "1",
+            "ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS": "1",
+            # nnU-Net/TS helpers:
+            "TOTALSEG_NUM_WORKERS": "0",                  # if respected, disables extra dataloader workers
+            "NNUNET_NUM_THREADS_PREPROCESSING": "1",
+            "NNUNET_NUM_THREADS_NIFTI": "1",
+        })
 
     kwargs = _build_ts_kwargs(input_nii, out_dir, params)
     _write_json(out_dir / "_ts_call.json", {"kwargs": kwargs, "env": {"TOTALSEG_HOME": env_extra.get("TOTALSEG_HOME", os.getenv("TOTALSEG_HOME"))}})
 
-    try:
-        ok, msg = _run_ts_subprocess(owner, kwargs, out_dir, env_extra)
-        return ok, msg
-    except Exception as ex:
-        tb = traceback.format_exc()
-        return False, f"TotalSegmentator failed:\n{ex}\n\n{tb}"
+    ok, msg = _run_ts_subprocess(owner, kwargs, out_dir, env_extra)
+    return ok, msg
+
 
 # ------------ Public entry point ---------------------------------------------
 
