@@ -23,7 +23,7 @@ jobs:
         with:
           miniconda-version: "latest"
           python-version: "3.11"
-          environment-file: amigo_api.yml
+          environment-file: amigo.yml
           activate-environment: amigo_api
           auto-update-conda: true
 
