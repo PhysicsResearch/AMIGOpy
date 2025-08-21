@@ -4,6 +4,7 @@ import nibabel as nib
 # from rt_utils import RTStructBuilder
 import numpy as np
 import SimpleITK as sitk
+from scipy.ndimage import generate_binary_structure, binary_erosion, binary_dilation, binary_opening, binary_closing
 
 from fcn_load.populate_dcm_list import populate_DICOM_tree
 from fcn_display.disp_data_type import adjust_data_type_seg_input
@@ -522,6 +523,70 @@ def undo_brush_seg(self):
         disp_seg_image_slice(self)
     else:
         return
+    
+
+def apply_morph_oper(self):
+    if self.morph_oper_conn.value() > self.morph_oper_rank.value():
+        QMessageBox.warning(None, "Warning", f"Values for connectivity and rank are incompatible (ensure connectivity <= rank)")
+        return
+    
+    def morph_oper(mask):
+        if self.morph_oper_method.currentText() == 'erosion':
+            return binary_erosion(mask, structure=footprint,
+                                  iterations=self.morph_oper_iter.value())
+        elif self.morph_oper_method.currentText() == 'dilation':
+            return binary_dilation(mask, structure=footprint,
+                                   iterations=self.morph_oper_iter.value())
+        elif self.morph_oper_method.currentText() == 'opening':
+            return binary_opening(mask, structure=footprint,
+                                  iterations=self.morph_oper_iter.value())
+        elif self.morph_oper_method.currentText() == 'closing':
+            return binary_closing(mask, structure=footprint,
+                                  iterations=self.morph_oper_iter.value())
+    
+    if hasattr(self, 'display_seg_data'):
+        # Set a copy to undo
+        self.slice_data_copy = self.display_seg_data[1].copy()
+        # Create footprint for morphological operation
+        footprint = generate_binary_structure(self.morph_oper_rank.value(), 
+                                    self.morph_oper_conn.value()) 
+    
+        # If rank == 2, apply morphological operation slice-by-slice
+        if self.morph_oper_rank.value() == 2:
+
+            if self.im_ori_seg=="axial": #Axial
+                for i in range(self.display_seg_data[1].shape[0]):
+                    self.display_seg_data[1][i,:,:] = morph_oper(self.display_seg_data[1][i,:,:])
+
+            elif self.im_ori_seg=="sagittal": #Sagittal 
+                for i in range(self.display_seg_data[1].shape[2]):
+                    self.display_seg_data[1][:,:,i] = morph_oper(self.display_seg_data[1][:,:,i])
+            elif self.im_ori_seg=="coronal": #Coronal
+                for i in range(self.display_seg_data[1].shape[1]):
+                    self.display_seg_data[1][:,i,:] = morph_oper(self.display_seg_data[1][:,i,:])
+    
+        # If rank == 3, apply morphological operation in 3D
+        elif self.morph_oper_rank.value() == 3:
+            self.display_seg_data[1] = morph_oper(self.display_seg_data[1])
+
+        else:
+            return   
+    else:
+        QMessageBox.warning(None, "Warning", f"No structure was selected")
+        return
+        
+    disp_seg_image_slice(self)
+
+        
+def undo_morph_oper(self):
+    if hasattr(self, 'slice_data_copy'):
+        self.display_seg_data[1] = self.slice_data_copy.copy()  
+        self.slice_data_copy = self.display_seg_data[1].copy()
+        self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = self.display_seg_data[1]
+
+        disp_seg_image_slice(self)
+    else:
+        return    
     
     
 ################
