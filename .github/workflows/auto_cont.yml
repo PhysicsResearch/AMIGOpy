@@ -1,4 +1,4 @@
-name: Build AMIGOpy (GUI) and Segmentator API (unsigned)
+name: Build AMIGOpy (GUI + Worker) — unsigned
 
 on:
   push:
@@ -6,23 +6,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-amigo-gui:
+  build-amigopy:
     runs-on: windows-latest
+    env:
+      # Avoid OpenMP runtime clashes (ITK/MKL vs LLVM OMP)
+      KMP_DUPLICATE_LIB_OK: "TRUE"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Miniconda (GUI env)
+      # Use the "heavy" env (torch/TS present) so the worker can be frozen.
+      # The GUI part will still exclude them per amigopy_all.spec.
+      - name: Setup Miniconda (builder env)
         uses: conda-incubator/setup-miniconda@v3
         with:
           miniconda-version: "latest"
           python-version: "3.11"
-          environment-file: amigo.yml          # <- light GUI env
-          activate-environment: amigo
+          environment-file: amigo_api.yml
+          activate-environment: amigo_api
           auto-update-conda: true
 
-      # If graphviz is in amigo.yml, add its bin to PATH so dot.exe is found
+      # If graphviz is in the env and you render DOTs, expose its bin
       - name: Add Graphviz to PATH (conda)
         shell: powershell
         run: echo "$env:CONDA_PREFIX\Library\bin" >> $env:GITHUB_PATH
@@ -31,26 +36,28 @@ jobs:
         shell: powershell
         run: python -m pip install --upgrade pip wheel setuptools
 
-      - name: Ensure PyInstaller (GUI)
+      - name: Ensure PyInstaller
         shell: powershell
         run: pip install pyinstaller
 
-      - name: Build AMIGOpy GUI (PyInstaller onedir)
+      - name: Build combined dist (GUI + worker)
         shell: powershell
-        run: pyinstaller Launch_ImGUI.spec --clean
+        run: pyinstaller amigopy_all.spec --clean
 
-      - name: Verify GUI dist contents
+      - name: Verify combined dist contents
         shell: powershell
         run: |
-          Get-ChildItem -Recurse dist\Launch_ImGUI | Select-Object -First 30 | Format-List -Property FullName,Length
+          if (-not (Test-Path "dist\AMIGOpy\Launch_ImGUI.exe")) { throw "Launch_ImGUI.exe missing" }
+          if (-not (Test-Path "dist\AMIGOpy\segmentator_worker.exe")) { throw "segmentator_worker.exe missing" }
+          Get-ChildItem -Recurse dist\AMIGOpy | Select-Object -First 40 | Format-List -Property FullName,Length
 
       - name: Install Inno Setup
         shell: powershell
         run: choco install innosetup -y
 
-      - name: Build AMIGOpy installer (compile.iss)
+      - name: Build AMIGOpy installer (AMIGOpy.iss)
         shell: powershell
-        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" compile.iss'
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" AMIGOpy.iss'
 
       - name: List installer outputs
         shell: powershell
@@ -63,108 +70,3 @@ jobs:
           path: Output/AMIGOpy-Setup.exe
           if-no-files-found: error
           overwrite: true
-
-  build-segmentator-api:
-    runs-on: windows-latest
-    env:
-      # Workaround for Windows OpenMP runtime clashes (ITK/MKL vs LLVM OMP)
-      KMP_DUPLICATE_LIB_OK: "TRUE"
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-    
-        # Heavy env for the API (torch CPU via --extra-index-url in amigo_api.yml)
-      - name: Setup Miniconda (API env)
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          miniconda-version: "latest"
-          python-version: "3.11"
-          environment-file: amigo_api.yml
-          activate-environment: amigo_api
-          auto-update-conda: true
-
-      - name: Show key versions (non-fatal)
-        shell: powershell
-        continue-on-error: true
-        run: |
-          $code = @"
-          import sys
-          from importlib import metadata as md
-          import torch
-          print('python', sys.version)
-          print('torch', torch.__version__, 'cuda', getattr(torch.version,'cuda',None))
-          for pkg in ['TotalSegmentator','totalsegmentator','monai','nnunetv2','dicom2nifti','pydicom']:
-              try: print(pkg, md.version(pkg))
-              except Exception: print(pkg, 'n/a')
-          "@
-          Set-Content version_check.py $code
-          python version_check.py
-  
-      - name: Ensure PyInstaller (API)
-        shell: powershell
-        run: pip install pyinstaller
-  
-      - name: Build Segmentator API (PyInstaller onedir)
-        shell: powershell
-        run: pyinstaller segmentator_api.spec --clean
-  
-      - name: Verify API dist contents (TS/torch present)
-        shell: powershell
-        run: |
-          $dist = "dist\segmentator_api"
-      
-          function Test-InArchives($root, $pattern) {
-            Add-Type -AssemblyName System.IO.Compression.FileSystem
-            $archives = Get-ChildItem $root -Recurse -Include *.pyz,*library*.zip -ErrorAction SilentlyContinue
-            foreach ($a in $archives) {
-              $zip = [System.IO.Compression.ZipFile]::OpenRead($a.FullName)
-              try {
-                $hit = $zip.Entries | Where-Object { $_.FullName -like $pattern } | Select-Object -First 1
-                if ($hit) { return $true }
-              } finally { $zip.Dispose() }
-            }
-            return $false
-          }
-      
-          # ---- torch: dir OR DLLs OR in archive ----
-          $torchDir = Get-ChildItem $dist -Recurse -Directory -Filter torch -ErrorAction SilentlyContinue | Select-Object -First 1
-          $torchDll = Get-ChildItem $dist -Recurse -Include torch_cpu*.dll,libtorch*.dll,c10*.dll -ErrorAction SilentlyContinue | Select-Object -First 1
-          $torchArc = Test-InArchives $dist 'torch/*'
-      
-          # ---- totalsegmentator: dir OR in archive ----
-          $tsDir  = Get-ChildItem $dist -Recurse -Directory -Filter totalsegmentator -ErrorAction SilentlyContinue | Select-Object -First 1
-          $tsArc  = Test-InArchives $dist 'totalsegmentator/*'
-      
-          if (-not $torchDir -and -not $torchDll -and -not $torchArc) {
-            Write-Host "torch not found (no dir, no DLLs, not in archive)"
-            throw "torch missing in dist"
-          }
-          if (-not $tsDir -and -not $tsArc) {
-            Write-Host "totalsegmentator not found (neither folder nor in archive)"
-            throw "totalsegmentator missing in dist"
-          }
-      
-          Write-Host "torch OK (dir: $([bool]$torchDir), dll: $([bool]$torchDll), archive: $([bool]$torchArc))"
-          Write-Host "TotalSegmentator OK (dir: $([bool]$tsDir), archive: $([bool]$tsArc))"
-  
-      - name: Install Inno Setup
-        shell: powershell
-        run: choco install innosetup -y
-  
-      - name: Build Segmentator API installer (SegmentatorAPI.iss)
-        shell: powershell
-        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" SegmentatorAPI.iss'
-  
-      - name: List installer outputs
-        shell: powershell
-        run: Get-ChildItem -Recurse Output | Format-List -Property FullName,Length
-  
-      - name: Upload Segmentator API installer (unsigned)
-        uses: actions/upload-artifact@v4
-        with:
-          name: SegmentatorAPI-Installer-unsigned
-          path: Output/SegmentatorAPI-Setup.exe
-          if-no-files-found: error
-          overwrite: true
-          

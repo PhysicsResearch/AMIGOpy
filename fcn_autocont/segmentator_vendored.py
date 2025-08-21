@@ -295,138 +295,29 @@ def _build_ts_kwargs(input_nii: Path, out_dir: Path, params: Dict[str, Any]) -> 
     )
 
 def _run_ts_subprocess(owner, kwargs, log_dir: Path, env_extra: Dict[str, str]):
-    import os, sys, time, signal, subprocess
-
-    # --- env for child
-    env = os.environ.copy()
-    if env_extra:
-        env.update(env_extra)
-
-    args_json   = log_dir / "_ts_args.json"
-    runner_py   = log_dir / "_ts_run.py"
-    stdout_path = log_dir / "_ts_stdout.txt"
-    stderr_path = log_dir / "_ts_stderr.txt"
-
-    _write_json(args_json, kwargs)
-
-    # Write a Windows-safe runner with __main__ guard (prevents multiprocessing crash)
-    runner_py.write_text(
-        "import json, sys, os, sysconfig, importlib.util, multiprocessing\n"
-        "if os.name == 'nt':\n"
-        "    multiprocessing.freeze_support()\n"
-        "stdlib_dir = sysconfig.get_paths().get('stdlib') or ''\n"
-        "stats_path = os.path.join(stdlib_dir, 'statistics.py')\n"
-        "if os.path.isfile(stats_path):\n"
-        "    spec = importlib.util.spec_from_file_location('statistics', stats_path)\n"
-        "    mod = importlib.util.module_from_spec(spec)\n"
-        "    spec.loader.exec_module(mod)\n"
-        "    sys.modules['statistics'] = mod\n"
-        "else:\n"
-        "    import statistics as mod\n"
-        "    sys.modules['statistics'] = mod\n"
-        "from totalsegmentator import python_api as ts\n"
-        "def _main():\n"
-        "    with open(sys.argv[1], 'r', encoding='utf-8') as f:\n"
-        "        k = json.load(f)\n"
-        "    ts.totalsegmentator(**k)\n"
-        "if __name__ == '__main__':\n"
-        "    _main()\n",
-        encoding="utf-8"
-    )
-
-    # Launch options: new group on Windows, detached from any console; POSIX gets a new session.
-    creationflags = 0
-    preexec_fn = None
-    if os.name == "nt":
-        CREATE_NEW_PROCESS_GROUP = 0x00000200
-        DETACHED_PROCESS         = 0x00000008
-        creationflags = CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS
-    else:
-        preexec_fn = os.setsid  # new process group on POSIX
-
-    def _cancelled() -> bool:
-        segwin = getattr(owner, "segwin", owner)
-        return bool(getattr(segwin, "_seg_cancel", False))
-
-    with open(stdout_path, "w", encoding="utf-8") as so, open(stderr_path, "w", encoding="utf-8") as se:
-        proc = subprocess.Popen(
-            [sys.executable, str(runner_py), str(args_json)],
-            stdout=so, stderr=se, env=env,
-            creationflags=creationflags,
-            preexec_fn=preexec_fn
-        )
-
-        try:
-            while True:
-                rc = proc.poll()
-                if rc is not None:
-                    break
-
-                if _cancelled():
-                    # 1) Try graceful terminate
-                    try:
-                        proc.terminate()
-                    except Exception:
-                        pass
-
-                    # 2) Short wait
-                    for _ in range(30):
-                        if proc.poll() is not None:
-                            break
-                        time.sleep(0.1)
-
-                    # 3) Hard kill if still alive
-                    if proc.poll() is None:
-                        try:
-                            proc.kill()
-                        except Exception:
-                            pass
-
-                    # 4) Windows: nuke the entire child tree (TS + workers)
-                    if os.name == "nt" and proc.poll() is None:
-                        try:
-                            subprocess.run(
-                                ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-                                stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL,
-                                check=False,
-                            )
-                        except Exception:
-                            pass
-
-                    return False, "Stopped by user"
-
-                time.sleep(0.3)
-        finally:
-            pass
-
-    if proc.returncode == 0:
-        return True, "ok"
-
-    # Include last lines of stderr in the message for quick diagnosis
-    try:
-        tail = "\n".join((stderr_path.read_text(encoding="utf-8", errors="ignore").splitlines())[-60:])
-        return False, "TotalSegmentator failed:\n" + tail
-    except Exception:
-        return False, "TotalSegmentator failed (no stderr available)."
-
-
-def _run_ts_subprocess(owner, kwargs, log_dir: Path, env_extra: Dict[str, str]):
+    """
+    Launch TotalSegmentator as a child process.
+    - In dev: runs a tiny runner script via python/pythonw with a __main__ guard.
+    - In frozen/packaged app: prefers segmentator_worker(.exe) placed next to sys.executable.
+    - Windows: no popups; new process group; tree-kill with taskkill as last resort.
+    - POSIX: new session (setsid); kill the group.
+    """
     import os, sys, time, subprocess
 
-    # --- env for child
+    # ---- environment for the child
     env = os.environ.copy()
     if env_extra:
         env.update(env_extra)
 
+    # ---- paths
     args_json   = log_dir / "_ts_args.json"
-    runner_py   = log_dir / "_ts_run.py"
+    runner_py   = log_dir / "_ts_run.py"   # dev-mode runner (not used when frozen-worker exists)
     stdout_path = log_dir / "_ts_stdout.txt"
     stderr_path = log_dir / "_ts_stderr.txt"
 
     _write_json(args_json, kwargs)
 
-    # Windows-safe runner: main guard + freeze_support() to keep nnU-Net from crashing
+    # ---- create a Windows-safe runner for dev mode (multiprocessing-friendly)
     runner_py.write_text(
         "import json, sys, os, sysconfig, importlib.util, multiprocessing\n"
         "if os.name == 'nt':\n"
@@ -451,17 +342,29 @@ def _run_ts_subprocess(owner, kwargs, log_dir: Path, env_extra: Dict[str, str]):
         encoding="utf-8"
     )
 
-    # Use pythonw if available (no console), else hide window via flags
-    py = sys.executable
-    if os.name == 'nt':
-        pyw = py.replace("python.exe", "pythonw.exe")
-        if os.path.exists(pyw):
-            py = pyw
+    # ---- choose child command
+    if getattr(sys, "frozen", False):
+        # packaged: prefer bundled worker next to the main exe
+        worker_name = "segmentator_worker.exe" if os.name == "nt" else "segmentator_worker"
+        worker_path = os.path.join(os.path.dirname(sys.executable), worker_name)
+        if os.path.exists(worker_path):
+            cmd = [worker_path, str(args_json)]
+        else:
+            # fallback to runner script via current interpreter
+            cmd = [sys.executable, str(runner_py), str(args_json)]
+    else:
+        # dev: use pythonw on Windows to avoid console popups, else python
+        py = sys.executable
+        if os.name == "nt":
+            pyw = py.replace("python.exe", "pythonw.exe")
+            if os.path.exists(pyw):
+                py = pyw
+        cmd = [py, str(runner_py), str(args_json)]
 
+    # ---- launch flags (hide windows; isolate process group/session)
     creationflags = 0
     startupinfo = None
     preexec_fn = None
-
     if os.name == "nt":
         CREATE_NEW_PROCESS_GROUP = 0x00000200
         CREATE_NO_WINDOW         = 0x08000000
@@ -471,15 +374,16 @@ def _run_ts_subprocess(owner, kwargs, log_dir: Path, env_extra: Dict[str, str]):
         startupinfo.wShowWindow = 0
     else:
         import os as _os
-        preexec_fn = _os.setsid  # POSIX: new session/group
+        preexec_fn = _os.setsid  # new session for the child
 
     def _cancelled() -> bool:
         segwin = getattr(owner, "segwin", owner)
         return bool(getattr(segwin, "_seg_cancel", False))
 
+    # ---- run
     with open(stdout_path, "w", encoding="utf-8") as so, open(stderr_path, "w", encoding="utf-8") as se:
         proc = subprocess.Popen(
-            [py, str(runner_py), str(args_json)],
+            cmd,
             stdout=so, stderr=se, env=env,
             creationflags=creationflags,
             startupinfo=startupinfo,
@@ -494,29 +398,43 @@ def _run_ts_subprocess(owner, kwargs, log_dir: Path, env_extra: Dict[str, str]):
                     break
 
                 if _cancelled():
-                    # Try graceful terminate, then kill
-                    try: proc.terminate()
-                    except Exception: pass
+                    # 1) graceful terminate
+                    try:
+                        proc.terminate()
+                    except Exception:
+                        pass
 
-                    for _ in range(25):
-                        if proc.poll() is not None: break
+                    # 2) brief wait
+                    for _ in range(30):
+                        if proc.poll() is not None:
+                            break
                         time.sleep(0.1)
 
+                    # 3) hard kill if still alive
                     if proc.poll() is None:
-                        try: proc.kill()
-                        except Exception: pass
+                        try:
+                            proc.kill()
+                        except Exception:
+                            pass
 
-                    # Last resort on Windows: kill the whole tree WITHOUT showing a window
+                    # 4) Windows last resort: kill the whole tree (hidden)
                     if os.name == "nt" and proc.poll() is None:
-                        CREATE_NO_WINDOW = 0x08000000
-                        si = subprocess.STARTUPINFO()
-                        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                        si.wShowWindow = 0
-                        subprocess.run(
-                            ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                            check=False, creationflags=CREATE_NO_WINDOW, startupinfo=si
-                        )
+                        try:
+                            CREATE_NO_WINDOW = 0x08000000
+                            si = subprocess.STARTUPINFO()
+                            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                            si.wShowWindow = 0
+                            subprocess.run(
+                                ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL,
+                                check=False,
+                                creationflags=CREATE_NO_WINDOW,
+                                startupinfo=si
+                            )
+                        except Exception:
+                            pass
+
                     return False, "Stopped by user"
 
                 time.sleep(0.3)
@@ -526,11 +444,13 @@ def _run_ts_subprocess(owner, kwargs, log_dir: Path, env_extra: Dict[str, str]):
     if proc.returncode == 0:
         return True, "ok"
 
+    # include last lines of stderr for diagnosis
     try:
         tail = "\n".join((stderr_path.read_text(encoding="utf-8", errors="ignore").splitlines())[-60:])
         return False, "TotalSegmentator failed:\n" + tail
     except Exception:
         return False, "TotalSegmentator failed (no stderr available)."
+
 
 def _run_totalseg(owner, input_nii: Path, out_dir: Path, params: Dict[str, Any]) -> Tuple[bool, str]:
     """
