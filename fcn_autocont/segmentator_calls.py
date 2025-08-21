@@ -3,14 +3,27 @@
 """
 Segmentator UI launcher with background worker, per-series progress,
 and a Stop button that is enabled for ANY non-empty selection.
+
+This version is thread-safe:
+- All worker → UI updates are delivered via Qt QueuedConnections to slots on the GUI thread.
+- The Stop button requests cancellation; the worker cooperatively stops after the current series.
+- The QThread lifecycle is explicit (quit + wait) so we never drop a running thread.
+- No Qt widgets are created from the worker thread by this module.
+
+Expectations about SegmentatorWindow:
+- .tbl : QTableWidget with rows representing series and a 'series_rows' list of dicts
+         Each dict should include: patient, study, modality, index, row
+- .runSegRequested(series_list, params) : signal emitted to start a batch
+- Optional Stop buttons accessible as attributes: btn_run, and any of:
+  ('btn_stop', 'btnStop', 'btn_stop_seg', 'btn_stop_run', 'btn_cancel')
 """
 
 from __future__ import annotations
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 import sip
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject, pyqtSlot
 from PyQt5.QtWidgets import QTableWidgetItem, QProgressBar
 
 from fcn_autocont.segmentator_ui import SegmentatorWindow
@@ -25,7 +38,11 @@ _STATUS_COL_TITLE = "Status"
 def _ensure_status_column(win: SegmentatorWindow) -> int:
     """Ensure the 'Status' column exists and attach a QProgressBar to each row."""
     tbl = win.tbl
-    headers = [tbl.horizontalHeaderItem(c).text() for c in range(tbl.columnCount())]
+    headers: List[str] = []
+    for c in range(tbl.columnCount()):
+        item = tbl.horizontalHeaderItem(c)
+        headers.append(item.text() if item else f"col_{c}")
+
     if _STATUS_COL_TITLE not in headers:
         col = tbl.columnCount()
         tbl.insertColumn(col)
@@ -52,15 +69,15 @@ def _ensure_status_column(win: SegmentatorWindow) -> int:
 def _match_row_for_meta(win: SegmentatorWindow, meta: dict) -> int:
     """Find table row matching the series meta; returns -1 if not found."""
     patient = meta.get("patient")
-    study   = meta.get("study")
-    mod     = meta.get("modality")
-    idx     = int(meta.get("index", -1))
+    study = meta.get("study")
+    mod = meta.get("modality")
+    idx = int(meta.get("index", -1))
     for row_meta in getattr(win, "series_rows", []):
         if (
-            row_meta.get("patient") == patient and
-            row_meta.get("study")   == study   and
-            row_meta.get("modality")== mod     and
-            int(row_meta.get("index", -99)) == idx
+            row_meta.get("patient") == patient
+            and row_meta.get("study") == study
+            and row_meta.get("modality") == mod
+            and int(row_meta.get("index", -99)) == idx
         ):
             return int(row_meta.get("row"))
     return -1
@@ -84,24 +101,34 @@ def _set_row_state(win: SegmentatorWindow, row: int, state: str, msg: str = ""):
         return
     if state in ("queued", "running", "stopping"):
         bar.setRange(0, 0)  # indeterminate marquee
-        bar.setFormat({"queued":"Queued…", "running":"Running…", "stopping":"Stopping…"}.get(state, msg or ""))
+        bar.setFormat(
+            {"queued": "Queued…", "running": "Running…", "stopping": "Stopping…"}.get(state, msg or "")
+        )
     elif state == "done":
-        bar.setRange(0, 100); bar.setValue(100); bar.setFormat("Done")
+        bar.setRange(0, 100)
+        bar.setValue(100)
+        bar.setFormat("Done")
     elif state == "failed":
-        bar.setRange(0, 100); bar.setValue(0);   bar.setFormat(msg or "Failed")
+        bar.setRange(0, 100)
+        bar.setValue(0)
+        bar.setFormat(msg or "Failed")
     elif state == "stopped":
-        bar.setRange(0, 100); bar.setValue(0);   bar.setFormat("Stopped")
+        bar.setRange(0, 100)
+        bar.setValue(0)
+        bar.setFormat("Stopped")
     else:
-        bar.setRange(0, 100); bar.setValue(0);   bar.setFormat("")
+        bar.setRange(0, 100)
+        bar.setValue(0)
+        bar.setFormat("")
 
 
 # ----------------------- batch worker thread ----------------------
 
 class _SegBatchWorker(QObject):
-    series_started   = pyqtSignal(int)                 # row
-    series_finished  = pyqtSignal(int, bool, str)      # row, ok, message
-    cancelled_rows   = pyqtSignal(list)                # rows list to mark 'Stopped'
-    all_done         = pyqtSignal()
+    series_started = pyqtSignal(int)                 # row
+    series_finished = pyqtSignal(int, bool, str)     # row, ok, message
+    cancelled_rows = pyqtSignal(list)                # rows list to mark 'Stopped'
+    all_done = pyqtSignal()
 
     def __init__(self, owner, series_list: List[Dict[str, Any]], params: Dict[str, Any], parent=None):
         super().__init__(parent)
@@ -113,6 +140,7 @@ class _SegBatchWorker(QObject):
         segwin = getattr(self._owner, "segwin", None) or self._owner
         return bool(getattr(segwin, "_seg_cancel", False))
 
+    @pyqtSlot()
     def run(self):
         # Build ordered list of rows matching the selected series
         ordered_rows: List[int] = []
@@ -138,7 +166,7 @@ class _SegBatchWorker(QObject):
 
             ok, msg = True, ""
             try:
-                # Run just this single series; vendored code respects cancel mid-run
+                # Run just this single series; vendored code should respect cancel mid-run
                 run_totalseg_for_series(self._owner, [meta], self._params)
             except Exception as ex:
                 ok, msg = False, str(ex)
@@ -150,7 +178,7 @@ class _SegBatchWorker(QObject):
                 self.series_finished.emit(row, ok, msg)
 
             if self._cancel_flag():
-                remain = ordered_rows[i+1:] if (i + 1) < len(ordered_rows) else []
+                remain = ordered_rows[i + 1:] if (i + 1) < len(ordered_rows) else []
                 if remain:
                     self.cancelled_rows.emit(remain)
                 break
@@ -220,6 +248,9 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
 
     # Controls: ALWAYS enable Stop for any non-empty selection
     def _on_stop_clicked():
+        # Re-entrancy guard
+        if getattr(win, "_seg_cancel", False):
+            return
         # Flip cancel flag; immediately reflect in UI
         win._seg_cancel = True
         if getattr(win, "_current_row", None) is not None:
@@ -228,6 +259,9 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
         for r in list(getattr(win, "_batch_rows", set())):
             if r != getattr(win, "_current_row", None):
                 _set_row_state(win, r, "stopped")
+        # Grey out Stop to avoid double-click storms
+        for btn in _find_stop_buttons(win):
+            btn.setEnabled(False)
 
     _bind_stop_handler_once(win, _on_stop_clicked)
     _set_controls_busy(win, True)  # <- this enables the Stop button now
@@ -237,55 +271,83 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
     worker = _SegBatchWorker(owner, series_list, params)
     worker.moveToThread(thread)
 
-    # GUI-thread updates
-    def _on_series_started(row: int):
-        win._current_row = row
-        _set_row_state(win, row, "running")
+    # --- UI bridge: ensures slots run in GUI thread, not worker thread ---
+    class _UiBridge(QObject):
+        def __init__(self, w: SegmentatorWindow):
+            super().__init__(w)
+            self.win = w
+            self.thread: Optional[QThread] = None
 
-    def _on_series_finished(row: int, ok: bool, msg: str):
-        if hasattr(win, "_batch_rows") and row in win._batch_rows:
-            win._batch_rows.discard(row)
-        if msg == "Stopped":
-            _set_row_state(win, row, "stopped")
-        else:
-            _set_row_state(win, row, "done" if ok else "failed", msg or "")
-        win._current_row = None
+        @pyqtSlot(int)
+        def on_series_started(self, row: int):
+            self.win._current_row = row
+            _set_row_state(self.win, row, "running")
 
-    def _on_cancelled_rows(rows: List[int]):
-        for r in rows:
-            if hasattr(win, "_batch_rows") and r in win._batch_rows:
-                _set_row_state(win, r, "stopped")
-                win._batch_rows.discard(r)
+        @pyqtSlot(int, bool, str)
+        def on_series_finished(self, row: int, ok: bool, msg: str):
+            if hasattr(self.win, "_batch_rows") and row in self.win._batch_rows:
+                self.win._batch_rows.discard(row)
+            if msg == "Stopped":
+                _set_row_state(self.win, row, "stopped")
+            else:
+                _set_row_state(self.win, row, "done" if ok else "failed", msg or "")
+            self.win._current_row = None
 
-    def _on_all_done():
-        # Any leftover queued rows become Stopped/Failed accordingly
-        for r in list(getattr(win, "_batch_rows", set())):
-            _set_row_state(win, r, "stopped" if getattr(win, "_seg_cancel", False) else "failed")
-        win._batch_rows = set()
-        win._current_row = None
-        win._seg_cancel = False
-        _set_controls_busy(win, False)  # disable Stop, re-enable Run
-        t = getattr(win, "_seg_worker_thread", None)
-        if t and t.isRunning():
-            t.quit()
-            t.wait(5000)  # up to 5s; returns earlier if already finished
-        win._seg_worker_thread = None
-        win._seg_worker = None
+        @pyqtSlot(list)
+        def on_cancelled_rows(self, rows: List[int]):
+            for r in rows:
+                if hasattr(self.win, "_batch_rows") and r in self.win._batch_rows:
+                    _set_row_state(self.win, r, "stopped")
+                    self.win._batch_rows.discard(r)
 
-    worker.series_started.connect(_on_series_started)
-    worker.series_finished.connect(_on_series_finished)
-    worker.cancelled_rows.connect(_on_cancelled_rows)
-    worker.all_done.connect(_on_all_done)
+        @pyqtSlot()
+        def on_all_done(self):
+            # Any leftover queued rows become Stopped/Failed accordingly
+            for r in list(getattr(self.win, "_batch_rows", set())):
+                _set_row_state(
+                    self.win,
+                    r,
+                    "stopped" if getattr(self.win, "_seg_cancel", False) else "failed",
+                )
+            self.win._batch_rows = set()
+            self.win._current_row = None
+            self.win._seg_cancel = False
+            _set_controls_busy(self.win, False)  # disable Stop, re-enable Run
 
-    # Run the worker method when the thread starts (queued into the thread event loop)
+            # Make sure the worker thread is stopped before dropping refs
+            if self.thread and self.thread.isRunning():
+                self.thread.quit()
+                self.thread.wait(5000)  # up to 5s; returns earlier if already finished
+            self.win._seg_worker_thread = None
+            self.win._seg_worker = None
+
+        @pyqtSlot()
+        def on_thread_finished(self):
+            # Fallback cleanup in case all_done didn't fire
+            _set_controls_busy(self.win, False)
+            self.win._current_row = None
+            self.win._batch_rows = set()
+            self.win._seg_cancel = False
+            self.win._seg_worker_thread = None
+            self.win._seg_worker = None
+
+    bridge = _UiBridge(win)
+    bridge.thread = thread
+
+    # --- Connect with explicit QueuedConnection so updates run on GUI thread ---
+    worker.series_started.connect(bridge.on_series_started, Qt.QueuedConnection)
+    worker.series_finished.connect(bridge.on_series_finished, Qt.QueuedConnection)
+    worker.cancelled_rows.connect(bridge.on_cancelled_rows, Qt.QueuedConnection)
+    worker.all_done.connect(bridge.on_all_done, Qt.QueuedConnection)
+
+    # Run the worker when the thread starts; stop/cleanup when done
     thread.started.connect(worker.run, Qt.QueuedConnection)
-
-    # <<< add these 3 lines >>>
-    # When the worker says "all done", stop the thread event loop and clean up
     worker.all_done.connect(thread.quit, Qt.QueuedConnection)
-    worker.all_done.connect(worker.deleteLater, Qt.QueuedConnection)   # delete worker in GUI thread
+    worker.all_done.connect(worker.deleteLater, Qt.QueuedConnection)
     thread.finished.connect(thread.deleteLater, Qt.QueuedConnection)
-        # Keep references
+    thread.finished.connect(bridge.on_thread_finished, Qt.QueuedConnection)
+
+    # Keep references
     win._seg_worker_thread = thread
     win._seg_worker = worker
 
@@ -318,15 +380,35 @@ def open_segmentator_tab(self):
         data_provider=lambda: getattr(self, "dicom_data", {}) or {},
     )
     self.segwin.setAttribute(Qt.WA_DeleteOnClose, True)
-    self.segwin.destroyed.connect(lambda *_: setattr(self, "segwin", None))
+
+    # On window destroy, clear ref and (belt & suspenders) request cancel + join the thread if needed
+    def _on_segwin_destroyed(*_):
+        try:
+            # request cancel on existing window (if any)
+            try:
+                setattr(self.segwin, "_seg_cancel", True)  # might already be None
+            except Exception:
+                pass
+            # join worker thread if active
+            t = getattr(self, "_seg_worker_thread", None)
+            if t and t.isRunning():
+                t.quit()
+                t.wait(5000)
+        except Exception:
+            pass
+        finally:
+            setattr(self, "segwin", None)
+            setattr(self, "_seg_worker_thread", None)
+            setattr(self, "_seg_worker", None)
+
+    self.segwin.destroyed.connect(_on_segwin_destroyed)
 
     # Ensure status column now
     _ensure_status_column(self.segwin)
 
     # Wire Run -> batch with progress + cancellation
     self.segwin.runSegRequested.connect(
-        lambda series_list, params, owner=self:
-            _start_batch_with_progress(self.segwin, owner, series_list, params)
+        lambda series_list, params, owner=self: _start_batch_with_progress(self.segwin, owner, series_list, params)
     )
 
     # Ensure Stop buttons are discovered and initially disabled
