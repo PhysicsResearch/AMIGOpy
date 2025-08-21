@@ -4,6 +4,8 @@ channels:
   - anaconda
   - defaults
 dependencies:
+  - graphviz            
+  - python-graphviz     
   - alabaster=0.7.12=pyhd3eb1b0_0
   - altgraph=0.17.3=py311haa95532_0
   - aom=3.6.0=hd77b12b_0
@@ -300,7 +302,6 @@ dependencies:
       - pydicom==3.0.1
       - pyparsing==3.1.1
       - python-gdcm==3.0.24.1
-      - python-graphviz==0.21
       - python-multipart==0.0.20
       - safetensors==0.6.2
       - scikit-learn==1.7.1
