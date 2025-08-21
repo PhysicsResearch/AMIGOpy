@@ -1,0 +1,470 @@
+{
+    "spleen": {
+        "volume": 260010.0,
+        "intensity": 33.05909
+    },
+    "kidney_right": {
+        "volume": 107892.0,
+        "intensity": 10.96271
+    },
+    "kidney_left": {
+        "volume": 99252.0,
+        "intensity": 15.20321
+    },
+    "gallbladder": {
+        "volume": 36423.0,
+        "intensity": 2.4381
+    },
+    "liver": {
+        "volume": 1062450.0,
+        "intensity": 44.85855
+    },
+    "stomach": {
+        "volume": 128196.0,
+        "intensity": -23.52633
+    },
+    "pancreas": {
+        "volume": 14796.0,
+        "intensity": -2.55657
+    },
+    "adrenal_gland_right": {
+        "volume": 4725.0,
+        "intensity": 0.33714
+    },
+    "adrenal_gland_left": {
+        "volume": 5589.0,
+        "intensity": 2.35266
+    },
+    "lung_upper_lobe_left": {
+        "volume": 7155.0,
+        "intensity": -803.93208
+    },
+    "lung_lower_lobe_left": {
+        "volume": 33858.0,
+        "intensity": -738.03748
+    },
+    "lung_upper_lobe_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "lung_middle_lobe_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "lung_lower_lobe_right": {
+        "volume": 69633.0,
+        "intensity": -762.14928
+    },
+    "esophagus": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "trachea": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "thyroid_gland": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "small_bowel": {
+        "volume": 26757.0,
+        "intensity": 12.34107
+    },
+    "duodenum": {
+        "volume": 27486.0,
+        "intensity": -82.55206
+    },
+    "colon": {
+        "volume": 344844.0,
+        "intensity": -490.47972
+    },
+    "urinary_bladder": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "prostate": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "kidney_cyst_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "kidney_cyst_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "sacrum": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_S1": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_L5": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_L4": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_L3": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_L2": {
+        "volume": 50976.0,
+        "intensity": 202.84057
+    },
+    "vertebrae_L1": {
+        "volume": 58509.0,
+        "intensity": 196.57776
+    },
+    "vertebrae_T12": {
+        "volume": 49383.0,
+        "intensity": 182.77966
+    },
+    "vertebrae_T11": {
+        "volume": 1998.0,
+        "intensity": 297.0
+    },
+    "vertebrae_T10": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_T9": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_T8": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_T7": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_T6": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_T5": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_T4": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_T3": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_T2": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_T1": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_C7": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_C6": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_C5": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_C4": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_C3": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_C2": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "vertebrae_C1": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "heart": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "aorta": {
+        "volume": 31698.0,
+        "intensity": 40.14736
+    },
+    "pulmonary_vein": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "brachiocephalic_trunk": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "subclavian_artery_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "subclavian_artery_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "common_carotid_artery_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "common_carotid_artery_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "brachiocephalic_vein_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "brachiocephalic_vein_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "atrial_appendage_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "superior_vena_cava": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "inferior_vena_cava": {
+        "volume": 37827.0,
+        "intensity": 37.98787
+    },
+    "portal_vein_and_splenic_vein": {
+        "volume": 24624.0,
+        "intensity": 36.40241
+    },
+    "iliac_artery_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "iliac_artery_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "iliac_vena_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "iliac_vena_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "humerus_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "humerus_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "scapula_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "scapula_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "clavicula_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "clavicula_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "femur_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "femur_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "hip_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "hip_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "spinal_cord": {
+        "volume": 18981.0,
+        "intensity": 16.82646
+    },
+    "gluteus_maximus_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "gluteus_maximus_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "gluteus_medius_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "gluteus_medius_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "gluteus_minimus_left": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "gluteus_minimus_right": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "autochthon_left": {
+        "volume": 189351.0,
+        "intensity": 25.54028
+    },
+    "autochthon_right": {
+        "volume": 184005.0,
+        "intensity": 23.03492
+    },
+    "iliopsoas_left": {
+        "volume": 12717.0,
+        "intensity": 35.2017
+    },
+    "iliopsoas_right": {
+        "volume": 10854.0,
+        "intensity": 33.47761
+    },
+    "brain": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "skull": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_left_1": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_left_2": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_left_3": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_left_4": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_left_5": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_left_6": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_left_7": {
+        "volume": 2700.0,
+        "intensity": 173.7
+    },
+    "rib_left_8": {
+        "volume": 4131.0,
+        "intensity": 202.73856
+    },
+    "rib_left_9": {
+        "volume": 5292.0,
+        "intensity": 199.88776
+    },
+    "rib_left_10": {
+        "volume": 5346.0,
+        "intensity": 225.80808
+    },
+    "rib_left_11": {
+        "volume": 6102.0,
+        "intensity": 227.37611
+    },
+    "rib_left_12": {
+        "volume": 3240.0,
+        "intensity": 239.1
+    },
+    "rib_right_1": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_right_2": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_right_3": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_right_4": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_right_5": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_right_6": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "rib_right_7": {
+        "volume": 1836.0,
+        "intensity": 137.80882
+    },
+    "rib_right_8": {
+        "volume": 3753.0,
+        "intensity": 211.82734
+    },
+    "rib_right_9": {
+        "volume": 4374.0,
+        "intensity": 222.03086
+    },
+    "rib_right_10": {
+        "volume": 5076.0,
+        "intensity": 263.32979
+    },
+    "rib_right_11": {
+        "volume": 5103.0,
+        "intensity": 243.20106
+    },
+    "rib_right_12": {
+        "volume": 2052.0,
+        "intensity": 255.14474
+    },
+    "sternum": {
+        "volume": 0.0,
+        "intensity": 0.0
+    },
+    "costal_cartilages": {
+        "volume": 58293.0,
+        "intensity": 99.77814
+    }
+}
