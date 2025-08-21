@@ -236,8 +236,8 @@ def import_roi_circ_table(self):
     
 def c_roi_getdata(self):
     # Check if the checkbox is checked - All imges within modality or single series
-    if getattr(self, 'file_format', None) != "DICOM":
-        QMessageBox.warning(None, "Warning", "No DICOM data was found")
+    if getattr(self, 'DataType', None) not in ["DICOM", "Nifti"]:
+        QMessageBox.warning(None, "Warning", "No DICOM/NIfTI data was found")
         return
     if self.checkBox_circ_roi_data_01.isChecked():
         series_list = self.dicom_data[self.patientID][self.studyID][self.modality]

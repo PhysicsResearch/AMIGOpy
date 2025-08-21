@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1745</width>
-    <height>1192</height>
+    <width>1737</width>
+    <height>1169</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -4928,7 +4928,7 @@
               </item>
              </layout>
             </widget>
-            <widget class="QPushButton" name="pushButton_2">
+            <widget class="QPushButton" name="ab_matrix">
              <property name="geometry">
               <rect>
                <x>10</x>
@@ -8532,8 +8532,115 @@ p, li { white-space: pre-wrap; }
        <attribute name="title">
         <string>Segmentation</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_62" rowstretch="0,3,2,0,4,0" columnstretch="3,0,1,2">
-        <item row="4" column="3" rowspan="2">
+       <layout class="QGridLayout" name="gridLayout_62" rowstretch="0,3,2,0,4,0,0" columnstretch="3,0,1,2">
+        <item row="6" column="2">
+         <widget class="QComboBox" name="segSelectView"/>
+        </item>
+        <item row="1" column="3">
+         <widget class="QGroupBox" name="groupBox_segStruct">
+          <property name="title">
+           <string>Structures overview</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_64" rowstretch="1,0,0" columnstretch="1,1,1">
+           <item row="2" column="1">
+            <widget class="QPushButton" name="createSegStruct">
+             <property name="text">
+              <string>Create structure</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLineEdit" name="lineEdit_createStructSeg">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Structure name</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1" colspan="2">
+            <widget class="QLineEdit" name="segStructName"/>
+           </item>
+           <item row="2" column="0">
+            <widget class="QCheckBox" name="initStructCheck">
+             <property name="layoutDirection">
+              <enum>Qt::RightToLeft</enum>
+             </property>
+             <property name="text">
+              <string>All series</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="2">
+            <widget class="QPushButton" name="deleteSegStruct">
+             <property name="text">
+              <string>Delete structure</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0" colspan="3">
+            <widget class="QListWidget" name="segStructList"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="3" column="3">
+         <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="2,0,2,0">
+          <item>
+           <widget class="QLineEdit" name="threshMinBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Min. HU threshold</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="threshMinHU"/>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="threshMaxBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Max. HU threshold</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="threshMaxHU"/>
+          </item>
+         </layout>
+        </item>
+        <item row="1" column="0" rowspan="5" colspan="3">
+         <widget class="QWidget" name="VTK_SegView" native="true"/>
+        </item>
+        <item row="6" column="0" colspan="2">
+         <widget class="QSlider" name="segViewSlider">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="3">
+         <widget class="QWidget" name="VTK_SegHistView" native="true"/>
+        </item>
+        <item row="4" column="3">
          <widget class="QToolBox" name="toolBox_seg">
           <property name="currentIndex">
            <number>0</number>
@@ -8543,8 +8650,13 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
+<<<<<<< HEAD
              <width>261</width>
              <height>152</height>
+=======
+             <width>443</width>
+             <height>329</height>
+>>>>>>> Development
             </rect>
            </property>
            <attribute name="label">
@@ -8685,8 +8797,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>193</width>
-             <height>119</height>
+             <width>165</width>
+             <height>99</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8747,13 +8859,152 @@ p, li { white-space: pre-wrap; }
             </item>
            </layout>
           </widget>
+          <widget class="QWidget" name="morph_oper">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>443</width>
+             <height>329</height>
+            </rect>
+           </property>
+           <attribute name="label">
+            <string>Morphological operations</string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_79" columnstretch="0,0,0,0,0">
+            <item row="3" column="0" colspan="2">
+             <widget class="QLineEdit" name="lineEdit_70">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Connectivity</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0" colspan="2">
+             <widget class="QLineEdit" name="lineEdit_67">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="layoutDirection">
+               <enum>Qt::LeftToRight</enum>
+              </property>
+              <property name="text">
+               <string>Operation</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="3" colspan="2">
+             <widget class="QSpinBox" name="morph_oper_rank">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>3</number>
+              </property>
+              <property name="value">
+               <number>2</number>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="4">
+             <spacer name="verticalSpacer_23">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="0" column="3" colspan="2">
+             <widget class="QComboBox" name="morph_oper_method"/>
+            </item>
+            <item row="2" column="0" colspan="2">
+             <widget class="QLineEdit" name="lineEdit_69">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="layoutDirection">
+               <enum>Qt::LeftToRight</enum>
+              </property>
+              <property name="text">
+               <string>Rank (dimension)</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0" colspan="2">
+             <widget class="QLineEdit" name="lineEdit_68">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Iterations</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="3" colspan="2">
+             <widget class="QSpinBox" name="morph_oper_conn">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>3</number>
+              </property>
+              <property name="value">
+               <number>1</number>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="3" colspan="2">
+             <widget class="QSpinBox" name="morph_oper_iter">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="value">
+               <number>1</number>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="4">
+             <widget class="QPushButton" name="UndoMorphOper">
+              <property name="text">
+               <string>Undo</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="3">
+             <widget class="QPushButton" name="ApplyMorphOper">
+              <property name="text">
+               <string>Apply</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
           <widget class="QWidget" name="page">
            <property name="geometry">
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>241</width>
-             <height>179</height>
+             <width>206</width>
+             <height>147</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8786,113 +9037,6 @@ p, li { white-space: pre-wrap; }
             </item>
            </layout>
           </widget>
-         </widget>
-        </item>
-        <item row="5" column="2">
-         <widget class="QComboBox" name="segSelectView"/>
-        </item>
-        <item row="2" column="3">
-         <widget class="QWidget" name="VTK_SegHistView" native="true"/>
-        </item>
-        <item row="1" column="3">
-         <widget class="QGroupBox" name="groupBox_segStruct">
-          <property name="title">
-           <string>Structures overview</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_64" rowstretch="1,0,0" columnstretch="1,1,1">
-           <item row="2" column="1">
-            <widget class="QPushButton" name="createSegStruct">
-             <property name="text">
-              <string>Create structure</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QLineEdit" name="lineEdit_createStructSeg">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>Structure name</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1" colspan="2">
-            <widget class="QLineEdit" name="segStructName"/>
-           </item>
-           <item row="2" column="0">
-            <widget class="QCheckBox" name="initStructCheck">
-             <property name="layoutDirection">
-              <enum>Qt::RightToLeft</enum>
-             </property>
-             <property name="text">
-              <string>All series</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="2">
-            <widget class="QPushButton" name="deleteSegStruct">
-             <property name="text">
-              <string>Delete structure</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="0" colspan="3">
-            <widget class="QListWidget" name="segStructList"/>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item row="3" column="3">
-         <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="2,0,2,0">
-          <item>
-           <widget class="QLineEdit" name="threshMinBox">
-            <property name="enabled">
-             <bool>false</bool>
-            </property>
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="text">
-             <string>Min. HU threshold</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="threshMinHU"/>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="threshMaxBox">
-            <property name="enabled">
-             <bool>false</bool>
-            </property>
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="text">
-             <string>Max. HU threshold</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="threshMaxHU"/>
-          </item>
-         </layout>
-        </item>
-        <item row="1" column="0" rowspan="4" colspan="3">
-         <widget class="QWidget" name="VTK_SegView" native="true"/>
-        </item>
-        <item row="5" column="0" colspan="2">
-         <widget class="QSlider" name="segViewSlider">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
          </widget>
         </item>
        </layout>
