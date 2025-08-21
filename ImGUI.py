@@ -4085,11 +4085,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg = QtWidgets.QToolBox(self.tab_seg)
         self.toolBox_seg.setObjectName("toolBox_seg")
         self.seg_manual_contour = QtWidgets.QWidget()
-<<<<<<< HEAD
-        self.seg_manual_contour.setGeometry(QtCore.QRect(0, 0, 261, 152))
-=======
         self.seg_manual_contour.setGeometry(QtCore.QRect(0, 0, 443, 329))
->>>>>>> Development
         self.seg_manual_contour.setObjectName("seg_manual_contour")
         self.gridLayout_60 = QtWidgets.QGridLayout(self.seg_manual_contour)
         self.gridLayout_60.setObjectName("gridLayout_60")

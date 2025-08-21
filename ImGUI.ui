@@ -8650,13 +8650,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-<<<<<<< HEAD
-             <width>261</width>
-             <height>152</height>
-=======
              <width>443</width>
              <height>329</height>
->>>>>>> Development
             </rect>
            </property>
            <attribute name="label">

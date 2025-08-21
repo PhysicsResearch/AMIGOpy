@@ -265,16 +265,27 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
         win._current_row = None
         win._seg_cancel = False
         _set_controls_busy(win, False)  # disable Stop, re-enable Run
+        t = getattr(win, "_seg_worker_thread", None)
+        if t and t.isRunning():
+            t.quit()
+            t.wait(5000)  # up to 5s; returns earlier if already finished
+        win._seg_worker_thread = None
+        win._seg_worker = None
 
     worker.series_started.connect(_on_series_started)
     worker.series_finished.connect(_on_series_finished)
     worker.cancelled_rows.connect(_on_cancelled_rows)
     worker.all_done.connect(_on_all_done)
 
-    thread.started.connect(worker.run)
-    thread.finished.connect(thread.deleteLater)
+    # Run the worker method when the thread starts (queued into the thread event loop)
+    thread.started.connect(worker.run, Qt.QueuedConnection)
 
-    # Keep references
+    # <<< add these 3 lines >>>
+    # When the worker says "all done", stop the thread event loop and clean up
+    worker.all_done.connect(thread.quit, Qt.QueuedConnection)
+    worker.all_done.connect(worker.deleteLater, Qt.QueuedConnection)   # delete worker in GUI thread
+    thread.finished.connect(thread.deleteLater, Qt.QueuedConnection)
+        # Keep references
     win._seg_worker_thread = thread
     win._seg_worker = worker
 

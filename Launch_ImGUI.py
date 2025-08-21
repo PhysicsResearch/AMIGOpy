@@ -445,12 +445,26 @@ def _find_widget_in_gridlayout(layout, widget):
 
 
 if __name__ == "__main__":
+
+    import sys
+    from PyQt5.QtCore import Qt, QCoreApplication
+    from PyQt5.QtGui import QSurfaceFormat
+    from PyQt5.QtWidgets import QApplication
+    import qdarkstyle
+
+    # Pick ONE of these attributes. DesktopOpenGL first; if you’re on RDP/VM, use SoftwareOpenGL instead.
+    QCoreApplication.setAttribute(Qt.AA_UseDesktopOpenGL, True)
+    # QCoreApplication.setAttribute(Qt.AA_UseSoftwareOpenGL, True)  # ← use this line instead if needed
+
+    # Force a Compatibility profile (NOT Core), and set reasonable buffers
     fmt = QSurfaceFormat()
-    fmt.setVersion(3, 2)                   # request at least OpenGL 3.2
-    fmt.setProfile(QSurfaceFormat.CoreProfile)
+    fmt.setRenderableType(QSurfaceFormat.OpenGL)
+    fmt.setProfile(QSurfaceFormat.CompatibilityProfile)
+    # fmt.setVersion(3, 2)  # optional; let Qt choose if unsure
     fmt.setDepthBufferSize(24)
     fmt.setStencilBufferSize(8)
     QSurfaceFormat.setDefaultFormat(fmt)
+
     app = QApplication(sys.argv)
     folder_path = None
     if len(sys.argv) > 1:
