@@ -155,5 +155,5 @@ def load_nifti_files(self, path=None):
     # Remember last dir and refresh tree
     self.last_nifti_dir = str(Path(paths[0]).parent)
 
-    from fcn_load.populate_dcm_list import populate_DICOM_tree
-    populate_DICOM_tree(self)
+    from fcn_load.populate_med_image_list import populate_medical_image_tree
+    populate_medical_image_tree(self)

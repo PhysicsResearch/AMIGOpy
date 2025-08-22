@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QMessageBox
-from fcn_load.load_dcm   import populate_DICOM_tree
+from fcn_load.load_dcm   import populate_medical_image_tree
 from fcn_load.read_IrIS  import populate_IrIS_tree
 import numpy as np
 import re
@@ -68,7 +68,7 @@ def average_slices(self):
         new_series_data['3DMatrix'] = averaged_image.astype(np.int16)
         #medical_image[patient_id][study_id][modality].append(new_series_data)
         self.medical_image[self.patientID][self.studyID][self.modality].append(new_series_data)
-        populate_DICOM_tree(self)
+        populate_medical_image_tree(self)
     elif self.DataType == "IrIS":
         new_series_data = {
                     '3DMatrix': averaged_image.astype(np.int16),

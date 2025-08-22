@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
 import csv, math
 from PyQt5.QtGui         import QColor, QBrush
 from PyQt5.QtCore        import Qt
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from PyQt5.QtWidgets import QInputDialog, QMessageBox
 
 def update_material_list(self):
@@ -311,7 +311,7 @@ def generate_mat_map(self):
     
     entry={'3DMatrix':mat_map,'Material_used':mat_used}
     target['mat_maps'][f'mat_map_{len(existing)}']=entry
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
     
 
     
@@ -342,7 +342,7 @@ def delete_mat_map(self):
         else:
             target['mat_maps'].pop(item)
         
-        populate_DICOM_tree(self)
+        populate_medical_image_tree(self)
         
         QMessageBox.information(self, "Deleted", f"Material map '{item}' has been deleted.")
 

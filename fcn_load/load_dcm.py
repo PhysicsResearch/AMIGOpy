@@ -3,7 +3,7 @@ import numpy as np
 import pydicom
 from pydicom.tag import Tag
 import math
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from fcn_RTFiles.process_rt_files  import process_rt_plans, process_rt_struct
 
 # Import the function that retrieves a detailed description of DICOM data.
@@ -355,7 +355,7 @@ def load_all_dcm(self, folder_path=None, progress_callback=None, update_label=No
     self.segStructList.clear()
 
     self.DataType = "DICOM"
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
 
 
 if __name__ == "__main__":

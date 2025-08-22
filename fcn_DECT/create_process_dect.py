@@ -1,4 +1,4 @@
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from fcn_DECT.spr_calc_plot import calculate_beta
 import copy
 import pydicom
@@ -272,7 +272,7 @@ def creat_DECT_derived_maps(self):
         self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = 'Calculated SPR'
         self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"SPR {Im_com}")
     
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
 
 
 

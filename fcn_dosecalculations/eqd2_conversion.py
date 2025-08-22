@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import vtk
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 import fcn_load.load_dcm
 from copy import deepcopy
 from PyQt5.QtWidgets import QMessageBox, QTableWidgetItem,QTableWidgetItem
@@ -181,7 +181,7 @@ def generate_eqd2_dose(self):
                      eqd2_dose['metadata']['ImagePositionPatient']=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
                      print(eqd2_dose['metadata']['ImagePositionPatient'])
                      target_dict.append(eqd2_dose)
-                     populate_DICOM_tree(self)
+                     populate_medical_image_tree(self)
                      print('dose added')
                  else:
                      display_message_box('missing input data', 'enter the number of fractions')

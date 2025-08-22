@@ -1,7 +1,7 @@
 import numpy as np
 from skimage.draw import polygon
 from skimage.measure import find_contours
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from PyQt5.QtWidgets import QMessageBox, QDialog
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
@@ -227,7 +227,7 @@ def create_contour_masks(self):
 
     worker.finished.connect(thread.quit)
     worker.finished.connect(prog_dlg.close)
-    worker.finished.connect(lambda: populate_DICOM_tree(self))
+    worker.finished.connect(lambda: populate_medical_image_tree(self))
 
     worker.canceled.connect(thread.quit)
     worker.canceled.connect(prog_dlg.close)
@@ -249,7 +249,7 @@ def create_contour_masks(self):
         # assume widget.checkbox is your QCheckBox
         if hasattr(widget, 'checkbox'):
             widget.checkbox.setChecked(False)
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
     #update_mat_struct_list(self)
 
 

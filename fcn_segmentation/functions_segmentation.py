@@ -4,7 +4,7 @@ import numpy as np
 import SimpleITK as sitk
 from scipy.ndimage import generate_binary_structure, binary_erosion, binary_dilation, binary_opening, binary_closing
 
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from fcn_display.disp_data_type import adjust_data_type_seg_input
 from fcn_display.display_images_seg import disp_seg_image_slice
 
@@ -118,7 +118,7 @@ def InitSeg(self):
         target_series_dict['structures_names'].append(name)
         structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber'], self.patientID])
             
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
     target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
 
     new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
@@ -176,7 +176,7 @@ def DeleteSeg(self):
     self.slice_data_copy = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
     adjust_data_type_seg_input(self,1)
 
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
 
     self.curr_struc_key, self.curr_struc_name = None, None
 

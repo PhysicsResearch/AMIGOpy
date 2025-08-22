@@ -12,7 +12,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pandas as pd
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 
 def display_message_box(msg):
     msg_box = QMessageBox()
@@ -133,7 +133,7 @@ def create_density_map(self,use_mat_map=False):
            'type':map_type}
     
     target['density_maps'][f'map_{map_type}_{len(existing)}']=entry
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
 
         
     
@@ -187,6 +187,6 @@ def del_density_map(self):
             target['density_maps'].pop(item)
             message=f"Densit map '{item}' has been deleted."
         
-        populate_DICOM_tree(self)
+        populate_medical_image_tree(self)
         
         QMessageBox.information(self, "Deleted", message)

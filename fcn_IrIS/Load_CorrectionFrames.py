@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QFileDialog, QApplication
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 import numpy as np
 from skimage.measure import block_reduce
-from fcn_load.populate_dcm_list import _get_or_create_parent_item
+from fcn_load.populate_med_image_list import _get_or_create_parent_item
 import pandas as pd
 
 

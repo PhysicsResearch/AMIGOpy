@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QFileDialog, QProgressDialog,
                              QMessageBox, QApplication)
 import joblib, pickle, importlib.util
 from pathlib import Path
-from fcn_load.load_dcm import populate_DICOM_tree
+from fcn_load.load_dcm import populate_medical_image_tree
 import copy
 import numpy as np
 
@@ -258,7 +258,7 @@ def load_amigo_bundle(self, path: str | None = None):
         if self.DataType == "DICOM" or self.DataType == "nifti":
             self.medical_image = data
             self.DataType = "DICOM"
-            populate_DICOM_tree(self)        # refresh your UI
+            populate_medical_image_tree(self)        # refresh your UI
         else:
             return
 

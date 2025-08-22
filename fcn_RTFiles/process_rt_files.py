@@ -2,7 +2,7 @@ import numpy as np
 import copy
 from skimage.draw import polygon
 from skimage.measure import find_contours
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from fcn_RTFiles.process_mevion import read_proton_plan
 
 

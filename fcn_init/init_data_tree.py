@@ -3,10 +3,10 @@ from PyQt5.QtWidgets import QMenu, QDialog, QMessageBox
 from fcn_display.Data_tree_general import on_DataTreeView_clicked
 from fcn_export.export_dcm import export_dicom_series
 from fcn_export.export_nii import export_nifti
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from fcn_init.datatree_selection_box import SeriesPickerDialog
 import copy
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 import numpy as np
 
 
@@ -76,7 +76,7 @@ def on_tree_context_menu(self, pos):
             # optional confirm:
             # if not _confirm(self, "Delete series", f"Delete series at {Patient}/{Study}/{Modality}[{Series}]?"): return
             delete_series(self, Patient, Study, Modality, Series)
-            populate_DICOM_tree(self)
+            populate_medical_image_tree(self)
         elif action == exp_action_dcm:
             meta_data   = self.medical_image[Patient][Study][Modality][Series]['metadata'].get('DCM_Info')
             data        = self.medical_image[Patient][Study][Modality][Series]['3DMatrix']
@@ -99,7 +99,7 @@ def on_tree_context_menu(self, pos):
         if action == delete_action:
             # if not _confirm(self, "Delete modality", f"Delete {Patient}/{Study}/{Modality} (all series)?"): return
             delete_modality(self, Patient, Study, Modality)
-            populate_DICOM_tree(self)
+            populate_medical_image_tree(self)
 
     # -------------------------
     # Study-level
@@ -111,7 +111,7 @@ def on_tree_context_menu(self, pos):
         if action == delete_action:
             # if not _confirm(self, "Delete study", f"Delete {Patient}/{Study} (all modalities/series)?"): return
             delete_study(self, Patient, Study)
-            populate_DICOM_tree(self)
+            populate_medical_image_tree(self)
 
     # -------------------------
     # Patient-level
@@ -123,7 +123,7 @@ def on_tree_context_menu(self, pos):
         if action == delete_action:
             # if not _confirm(self, "Delete patient", f"Delete {Patient} (all studies/modalities/series)?"): return
             delete_patient(self, Patient)
-            populate_DICOM_tree(self)
+            populate_medical_image_tree(self)
 
     # -------------------------
     # DICOM root-level
@@ -135,7 +135,7 @@ def on_tree_context_menu(self, pos):
         if action == delete_action:
             # if not _confirm(self, "Delete all", "Delete ALL DICOM data?"): return
             delete_all_dicom(self)
-            populate_DICOM_tree(self)
+            populate_medical_image_tree(self)
 
 
 
@@ -155,7 +155,7 @@ def on_tree_context_menu(self, pos):
         elif action == delete_action:
             print("Delete action triggered")
             delete_structure_set(self, Patient, Study, Modality, Series)
-            populate_DICOM_tree(self)
+            populate_medical_image_tree(self)
 
 
 def adjust_reset_view(self):
@@ -403,7 +403,7 @@ def on_copy_structures_from_tree_item(self, src_patient, src_study, src_modality
 
 
     # Refresh UI
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
 
 
 def _clear_structure_display_state(series):

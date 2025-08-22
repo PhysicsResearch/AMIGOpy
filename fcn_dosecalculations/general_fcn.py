@@ -3,7 +3,7 @@
 
 import numpy as np
 import vtk
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 import fcn_load.load_dcm
 from PyQt5.QtWidgets import QMessageBox
 from scipy.ndimage import gaussian_filter1d

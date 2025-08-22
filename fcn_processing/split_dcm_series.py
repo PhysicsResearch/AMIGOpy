@@ -1,5 +1,5 @@
 import numpy as np
-from fcn_load.load_dcm import populate_DICOM_tree
+from fcn_load.load_dcm import populate_medical_image_tree
 import tkinter as tk
 from tkinter import simpledialog
 import copy
@@ -69,5 +69,5 @@ def shift_and_split_3D_matrix(self):
     # Remove the original series index data
     self.medical_image[self.patientID][self.studyID][self.modality].pop(self.series_index + intervals)
    
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
   

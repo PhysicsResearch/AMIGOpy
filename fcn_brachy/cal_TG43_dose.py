@@ -2,7 +2,7 @@ from fcn_brachy_sources.process_brachy_database import on_brachy_load_sources
 import numpy as np
 from scipy.ndimage import rotate, shift
 from scipy.spatial.transform import Rotation as R
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from PyQt5.QtWidgets import QMessageBox
 
 def calculate_TG43_plan_dose(self):
@@ -32,7 +32,7 @@ def calculate_TG43_plan_dose(self):
     kerma_value = float(kerma_str)
     dose = dose * kerma_value / 3600 /3600
     store_dose_to_medical_image(self, dose, meta)
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
 
  
 def store_dose_to_medical_image(self, dose,meta):

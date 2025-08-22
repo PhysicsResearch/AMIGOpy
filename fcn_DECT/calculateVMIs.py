@@ -1,6 +1,6 @@
 import numpy as np
 import copy
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from pydicom.dataelem import DataElement
 from PyQt5.QtWidgets import QMessageBox
 
@@ -73,4 +73,4 @@ def calculate_VMI(self):
         self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"VMI_{E}")
         #
         #
-    populate_DICOM_tree(self)   
+    populate_medical_image_tree(self)   

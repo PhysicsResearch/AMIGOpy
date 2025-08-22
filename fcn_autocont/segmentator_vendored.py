@@ -543,7 +543,7 @@ def run_totalseg_for_series(owner, series_list: List[Dict[str, Any]], params: Di
 
     # Optional: refresh your DICOM tree
     try:
-        from fcn_load.populate_dcm_list import populate_DICOM_tree
-        populate_DICOM_tree(owner)
+        from fcn_load.populate_med_image_list import populate_medical_image_tree
+        populate_medical_image_tree(owner)
     except Exception:
         pass
