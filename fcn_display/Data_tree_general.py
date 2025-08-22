@@ -378,7 +378,6 @@ def on_DataTreeView_clicked(self,index):
                     delattr(self, 'slice_data_copy')
 
                 self.curr_series_no = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['SeriesNumber']
-                update_seg_struct_list(self)
                     
                 if self.seg_win_lev[0] is not None and self.seg_win_lev[1] is not None:
                     Window = self.seg_win_lev[0]
@@ -495,6 +494,8 @@ def on_DataTreeView_clicked(self,index):
                     camera.SetPosition(self.camera_pos)  # Also useful
                     renderer.ResetCameraClippingRange()
                     self.renSeg.GetRenderWindow().Render()
+
+                update_seg_struct_list(self)
                 #
             if currentTabText=='Plan':
                 currentSubTabText = self.Plan_tabs.tabText(self.Plan_tabs.currentIndex())
