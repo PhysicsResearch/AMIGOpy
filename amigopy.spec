@@ -81,7 +81,7 @@ BASE_PKGS = [
     # DICOM/NIfTI
     "pydicom","dicom2nifti",
     # misc
-    "filelock","requests","yaml","numpy",
+    "filelock","requests","yaml","numpy","sklearn",
 ]
 
 hiddenimports, worker_datas, worker_bins = [], [], []
