@@ -312,9 +312,6 @@ dependencies:
       - sympy==1.14.0
       - threadpoolctl==3.6.0
       - timm==1.0.19
-      - torch==2.7.1+cu118
-      - torchaudio==2.7.1+cu118
-      - torchvision==0.22.1+cu118
       - totalsegmentator==2.10.0
       - tqdm==4.67.1
       - traceback2==1.4.0

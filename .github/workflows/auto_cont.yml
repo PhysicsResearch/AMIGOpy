@@ -1,4 +1,4 @@
-name: Build AMIGOpy (GUI + Worker) — unsigned
+name: Build AMIGOpy (GUI + CPU worker) — unsigned
 
 on:
   push:
@@ -9,25 +9,21 @@ jobs:
   build-amigopy:
     runs-on: windows-latest
     env:
-      # Avoid OpenMP runtime clashes (ITK/MKL vs LLVM OMP)
       KMP_DUPLICATE_LIB_OK: "TRUE"
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # Use the "heavy" env (torch/TS present) so the worker can be frozen.
-      # The GUI part will still exclude them per amigopy_all.spec.
       - name: Setup Miniconda (builder env)
         uses: conda-incubator/setup-miniconda@v3
         with:
           miniconda-version: "latest"
           python-version: "3.11"
-          environment-file: amigo.yml
-          activate-environment: amigo_api
+          environment-file: amigo.yml     # your heavy env
+          activate-environment: amigo
           auto-update-conda: true
+          channels: conda-forge,defaults
 
-      # If graphviz is in the env and you render DOTs, expose its bin
       - name: Add Graphviz to PATH (conda)
         shell: powershell
         run: echo "$env:CONDA_PREFIX\Library\bin" >> $env:GITHUB_PATH
@@ -36,15 +32,23 @@ jobs:
         shell: powershell
         run: python -m pip install --upgrade pip wheel setuptools
 
+      # ---- Pin Torch CPU (no CUDA wheels) ----
+      - name: Install PyTorch CPU wheels
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu `
+            "torch==2.4.1+cpu" "torchvision==0.19.1+cpu" "torchaudio==2.4.1+cpu"
+
       - name: Ensure PyInstaller
         shell: powershell
         run: pip install pyinstaller
 
-      - name: Build combined dist (GUI + worker)
+      - name: Build combined dist (GUI + CPU worker)
         shell: powershell
         run: pyinstaller amigopy_all.spec --clean
 
-      - name: Verify combined dist contents
+      - name: Verify dist contents
         shell: powershell
         run: |
           if (-not (Test-Path "dist\AMIGOpy\Launch_ImGUI.exe")) { throw "Launch_ImGUI.exe missing" }
@@ -55,15 +59,11 @@ jobs:
         shell: powershell
         run: choco install innosetup -y
 
-      - name: Build AMIGOpy installer (AMIGOpy.iss)
+      - name: Build AMIGOpy installer
         shell: powershell
         run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" AMIGOpy.iss'
 
-      - name: List installer outputs
-        shell: powershell
-        run: Get-ChildItem -Recurse Output | Format-List -Property FullName,Length
-
-      - name: Upload AMIGOpy installer (unsigned)
+      - name: Upload installer (unsigned)
         uses: actions/upload-artifact@v4
         with:
           name: AMIGOpy-Installer-unsigned
