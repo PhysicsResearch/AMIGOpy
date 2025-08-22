@@ -46,7 +46,7 @@ jobs:
 
       - name: Build combined dist (GUI + CPU worker)
         shell: powershell
-        run: pyinstaller amigopy_all.spec --clean
+        run: pyinstaller amigopy.spec --clean
 
       - name: Verify dist contents
         shell: powershell
