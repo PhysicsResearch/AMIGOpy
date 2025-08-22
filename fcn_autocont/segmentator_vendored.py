@@ -188,6 +188,155 @@ def _build_ts_kwargs(input_nii: Path, out_dir: Path, params: Dict[str, Any]) -> 
     )
 
 
+
+
+
+# If these helpers already exist in your file, you can keep your originals and
+# delete these guarded versions. The guards avoid duplicate definitions.
+if '_ensure_series_containers' not in globals():
+    def _ensure_series_containers(owner, patient_id: str, study_id: str, modality: str, series_index: int) -> Dict[str, Any]:
+        dicom = getattr(owner, "medical_image", None)
+        if dicom is None:
+            dicom = {}
+            setattr(owner, "medical_image", dicom)
+        dicom.setdefault(patient_id, {}) \
+             .setdefault(study_id, {}) \
+             .setdefault(modality, [])
+        lst = dicom[patient_id][study_id][modality]
+        while len(lst) <= int(series_index):
+            lst.append({})
+        series = lst[int(series_index)]
+        if not isinstance(series, dict):
+            series = lst[int(series_index)] = {}
+
+        series.setdefault("structures", {})
+        series.setdefault("structures_keys", [])
+        series.setdefault("structures_names", [])
+
+        sk = series["structures_keys"]
+        sn = series["structures_names"]
+        if len(sn) < len(sk):
+            sn.extend([""] * (len(sk) - len(sn)))
+        elif len(sk) < len(sn):
+            del sn[len(sk):]
+
+        return series
+
+if '_is_nii_path' not in globals():
+    def _is_nii_path(p: Path) -> bool:
+        """True for *.nii or *.nii.gz (robust)."""
+        if p.suffix.lower() == ".nii":
+            return True
+        sfx = "".join(s.lower() for s in p.suffixes[-2:])
+        return sfx == ".nii.gz"
+
+def _import_masks_into_series(owner, out_dir: Path,
+                              patient_id: str, study_id: str,
+                              modality: str, series_index: int) -> int:
+    """
+    Import per-organ NIfTI masks from TotalSegmentator. If only a single
+    multi-label file exists, split it into binary masks per label.
+    Returns number of structures imported.
+    """
+    if not out_dir.is_dir():
+        return 0
+
+    series = _ensure_series_containers(owner, patient_id, study_id, modality, series_index)
+    structures = series["structures"]
+    keys_list: List[str] = series["structures_keys"]
+    names_list: List[str] = series["structures_names"]
+
+    start_idx = len(keys_list)
+
+    files = sorted(p for p in out_dir.rglob("*") if _is_nii_path(p))
+
+    # Debug: record what we saw
+    try:
+        (out_dir / "_ts_import_seen.json").write_text(
+            json.dumps({"files": [str(f) for f in files]}, indent=2),
+            encoding="utf-8"
+        )
+    except Exception:
+        pass
+
+    imported = 0
+
+    # Path A: many per-organ files (typical TS 'nifti' output)
+    for f in files:
+        try:
+            img = sitk.ReadImage(str(f))
+            arr = sitk.GetArrayFromImage(img)  # (z, y, x)
+            # Adjust orientation if your app expects it
+            arr = np.flip(arr, axis=1)
+            if not np.any(arr):
+                continue
+            mask = (arr > 0).astype(np.uint8)
+
+            s_idx = start_idx + imported
+            s_key = f"Structure_{s_idx:03d}"
+            name  = f.stem
+            if name.endswith(".nii"):
+                name = name[:-4]
+
+            keys_list.append(s_key)
+            names_list.append(name)
+            structures.setdefault(s_key, {})
+            structures[s_key]["Mask3D"] = mask
+            structures[s_key]["Name"]   = name
+            imported += 1
+        except Exception as e:
+            print(f"[TS][import] Failed to import {f}: {e}")
+
+    # Path B: fallback for a single multi-label file (e.g., segmentations.nii.gz)
+    if imported == 0 and len(files) == 1:
+        try:
+            f = files[0]
+            img = sitk.ReadImage(str(f))
+            arr = sitk.GetArrayFromImage(img)
+            arr = np.flip(arr, axis=1)
+            labels = [int(v) for v in np.unique(arr) if int(v) > 0]
+            for lv in labels:
+                m = (arr == lv).astype(np.uint8)
+                s_idx = start_idx + imported
+                s_key = f"Structure_{s_idx:03d}"
+                name  = f"Label_{lv}"
+                keys_list.append(s_key)
+                names_list.append(name)
+                structures.setdefault(s_key, {})["Mask3D"] = m
+                structures[s_key]["Name"] = name
+                imported += 1
+        except Exception as e:
+            print(f"[TS][import] Failed to split multi-label: {e}")
+
+    # Clean empty subfolders (best effort)
+    try:
+        for root, _, _ in os.walk(out_dir, topdown=False):
+            if not os.listdir(root):
+                os.rmdir(root)
+    except Exception:
+        pass
+
+    # Debug: write import count
+    try:
+        (out_dir / "_ts_import_result.txt").write_text(f"imported={imported}\n", encoding="utf-8")
+    except Exception:
+        pass
+
+    return imported
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # =========================== subprocess runner ===============================
 
 def _run_ts_subprocess(owner, kwargs, log_dir: Path, env_extra: Dict[str, str]):

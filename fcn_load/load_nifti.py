@@ -66,12 +66,7 @@ def read_nifti_series(path):
             # spacing[0:2] is ITK (x,y); SliceThickness from spacing[2]
             'PixelSpacing': spacing[0:2],
             'SliceThickness': spacing[2] if len(spacing) >= 3 else 1.0,
-
-            # Full geometry for faithful export
-            'Direction': tuple(direction),     # 9 numbers
-            'ITKSpacing': tuple(spacing),      # (x,y,z)
             'ImagePositionPatient': origin,    # origin
-
             # Optional / placeholders kept for compatibility with your UI
             'ImageOrientationPatient': "N/A",
             'RescaleSlope': "N/A",
