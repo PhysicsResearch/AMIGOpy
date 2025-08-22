@@ -401,7 +401,7 @@ def update_seg_struct_list(self):
 
     if self.modality not in ["CT", 'Medical']:
         return
-    if not hasattr(self, 'series_index') or self.series_index is None:
+    if not hasattr(self, 'series_index') or self.series_index is None or not hasattr(self, 'curr_series_no'):
         return
     
     target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
