@@ -154,6 +154,7 @@ dependencies:
   - pexpect=4.8.0=pyhd3eb1b0_3
   - pickleshare=0.7.5=pyhd3eb1b0_1003
   - pillow=10.0.1=py311h045eedc_0
+  - pip
   - platformdirs=3.10.0=py311haa95532_0
   - pluggy=1.0.0=py311haa95532_1
   - ply=3.11=py311haa95532_0
