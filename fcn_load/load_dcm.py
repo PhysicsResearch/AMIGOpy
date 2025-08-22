@@ -91,11 +91,20 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),
                         'DataType': 'DICOM',
                         'Modality': modality,
-                        'DCM_Info': Header
+                        'DCM_Info': Header,
+
+                        # Useful extras
+                        'size': None,
+                        'DataType': 'Nifti',
+                        'DCM_Info': None,
+                        'Nifiti_info': None,         # original NIfTI fields
+                        'OriginalFilePath': None,    # for traceability - used with Nifti 
                     },
                     'images': {},
                     'ImagePositionPatients': [],
                     'SliceImageComments':{},
+                    'AM_name': None,  # name defined (auto) in populate tree function 
+                    'US_name': None,  # name that could be defined by the user in the interface (manual)
                 }
             elif modality == 'RTPLAN':
                 # Define the private creator tag explicitly - Used in ONCENTRA so it is not always available

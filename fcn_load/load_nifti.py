@@ -98,6 +98,8 @@ def read_nifti_series(path):
         'ImagePositionPatients': [],
         'SliceImageComments': {},
         '3DMatrix': vol,
+        'AM_name': None,  # name defined (auto) in populate tree function 
+        'US_name': None,  # name that could be defined by the user in the interface (manual)
     }
 
 def load_nifti_files(self, path=None):
