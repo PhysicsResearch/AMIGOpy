@@ -2,76 +2,102 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-import os, sys, time, traceback, json, subprocess
+import os, sys, time, traceback, json
 from pathlib import Path
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, List, Any, Tuple
 
-# 1) Lock in the stdlib 'statistics' module so vendored 'statistics.py' can't shadow it
+# ---------------------------------------------------------------------------
+# Make sure stdlib 'statistics' is used (avoid any vendored shadowing)
 import statistics as _stdlib_statistics
 sys.modules.setdefault("statistics", _stdlib_statistics)
 
-# 2) Locate a vendored TS checkout and put it on sys.path (append so stdlib/site-packages win)
-def _vendor_root() -> Path:
-    env = os.getenv("AMIGO_TOTALSEG_VENDOR_DIR")
-    if env:
-        return Path(env)
-    here = Path(__file__).resolve()
-    amigo_root = here.parents[1]  # AMIGOpy/
-    return (amigo_root / "third_party" / "TotalSegmentator").resolve()
-
-_VENDOR_ROOT = _vendor_root()
-if not _vendor_root().exists():
-    raise FileNotFoundError(
-        f"Vendored folder not found: {_VENDOR_ROOT}\n"
-        "Expected at <AMIGOpy>/third_party/TotalSegmentator or set AMIGO_TOTALSEG_VENDOR_DIR."
-    )
-_vendor_path = str(_VENDOR_ROOT)
-if _vendor_path not in sys.path:
-    sys.path.append(_vendor_path)
-
-# Try early import (helps fail fast if repo is missing)
-try:
-    import totalsegmentator as ts_api  # noqa: F401
-except Exception as e:
-    raise ImportError(
-        f"Failed to import vendored 'totalsegmentator' from {_VENDOR_ROOT}\n{e}"
-    )
-
-# ---------------------------------------------------------------------------
-
-import numpy as np
-import SimpleITK as sitk
-
-# Optional Qt message box (if available)
+# Optional Qt (for warnings shown on the GUI thread only)
 try:
     from PyQt5.QtWidgets import QMessageBox, QApplication
+    from PyQt5.QtCore import QThread
 except Exception:
     QMessageBox = None
     QApplication = None
+    QThread = None
 
-# ------------ AMIGOpy integration utilities ----------------------------------
+# Third-party runtime imports
+import numpy as np
+import SimpleITK as sitk
+
+# Your exporter
+from fcn_export.export_nii import export_nifti
+
+
+# ======================== vendor / worker discovery ==========================
+
+def _worker_exists_in_bundle() -> bool:
+    """True if we are frozen and a bundled worker exe is present."""
+    if not getattr(sys, "frozen", False):
+        return False
+    base = Path(sys.executable).parent
+    candidates = [
+        base / ("segmentator_worker.exe" if os.name == "nt" else "segmentator_worker"),
+        base / "workers" / "cpu" / ("segmentator_worker.exe" if os.name == "nt" else "segmentator_worker"),
+        base / "workers" / "cuda" / ("segmentator_worker.exe" if os.name == "nt" else "segmentator_worker"),
+    ]
+    return any(p.exists() for p in candidates)
+
+def _ensure_vendor_on_path() -> Path:
+    """
+    Dev convenience: if a local vendor tree exists, add it to sys.path.
+    Packaged app: do NOT require a vendor tree (the worker exe has TS inside).
+    Never raises.
+    """
+    # 1) explicit override
+    env_dir = os.environ.get("AMIGO_TOTALSEG_VENDOR_DIR")
+    if env_dir:
+        p = Path(env_dir)
+        if p.is_dir():
+            if str(p) not in sys.path:
+                sys.path.insert(0, str(p))
+            return p
+
+    # 2) packaged app with a bundled worker → nothing to add, just return app dir
+    if _worker_exists_in_bundle():
+        return Path(sys.executable).parent if getattr(sys, "frozen", False) else Path.cwd()
+
+    # 3) dev mode: try project-local vendor tree (<repo>/third_party/TotalSegmentator)
+    try:
+        here = Path(__file__).resolve()
+        dev_vendor = here.parents[1] / "third_party" / "TotalSegmentator"
+        if dev_vendor.is_dir():
+            if str(dev_vendor) not in sys.path:
+                sys.path.insert(0, str(dev_vendor))
+            return dev_vendor
+    except Exception:
+        pass
+
+    # 4) last resort: do nothing; let an installed 'totalsegmentator' be importable from site-packages
+    return Path.cwd()
+
+
+# ============================== UI helpers ===================================
 
 def _show_warn(title: str, text: str, details: str | None = None, parent=None):
-    # If Qt isn't available, just print
+    """Show a warning on the GUI thread; otherwise just log to console."""
     if QMessageBox is None or QApplication is None:
         print(f"[WARN] {title}: {text}")
-        if details: print(details)
+        if details:
+            print(details)
         return
 
-    # Only create/parent widgets on the GUI (main) thread
     try:
         app = QApplication.instance()
-        on_gui = bool(app and (app.thread() == QThread.currentThread()))
+        on_gui = bool(app and QThread and (app.thread() == QThread.currentThread()))
     except Exception:
         on_gui = False
 
     if not on_gui:
-        # Worker thread: avoid QWidget creation; just log
         print(f"[WARN] {title}: {text}")
-        if details: print(details)
+        if details:
+            print(details)
         return
 
-    # GUI thread: safe to create a message box (now it's fine to pass parent)
     box = QMessageBox(QMessageBox.Warning, title, text, parent=parent)
     if details:
         box.setDetailedText(details)
@@ -104,149 +130,16 @@ def _work_paths() -> Dict[str, Path]:
     logs = _ensure_dir(root / "logs")
 
     env_home = os.getenv("TOTALSEG_HOME")
-    if env_home:
-        models = _ensure_dir(Path(env_home))
-    else:
-        models = _ensure_dir(root / "Models" / "TotalSegmentator")
+    models = _ensure_dir(Path(env_home)) if env_home else _ensure_dir(root / "Models" / "TotalSegmentator")
 
     return {"root": root, "tmp": tmp, "models": models, "logs": logs}
 
-# ------------ Flexible vendor path (for subprocess PYTHONPATH) ---------------
 
-ENV_VENDOR_DIR   = "AMIGOPY_VENDOR_TOTALSEG_DIR"
-ENV_AMIGOPY_ROOT = "AMIGOPY_ROOT"
-
-def _candidate_roots_for_amigopy() -> List[Path]:
-    cands: List[Path] = []
-    if os.getenv(ENV_AMIGOPY_ROOT):
-        cands.append(Path(os.getenv(ENV_AMIGOPY_ROOT)).resolve())
-    if getattr(sys, "frozen", False):
-        cands.append(Path(sys.executable).resolve().parent)
-    try:
-        here = Path(__file__).resolve()
-        cands.append(here.parents[1])  # AMIGOpy root
-    except Exception:
-        pass
-    cands.append(Path.cwd())
-    if os.name == "nt":
-        p = Path(r"C:\AMIGOpy")
-        if p.exists():
-            cands.append(p)
-    out: List[Path] = []
-    seen = set()
-    for p in cands:
-        if p not in seen:
-            out.append(p); seen.add(p)
-    return out
-
-def _resolve_vendor_root() -> Path:
-    hinted = os.getenv(ENV_VENDOR_DIR)
-    if hinted:
-        p = Path(hinted).resolve()
-        if (p / "totalsegmentator").is_dir() or (p / "python_api.py").exists():
-            return p
-    for root in _candidate_roots_for_amigopy():
-        vendor = (root / "third_party" / "TotalSegmentator").resolve()
-        if (vendor / "totalsegmentator").is_dir() or (vendor / "python_api.py").exists():
-            return vendor
-    return _VENDOR_ROOT  # fall back to the earlier-validated one
-
-def _ensure_vendor_on_path() -> Path:
-    repo = _resolve_vendor_root()
-    if str(repo) not in sys.path:
-        sys.path.insert(0, str(repo))
-    return repo
-
-# ------------ Export / import to AMIGOpy structures ---------------------------
-
-from fcn_export.export_nii import export_nifti  # your existing exporter
-
-def _ensure_series_containers(
-    owner, patient_id: str, study_id: str, modality: str, series_index: int
-) -> Dict[str, Any]:
-    dicom = _ensure(owner, "medical_image", {})
-    dicom.setdefault(patient_id, {}) \
-         .setdefault(study_id, {}) \
-         .setdefault(modality, [])
-    lst = dicom[patient_id][study_id][modality]
-    while len(lst) <= int(series_index):
-        lst.append({})
-    series = lst[int(series_index)]
-    if not isinstance(series, dict):
-        series = lst[int(series_index)] = {}
-
-    series.setdefault("structures", {})
-    series.setdefault("structures_keys", [])
-    series.setdefault("structures_names", [])
-
-    sk = series["structures_keys"]
-    sn = series["structures_names"]
-    if len(sn) < len(sk):
-        sn.extend([""] * (len(sk) - len(sn)))
-    elif len(sk) < len(sn):
-        del sn[len(sk):]
-
-    return series
-
-def _import_masks_into_series(owner, out_dir: Path,
-                              patient_id: str, study_id: str,
-                              modality: str, series_index: int) -> int:
-    if not out_dir.is_dir():
-        return 0
-
-    series = _ensure_series_containers(owner, patient_id, study_id, modality, series_index)
-    structures = series["structures"]
-    keys_list: List[str] = series["structures_keys"]
-    names_list: List[str] = series["structures_names"]
-
-    start_idx = len(keys_list)
-    files = sorted(
-        p for p in out_dir.rglob("*")
-        if p.suffix == ".nii" or p.suffixes == [".nii", ".gz"]
-    )
-
-    imported = 0
-    for f in files:
-        try:
-            img = sitk.ReadImage(str(f))
-            arr = sitk.GetArrayFromImage(img)  # (z, y, x)
-            arr = np.flip(arr, axis=1)         # match your orientation
-            if not np.any(arr):
-                continue
-            mask = (arr > 0).astype(np.uint8)
-
-            s_idx = start_idx + imported
-            s_key = f"Structure_{s_idx:03d}"
-            name  = f.stem
-            if name.endswith(".nii"):
-                name = name[:-4]
-
-            keys_list.append(s_key)
-            names_list.append(name)
-            if s_key not in structures:
-                structures[s_key] = {}
-            structures[s_key]["Mask3D"] = mask
-            structures[s_key]["Name"]   = name
-            imported += 1
-        except Exception as e:
-            print(f"[TS][import] Failed to import {f}: {e}")
-
-    # Clean empty subfolders
-    try:
-        for root, _, _ in os.walk(out_dir, topdown=False):
-            if not os.listdir(root):
-                os.rmdir(root)
-    except Exception:
-        pass
-
-    return imported
-
-# ------------ TotalSegmentator execution (vendored, killable) -----------------
+# ========================= TS kwargs / env helpers ===========================
 
 def _normalize_task(task: str) -> str:
     t = (task or "total").strip()
-    aliases = {"total_ct": "total"}
-    return aliases.get(t, t)
+    return {"total_ct": "total"}.get(t, t)
 
 def _targets_from_params(params: Dict[str, Any]) -> List[str]:
     trg = params.get("targets")
@@ -294,15 +187,18 @@ def _build_ts_kwargs(input_nii: Path, out_dir: Path, params: Dict[str, Any]) -> 
         skip_saving=False,
     )
 
+
+# =========================== subprocess runner ===============================
+
 def _run_ts_subprocess(owner, kwargs, log_dir: Path, env_extra: Dict[str, str]):
     """
     Launch TotalSegmentator as a child process.
-    - In dev: runs a tiny runner script via python/pythonw with a __main__ guard.
-    - In frozen/packaged app: prefers segmentator_worker(.exe) placed next to sys.executable.
+    - Dev: run a tiny runner via python/pythonw with a __main__ guard.
+    - Frozen app: prefer segmentator_worker(.exe) next to sys.executable.
     - Windows: no popups; new process group; tree-kill with taskkill as last resort.
     - POSIX: new session (setsid); kill the group.
     """
-    import os, sys, time, subprocess
+    import subprocess
 
     # ---- environment for the child
     env = os.environ.copy()
@@ -344,16 +240,13 @@ def _run_ts_subprocess(owner, kwargs, log_dir: Path, env_extra: Dict[str, str]):
 
     # ---- choose child command
     if getattr(sys, "frozen", False):
-        # packaged: prefer bundled worker next to the main exe
         worker_name = "segmentator_worker.exe" if os.name == "nt" else "segmentator_worker"
         worker_path = os.path.join(os.path.dirname(sys.executable), worker_name)
         if os.path.exists(worker_path):
             cmd = [worker_path, str(args_json)]
         else:
-            # fallback to runner script via current interpreter
             cmd = [sys.executable, str(runner_py), str(args_json)]
     else:
-        # dev: use pythonw on Windows to avoid console popups, else python
         py = sys.executable
         if os.name == "nt":
             pyw = py.replace("python.exe", "pythonw.exe")
@@ -452,21 +345,22 @@ def _run_ts_subprocess(owner, kwargs, log_dir: Path, env_extra: Dict[str, str]):
         return False, "TotalSegmentator failed (no stderr available)."
 
 
+# ============================= top-level call ================================
+
 def _run_totalseg(owner, input_nii: Path, out_dir: Path, params: Dict[str, Any]) -> Tuple[bool, str]:
     """
     Returns (ok, message). On success, out_dir will contain per-organ NIfTI masks.
     Runs in a subprocess so it can be stopped mid-run.
     """
-    repo = _ensure_vendor_on_path()
+    _ensure_vendor_on_path()  # harmless if not present; worker exe has TS when frozen
     ap = _work_paths()
 
-    env_extra = {}
+    env_extra: Dict[str, str] = {}
     if "TOTALSEG_HOME" not in os.environ:
         env_extra["TOTALSEG_HOME"] = str(ap["models"])
 
-    # Optional but recommended on CPU-only laptops:
-    dev = _device_from_params(params)
-    if dev == "cpu":
+    # Tame thread counts on CPU-only systems
+    if _device_from_params(params) == "cpu":
         env_extra.update({
             "OMP_NUM_THREADS": "1",
             "MKL_NUM_THREADS": "1",
@@ -485,7 +379,9 @@ def _run_totalseg(owner, input_nii: Path, out_dir: Path, params: Dict[str, Any])
                                                        os.getenv("TOTALSEG_HOME"))}})
     ok, msg = _run_ts_subprocess(owner, kwargs, out_dir, env_extra)
     return ok, msg
-# ------------ Public entry point ---------------------------------------------
+
+
+# ============================ public entry point =============================
 
 def run_totalseg_for_series(owner, series_list: List[Dict[str, Any]], params: Dict[str, Any]) -> None:
     """
@@ -520,17 +416,19 @@ def run_totalseg_for_series(owner, series_list: List[Dict[str, Any]], params: Di
                 file_name="input.nii.gz"
             )
             if not nii_path or not Path(nii_path).exists():
-                _show_warn("TotalSegmentator", f"Failed to export NIfTI for {tag}", parent=getattr(owner, "segwin", None) or owner)
+                _show_warn("TotalSegmentator", f"Failed to export NIfTI for {tag}",
+                           parent=getattr(owner, "segwin", None) or owner)
                 continue
 
             # Respect cancel right before starting TS
             if getattr(getattr(owner, "segwin", owner), "_seg_cancel", False):
                 break
 
-            # 2) run TS (vendored, killable)
+            # 2) run TS (subprocess, killable)
             ok, msg = _run_totalseg(owner, input_nii, out_dir, params or {})
             if not ok:
-                _show_warn("TotalSegmentator failed", msg, parent=getattr(owner, "segwin", None) or owner)
+                _show_warn("TotalSegmentator failed", msg,
+                           parent=getattr(owner, "segwin", None) or owner)
                 continue
 
             # 3) import output masks
@@ -539,7 +437,8 @@ def run_totalseg_for_series(owner, series_list: List[Dict[str, Any]], params: Di
 
         except Exception as ex:
             tb = traceback.format_exc()
-            _show_warn("TotalSegmentator error", f"{ex}", tb, parent=getattr(owner, "segwin", None) or owner)
+            _show_warn("TotalSegmentator error", f"{ex}", tb,
+                       parent=getattr(owner, "segwin", None) or owner)
 
     # Optional: refresh your DICOM tree
     try:
