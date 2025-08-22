@@ -54,7 +54,7 @@ def on_tree_context_menu(self, pos):
     # -------------------------
     # Series-level 
     # -------------------------
-    if Type == "DICOM" and len(hierarchy) == 5:
+    if Type == "Medical Image" and len(hierarchy) == 5:
         menu = QMenu()
         open_action        = menu.addAction("Open…")
 
@@ -92,7 +92,7 @@ def on_tree_context_menu(self, pos):
     # -------------------------
     # Modality-level
     # -------------------------
-    if Type == "DICOM" and len(hierarchy) == 4:
+    if Type == "Medical Image" and len(hierarchy) == 4:
         menu = QMenu()
         delete_action = menu.addAction(f"Delete modality '{Modality}' and all series")
         action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
@@ -104,7 +104,7 @@ def on_tree_context_menu(self, pos):
     # -------------------------
     # Study-level
     # -------------------------
-    if Type == "DICOM" and len(hierarchy) == 3:
+    if Type == "Medical Image" and len(hierarchy) == 3:
         menu = QMenu()
         delete_action = menu.addAction(f"Delete study '{Study}' and everything underneath")
         action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
@@ -116,7 +116,7 @@ def on_tree_context_menu(self, pos):
     # -------------------------
     # Patient-level
     # -------------------------
-    if Type == "DICOM" and len(hierarchy) == 2:
+    if Type == "Medical Image" and len(hierarchy) == 2:
         menu = QMenu()
         delete_action = menu.addAction(f"Delete patient '{Patient}' and everything underneath")
         action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
@@ -126,9 +126,9 @@ def on_tree_context_menu(self, pos):
             populate_medical_image_tree(self)
 
     # -------------------------
-    # DICOM root-level
+    # Medical Image root-level
     # -------------------------
-    if Type == "DICOM" and len(hierarchy) == 1:
+    if Type == "Medical Image" and len(hierarchy) == 1:
         menu = QMenu()
         delete_action = menu.addAction("Delete ALL DICOM data")
         action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))

@@ -11,7 +11,7 @@ def populate_medical_image_tree(self):
         self.model.setHorizontalHeaderLabels(['Data'])
 
     # Check for existing 'DICOM' parent item
-    dicom_parent_item = _get_or_create_parent_item(self,'DICOM')
+    dicom_parent_item = _get_or_create_parent_item(self,'Medical Image')
     #
     # Clear the clist of series menus for DECT
     self.DECT_list_01.clear()

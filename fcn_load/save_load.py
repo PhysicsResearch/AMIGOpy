@@ -183,19 +183,15 @@ def save_amigo_bundle(self):
     dlg.setMinimumDuration(0)        # show immediately
     dlg.setValue(0)
     # used for debugging
-    if self.DataType == "DICOM":
+    if self.DataType == "DICOM" or self.DataType == "Nifti":
         find_unpicklable(self.medical_image)
-    elif self.DataType == "nifti":
-        find_unpicklable(self.nifti_data)
     else:
         return
     #
     # 2) Thread + worker
     thread = QThread(self)
-    if self.DataType == "DICOM":
+    if self.DataType == "DICOM" or self.DataType == "Nifti":
         worker = SaveWorker(self.medical_image, path)
-    elif self.DataType == "nifti":
-        worker = SaveWorker(self.nifti_data, path)
     else:
         return
 

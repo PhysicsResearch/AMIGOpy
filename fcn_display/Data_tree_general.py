@@ -99,9 +99,8 @@ def on_DataTreeView_clicked(self,index):
             highlight=True
         )
         #
-    elif hierarchy[0] == "DICOM" or hierarchy[0] == "Nifti":
-        self.DataType =  hierarchy[0]  
-
+    elif hierarchy[0] == "Medical Image":
+        self.AMType = "Medical Image" # AMIGO grouping file type
         # Temporarily block signals so this won't fire textChanged again
         self.metadata_search.blockSignals(True)
         self.metadata_search.setText("")
@@ -115,6 +114,13 @@ def on_DataTreeView_clicked(self,index):
             self.patientID = hierarchy[1].replace("PatientID: ", "")
             self.studyID   = hierarchy[2].replace("StudyID: ", "")
             self.modality  = hierarchy[3].replace("Modality: ", "")
+            #
+            # Default in case of RTPlan RTStruct or RTDose ... if series it gets t"try to get it from from series metadata
+            try:
+                self.DataType =  self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DataType']
+            except:
+                self.DataType = "DICOM"
+            #
             #
             if self.modality == 'RTPLAN':
                 # keep track of the last selected plan ... if user chose and image or dose this will not change

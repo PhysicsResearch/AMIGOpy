@@ -396,7 +396,7 @@ def update_seg_struct_list(self):
         return
 
     self.segStructList.clear()
-    if self.segStructList.count() != 0 or not (self.DataType in ["DICOM", "nifti"]):
+    if self.segStructList.count() != 0 or not (self.DataType in ["DICOM", "Nifti"]):
         return
 
     if self.modality not in ["CT", 'Medical']:
@@ -599,7 +599,7 @@ def calc_com(segmentation):
 def calcStrucStats(self):
     
     data = {}
-    if self.DataType not in ["DICOM", "nifti"]:
+    if self.DataType not in ["DICOM", "Nifti"]:
         return
     
     target_series = []
@@ -671,7 +671,7 @@ def calcStrucStats(self):
 
 
 def exportStrucStats(self): 
-    if self.DataType not in ["DICOM", "nifti"]:
+    if self.DataType not in ["DICOM", "Nifti"]:
         return
     if self.tableSegStrucStats.rowCount() == 0:
         calcStrucStats(self)
@@ -738,7 +738,7 @@ def remove_roi_by_name(rtstruct, roi_name):
 
 
 def exportSegStruc(self):
-    if self.DataType not in ["DICOM", "nifti"]:
+    if self.DataType not in ["DICOM", "Nifti"]:
         return
     if self.tableSegStrucStats.rowCount() == 0:
         calcStrucStats(self)
