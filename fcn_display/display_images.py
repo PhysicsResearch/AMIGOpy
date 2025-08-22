@@ -26,13 +26,13 @@ def displayaxial(self, Im = None):
                 # self.vtkWidgetAxial.GetRenderWindow().Render() 
                 disp_roi_axial(self)
         if i == 3 and  self.display_dw_overlay.isChecked():
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 display_dwell_positions_ax(self)
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 display_brachy_channel_overlay_ax(self)
         if i == 3 and self.DataType in ("DICOM", "Nifti"):
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 # First, clear previous overlays explicitly
                 _update_axial_mask_overlay(self)
                 disp_structure_overlay_axial(self)
@@ -113,7 +113,7 @@ def disp_structure_overlay_axial(self):
 
     # ─── grab data for the currently displayed image series ───────────
     series_dict = (
-        self.dicom_data[self.patientID][self.studyID]
+        self.medical_image[self.patientID][self.studyID]
                        [self.modality][self.series_index]
     )
     if not series_dict.get("structures"):
@@ -308,7 +308,7 @@ def _build_axial_mask_rgba(self):
 
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
-    series = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    series = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
     if not series.get("structures"):
         return rgba
 
@@ -478,7 +478,7 @@ def display_dwell_positions_ax(self):
     self.dwell_actors_ax.clear()
 
     try:
-        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+        meta = (self.medical_image[self.patientID][self.studyID]          # may raise KeyError
                                 [self.modality][self.series_index]
                                 ['metadata'])
         channels = meta.get('Plan_Brachy_Channels')
@@ -572,9 +572,9 @@ def display_brachy_channel_overlay_ax(self):
         renderer.RemoveActor(actor)
     self.channel_actors_ax.clear()
 
-    # Retrieve channels from dicom_data
+    # Retrieve channels from medical_image
     try:
-        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+        meta = (self.medical_image[self.patientID][self.studyID]          # may raise KeyError
                                 [self.modality][self.series_index]
                                 ['metadata'])
         channels = meta.get('Plan_Brachy_Channels')
@@ -684,10 +684,10 @@ def displaycoronal(self, Im = None):
             # self.vtkWidgetAxial.GetRenderWindow().Render() 
             disp_roi_coronal(self)
         if i == 3 and  self.display_dw_overlay.isChecked():
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 display_dwell_positions_co(self)
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 display_brachy_channel_overlay_co(self)
         if i == 3 and self.DataType in ("DICOM", "Nifti"):
                 _update_coronal_mask_overlay(self)
@@ -782,7 +782,7 @@ def _build_coronal_mask_rgba(self):
     h, w = self.display_data[0].shape[0], self.display_data[0].shape[2]  # (z, x)
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
-    series = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    series = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
     if not series.get("structures"):
         return rgba
 
@@ -904,7 +904,7 @@ def disp_structure_overlay_coronal(self):
 
     # ─── fetch current series ────────────────────────────────────────
     series_dict = (
-        self.dicom_data[self.patientID][self.studyID]
+        self.medical_image[self.patientID][self.studyID]
                        [self.modality][self.series_index]
     )
     if not series_dict.get("structures"):
@@ -1145,9 +1145,9 @@ def display_dwell_positions_co(self):
         renderer.RemoveActor(actor)
     self.dwell_actors_co.clear()
 
-    # Retrieve channels from dicom_data
+    # Retrieve channels from medical_image
     try:
-        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+        meta = (self.medical_image[self.patientID][self.studyID]          # may raise KeyError
                                 [self.modality][self.series_index]
                                 ['metadata'])
         channels = meta.get('Plan_Brachy_Channels')
@@ -1241,9 +1241,9 @@ def display_brachy_channel_overlay_co(self):
         renderer.RemoveActor(actor)
     self.channel_actors_co.clear()
 
-    # Retrieve channels from dicom_data
+    # Retrieve channels from medical_image
     try:
-        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+        meta = (self.medical_image[self.patientID][self.studyID]          # may raise KeyError
                                 [self.modality][self.series_index]
                                 ['metadata'])
         channels = meta.get('Plan_Brachy_Channels')
@@ -1362,10 +1362,10 @@ def displaysagittal(self,Im = None):
             # self.vtkWidgetAxial.GetRenderWindow().Render() 
             disp_roi_sagittal(self)
         if i == 3 and  self.display_dw_overlay.isChecked():
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 display_dwell_positions_sa(self)
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 display_brachy_channel_overlay_sa(self)    
         if i == 3 and self.DataType in ("DICOM", "Nifti"):
             _update_sagittal_mask_overlay(self)
@@ -1455,7 +1455,7 @@ def _build_sagittal_mask_rgba(self):
     h, w = self.display_data[0].shape[0], self.display_data[0].shape[1]  # (z, y)
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
-    series = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    series = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
     if not series.get("structures"):
         return rgba
 
@@ -1561,7 +1561,7 @@ def disp_structure_overlay_sagittal(self):
 
     # ─── grab data for the currently displayed image series ───────────
     series_dict = (
-        self.dicom_data[self.patientID][self.studyID]
+        self.medical_image[self.patientID][self.studyID]
                        [self.modality][self.series_index]
     )
     if not series_dict.get("structures"):
@@ -1803,9 +1803,9 @@ def display_dwell_positions_sa(self):
         renderer.RemoveActor(actor)
     self.dwell_actors_sa.clear()
 
-    # Retrieve channels from dicom_data
+    # Retrieve channels from medical_image
     try:
-        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+        meta = (self.medical_image[self.patientID][self.studyID]          # may raise KeyError
                                 [self.modality][self.series_index]
                                 ['metadata'])
         channels = meta.get('Plan_Brachy_Channels')
@@ -1897,9 +1897,9 @@ def display_brachy_channel_overlay_sa(self):
         renderer.RemoveActor(actor)
     self.channel_actors_sa.clear()
 
-    # Retrieve channels from dicom_data
+    # Retrieve channels from medical_image
     try:
-        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+        meta = (self.medical_image[self.patientID][self.studyID]          # may raise KeyError
                                 [self.modality][self.series_index]
                                 ['metadata'])
         channels = meta.get('Plan_Brachy_Channels')

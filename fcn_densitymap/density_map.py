@@ -25,7 +25,7 @@ def create_density_map(self,use_mat_map=False):
     
     #Retrive CT_info
     if self.patientID:
-        target_dict=self.dicom_data[self.patientID][self.studyID]
+        target_dict=self.medical_image[self.patientID][self.studyID]
     else:
         display_message_box('No patient selected')
         return
@@ -160,7 +160,7 @@ def compute_density(ct_matrix,ct_cal_curve):
 def del_density_map(self):
     #various checks
     if self.patientID:
-        target_dict=self.dicom_data[self.patientID][self.studyID]
+        target_dict=self.medical_image[self.patientID][self.studyID]
     else:
         QMessageBox.critical(self, 'Error', 'No Patient selected')
         return

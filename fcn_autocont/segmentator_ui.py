@@ -208,7 +208,7 @@ class SegmentatorWindow(QWidget):
     runSegRequested = pyqtSignal(list, dict)
     stopRequested   = pyqtSignal()
 
-    def __init__(self, parent=None, dicom_data=None, excluded_modalities=None, data_provider=None):
+    def __init__(self, parent=None, medical_image=None, excluded_modalities=None, data_provider=None):
         super().__init__(None)
         self.setWindowFlags(self.windowFlags() | Qt.Window)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
@@ -225,7 +225,7 @@ class SegmentatorWindow(QWidget):
             QCheckBox { font-size: 12px; }
         """)
 
-        self.dicom_data = dicom_data or {}
+        self.medical_image = medical_image or {}
         self.excluded_modalities = excluded_modalities or set()
         self.data_provider = data_provider
 
@@ -473,7 +473,7 @@ class SegmentatorWindow(QWidget):
             if callable(self.data_provider):
                 new_data = self.data_provider()
                 if new_data is not None:
-                    self.dicom_data = new_data
+                    self.medical_image = new_data
         except Exception as e:
             QMessageBox.warning(self, "Refresh failed", f"Could not refresh series:\n{e}")
             return
@@ -482,7 +482,7 @@ class SegmentatorWindow(QWidget):
     def _populate_series_table(self):
         self.tbl.setRowCount(0); self.series_rows.clear()
         rows = []
-        for pid, studies in sorted(self.dicom_data.items()):
+        for pid, studies in sorted(self.medical_image.items()):
             for study_id, by_mod in studies.items():
                 for modality, series_list in by_mod.items():
                     if modality in (self.excluded_modalities or set()):

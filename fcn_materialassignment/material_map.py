@@ -123,7 +123,7 @@ def del_mat2HU(self):
         
 def update_mat_struct_list(self):
     try:
-        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
         structure_names = target_series_dict.get('structures_names', [])
     except:
         #QMessageBox.critical(self,'No valid set selected', 'Your current selection has no associated structures!')
@@ -231,7 +231,7 @@ def generate_mat_map(self):
 
     #Retrive CT_info
     if self.patientID:
-        target_dict=self.dicom_data[self.patientID][self.studyID]
+        target_dict=self.medical_image[self.patientID][self.studyID]
     else:
         QMessageBox.critical(self, 'Error', 'No Patient selected')
         return
@@ -318,7 +318,7 @@ def generate_mat_map(self):
 
 def delete_mat_map(self):
     if self.patientID:
-        target_dict=self.dicom_data[self.patientID][self.studyID]
+        target_dict=self.medical_image[self.patientID][self.studyID]
     else:
         QMessageBox.critical(self, 'Error', 'No Patient selected')
         return

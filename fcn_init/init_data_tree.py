@@ -78,9 +78,9 @@ def on_tree_context_menu(self, pos):
             delete_series(self, Patient, Study, Modality, Series)
             populate_DICOM_tree(self)
         elif action == exp_action_dcm:
-            meta_data   = self.dicom_data[Patient][Study][Modality][Series]['metadata'].get('DCM_Info')
-            data        = self.dicom_data[Patient][Study][Modality][Series]['3DMatrix']
-            slice_thick = self.dicom_data[Patient][Study][Modality][Series]['metadata']['SliceThickness']
+            meta_data   = self.medical_image[Patient][Study][Modality][Series]['metadata'].get('DCM_Info')
+            data        = self.medical_image[Patient][Study][Modality][Series]['3DMatrix']
+            slice_thick = self.medical_image[Patient][Study][Modality][Series]['metadata']['SliceThickness']
             if meta_data is None:
                 print("No DICOM header available for export (likely NIfTI-derived).")
             else:
@@ -177,22 +177,22 @@ def _cleanup_empty_levels(self, patient_id, study_id=None):
     try:
         if study_id is not None:
             # If modality dict for this study is empty, drop the study
-            if not self.dicom_data.get(patient_id, {}).get(study_id, {}):
-                self.dicom_data.get(patient_id, {}).pop(study_id, None)
+            if not self.medical_image.get(patient_id, {}).get(study_id, {}):
+                self.medical_image.get(patient_id, {}).pop(study_id, None)
         # If patient dict is now empty, drop the patient
-        if not self.dicom_data.get(patient_id, {}):
-            self.dicom_data.pop(patient_id, None)
+        if not self.medical_image.get(patient_id, {}):
+            self.medical_image.pop(patient_id, None)
     except Exception:
         pass
 
 def delete_series(self, patient_id, study_id, modality, series_index: int):
     try:
-        series_list = self.dicom_data[patient_id][study_id][modality]
+        series_list = self.medical_image[patient_id][study_id][modality]
         if 0 <= series_index < len(series_list):
             series_list.pop(series_index)
             # If modality list now empty, remove it and clean upwards
             if not series_list:
-                self.dicom_data[patient_id][study_id].pop(modality, None)
+                self.medical_image[patient_id][study_id].pop(modality, None)
                 _cleanup_empty_levels(self, patient_id, study_id)
         else:
             print(f"Series index {series_index} out of range.")
@@ -201,26 +201,26 @@ def delete_series(self, patient_id, study_id, modality, series_index: int):
 
 def delete_modality(self, patient_id, study_id, modality):
     try:
-        self.dicom_data[patient_id][study_id].pop(modality, None)
+        self.medical_image[patient_id][study_id].pop(modality, None)
         _cleanup_empty_levels(self, patient_id, study_id)
     except KeyError:
         print("Invalid path when deleting modality.")
 
 def delete_study(self, patient_id, study_id):
     try:
-        self.dicom_data[patient_id].pop(study_id, None)
+        self.medical_image[patient_id].pop(study_id, None)
         _cleanup_empty_levels(self, patient_id, study_id=None)
     except KeyError:
         print("Invalid path when deleting study.")
 
 def delete_patient(self, patient_id):
     try:
-        self.dicom_data.pop(patient_id, None)
+        self.medical_image.pop(patient_id, None)
     except KeyError:
         print("Invalid path when deleting patient.")
 
 def delete_all_dicom(self):
-    self.dicom_data = {}
+    self.medical_image = {}
 
 
 def delete_structure_set(self, src_patient, src_study, src_modality, src_series_index):
@@ -233,7 +233,7 @@ def delete_structure_set(self, src_patient, src_study, src_modality, src_series_
     """
     # ---- locate the series dict safely ----
     try:
-        s_series = self.dicom_data[src_patient][src_study][src_modality][src_series_index]
+        s_series = self.medical_image[src_patient][src_study][src_modality][src_series_index]
     except (KeyError, IndexError, TypeError):
         return False
 
@@ -311,7 +311,7 @@ def delete_structure_set(self, src_patient, src_study, src_modality, src_series_
 def on_copy_structures_from_tree_item(self, src_patient, src_study, src_modality, src_series_index):
     excluded = {'RTPLAN','RTSTRUCT','RTDOSE'}
     dlg = SeriesPickerDialog(
-        self.dicom_data,
+        self.medical_image,
         excluded_modalities=excluded,
         source_tuple=(src_patient, src_study, src_modality, src_series_index),
         parent=self
@@ -323,7 +323,7 @@ def on_copy_structures_from_tree_item(self, src_patient, src_study, src_modality
     (series_label, dst_study, dst_modality, dst_series_index) = dlg.selected_series_tuple
 
     compatible, diffs = check_series_compatibility(
-        self.dicom_data,
+        self.medical_image,
         src=(src_patient, src_study, src_modality, src_series_index),
         dst=(dst_patient, dst_study, dst_modality, dst_series_index),
         tol=1e-6
@@ -349,7 +349,7 @@ def on_copy_structures_from_tree_item(self, src_patient, src_study, src_modality
 
     # Destination series dict
     try:
-        dst_series = self.dicom_data[dst_patient][dst_study][dst_modality][dst_series_index]
+        dst_series = self.medical_image[dst_patient][dst_study][dst_modality][dst_series_index]
     except (KeyError, IndexError, TypeError):
         QMessageBox.warning(self, "Error", "Destination series not found.")
         return
@@ -389,7 +389,7 @@ def on_copy_structures_from_tree_item(self, src_patient, src_study, src_modality
 
     # Do the copy
     ok, msg = copy_structures_between_series(
-        self.dicom_data,
+        self.medical_image,
         src=(src_patient, src_study, src_modality, src_series_index),
         dst=(dst_patient, dst_study, dst_modality, dst_series_index),
         mode=mode  # 'merge' or 'overwrite'
@@ -439,7 +439,7 @@ def _shape_of_3d(x):
     arr = np.asarray(x)
     return tuple(arr.shape)
 
-def check_series_compatibility(dicom_data, src, dst, tol=1e-6):
+def check_series_compatibility(medical_image, src, dst, tol=1e-6):
     """
     Return (compatible: bool, differences: list[str])
     Compares:
@@ -451,8 +451,8 @@ def check_series_compatibility(dicom_data, src, dst, tol=1e-6):
     sp, ss, sm, si = src
     dp, ds, dm, di = dst
 
-    s = dicom_data[sp][ss][sm][si]
-    d = dicom_data[dp][ds][dm][di]
+    s = medical_image[sp][ss][sm][si]
+    d = medical_image[dp][ds][dm][di]
 
     diffs = []
 
@@ -476,7 +476,7 @@ def check_series_compatibility(dicom_data, src, dst, tol=1e-6):
     return (len(diffs) == 0, diffs)
 
 
-def copy_structures_between_series(dicom_data, src, dst, mode='overwrite'):
+def copy_structures_between_series(medical_image, src, dst, mode='overwrite'):
     """
     src, dst: (patient_id, study_id, modality, series_index)
     mode: 'overwrite' or 'merge'
@@ -485,8 +485,8 @@ def copy_structures_between_series(dicom_data, src, dst, mode='overwrite'):
     sp, ss, sm, si = src
     dp, ds, dm, di = dst
 
-    s_series = dicom_data[sp][ss][sm][si]
-    d_series = dicom_data[dp][ds][dm][di]
+    s_series = medical_image[sp][ss][sm][si]
+    d_series = medical_image[dp][ds][dm][di]
 
     src_names = s_series.get('structures_names')
     src_keys  = s_series.get('structures_keys')

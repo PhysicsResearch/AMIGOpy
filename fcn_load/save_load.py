@@ -22,7 +22,7 @@ def strip_vtk_actors_from_dicom_tree(node):
     Parameters
     ----------
     node : any
-        Typically the deep-copied dicom_data tree.
+        Typically the deep-copied medical_image tree.
 
     Returns
     -------
@@ -139,7 +139,7 @@ def _shim_pydicom_pickle():
         pass
 
 class LoadWorker(QObject):
-    result   = pyqtSignal(object)    # loaded dicom_data
+    result   = pyqtSignal(object)    # loaded medical_image
     finished = pyqtSignal()
     error    = pyqtSignal(str)
 
@@ -165,7 +165,7 @@ BUNDLE_FILTER = "AMIGOpy data (*.amigo)"
 
 def save_amigo_bundle(self):
     """
-    Save self.dicom_data in a background thread while showing
+    Save self.medical_image in a background thread while showing
     an indeterminate (animated) progress bar.
     """
     path, _ = QFileDialog.getSaveFileName(
@@ -184,7 +184,7 @@ def save_amigo_bundle(self):
     dlg.setValue(0)
     # used for debugging
     if self.DataType == "DICOM":
-        find_unpicklable(self.dicom_data)
+        find_unpicklable(self.medical_image)
     elif self.DataType == "nifti":
         find_unpicklable(self.nifti_data)
     else:
@@ -193,7 +193,7 @@ def save_amigo_bundle(self):
     # 2) Thread + worker
     thread = QThread(self)
     if self.DataType == "DICOM":
-        worker = SaveWorker(self.dicom_data, path)
+        worker = SaveWorker(self.medical_image, path)
     elif self.DataType == "nifti":
         worker = SaveWorker(self.nifti_data, path)
     else:
@@ -256,7 +256,7 @@ def load_amigo_bundle(self, path: str | None = None):
             self.DataType = "DICOM"
 
         if self.DataType == "DICOM" or self.DataType == "nifti":
-            self.dicom_data = data
+            self.medical_image = data
             self.DataType = "DICOM"
             populate_DICOM_tree(self)        # refresh your UI
         else:
@@ -290,7 +290,7 @@ def find_unpicklable(obj, *, skip_numpy=True, _path="root"):
     Parameters
     ----------
     obj : any
-        The object tree to inspect (e.g. self.dicom_data).
+        The object tree to inspect (e.g. self.medical_image).
     skip_numpy : bool, default True
         Large NumPy arrays are almost always pickle-safe and expensive to
         test; skip them unless you really suspect trouble there.

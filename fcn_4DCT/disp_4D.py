@@ -41,11 +41,11 @@ def play_4D_sequence(self):
         if not self.Play4D_Buttom.isChecked():
             return
         if self.checked_items_index < len(checked_items):
-                slice_data_ax = self.dicom_data[self.patientID][self.studyID][self.modality][checked_items[self.checked_items_index][0]]['3DMatrix'][self.current_axial_slice_index[idx], :, :]
+                slice_data_ax = self.medical_image[self.patientID][self.studyID][self.modality][checked_items[self.checked_items_index][0]]['3DMatrix'][self.current_axial_slice_index[idx], :, :]
                 displayaxial(self, slice_data_ax)
-                slice_data_co = self.dicom_data[self.patientID][self.studyID][self.modality][checked_items[self.checked_items_index][0]]['3DMatrix'][:,self.current_coronal_slice_index[idx], :]
+                slice_data_co = self.medical_image[self.patientID][self.studyID][self.modality][checked_items[self.checked_items_index][0]]['3DMatrix'][:,self.current_coronal_slice_index[idx], :]
                 displaycoronal(self, slice_data_co)
-                slice_data_sa = self.dicom_data[self.patientID][self.studyID][self.modality][checked_items[self.checked_items_index][0]]['3DMatrix'][:,:,self.current_sagittal_slice_index[idx]]
+                slice_data_sa = self.medical_image[self.patientID][self.studyID][self.modality][checked_items[self.checked_items_index][0]]['3DMatrix'][:,:,self.current_sagittal_slice_index[idx]]
                 displaysagittal(self, slice_data_sa)
                 
                 self.checked_items_index += 1

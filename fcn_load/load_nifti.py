@@ -104,7 +104,7 @@ def read_nifti_series(path):
 
 def load_nifti_files(self, path=None):
     """
-    Load one or more NIfTI files directly into self.dicom_data so existing
+    Load one or more NIfTI files directly into self.medical_image so existing
     DICOM-tree code can handle them unchanged.
     """
     start_dir = getattr(self, 'last_nifti_dir', str(Path.home()))
@@ -133,8 +133,8 @@ def load_nifti_files(self, path=None):
         return
 
     # Ensure container dict
-    if not hasattr(self, 'dicom_data') or not isinstance(self.dicom_data, dict):
-        self.dicom_data = {}
+    if not hasattr(self, 'medical_image') or not isinstance(self.medical_image, dict):
+        self.medical_image = {}
 
     for fpath in paths:
         if not fpath.lower().endswith(NIFTI_EXTS):
@@ -145,7 +145,7 @@ def load_nifti_files(self, path=None):
         study_id   = "Imaging"
         modality   = "Medical"
 
-        patient_data  = self.dicom_data.setdefault(patient_id, {})
+        patient_data  = self.medical_image.setdefault(patient_id, {})
         study_data    = patient_data.setdefault(study_id, {})
         modality_list = study_data.setdefault(modality, [])
 

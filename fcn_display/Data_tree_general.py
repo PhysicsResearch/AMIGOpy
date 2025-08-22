@@ -123,8 +123,8 @@ def on_DataTreeView_clicked(self,index):
                 self.modality_plan     = hierarchy[3].replace("Modality: ", "")
                 self.series_index_plan = self.series_index
                 self.modality_metadata = self.modality_plan
-                update_meta_view_table_dicom(self,self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['DCM_Info'])
-                if 'Plan_Brachy_Channels' in self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
+                update_meta_view_table_dicom(self,self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['DCM_Info'])
+                if 'Plan_Brachy_Channels' in self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
                     update_plan_tables(self)
                     return
 
@@ -136,18 +136,18 @@ def on_DataTreeView_clicked(self,index):
                 self.series_index_struct  = self.series_index
                 # 
                 self.modality_metadata = self.modality_struct
-                update_meta_view_table_dicom(self,self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info'])
+                update_meta_view_table_dicom(self,self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info'])
                 if currentTabText != "_3DView":
                     update_structure_list_widget(self,
-                                                self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'],
-                                                self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys'],
+                                                self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'],
+                                                self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys'],
                                                 mode=0)
                 # find reference series
                 Ref = None
-                if 'ReferencedFrameOfReferenceSequence' in self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']:
-                    if 'RTReferencedStudySequence' in self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']['ReferencedFrameOfReferenceSequence'][0]:
-                        if 'RTReferencedSeriesSequence' in self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']['ReferencedFrameOfReferenceSequence'][0]['RTReferencedStudySequence'][0]:
-                            Ref = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']['ReferencedFrameOfReferenceSequence'][0]['RTReferencedStudySequence'][0]['RTReferencedSeriesSequence'][0].get('SeriesInstanceUID')
+                if 'ReferencedFrameOfReferenceSequence' in self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']:
+                    if 'RTReferencedStudySequence' in self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']['ReferencedFrameOfReferenceSequence'][0]:
+                        if 'RTReferencedSeriesSequence' in self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']['ReferencedFrameOfReferenceSequence'][0]['RTReferencedStudySequence'][0]:
+                            Ref = self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']['ReferencedFrameOfReferenceSequence'][0]['RTReferencedStudySequence'][0]['RTReferencedSeriesSequence'][0].get('SeriesInstanceUID')
                 
                 if Ref is not None:
                     ref_series = find_matching_series(self, Ref)
@@ -160,8 +160,8 @@ def on_DataTreeView_clicked(self,index):
             if currentTabText != "_3Dview":
                 # Assign data and display init image
                 #
-                Window = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowWidth']
-                Level  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowCenter']
+                Window = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowWidth']
+                Level  = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowCenter']
                 # For Window
                 if Window in ('N/A', None) or Level in ('N/A', None):
                     Window = 100
@@ -190,7 +190,7 @@ def on_DataTreeView_clicked(self,index):
             if currentTabText == "View":
                 
                 try:
-                    series = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+                    series = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
                 except (KeyError, IndexError, TypeError):
                     if hasattr(self, 'STRUCTlist') and self.STRUCTlist is not None:
                         self.STRUCTlist.clear()
@@ -209,16 +209,16 @@ def on_DataTreeView_clicked(self,index):
                 populate_CT4D_table(self)
                 #
                 if len(hierarchy) == 5: # Series
-                    self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                    self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
                 if len(hierarchy) == 7: # binary mask contour or density map
                     
                     if hierarchy[5]=='Structures':
-                        s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
-                        self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+                        s_key = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
+                        self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
                     elif hierarchy[5]=='Density maps':
-                       self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['density_maps'][hierarchy[6]]['3DMatrix']
+                       self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['density_maps'][hierarchy[6]]['3DMatrix']
                     elif hierarchy[5]=='Material maps':
-                       self.display_data[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['mat_maps'][hierarchy[6]]['3DMatrix']
+                       self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['mat_maps'][hierarchy[6]]['3DMatrix']
                         
                     
                 adjust_data_type_input(self,idx)
@@ -229,16 +229,16 @@ def on_DataTreeView_clicked(self,index):
                 #
     
                 # update_metadata_table
-                meta_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
+                meta_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
                 if 'DCM_Info' in meta_dict:
                     update_meta_view_table_dicom(self, meta_dict['DCM_Info'])
                 self.modality_metadata = self.modality
                 # display info
                 display_dicom_info(self)
                 # Accessing the values
-                self.slice_thick[idx]         = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
-                self.pixel_spac[idx, :2]      = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
-                self.Im_PatPosition[idx, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
+                self.slice_thick[idx]         = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
+                self.pixel_spac[idx, :2]      = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
+                self.Im_PatPosition[idx, :3]  = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
                 #
                 if idx>0:
                     self.Im_Offset[idx,0]   = (self.Im_PatPosition[idx,0]-self.Im_PatPosition[0,0])
@@ -283,8 +283,8 @@ def on_DataTreeView_clicked(self,index):
             elif currentTabText == "_3Dview":
                 # 
                 if self.modality == 'RTPLAN':
-                    if 'Plan_Protons_Beams' in self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
-                        plan_beams = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Protons_Beams']
+                    if 'Plan_Protons_Beams' in self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
+                        plan_beams = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Protons_Beams']
                         for beam_key, beam in plan_beams.items():
                             beam_name = beam_key
                             info_df = beam['Info']
@@ -306,7 +306,7 @@ def on_DataTreeView_clicked(self,index):
                     return
                 # layer
                 #
-                self.display_comp_data[Ax_idx, idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                self.display_comp_data[Ax_idx, idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
                 adjust_data_type_comp_input(self,Ax_idx,idx)
 
                 self.current_AxComp_slice_index[Ax_idx,idx]   = int(self.display_comp_data[Ax_idx, idx].shape[0]/2)
@@ -334,9 +334,9 @@ def on_DataTreeView_clicked(self,index):
                 #
                 #
                 # Accessing the values
-                self.slice_thick_comp[Ax_idx,idx]         = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
-                self.pixel_spac_comp[Ax_idx,idx, :2]      = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
-                self.Im_PatPosition_comp[Ax_idx,idx, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
+                self.slice_thick_comp[Ax_idx,idx]         = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
+                self.pixel_spac_comp[Ax_idx,idx, :2]      = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
+                self.Im_PatPosition_comp[Ax_idx,idx, :3]  = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
                 #
                 if idx>0:
                     self.Im_Offset_comp[Ax_idx,idx,0]    = (self.Im_PatPosition_comp[Ax_idx, idx,0]-self.Im_PatPosition_comp[Ax_idx,0,0])
@@ -360,7 +360,7 @@ def on_DataTreeView_clicked(self,index):
             if currentTabText == "Segmentation":
 
                 try:
-                    series = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+                    series = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
                 except (KeyError, IndexError, TypeError):
                     if hasattr(self, 'STRUCTlist') and self.STRUCTlist is not None:
                         self.STRUCTlist.clear()
@@ -377,7 +377,7 @@ def on_DataTreeView_clicked(self,index):
                 if hasattr(self, 'slice_data_copy'):
                     delattr(self, 'slice_data_copy')
 
-                self.curr_series_no = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['SeriesNumber']
+                self.curr_series_no = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['SeriesNumber']
                     
                 if self.seg_win_lev[0] is not None and self.seg_win_lev[1] is not None:
                     Window = self.seg_win_lev[0]
@@ -388,9 +388,9 @@ def on_DataTreeView_clicked(self,index):
                 
                 # Accessing the values
                 for i in range(3):
-                    self.slice_thick_seg[i]         = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
-                    self.pixel_spac_seg[i, :2]      = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
-                    self.Im_PatPosition_seg[i, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
+                    self.slice_thick_seg[i]         = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
+                    self.pixel_spac_seg[i, :2]      = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
+                    self.Im_PatPosition_seg[i, :3]  = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
                 #
                 if len(hierarchy) == 5: # Series
                     self.display_seg_data = {}
@@ -398,7 +398,7 @@ def on_DataTreeView_clicked(self,index):
                     self.curr_struc_name = None
 
                     # Get and store the selected series volume
-                    self.display_seg_data[0] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                    self.display_seg_data[0] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
                     adjust_data_type_seg_input(self,0)
                     plot_hist(self)
 
@@ -409,18 +409,18 @@ def on_DataTreeView_clicked(self,index):
                     self.display_seg_data = {}
 
                     # Get and store the selected structure 
-                    s_key  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
-                    s_name = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'][hierarchy_indices[6].row()]
+                    s_key  = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
+                    s_name = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'][hierarchy_indices[6].row()]
                     self.curr_struc_key = s_key
                     self.curr_struc_name = s_name
 
                     # Get and store the corresponding series volume
-                    self.display_seg_data[0] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                    self.display_seg_data[0] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
                     adjust_data_type_seg_input(self,0)
                     plot_hist(self)
 
                     self.slice_data_copy = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
-                    self.display_seg_data[1] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+                    self.display_seg_data[1] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
                     adjust_data_type_seg_input(self,1)
 
                     self.Im_Offset_seg[1,0]    = (self.Im_PatPosition_seg[1,0]-self.Im_PatPosition_seg[0,0])
@@ -430,8 +430,8 @@ def on_DataTreeView_clicked(self,index):
                 # Check if view needs to be initialized
                 self.seg_curr_data = {"Orientation": self.segSelectView.currentText(), 
                                       "Dimensions": self.display_seg_data[0].shape,
-                                      "SliceThickness": self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness'],
-                                      "PixelSpacing": self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']}
+                                      "SliceThickness": self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness'],
+                                      "PixelSpacing": self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']}
 
                 if self.seg_prev_data["Orientation"] is None:
                     self.seg_init_view = True
@@ -685,26 +685,26 @@ def on_DataTreeView_clicked(self,index):
 
 
 def display_dicom_info(self):
-    if self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'] is None:
+    if self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'] is None:
         return
-    PatientName = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('PatientName','')
-    PatientID   = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('PatientID','')
-    Date        = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('AcquisitionDate','')
-    KVP         = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('KVP','')
+    PatientName = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('PatientName','')
+    PatientID   = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('PatientID','')
+    Date        = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('AcquisitionDate','')
+    KVP         = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('KVP','')
     
     self.textActorAxialInfo.SetInput(f"{PatientName} \n" 
                                      f"{PatientID}  \n"
                                      f"KVP {KVP}  {Date} ")
     
     
-    self.textActorSagittalInfo.SetInput(f"{self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['StudyDescription']} \n"
-                                        f"{self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SeriesDescription']} \n"
-                                        f"{self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImageComments']}")
+    self.textActorSagittalInfo.SetInput(f"{self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['StudyDescription']} \n"
+                                        f"{self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SeriesDescription']} \n"
+                                        f"{self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImageComments']}")
     
-    DoseType          = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('DoseType','')
-    SumType           = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('SummationType','')
-    DoseUnit          = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('DoseUnits','')
-    TissueHetCorrect  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('TissueHeterogeneityCorrection','')
+    DoseType          = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('DoseType','')
+    SumType           = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('SummationType','')
+    DoseUnit          = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('DoseUnits','')
+    TissueHetCorrect  = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('TissueHeterogeneityCorrection','')
     
     if DoseType != '':
      	self.textActorCoronalInfo.SetInput(f"DoseType {DoseType} \n" 
@@ -722,11 +722,11 @@ def populate_CT4D_table(self):
     sequence_id = 1
 
     # Reference acquisition number
-    Ref_acq = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['AcquisitionNumber']
+    Ref_acq = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['AcquisitionNumber']
     
     # Loop through the data and populate the table
-    for j in range(len(self.dicom_data[self.patientID][self.studyID][self.modality])):
-        if Ref_acq == self.dicom_data[self.patientID][self.studyID][self.modality][j]['metadata']['AcquisitionNumber']:
+    for j in range(len(self.medical_image[self.patientID][self.studyID][self.modality])):
+        if Ref_acq == self.medical_image[self.patientID][self.studyID][self.modality][j]['metadata']['AcquisitionNumber']:
             # Insert a new row
             row_position = self.CT4D_table_display.rowCount()
             self.CT4D_table_display.insertRow(row_position)
@@ -748,7 +748,7 @@ def populate_CT4D_table(self):
             
           
             # Set the series description in the third column
-            series_description = self.dicom_data[self.patientID][self.studyID][self.modality][j]['metadata']['SeriesDescription']
+            series_description = self.medical_image[self.patientID][self.studyID][self.modality][j]['metadata']['SeriesDescription']
             self.CT4D_table_display.setItem(row_position, 2, QTableWidgetItem(series_description))
             
             # Set the index in the second column

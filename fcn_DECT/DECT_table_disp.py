@@ -204,7 +204,7 @@ def c_roi_getdata_HU_high_low(self):
     selected_index = self.DECT_list_01.currentIndex()
     series_label, patient_id, study_id, modality, item_index = self.series_info_dict[selected_index]      
     # Assuming the reference image is a 3D NumPy array
-    reference_image = self.dicom_data[patient_id][study_id][modality][item_index]['3DMatrix']
+    reference_image = self.medical_image[patient_id][study_id][modality][item_index]['3DMatrix']
     for row in range(self.table_circ_roi.rowCount()):
         try:
             item_x = self.table_circ_roi.item(row, 0)
@@ -241,7 +241,7 @@ def c_roi_getdata_HU_high_low(self):
     selected_index = self.DECT_list_02.currentIndex()
     series_label, patient_id, study_id, modality, item_index = self.series_info_dict[selected_index]      
     # Assuming the reference image is a 3D NumPy array
-    reference_image = self.dicom_data[patient_id][study_id][modality][item_index]['3DMatrix']
+    reference_image = self.medical_image[patient_id][study_id][modality][item_index]['3DMatrix']
     for row in range(self.table_circ_roi.rowCount()):
         try:
             item_x = self.table_circ_roi.item(row, 0)
@@ -281,4 +281,4 @@ def on_DECT_list_selection_changed(self,index):
         series_label, patient_id, study_id, modality, item = self.series_info_dict[index]
         # Do something with the information
         # print(f"Selected: {series_label}, Patient ID: {patient_id}, Study ID: {study_id}, Modality: {modality}")
-        # print(self.dicom_data[patient_id][study_id][modality][item])
+        # print(self.medical_image[patient_id][study_id][modality][item])

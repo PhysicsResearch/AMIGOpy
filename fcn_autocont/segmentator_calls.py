@@ -375,9 +375,9 @@ def open_segmentator_tab(self):
     excluded = {"RTPLAN", "RTSTRUCT", "RTDOSE"}
     self.segwin = SegmentatorWindow(
         parent=None,
-        dicom_data=getattr(self, "dicom_data", {}) or {},
+        medical_image=getattr(self, "medical_image", {}) or {},
         excluded_modalities=excluded,
-        data_provider=lambda: getattr(self, "dicom_data", {}) or {},
+        data_provider=lambda: getattr(self, "medical_image", {}) or {},
     )
     self.segwin.setAttribute(Qt.WA_DeleteOnClose, True)
 

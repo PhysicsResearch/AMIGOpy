@@ -55,19 +55,19 @@ def average_slices(self):
         new_series_data = {
             'SeriesNumber': name,
             'metadata': {
-                'PixelSpacing':self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing'],
-                'SliceThickness': self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']*step,
+                'PixelSpacing':self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing'],
+                'SliceThickness': self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']*step,
                 'LUTLabel': 'AVR',
                 'LUTExplanation': step,
-                'WindowCenter': self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowCenter'],
-                'WindowWidth': self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowWidth'],
-                'RescaleSlope': self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['RescaleSlope'],
-                'RescaleIntercept': self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['RescaleIntercept'] 
+                'WindowCenter': self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowCenter'],
+                'WindowWidth': self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowWidth'],
+                'RescaleSlope': self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['RescaleSlope'],
+                'RescaleIntercept': self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['RescaleIntercept'] 
                 }
             }
         new_series_data['3DMatrix'] = averaged_image.astype(np.int16)
-        #dicom_data[patient_id][study_id][modality].append(new_series_data)
-        self.dicom_data[self.patientID][self.studyID][self.modality].append(new_series_data)
+        #medical_image[patient_id][study_id][modality].append(new_series_data)
+        self.medical_image[self.patientID][self.studyID][self.modality].append(new_series_data)
         populate_DICOM_tree(self)
     elif self.DataType == "IrIS":
         new_series_data = {

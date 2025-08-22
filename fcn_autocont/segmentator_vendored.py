@@ -164,7 +164,7 @@ from fcn_export.export_nii import export_nifti  # your existing exporter
 def _ensure_series_containers(
     owner, patient_id: str, study_id: str, modality: str, series_index: int
 ) -> Dict[str, Any]:
-    dicom = _ensure(owner, "dicom_data", {})
+    dicom = _ensure(owner, "medical_image", {})
     dicom.setdefault(patient_id, {}) \
          .setdefault(study_id, {}) \
          .setdefault(modality, [])

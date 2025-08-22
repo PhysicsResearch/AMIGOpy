@@ -235,7 +235,7 @@ def update_structure_list_widget(self, structure_names, structure_keys, mode=1):
         self.CreateMask_Structures.setVisible(True)
 
 def _series_dict(self):
-    return self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    return self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
 
 def _ensure_array(self, key, n, default_value):
     s = _series_dict(self)

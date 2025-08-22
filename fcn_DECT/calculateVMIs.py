@@ -15,8 +15,8 @@ def calculate_VMI(self):
     selected_index_H = self.scatter_plot_im_02.currentIndex()
     series_label_H, patient_id_H, study_id_H, modality_H, item_index_H = self.series_info_dict[selected_index_H]  
     # Assuming the reference image is a 3D NumPy array
-    ct_low  = self.dicom_data[patient_id_L][study_id_L][modality_L][item_index_L]['3DMatrix'].astype(np.float32)
-    ct_high = self.dicom_data[patient_id_H][study_id_H][modality_H][item_index_H]['3DMatrix'].astype(np.float32)
+    ct_low  = self.medical_image[patient_id_L][study_id_L][modality_L][item_index_L]['3DMatrix'].astype(np.float32)
+    ct_high = self.medical_image[patient_id_H][study_id_H][modality_H][item_index_H]['3DMatrix'].astype(np.float32)
 
 
     # list of attenuation coefficients (NIST) --> replace with calibration values
@@ -56,21 +56,21 @@ def calculate_VMI(self):
         mu   = mu_water[i] * water_map + mu_iodine[i] * iodine_map
         Data = (mu / mu_water[i] - 1) * 1000  # HU
         # copy the header of the low image ... in the future some tags will be adjusted
-        original_data = self.dicom_data[patient_id_L][study_id_L][modality_L][item_index_L].copy()
+        original_data = self.medical_image[patient_id_L][study_id_L][modality_L][item_index_L].copy()
         # Ensure the list is long enough to accommodate new indices
-        required_length = len(self.dicom_data[patient_id_L][study_id_L][modality_L]) + 1
-        while len(self.dicom_data[patient_id_L][study_id_L][modality_L]) < required_length:
-            self.dicom_data[patient_id_L][study_id_L][modality_L].append(None)
+        required_length = len(self.medical_image[patient_id_L][study_id_L][modality_L]) + 1
+        while len(self.medical_image[patient_id_L][study_id_L][modality_L]) < required_length:
+            self.medical_image[patient_id_L][study_id_L][modality_L].append(None)
         # Store data into new series indice
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]                              = copy.deepcopy(original_data)
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['3DMatrix']                  = Data.astype(np.float32)
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['SliceImageComments']        = 'RED Calculated AMB'
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['ImageComments'] = "RED Calculated AMB"
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]                              = copy.deepcopy(original_data)
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['3DMatrix']                  = Data.astype(np.float32)
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['SliceImageComments']        = 'RED Calculated AMB'
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['ImageComments'] = "RED Calculated AMB"
         image_comment = str('RED Calculated VMI')
         data_element = DataElement((0x0020, 0x4000), 'LO', image_comment)
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['DCM_Info']['ImageComments'] = data_element
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"Calculated VMI {E}")
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"VMI_{E}")
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['DCM_Info']['ImageComments'] = data_element
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"Calculated VMI {E}")
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"VMI_{E}")
         #
         #
     populate_DICOM_tree(self)   

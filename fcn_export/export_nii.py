@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QFileDialog
 
 def export_nifti(self, Patient, Study, Modality, Series,
                       output_folder=None, file_name=None):
-    sdict = self.dicom_data[Patient][Study][Modality][Series]
+    sdict = self.medical_image[Patient][Study][Modality][Series]
     vol = sdict["3DMatrix"]  # Already (z, y, x), flipped in Y during load
     md  = sdict.get("metadata", {})
 
@@ -21,12 +21,12 @@ def export_nifti(self, Patient, Study, Modality, Series,
 
     # ---- 3) Restore metadata ----
     spacing   = None
-    sp        = self.dicom_data[Patient][Study][Modality][Series]['metadata']['PixelSpacing']
+    sp        = self.medical_image[Patient][Study][Modality][Series]['metadata']['PixelSpacing']
     sx        = float(sp[0])
     sy        = float(sp[1])
-    st        = self.dicom_data[Patient][Study][Modality][Series]['metadata']['SliceThickness']
+    st        = self.medical_image[Patient][Study][Modality][Series]['metadata']['SliceThickness']
     spacing   = (sx, sy, st)
-    origin    = self.dicom_data[Patient][Study][Modality][Series]['metadata']['ImagePositionPatient']
+    origin    = self.medical_image[Patient][Study][Modality][Series]['metadata']['ImagePositionPatient']
     direction = [1.0, 0.0, 0.0,
                  0.0, 1.0, 0.0,
                  0.0, 0.0, 1.0]
