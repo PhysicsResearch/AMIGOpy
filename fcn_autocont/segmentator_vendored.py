@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-import os, sys, time, traceback, json
+import os, sys, time, traceback, json, shutil
 from pathlib import Path
 from typing import Dict, List, Any, Tuple
 
@@ -104,11 +104,6 @@ def _show_warn(title: str, text: str, details: str | None = None, parent=None):
     box.exec_()
 
 
-def _ensure(owner, attr, default):
-    if not hasattr(owner, attr) or getattr(owner, attr) is None:
-        setattr(owner, attr, default)
-    return getattr(owner, attr)
-
 def _ensure_dir(p: Path) -> Path:
     p.mkdir(parents=True, exist_ok=True)
     return p
@@ -134,6 +129,48 @@ def _work_paths() -> Dict[str, Path]:
 
     return {"root": root, "tmp": tmp, "models": models, "logs": logs}
 
+import shutil, time
+from pathlib import Path
+
+def _clean_tmp_dir(tmp: Path, keep_recent_minutes: int = 60, keep_last: int = 2) -> None:
+    """
+    Delete older items in the tmp folder, keeping the N most recent entries
+    and anything modified in the last `keep_recent_minutes` minutes.
+    Logs live under `logs/`, so they are unaffected.
+
+    This is conservative: it keeps the two newest entries regardless of age,
+    then removes older stuff (files or dirs) older than the cutoff.
+    """
+    try:
+        if not tmp.exists():
+            return
+
+        entries = [p for p in tmp.iterdir() if p.exists()]
+        # newest first
+        entries.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+
+        now = time.time()
+        cutoff = now - (keep_recent_minutes * 60)
+
+        kept = 0
+        for p in entries:
+            try:
+                mtime = p.stat().st_mtime
+                if kept < keep_last or mtime >= cutoff:
+                    kept += 1
+                    continue
+                if p.is_dir():
+                    shutil.rmtree(p, ignore_errors=True)
+                else:
+                    try:
+                        p.unlink()
+                    except FileNotFoundError:
+                        pass
+            except Exception as ex:
+                # best-effort; skip if locked/in-use
+                print(f"[TS][tmp-clean] skip {p}: {ex}")
+    except Exception as ex:
+        print(f"[TS][tmp-clean] failed: {ex}")
 
 # ========================= TS kwargs / env helpers ===========================
 
@@ -545,6 +582,8 @@ def run_totalseg_for_series(owner, series_list: List[Dict[str, Any]], params: Di
     """
     ap = _work_paths()
     tmp  = ap["tmp"]
+
+    _clean_tmp_dir(tmp, keep_recent_minutes=5, keep_last=2)
 
     for meta in series_list or []:
         # Respect cancel before starting a new series

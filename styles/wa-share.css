@@ -1,0 +1,24 @@
+/* Simple floating button, bottom-right */
+#wa-share {
+  position: fixed;
+  right: 1rem;
+  bottom: 1.25rem;
+  z-index: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 9999px;
+  background: #25D366;
+  box-shadow: 0 8px 20px rgba(0,0,0,.15);
+  text-decoration: none;
+}
+#wa-share svg {
+  width: 1.6rem;
+  height: 1.6rem;
+  fill: white;
+}
+@media (max-width: 600px) {
+  #wa-share { right: .75rem; bottom: .9rem; }
+}
