@@ -47,8 +47,9 @@ def create_ab_matrix(self,default_ab=3):
     missing_struct=[struct for struct in struct_list.keys() if struct not in struct_used]
     if len(missing_struct):
         QMessageBox.warning(self,'missing structures',f"The structures: {','.join(missing_struct)} were not found in the CT set. \nThey will be ignored in the EQD2 calculation")
-    
-    ab_coeff=[v for v in struct_list.values()]
+    ab_coeff=[]
+    for struct in struct_used:
+        ab_coeff.append(struct_list[struct])
     for structure,ab in zip(masks,ab_coeff):
         ab_matrix[structure==1]=ab
         print(ab)

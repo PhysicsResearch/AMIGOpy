@@ -37,11 +37,11 @@ def scale_dose_to_CT(self,dose):
     print(f"Dose Spacing: {dose_spacing}")
     print(f"CT Spacing: {ct_spacing}")
     #Creating dose simpleITK image 
-    dose_image = sitk.GetImageFromArray(dose_matrix[:,::-1,:])#Ask Gabriel?
+    dose_image = sitk.GetImageFromArray(dose_matrix[:,::-1,:])
     dose_image.SetSpacing(dose_spacing)
     dose_image.SetOrigin(dose_origin)
 
-    ct_image=sitk.GetImageFromArray(ct_matrix[:,::-1,:])#Ask Gabriel?
+    ct_image=sitk.GetImageFromArray(ct_matrix[:,::-1,:])
     ct_image.SetSpacing(ct_spacing)
     ct_image.SetOrigin(ct_origin)
 
@@ -50,10 +50,11 @@ def scale_dose_to_CT(self,dose):
     resampled_image = sitk.Resample(dose_image, ct_image)
     #get back dose array
     dose_array_resampled = sitk.GetArrayFromImage(resampled_image)
-    fig,ax=plt.subplots()
-    ax.imshow(ct_matrix[86,:,:],cmap='grey')
-    ax.imshow(dose_array_resampled[86,::-1,:],cmap='jet',alpha=0.5)
-    plt.show()
+    #Testing
+    # fig,ax=plt.subplots()
+    # ax.imshow(ct_matrix[86,:,:],cmap='grey')
+    # ax.imshow(dose_array_resampled[86,::-1,:],cmap='jet',alpha=0.5)
+    # plt.show()
 
 
     return dose_array_resampled[:,::-1,:]
