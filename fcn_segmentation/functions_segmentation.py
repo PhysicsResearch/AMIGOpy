@@ -1,11 +1,10 @@
 import os
 import csv
-import nibabel as nib
-# from rt_utils import RTStructBuilder
 import numpy as np
 import SimpleITK as sitk
+from scipy.ndimage import generate_binary_structure, binary_erosion, binary_dilation, binary_opening, binary_closing
 
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from fcn_display.disp_data_type import adjust_data_type_seg_input
 from fcn_display.display_images_seg import disp_seg_image_slice
 
@@ -34,7 +33,7 @@ def InitSeg(self):
 
     if self.initStructCheck.isChecked():
         check_duplicates = True
-        target_series = self.dicom_data[self.patientID][self.studyID][self.modality]
+        target_series = self.medical_image[self.patientID][self.studyID][self.modality]
 
         for target_series_dict in target_series:
             mask_3d = np.zeros_like(target_series_dict["3DMatrix"])
@@ -78,7 +77,7 @@ def InitSeg(self):
             structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber'], self.patientID])
 
     else:
-        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
 
         
         mask_3d = np.zeros_like(target_series_dict["3DMatrix"])
@@ -119,8 +118,8 @@ def InitSeg(self):
         target_series_dict['structures_names'].append(name)
         structures_keys.append([new_s_key, name, target_series_dict['SeriesNumber'], self.patientID])
             
-    populate_DICOM_tree(self)
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    populate_medical_image_tree(self)
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
 
     new_s_key = target_series_dict['structures_keys'][target_series_dict['structures_names'].index(name)]
     mask_3d = target_series_dict["structures"][new_s_key]["Mask3D"]
@@ -136,7 +135,7 @@ def DeleteSeg(self):
     if 0 not in self.display_seg_data or self.curr_struc_key is None:
         return
 
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
     
     s_key = self.curr_struc_key
     structures_keys = []
@@ -153,7 +152,7 @@ def DeleteSeg(self):
         else:
             return
         
-        target_series = self.dicom_data[self.patientID][self.studyID][self.modality]
+        target_series = self.medical_image[self.patientID][self.studyID][self.modality]
             
         for target_series_dict in target_series:
             if 'structures' in target_series_dict:
@@ -177,7 +176,7 @@ def DeleteSeg(self):
     self.slice_data_copy = np.zeros(self.display_seg_data[0].shape, dtype=np.uint8)
     adjust_data_type_seg_input(self,1)
 
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
 
     self.curr_struc_key, self.curr_struc_name = None, None
 
@@ -397,15 +396,15 @@ def update_seg_struct_list(self):
         return
 
     self.segStructList.clear()
-    if self.segStructList.count() != 0 or not (self.DataType in ["DICOM", "nifti"]):
+    if self.segStructList.count() != 0 or not (self.DataType in ["DICOM", "Nifti"]):
         return
 
     if self.modality not in ["CT", 'Medical']:
         return
-    if not hasattr(self, 'series_index') or self.series_index is None:
+    if not hasattr(self, 'series_index') or self.series_index is None or not hasattr(self, 'curr_series_no'):
         return
     
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
 
     if type(target_series_dict) is dict and 'structures' in target_series_dict:
         for k in target_series_dict['structures']:
@@ -460,7 +459,7 @@ def threshSeg(self):
         QMessageBox.warning(None, "Warning", "No valid HU range was provided (ensure min HU < max HU)")
         return       
     
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
 
     existing_structures = target_series_dict.get('structures', {})
     if len(existing_structures) == 0:
@@ -491,8 +490,8 @@ def threshSeg(self):
         
     mask_3d = ((self.display_seg_data[0] >= min_) * (self.display_seg_data[0] <= max_) * slice_mask).astype(np.uint8)
 
-    self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
-    self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = mask_3d
+    self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Modified'] = 1
+    self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = mask_3d
 
     self.display_seg_data[1] = mask_3d
 
@@ -517,11 +516,75 @@ def undo_brush_seg(self):
     if hasattr(self, 'slice_data_copy'):
         self.display_seg_data[1] = self.slice_data_copy.copy()  
         self.slice_data_copy = self.display_seg_data[1].copy()
-        self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = self.display_seg_data[1]
+        self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = self.display_seg_data[1]
 
         disp_seg_image_slice(self)
     else:
         return
+    
+
+def apply_morph_oper(self):
+    if self.morph_oper_conn.value() > self.morph_oper_rank.value():
+        QMessageBox.warning(None, "Warning", f"Values for connectivity and rank are incompatible (ensure connectivity <= rank)")
+        return
+    
+    def morph_oper(mask):
+        if self.morph_oper_method.currentText() == 'erosion':
+            return binary_erosion(mask, structure=footprint,
+                                  iterations=self.morph_oper_iter.value())
+        elif self.morph_oper_method.currentText() == 'dilation':
+            return binary_dilation(mask, structure=footprint,
+                                   iterations=self.morph_oper_iter.value())
+        elif self.morph_oper_method.currentText() == 'opening':
+            return binary_opening(mask, structure=footprint,
+                                  iterations=self.morph_oper_iter.value())
+        elif self.morph_oper_method.currentText() == 'closing':
+            return binary_closing(mask, structure=footprint,
+                                  iterations=self.morph_oper_iter.value())
+    
+    if hasattr(self, 'display_seg_data'):
+        # Set a copy to undo
+        self.slice_data_copy = self.display_seg_data[1].copy()
+        # Create footprint for morphological operation
+        footprint = generate_binary_structure(self.morph_oper_rank.value(), 
+                                    self.morph_oper_conn.value()) 
+    
+        # If rank == 2, apply morphological operation slice-by-slice
+        if self.morph_oper_rank.value() == 2:
+
+            if self.im_ori_seg=="axial": #Axial
+                for i in range(self.display_seg_data[1].shape[0]):
+                    self.display_seg_data[1][i,:,:] = morph_oper(self.display_seg_data[1][i,:,:])
+
+            elif self.im_ori_seg=="sagittal": #Sagittal 
+                for i in range(self.display_seg_data[1].shape[2]):
+                    self.display_seg_data[1][:,:,i] = morph_oper(self.display_seg_data[1][:,:,i])
+            elif self.im_ori_seg=="coronal": #Coronal
+                for i in range(self.display_seg_data[1].shape[1]):
+                    self.display_seg_data[1][:,i,:] = morph_oper(self.display_seg_data[1][:,i,:])
+    
+        # If rank == 3, apply morphological operation in 3D
+        elif self.morph_oper_rank.value() == 3:
+            self.display_seg_data[1] = morph_oper(self.display_seg_data[1])
+
+        else:
+            return   
+    else:
+        QMessageBox.warning(None, "Warning", f"No structure was selected")
+        return
+        
+    disp_seg_image_slice(self)
+
+        
+def undo_morph_oper(self):
+    if hasattr(self, 'slice_data_copy'):
+        self.display_seg_data[1] = self.slice_data_copy.copy()  
+        self.slice_data_copy = self.display_seg_data[1].copy()
+        self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'][self.curr_struc_key]['Mask3D'] = self.display_seg_data[1]
+
+        disp_seg_image_slice(self)
+    else:
+        return    
     
     
 ################
@@ -536,16 +599,16 @@ def calc_com(segmentation):
 def calcStrucStats(self):
     
     data = {}
-    if self.DataType not in ["DICOM", "nifti"]:
+    if self.DataType not in ["DICOM", "Nifti"]:
         return
     
     target_series = []
-    for patientID in self.dicom_data:
-        for studyID in self.dicom_data[patientID]:
-            for modality in self.dicom_data[patientID][studyID]:
+    for patientID in self.medical_image:
+        for studyID in self.medical_image[patientID]:
+            for modality in self.medical_image[patientID][studyID]:
                 if modality not in ["CT", 'Medical']:
                     continue
-                for target_series_dict in self.dicom_data[patientID][studyID][modality]:
+                for target_series_dict in self.medical_image[patientID][studyID][modality]:
                     if len(target_series_dict.get('structures', {})) == 0:
                         continue
                     target_series_dict['metadata']['PatientID'] = patientID
@@ -608,7 +671,7 @@ def calcStrucStats(self):
 
 
 def exportStrucStats(self): 
-    if self.DataType not in ["DICOM", "nifti"]:
+    if self.DataType not in ["DICOM", "Nifti"]:
         return
     if self.tableSegStrucStats.rowCount() == 0:
         calcStrucStats(self)
@@ -675,7 +738,7 @@ def remove_roi_by_name(rtstruct, roi_name):
 
 
 def exportSegStruc(self):
-    if self.DataType not in ["DICOM", "nifti"]:
+    if self.DataType not in ["DICOM", "Nifti"]:
         return
     if self.tableSegStrucStats.rowCount() == 0:
         calcStrucStats(self)
@@ -695,9 +758,9 @@ def exportSegStruc(self):
             series_id = self.tableSegStrucStats.item(row, 2).text()
             s_key = self.tableSegStrucStats.item(row, 3).text()
             target_series = []
-            for studyID in self.dicom_data[patient_id]:
-                for modality in self.dicom_data[patient_id][studyID]:
-                    for target_series_dict in self.dicom_data[patient_id][studyID][modality]:
+            for studyID in self.medical_image[patient_id]:
+                for modality in self.medical_image[patient_id][studyID]:
+                    for target_series_dict in self.medical_image[patient_id][studyID][modality]:
                         if not ('SeriesNumber' not in target_series_dict or \
                                 str(target_series_dict['SeriesNumber']) != series_id or \
                                 'structures' not in target_series_dict):

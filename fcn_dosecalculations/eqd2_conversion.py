@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import vtk
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 import fcn_load.load_dcm
 from copy import deepcopy
 from PyQt5.QtWidgets import QMessageBox, QTableWidgetItem,QTableWidgetItem
@@ -82,7 +82,7 @@ def on_struct_list_change(self):
 def add_ab(self):
     # Creating a dictionary reference for the target series
     if self.patientID:
-        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
         
         structure_selected = self.eqd2_struct_list.currentText()
         ab_selected = self.ab_input.text()
@@ -112,7 +112,7 @@ def add_ab(self):
         QMessageBox.warning(self,'select patient', 'no active patient found')
 
 def delete_ab(self):
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
     
     structure_selected = self.eqd2_struct_list.currentText()
     
@@ -135,7 +135,7 @@ def delete_ab(self):
 
 def update_alpha_beta_table(self):
     # Get the dictionary containing alpha-beta values
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
     ab_values = target_series_dict.get('ab_values', {})
 
     # Clear table before updating
@@ -152,6 +152,7 @@ def update_alpha_beta_table(self):
 def update_doses_list(self):
     #Update dose list to list the dose of the current active patient and study
     if self.patientID and self.studyID:
+<<<<<<< HEAD
         try:
             dose_list=self.dicom_data[self.patientID][self.studyID]['RTDOSE'] #TBF: not sure if it works if no dose is loaded
             if len(dose_list):
@@ -161,11 +162,23 @@ def update_doses_list(self):
                 self.dose_list.addItems(labels)
         except:
             return
+=======
+        dose_list=self.medical_image[self.patientID][self.studyID]['RTDOSE'] #TBF: not sure if it works if no dose is loaded
+        if len(dose_list):
+            labels=[f"{dose['metadata']['SeriesDescription']}_Series: {dose['SeriesNumber']}" for dose in dose_list]
+            self.dose_list.clear()
+            self.dose_list.addItems(['None'])
+            self.dose_list.addItems(labels)
+        else:
+            display_message_box('missing data', 'no dose found')
+    else: 
+        display_message_box('select patient', 'no active patient found')
+>>>>>>> bf4edf3e3ae46e950ad696d4886f5b5e5cd43648
 
 def update_structure_list(self):
     if self.patientID and self.studyID:
         if self.modality=='CT':
-            target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+            target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
             structure_names = target_series_dict.get('structures_names', [])
             if structure_names:
                 self.eqd2_struct_list.clear()
@@ -181,10 +194,12 @@ def update_structure_list(self):
 def generate_eqd2_dose(self):
      #Retrive dose slected
      if self.patientID:
-         target_dict=self.dicom_data[self.patientID][self.studyID]['RTDOSE']
+         target_dict=self.medical_image[self.patientID][self.studyID]['RTDOSE']
          dose_selected = self.dose_list.currentText()
-         ab_matrix=self.dicom_data[self.patientID][self.studyID]['CT'][self.series_index].get('ab_matrix',[])
+
+         ab_matrix=self.medical_image[self.patientID][self.studyID]['CT'][self.series_index].get('ab_matrix',[])
          
+
          if dose_selected!='None':
              if len(ab_matrix):
                  
@@ -192,12 +207,11 @@ def generate_eqd2_dose(self):
                  dose = next( d for d in target_dict if d['SeriesNumber'] == dose_idx)
                  dose_matrix=dose['3DMatrix']
                  #check the dimensions of the dose matrix, if they are not the same as the CT, scale it
-                 if dose_matrix.size!=self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'].size:
+                 if dose_matrix.size!=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'].size:
                      dose_matrix=scale_dose_to_CT(self,dose)
                      print('dose rescaled')
                  
 
-                 
                  #add here EQD2 
                  fractions=self.input_fractions.text()
                  #check it the current CT has ab values associated
@@ -223,12 +237,12 @@ def generate_eqd2_dose(self):
                      ref_value = np.max(dose_matrix_eqd2)
                      eqd2_dose['metadata']['WindowWidth'] = ref_value*0.02
                      eqd2_dose['metadata']['WindowCenter']= ref_value*0.80
-                     eqd2_dose['metadata']['PixelSpacing']=self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
-                     eqd2_dose['metadata']['SliceThickness']=self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
-                     eqd2_dose['metadata']['ImagePositionPatient']=self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
+                     eqd2_dose['metadata']['PixelSpacing']=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
+                     eqd2_dose['metadata']['SliceThickness']=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
+                     eqd2_dose['metadata']['ImagePositionPatient']=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
                      print(eqd2_dose['metadata']['ImagePositionPatient'])
                      target_dict.append(eqd2_dose)
-                     populate_DICOM_tree(self)
+                     populate_medical_image_tree(self)
                      print('dose added')
                  else:
                      QMessageBox.warning(self,'missing input data', 'enter the number of fractions')

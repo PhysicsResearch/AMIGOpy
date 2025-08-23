@@ -84,7 +84,7 @@ def disp_seg_image_slice(self):
 
     # If any structure is selected, display selected segmentation in layer 1
     slice_data_im = slice_data.copy()
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
     if self.curr_struc_key is not None and 1 in self.display_seg_data \
         and 'structures' in target_series_dict and self.curr_struc_key in target_series_dict['structures']:
 
@@ -258,7 +258,7 @@ def render_all_seg_layers(self):
         slice_data = self.display_seg_data[0][:,int(self.current_seg_slice_index), :]
     
     height, width = slice_data.shape
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
     
     if 'structures_keys' in target_series_dict and 'structures_names' in target_series_dict:
         structures_keys = target_series_dict['structures_keys']
@@ -287,7 +287,7 @@ def render_all_seg_layers(self):
             continue
 
         s_key = structures_keys[structures_names.index(name)]
-        mask = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+        mask = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
             
         if self.im_ori_seg=="axial": #Axial
             slice_data = mask[int(self.current_seg_slice_index), :, :]

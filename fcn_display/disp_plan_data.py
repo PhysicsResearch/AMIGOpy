@@ -18,8 +18,8 @@ import pandas as pd
 
 
 def update_plan_tables(self):
-    if 'Plan_Brachy_Channels' in self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
-        N_channels = len(self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels'])
+    if 'Plan_Brachy_Channels' in self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
+        N_channels = len(self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels'])
         #
         self.brachy_N_channels.setText(f"{N_channels:.0f}")
         #
@@ -44,7 +44,7 @@ def update_disp_brachy_plan(self):
         return
 
     try:
-        channels = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
+        channels = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
     except (KeyError, IndexError):
         QMessageBox.warning(self, "Warning", "Plan data is missing or corrupted.")
         return
@@ -67,7 +67,7 @@ def update_disp_brachy_plan(self):
         populate_brachy_table(self, current_ch.get('ChPos'))
 
     # Display air kerma strength
-    AirKerma = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['ReferenceAirKermaRate']
+    AirKerma = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['ReferenceAirKermaRate']
     self.brachy_plan_Ac.setText(str(AirKerma.value))
     apply_alternating_row_colors(self)
     plot_brachy_dwell_channels(self)
@@ -82,7 +82,7 @@ def calculate_total_time(self):
     
     :return: None
     """
-    channels = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
+    channels = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
     
     total_time = 0.0  # Initialize total time across all channels
     selected_channel_time = 0.0  # Initialize total time for the selected channel
@@ -320,8 +320,8 @@ def plot_brachy_3D_dwell_channels(self):
     ax.set_ylabel("Y (mm)", fontsize=font_size, color=text_color)
     ax.set_zlabel("Z (mm)", fontsize=font_size, color=text_color)
     
-    # Retrieve channels from dicom_data
-    channels = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
+    # Retrieve channels from medical_image
+    channels = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
     
     # Determine whether to plot all channels or just the selected one
     if self.checkBox_dw_ch_plot.isChecked():
@@ -451,8 +451,8 @@ def plot_brachy_bar_channels(self):
     ax.set_xlabel("Dwell Position", fontsize=font_size, color='black' if background_color.lower() == 'white' else 'white')
     ax.set_ylabel("Dwell Time (s)", fontsize=font_size, color='black' if background_color.lower() == 'white' else 'white')
 
-    # Retrieve the channels from dicom_data
-    channels = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
+    # Retrieve the channels from medical_image
+    channels = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
     
     # Check if the selected channel is valid
     channel_idx = selected_channel - 1  # Adjust to zero-based indexing
@@ -490,7 +490,7 @@ def export_all_brachy_channels_to_csv(self):
         return
 
     try:
-        channels = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
+        channels = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
     except (KeyError, IndexError):
         QMessageBox.warning(self, "Warning", "Plan data is missing or corrupted.")
         return

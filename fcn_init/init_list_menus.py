@@ -79,6 +79,10 @@ def populate_list_menus(self):
     self.views_list = self.findChild(QtWidgets.QComboBox, 'segSelectView')
     self.views_list.addItems(views)
 
+    morph_opers = ['erosion', 'dilation', 'opening', 'closing']
+    self.morph_oper_list = self.findChild(QtWidgets.QComboBox, 'morph_oper_method')
+    self.morph_oper_list.addItems(morph_opers)
+
 
     # DECT MatInfo
     self.DECT_list_01.currentIndexChanged.connect(lambda index: on_DECT_list_selection_changed(self, index))

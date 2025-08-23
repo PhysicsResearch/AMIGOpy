@@ -28,9 +28,9 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
         self.series_index_struct  = self.series_index
         # 
         index = hierarchy_indices[6].row()
-        name = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'][index]
-        key  = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys'][index]
-        Points3D = create_3d_points(self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures'][key])
+        name = self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_names'][index]
+        key  = self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures_keys'][index]
+        Points3D = create_3d_points(self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['structures'][key])
         if Points3D is not None and Points3D.size > 0:
             Points3D = Points3D.reshape(-1, 3)
             if Points3D.shape[1] == 3:
@@ -44,10 +44,10 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
     if len(hierarchy) == 7: # binary mask contour linked to an image
         if hierarchy[5]=='Structures' and modality != 'RTSTRUCT':
             index = hierarchy_indices[6].row()
-            name = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'][index]
-            s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][index]
+            name = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'][index]
+            s_key = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][index]
 
-            struct_entry = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]
+            struct_entry = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]
 
             # Check if Contours3D already exists           
             if 'Contours3D' in struct_entry:
@@ -57,9 +57,9 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
                 mask = struct_entry['Mask3D']
 
                 # DICOM spatial information
-                spacing = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']  # [row, col] (y, x)
-                slice_thickness = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
-                origin = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']  # [x, y, z] or [z, y, x] (should be DICOM order, check yours!)
+                spacing = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']  # [row, col] (y, x)
+                slice_thickness = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
+                origin = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']  # [x, y, z] or [z, y, x] (should be DICOM order, check yours!)
 
                 # Convert to full spacing (z, y, x)
                 spacing_full = (slice_thickness, spacing[0], spacing[1])
@@ -102,12 +102,12 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
                     add_cloud_to_table(self, name=cloud_name, color=(1,0,0), size=4,transparency=1.0)
             return            
     else:
-        self.display_3D_data[idx]           = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+        self.display_3D_data[idx]           = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
 
-    self.pixel_spacing3Dview[idx]       = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
-    self.slice_thickness3Dview[idx]     = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
+    self.pixel_spacing3Dview[idx]       = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
+    self.slice_thickness3Dview[idx]     = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
     #
-    self.Im_PatPosition3Dview[idx, :3]  = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
+    self.Im_PatPosition3Dview[idx, :3]  = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
     #
     if idx == 0:
         offset = (0.0, 0.0, 0.0)

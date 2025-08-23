@@ -248,7 +248,7 @@ def play_4D_sequence_3D(self, play: bool):
         def _advance():
             if not self.View3D_play4D.isChecked(): return
             t_idx = checked[self._play3D_index][0]
-            vol   = self.dicom_data[self.patientID][self.studyID][self.modality][t_idx]['3DMatrix']
+            vol   = self.medical_image[self.patientID][self.studyID][self.modality][t_idx]['3DMatrix']
             apply_all = self.View3D_update_all_3D.isChecked()
             sel       = self.layer_selection_box.currentIndex()
             if apply_all:

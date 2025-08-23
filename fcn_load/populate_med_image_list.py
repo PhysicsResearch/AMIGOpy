@@ -1,8 +1,8 @@
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 
 
-def populate_DICOM_tree(self):
-    #self.dicom_data=load_all_dcm(folder_path=None, progress_callback=self.update_progress,update_label=self.label);
+def populate_medical_image_tree(self):
+    #self.medical_image=load_all_dcm(folder_path=None, progress_callback=self.update_progress,update_label=self.label);
     # Create the data model for the tree view
     # Create the data model for the tree view if it doesn't exist
     if not hasattr(self, 'model') or self.model is None:
@@ -11,13 +11,15 @@ def populate_DICOM_tree(self):
         self.model.setHorizontalHeaderLabels(['Data'])
 
     # Check for existing 'DICOM' parent item
-    dicom_parent_item = _get_or_create_parent_item(self,'DICOM')
+    dicom_parent_item = _get_or_create_parent_item(self,'Medical Image')
     #
     # Clear the clist of series menus for DECT
     self.DECT_list_01.clear()
     self.DECT_list_02.clear()
     self.scatter_plot_im_01.clear()
     self.scatter_plot_im_02.clear()
+    # self.Reg_target_box.clear()
+    # self.Reg_moving_box.clear()
     # Dictionary to store series_label and related information
     self.series_info_dict = {}
     
@@ -27,7 +29,7 @@ def populate_DICOM_tree(self):
     dicom_parent_item.removeRows(0, dicom_parent_item.rowCount())
     #
     # Populate tree view with DICOM data
-    for patient_id, patient_data in self.dicom_data.items():
+    for patient_id, patient_data in self.medical_image.items():
         patient_item = QStandardItem(f"PatientID: {patient_id}")
         dicom_parent_item.appendRow(patient_item)
         for study_id, study_data in patient_data.items():
@@ -121,6 +123,8 @@ def populate_DICOM_tree(self):
                     self.DECT_list_02.addItem(series_label)
                     self.scatter_plot_im_01.addItem(series_label)
                     self.scatter_plot_im_02.addItem(series_label)
+                    # self.Reg_target_box.addItem(series_label)
+                    # self.Reg_moving_box.addItem(series_label)
 
                     # Store information in the dictionary
                     self.series_info_dict[combo_index] = (series_label, patient_id, study_id, modality, item_index)

@@ -198,7 +198,7 @@ def on_metadata_search_text_changed(self, text):
         return
 
     try:
-        md = self.dicom_data[self.patientID][self.studyID][self.modality_metadata][self.series_index]['metadata']
+        md = self.medical_image[self.patientID][self.studyID][self.modality_metadata][self.series_index]['metadata']
     except Exception:
         # If the path is invalid, just clear table and return
         self.MetaViewTable.clear()
