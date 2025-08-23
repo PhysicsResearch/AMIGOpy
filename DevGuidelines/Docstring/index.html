@@ -799,48 +799,48 @@ We follow <strong>NumPy-style docstrings</strong> combined with <strong>Python t
 </table>
 <hr />
 <h2 id="3-canonical-example">3. Canonical Example<a class="headerlink" href="#3-canonical-example" title="Permanent link">&para;</a></h2>
-<p>```python
-def update_dose_matrix(
-    rt_dose: pydicom.dataset.FileDataset,
-    new_matrix: np.ndarray,
-    normalize: bool = True,
-) -&gt; None:
-    """
-    Update the dose matrix inside an RTDOSE DICOM object.</p>
-<div class="highlight"><pre><span></span><code>Parameters
-----------
-rt_dose
-    DICOM RTDOSE dataset to update.
-new_matrix
-    New 3D dose grid (z, y, x), in Gy.
-normalize
-    Whether to rescale values to match `DoseGridScaling`.
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_dose_matrix</span><span class="p">(</span>
+    <span class="n">rt_dose</span><span class="p">:</span> <span class="n">pydicom</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">FileDataset</span><span class="p">,</span>
+    <span class="n">new_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">normalize</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update the dose matrix inside an RTDOSE DICOM object.</span>
 
-Returns
--------
-None
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    rt_dose</span>
+<span class="sd">        DICOM RTDOSE dataset to update.</span>
+<span class="sd">    new_matrix</span>
+<span class="sd">        New 3D dose grid (z, y, x), in Gy.</span>
+<span class="sd">    normalize</span>
+<span class="sd">        Whether to rescale values to match `DoseGridScaling`.</span>
 
-Modifies
---------
-rt_dose.pixel_array
-    Replaces the internal dose grid with `new_matrix`.
-rt_dose.DoseGridScaling
-    Updated if `normalize=True`.
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None</span>
 
-Calls
------
-- `validate_dose_matrix`
-- `rescale_dose`
+<span class="sd">    Modifies</span>
+<span class="sd">    --------</span>
+<span class="sd">    rt_dose.pixel_array</span>
+<span class="sd">        Replaces the internal dose grid with `new_matrix`.</span>
+<span class="sd">    rt_dose.DoseGridScaling</span>
+<span class="sd">        Updated if `normalize=True`.</span>
 
-Raises
-------
-ValueError
-    If `new_matrix` has incompatible shape or NaNs.
+<span class="sd">    Calls</span>
+<span class="sd">    -----</span>
+<span class="sd">    - `validate_dose_matrix`</span>
+<span class="sd">    - `rescale_dose`</span>
 
-Notes
------
-Persist changes with `pydicom.dcmwrite` after this call.
-&quot;&quot;&quot;
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If `new_matrix` has incompatible shape or NaNs.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Persist changes with `pydicom.dcmwrite` after this call.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div>
 
 
