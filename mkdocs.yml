@@ -12,6 +12,8 @@ theme:
     - navigation.sections
     - navigation.top
     - navigation.expand        # keep sections expanded by default
+    - toc.integrate            # <-- moves page ToC into the left nav
+    - toc.follow               # highlights section you’re reading
     - content.code.copy
     - search.highlight
     - search.suggest
@@ -40,10 +42,11 @@ nav:
   - Usage:
       - GUI: usage/gui.md
       - API: usage/api.md
-  - Development:
-      - Contributing: dev/contributing.md
-      - Changelog: dev/changelog.md
-
+  - Development: 
+      - Overview: DevGuidelines/Software-documentation-guidelines.md
+      - DocString: DevGuidelines/Docstring.md
+      - Typing: DevGuidelines/Typing.md
+      - Variables & Structures: dev/variables&structures/General_variable_descriptions.md
 markdown_extensions:
   - admonition
   - toc:
