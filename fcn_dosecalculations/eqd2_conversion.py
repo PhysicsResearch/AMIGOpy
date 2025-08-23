@@ -23,18 +23,18 @@ def create_ab_matrix(self,default_ab=3):
         return
     
     try: 
-        ct_shape=self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'].shape
+        ct_shape=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'].shape
     except:
         QMessageBox.warning(self,'invalid input', 'please select a valid CT')
         return
-    struct_list=self.dicom_data[self.patientID][self.studyID]['CT'][self.series_index].get('ab_values',{})
+    struct_list=self.medical_image[self.patientID][self.studyID]['CT'][self.series_index].get('ab_values',{})
     if len(struct_list)==0:
         QMessageBox.warning(self,'missing α/β values', 'please assign at least one structure to one α/β value')
     ab_matrix=np.full(ct_shape, float(default_ab))
     #Retrive binary masks
     masks=[]
     struct_used=[]
-    for s in self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'].values():
+    for s in self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'].values():
         if s.get('Name') in struct_list:
             masks.append(s['Mask3D'])
             struct_used.append(s.get('Name'))
@@ -54,8 +54,8 @@ def create_ab_matrix(self,default_ab=3):
         print(ab)
 
 
-    self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['ab_matrix']=ab_matrix
-    populate_DICOM_tree(self)
+    self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['ab_matrix']=ab_matrix
+    populate_medical_image_tree(self)
     
         
 
@@ -66,7 +66,7 @@ def create_ab_matrix(self,default_ab=3):
 
 def on_struct_list_change(self):
     if self.patientID:
-        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
         structure_selected = self.eqd2_struct_list.currentText()
         ab_dict=target_series_dict.get('ab_values')
         if structure_selected!='None' and ab_dict: 
@@ -152,9 +152,9 @@ def update_alpha_beta_table(self):
 def update_doses_list(self):
     #Update dose list to list the dose of the current active patient and study
     if self.patientID and self.studyID:
-<<<<<<< HEAD
+
         try:
-            dose_list=self.dicom_data[self.patientID][self.studyID]['RTDOSE'] #TBF: not sure if it works if no dose is loaded
+            dose_list=self.medical_image[self.patientID][self.studyID]['RTDOSE'] #TBF: not sure if it works if no dose is loaded
             if len(dose_list):
                 labels=[f"{dose['metadata']['SeriesDescription']}_Series: {dose['SeriesNumber']}" for dose in dose_list]
                 self.dose_list.clear()
@@ -162,18 +162,8 @@ def update_doses_list(self):
                 self.dose_list.addItems(labels)
         except:
             return
-=======
-        dose_list=self.medical_image[self.patientID][self.studyID]['RTDOSE'] #TBF: not sure if it works if no dose is loaded
-        if len(dose_list):
-            labels=[f"{dose['metadata']['SeriesDescription']}_Series: {dose['SeriesNumber']}" for dose in dose_list]
-            self.dose_list.clear()
-            self.dose_list.addItems(['None'])
-            self.dose_list.addItems(labels)
-        else:
-            display_message_box('missing data', 'no dose found')
-    else: 
-        display_message_box('select patient', 'no active patient found')
->>>>>>> bf4edf3e3ae46e950ad696d4886f5b5e5cd43648
+
+
 
 def update_structure_list(self):
     if self.patientID and self.studyID:
