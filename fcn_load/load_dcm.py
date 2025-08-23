@@ -95,8 +95,6 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
 
                         # Useful extras
                         'size': None,
-                        'DataType': 'Nifti',
-                        'DCM_Info': None,
                         'Nifiti_info': None,         # original NIfTI fields
                         'OriginalFilePath': None,    # for traceability - used with Nifti 
                     },
