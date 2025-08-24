@@ -5,14 +5,14 @@ This approach ensures that the particularities of each supported format are **ab
 
 The two main categories currently supported are:
 
-- [Medical Images](#medical-images)
+- [Medical Images](#medical-images) Detailed info - [Medical Image Structure in AMIGOpy](dev/variables&structure/Medicalimage_type.md)
 - [3D Objects](#3d-objects)
 
 Each category is briefly described below with more details about python structure in category-specific pages.
 
 ---
 
-## **Medical Images**
+## **Medical Images**   
 
 Medical imaging data is a central part of AMIGOpy's workflow.  
 This category includes both **DICOM** and **NIfTI** formats, automatically normalized to a **category-based structure** for consistent behavior across the software.
