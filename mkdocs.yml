@@ -43,9 +43,7 @@ nav:
       - GUI: usage/gui.md
       - API: usage/api.md
   - Development: 
-      - Overview: DevGuidelines/Software-documentation-guidelines.md
-      - DocString: DevGuidelines/Docstring.md
-      - Typing: DevGuidelines/Typing.md
+      - Guidlines: DevGuidelines/Software-documentation-guidelines.md
       - Variables & Structures: dev/variables&structures/General_variable_descriptions.md
 markdown_extensions:
   - admonition
