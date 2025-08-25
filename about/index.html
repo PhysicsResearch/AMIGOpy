@@ -75,6 +75,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#about-amigopy" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -512,6 +517,21 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    About
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
         
@@ -524,6 +544,43 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#limitations-of-the-original-amigo-matlab-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      Limitations of the Original AMIGO (MATLAB Version)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#introducing-amigopy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introducing AMIGOpy
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -570,9 +627,31 @@
   
 
 
-  <h1>About</h1>
-
-
+<h1 id="about-amigopy">About AMIGOpy<a class="headerlink" href="#about-amigopy" title="Permanent link">&para;</a></h1>
+<p><strong>AMIGOpy</strong> is an open-source medical physics platform designed for research and education in <strong>radiotherapy</strong> and <strong>brachytherapy</strong>. It is the successor to the original <strong>AMIGO</strong> software developed between <strong>2011 and 2015</strong> as part of a <strong>Double-PhD project</strong>. Initially, AMIGO was created primarily as a research tool for <strong>brachytherapy</strong>, but over the years, the software evolved to include resources for <strong>external beam radiotherapy</strong>, including <strong>photons</strong> and <strong>protons</strong>.</p>
+<p>Despite this growth, the use of the original AMIGO software remained limited to specific <strong>research groups</strong> and <strong>collaborations</strong> — mainly due to the <strong>lack of proper documentation</strong> and several design constraints.</p>
+<hr />
+<h2 id="limitations-of-the-original-amigo-matlab-version">Limitations of the Original AMIGO (MATLAB Version)<a class="headerlink" href="#limitations-of-the-original-amigo-matlab-version" title="Permanent link">&para;</a></h2>
+<p>The initial AMIGO implementation, developed in <strong>MATLAB</strong>, provided valuable functionality but suffered from several important limitations:</p>
+<ul>
+<li><strong>Lack of documentation</strong> → made onboarding new users and contributors difficult.</li>
+<li><strong>Non-modular architecture</strong> → upgrades were hard to manage, and many available tools were hidden from the user.</li>
+<li><strong>MATLAB dependency</strong> → although MATLAB offers powerful scientific tools and a user-friendly language, it is <strong>not free</strong>, limiting access to many potential users.</li>
+<li><strong>Monte Carlo engine licensing</strong> → the software relied heavily on <strong>MCNP</strong>, which also requires a <strong>paid license</strong> for each user, further restricting accessibility.</li>
+</ul>
+<hr />
+<h2 id="introducing-amigopy">Introducing AMIGOpy<a class="headerlink" href="#introducing-amigopy" title="Permanent link">&para;</a></h2>
+<p><strong>AMIGOpy</strong> was created to address these limitations and to significantly expand AMIGO's impact in <strong>research</strong> and <strong>education</strong>.</p>
+<p>Key advantages of AMIGOpy:</p>
+<ul>
+<li><strong>Open-source</strong> → freely available for research, education, and development.</li>
+<li><strong>Python-based</strong> → built using <strong>Python</strong>, an accessible and free programming language widely adopted in the scientific community.</li>
+<li><strong>Extensive documentation</strong> → provides comprehensive guides for both <strong>users</strong> and <strong>developers</strong>.</li>
+<li><strong>Modular architecture</strong> → designed from the ground up for maintainability, making it easier to integrate new features and workflows.</li>
+<li><strong>Flexible Monte Carlo integration</strong> → can be coupled to numerous MC engines, not limited to MCNP, making the platform far more versatile.</li>
+</ul>
+<p>With AMIGOpy, our goal is to <strong>increase accessibility</strong>, <strong>foster collaboration</strong>, and <strong>accelerate innovation</strong> in medical physics research.</p>
+<hr />
 
 
 
