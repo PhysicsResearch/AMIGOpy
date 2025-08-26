@@ -42,20 +42,6 @@ def populate_list_menus(self):
     self.process_list.addItems(operations)
     # You can also connect the selection change event to a function
     self.process_list.currentIndexChanged.connect(lambda index: on_operation_selected(self, index))
-    
-    # CSV explore
-    Separators = [",", ";", "\\t", " ", "|"]
-    # Get the QComboBox by its name
-    self.csv_sep_list = self.findChild(QtWidgets.QComboBox, 'CSVDeli_Sel')
-    # Populate the QComboBox
-    self.csv_sep_list.addItems(Separators)
-    # List of operations
-    operations_csv = ["Swap","Copy","Add Column","Add/Subtract", "Multiply", "Divide","Log","Exp.","Up.Thresh","Lw.Thresh"]
-    # Get the QComboBox by its name
-    self.operation_list_csv = self.findChild(QtWidgets.QComboBox, 'CSV_Oper_Box')
-    # Populate the QComboBox
-    self.operation_list_csv .addItems(operations_csv)
-    
 
     # Breathing curves
     Separators = [",", ";", "\\t", " ", "|"]
