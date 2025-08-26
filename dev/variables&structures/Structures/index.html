@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://www.amigo-medphys.com/dev/variables%26structures/MedicalImage_type/">
+        <link rel="canonical" href="https://www.amigo-medphys.com/dev/variables%26structures/Structures/">
       
       
       
@@ -20,7 +20,7 @@
     
     
       
-        <title>Medical Image Structure in AMIGOpy - AMIGOpy</title>
+        <title>Structures Data Model - AMIGOpy</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#medical-image-structure-in-amigopy" class="md-skip">
+        <a href="#structures-data-model" class="md-skip">
           Skip to content
         </a>
       
@@ -108,7 +108,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Medical Image Structure in AMIGOpy
+              Structures Data Model
             
           </span>
         </div>
@@ -599,143 +599,157 @@
   
 
 
-<h1 id="medical-image-structure-in-amigopy">Medical Image Structure in AMIGOpy<a class="headerlink" href="#medical-image-structure-in-amigopy" title="Permanent link">&para;</a></h1>
-<p>AMIGOpy supports multiple medical image formats and stores both <strong>images</strong> and <strong>metadata</strong> in a unified format.<br />
-Regardless of the original file type (<strong>DICOM</strong>, <strong>NIfTI</strong>, <strong>MHA</strong>, <strong>NRRD</strong>, etc.), <strong>all formats are automatically converted</strong> into this structure to ensure <strong>consistency</strong> across the software to ensure consistent behavior across modules (loading, visualization, segmentation, Monte Carlo simulation, and export).</p>
-<hr />
-<h2 id="supported-planned-formats">✅ Supported &amp; Planned Formats<a class="headerlink" href="#supported-planned-formats" title="Permanent link">&para;</a></h2>
-<p><strong>Core (supported / priority):</strong>
-- 📄 <strong>DICOM</strong> (<code>.dcm</code>) — clinical standard, includes RTDose/RTStruct/RTPlan
-- 🧩 <strong>NIfTI</strong> (<code>.nii</code>, <code>.nii.gz</code>) — compact, common in AI and research</p>
-<p><strong>Planned:</strong>
-- 🧪 <strong>MHA / MHD</strong> (<code>.mha</code>, <code>.mhd</code> + raw) — native to ITK/ANTs pipelines
-- 🧱 <strong>NRRD / NRD</strong> (<code>.nrrd</code>, <code>.nrd</code>) — efficient for volumetric data and masks
-- 🗂 <strong>HDF5</strong> (<code>.h5</code>) — bundles volumes + masks + metadata for AI workflows
-- ⚡ <strong>NPZ / NPY</strong> (<code>.npz</code>, <code>.npy</code>) — fast NumPy storage for preprocessed data</p>
-<blockquote>
-<p>🔁 <strong>All input formats are normalized</strong> into the same internal representation described below.</p>
-</blockquote>
-<hr />
-<h2 id="data-hierarchy">📌 Data Hierarchy<a class="headerlink" href="#data-hierarchy" title="Permanent link">&para;</a></h2>
-<div class="highlight"><span class="filename">Accessing a Series in AMIGOpy</span><pre><span></span><code><span class="bp">self</span><span class="o">.</span><span class="n">medical_image</span><span class="p">[</span><span class="n">patientID</span><span class="p">][</span><span class="n">studyID</span><span class="p">][</span><span class="n">modality</span><span class="p">][</span><span class="n">series_index</span><span class="p">]</span>
+<h1 id="structures-data-model">Structures Data Model<a class="headerlink" href="#structures-data-model" title="Permanent link">&para;</a></h1>
+<p>This document defines the <strong>structure-related keys</strong> stored under a <strong>series entry</strong> in <code>self.medical_image</code>.</p>
+<h2 id="location-in-the-hierarchy">Location in the Hierarchy<a class="headerlink" href="#location-in-the-hierarchy" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="bp">self</span><span class="o">.</span><span class="n">medical_image</span><span class="p">[</span><span class="n">patientID</span><span class="p">][</span><span class="n">studyID</span><span class="p">][</span><span class="n">modality</span><span class="p">][</span><span class="n">series_index</span><span class="p">]</span>
 </code></pre></div>
+<p>Each <code>series_index</code> maps to a <strong>series dictionary</strong> that may contain the keys below.</p>
+<hr />
+<h2 id="key-reference-per-series">Key Reference (per series)<a class="headerlink" href="#key-reference-per-series" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th><strong>Level</strong></th>
-<th><strong>Type</strong></th>
-<th><strong>Description</strong></th>
+<th>Key</th>
+<th>Type</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong><code>patientID</code></strong></td>
-<td><code>dict</code></td>
-<td>Dictionary containing all studies for a given patient</td>
+<td><code>structures</code></td>
+<td><code>dict[str, StructureItem]</code></td>
+<td>Mapping from <strong>structure key</strong> (e.g., <code>Item_1</code>) to a structure payload (see <strong>StructureItem</strong> below). Each item primarily represents a <strong>binary mask</strong> aligned to the series volume, plus cached visualization artifacts.</td>
 </tr>
 <tr>
-<td><strong><code>studyID</code></strong></td>
-<td><code>dict</code></td>
-<td>Dictionary containing modalities available within the study</td>
+<td><code>structures_names</code></td>
+<td><code>list[str]</code></td>
+<td>Display names for structures (can repeat). Index positions correspond one‑to‑one with <code>structures_keys</code>.</td>
 </tr>
 <tr>
-<td><strong><code>modality</code></strong></td>
-<td><code>dict</code></td>
-<td>Dictionary containing imaging modalities <em>(e.g. CT, MR, RTDOSE)</em></td>
+<td><code>structures_keys</code></td>
+<td><code>list[str]</code></td>
+<td>Internal unique keys (<code>Item_1</code>, <code>Item_2</code>, …). Used to index <code>structures</code>. Length equals <code>len(structures_names)</code>.</td>
 </tr>
 <tr>
-<td><strong><code>series_index</code></strong></td>
-<td><code>int</code></td>
-<td>Index into a <strong>list of series dictionaries</strong> under this modality</td>
+<td><code>structures_view</code></td>
+<td><code>list[int]</code> (0 or 1)</td>
+<td>Per‑structure visibility flag used <strong>only by the View tab</strong>. <code>1</code> = show, <code>0</code> = hide. Same length/order as <code>structures_keys</code>.</td>
+</tr>
+<tr>
+<td><code>structures_color</code></td>
+<td><code>list[tuple[int, int, int]]</code> or hex str</td>
+<td>Per‑structure display color (e.g., <code>(r,g,b)</code> in 0–255 or <code>"#RRGGBB"</code>). Same length/order as <code>structures_keys</code>.</td>
+</tr>
+<tr>
+<td><code>structures_line_width</code></td>
+<td><code>list[float]</code></td>
+<td>Per‑structure contour line width (in pixels). Same length/order as <code>structures_keys</code>.</td>
+</tr>
+<tr>
+<td><code>structures_transparency</code></td>
+<td><code>list[float]</code> (0.0–1.0)</td>
+<td>Per‑structure <strong>contour line</strong> transparency. <code>0</code> = opaque, <code>1</code> = fully transparent. Same length/order as <code>structures_keys</code>.</td>
+</tr>
+<tr>
+<td><code>structures_mask_transparency</code></td>
+<td><code>list[float]</code> (0.0–1.0)</td>
+<td>Per‑structure <strong>mask overlay</strong> transparency. <code>0</code> = opaque, <code>1</code> = fully transparent. Same length/order as <code>structures_keys</code>. <em>(Note: key name contains a typo: <code>transparency</code>)</em></td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="series-index-vs-series-dict">📦 Series Index vs Series Dict<a class="headerlink" href="#series-index-vs-series-dict" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong><code>series_index</code></strong> → integer index into the <strong>list of series dictionaries</strong>  </li>
-<li>Each <strong>series_dict</strong> represents one imaging series and contains:</li>
-</ul>
-<h3 id="1-metadata"><strong>1. Metadata</strong><a class="headerlink" href="#1-metadata" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Voxel spacing (<code>PixelSpacing</code>)</li>
-<li>Slice thickness</li>
-<li>Image orientation</li>
-<li>Modality type</li>
-<li>Study and series descriptions</li>
-<li>Original file path and format-specific tags</li>
-<li>...</li>
-</ul>
-<h3 id="2-voxel-data"><strong>2. Voxel Data</strong><a class="headerlink" href="#2-voxel-data" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong><code>3DMatrix</code></strong> → a NumPy 3D array storing the full volumetric dataset</li>
-</ul>
-<h3 id="3-series-add-ons"><strong>3. Series Add-ons</strong><a class="headerlink" href="#3-series-add-ons" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong><code>structures</code></strong> → ROI masks and contours - <a href="../Structures/">Structures within image series</a> </li>
-<li><strong><code>density_maps</code></strong> → HU → density conversions for dose calculation</li>
-<li><strong><code>material_maps</code></strong> → tissue/material assignments for Monte Carlo simulation</li>
-</ul>
 <blockquote>
-<p>💡 For implementation details, see the dedicated sections:<br />
-<strong><a href="../Structures/">Structures</a></strong> · <strong><a href="DensityMaterialMaps.md">Density &amp; Material Maps</a></strong> · <strong><a href="Export.md">Export</a></strong></p>
+<p><strong>Indexing:</strong> The <strong>selected structure</strong> in the UI is determined by the user’s click in the <strong>tree/list widget</strong>. That selection resolves to an <strong>index</strong> <code>i</code>, which is used to read the <code>i</code>‑th entry across <code>structures_*</code> lists and the corresponding <code>structures_keys[i]</code> to access the payload in <code>structures</code>.</p>
 </blockquote>
 <hr />
-<h2 id="coordinate-system-orientation">🧭 Coordinate System &amp; Orientation<a class="headerlink" href="#coordinate-system-orientation" title="Permanent link">&para;</a></h2>
-<p>To guarantee <strong>compatibility</strong> across modules:</p>
-<h3 id="1-normalize-orientation-at-load-time"><strong>1. Normalize orientation at load time</strong><a class="headerlink" href="#1-normalize-orientation-at-load-time" title="Permanent link">&para;</a></h3>
-<p>Reorient volume data into a <strong>single, agreed coordinate convention</strong><br />
-(e.g. patient-based <strong>LPS/RAS</strong> or a fixed axis order).</p>
-<h3 id="2-standardize-voxel-axis-order"><strong>2. Standardize voxel axis order</strong><a class="headerlink" href="#2-standardize-voxel-axis-order" title="Permanent link">&para;</a></h3>
-<p>Choose a canonical <strong>NumPy layout</strong>, for example:</p>
-<h2 id="series-metadata-overview">🗂️ Series Metadata Overview<a class="headerlink" href="#series-metadata-overview" title="Permanent link">&para;</a></h2>
-<p>The internal structure is a nested mapping down to a list of series:</p>
-<div class="highlight"><span class="filename">Build_series_dict example</span><pre><span></span><code><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Build the internal AMIGOpy series dictionary.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    series_number : str | int</span>
-<span class="sd">    spacing : tuple[float, float, float]   # (dx, dy, dz)</span>
-<span class="sd">    origin  : tuple[float, float, float]   # DICOM-style origin</span>
-<span class="sd">    size    : tuple[int, int, int]         # (nx, ny, nz)</span>
-<span class="sd">    vol     : np.ndarray                   # 3D numpy array (standardized orientation)</span>
-<span class="sd">    path    : str</span>
-<span class="sd">    nifti_meta : dict | None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="s1">&#39;SeriesNumber&#39;</span><span class="p">:</span> <span class="n">series_number</span><span class="p">,</span>
-        <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s1">&#39;PixelSpacing&#39;</span><span class="p">:</span> <span class="n">spacing</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">],</span>
-            <span class="s1">&#39;SliceThickness&#39;</span><span class="p">:</span> <span class="n">spacing</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spacing</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span> <span class="k">else</span> <span class="mf">1.0</span><span class="p">,</span>
-            <span class="s1">&#39;ImagePositionPatient&#39;</span><span class="p">:</span> <span class="n">origin</span><span class="p">,</span>
-            <span class="s1">&#39;ImageOrientationPatient&#39;</span><span class="p">:</span> <span class="s2">&quot;N/A&quot;</span><span class="p">,</span>
-            <span class="s1">&#39;RescaleSlope&#39;</span><span class="p">:</span> <span class="s2">&quot;N/A&quot;</span><span class="p">,</span>
-            <span class="s1">&#39;RescaleIntercept&#39;</span><span class="p">:</span> <span class="s2">&quot;N/A&quot;</span><span class="p">,</span>
-            <span class="s1">&#39;WindowWidth&#39;</span><span class="p">:</span> <span class="s2">&quot;N/A&quot;</span><span class="p">,</span>
-            <span class="s1">&#39;WindowCenter&#39;</span><span class="p">:</span> <span class="s2">&quot;N/A&quot;</span><span class="p">,</span>
-            <span class="s1">&#39;SeriesDescription&#39;</span><span class="p">:</span> <span class="n">series_number</span><span class="p">,</span>
-            <span class="s1">&#39;StudyDescription&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;ImageComments&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;DoseGridScaling&#39;</span><span class="p">:</span> <span class="s2">&quot;N/A&quot;</span><span class="p">,</span>
-            <span class="s1">&#39;AcquisitionNumber&#39;</span><span class="p">:</span> <span class="s2">&quot;N/A&quot;</span><span class="p">,</span>
-            <span class="s1">&#39;Modality&#39;</span><span class="p">:</span> <span class="s2">&quot;Medical&quot;</span><span class="p">,</span>
-            <span class="s1">&#39;LUTLabel&#39;</span><span class="p">:</span> <span class="s2">&quot;N/A&quot;</span><span class="p">,</span>
-            <span class="s1">&#39;LUTExplanation&#39;</span><span class="p">:</span> <span class="s2">&quot;N/A&quot;</span><span class="p">,</span>
-            <span class="s1">&#39;size&#39;</span><span class="p">:</span> <span class="n">size</span><span class="p">,</span>
-            <span class="s1">&#39;DataType&#39;</span><span class="p">:</span> <span class="s1">&#39;Nifti&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;DCM_Info&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="s1">&#39;Nifti_info&#39;</span><span class="p">:</span> <span class="n">nifti_meta</span><span class="p">,</span>
-            <span class="s1">&#39;OriginalFilePath&#39;</span><span class="p">:</span> <span class="n">path</span><span class="p">,</span>
-        <span class="p">},</span>
-        <span class="s1">&#39;images&#39;</span><span class="p">:</span> <span class="p">{},</span>
-        <span class="s1">&#39;ImagePositionPatients&#39;</span><span class="p">:</span> <span class="p">[],</span>
-        <span class="s1">&#39;SliceImageComments&#39;</span><span class="p">:</span> <span class="p">{},</span>
-        <span class="s1">&#39;3DMatrix&#39;</span><span class="p">:</span> <span class="n">vol</span><span class="p">,</span>
-        <span class="s1">&#39;AM_name&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="s1">&#39;US_name&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">}</span>
+<h2 id="structureitem-payload"><code>StructureItem</code> payload<a class="headerlink" href="#structureitem-payload" title="Permanent link">&para;</a></h2>
+<p>Each entry in <code>structures</code> (e.g., <code>structures["Item_3"]</code>) is a dictionary with (at least) the following fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mask</code></td>
+<td><code>numpy.ndarray</code> (dtype <code>bool</code>)</td>
+<td>Binary mask <strong>aligned to the image data</strong> for the series. Same shape as the volume (e.g., <code>(Z, Y, X)</code>). Often labelled in code as <code>Mask3D</code> (or similar).</td>
+</tr>
+<tr>
+<td><code>VTKActors2D</code></td>
+<td>implementation-defined</td>
+<td>Cached <strong>VTK actors</strong> built on first display for fast redraws. Created lazily in the View tab.</td>
+</tr>
+<tr>
+<td><code>Contours2D</code></td>
+<td>implementation-defined</td>
+<td>Cached <strong>2D contours</strong> corresponding to the mask, created together with VTK actors.</td>
+</tr>
+<tr>
+<td><code>modified</code></td>
+<td><code>int</code> (0 or 1)</td>
+<td>Marks whether the mask was <strong>edited</strong> via the segmentation module. When <code>1</code>, cached contours/actors must be <strong>regenerated</strong> on next selection in the View tab.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Actual field names may include additional items depending on the importer/processing pipeline. The three shown above are the core visualization/logic hooks.</p>
+</blockquote>
+<hr />
+<h2 id="lifecycle-performance-notes">Lifecycle &amp; Performance Notes<a class="headerlink" href="#lifecycle-performance-notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>First display is lazy:</strong> When a user <strong>first toggles</strong> a structure for viewing, AMIGO creates <code>VTKActors2D</code> and <code>Contours2D</code> <strong>once</strong> (in the View tab) so subsequent redraws are fast.</li>
+<li><strong>Editing vs. contours:</strong> The <strong>Segmentation</strong> module edits only the <strong>mask</strong> for speed. It does <strong>not</strong> directly edit contours/actors. After an edit, the structure’s <code>modified</code> flag is set to <code>1</code>.</li>
+<li><strong>Regeneration trigger:</strong> If <code>modified == 1</code>, AMIGO will <strong>recreate</strong> <code>Contours2D</code> and <code>VTKActors2D</code> the next time the structure is selected for viewing, ensuring the overlays match the updated mask.</li>
+<li>
+<p><strong>Transparency semantics:</strong></p>
+</li>
+<li>
+<p><code>structures_transparency</code> controls <strong>contour line</strong> alpha.</p>
+</li>
+<li><code>structures_mask_transparency</code> controls <strong>overlay fill</strong> alpha. <em>(Key name includes a typo; maintain as-is for compatibility.)</em></li>
+<li><strong>View tab overlays:</strong> The View tab lets users choose between <strong>mask overlays</strong> and <strong>line contours</strong>. Using contours helps when visual inspection of underlying HU/intensity details is important (semi‑transparent fills might obscure features).</li>
+</ul>
+<hr />
+<h2 id="creation-source">Creation &amp; Source<a class="headerlink" href="#creation-source" title="Permanent link">&para;</a></h2>
+<p>The <code>Contours2D</code> and <code>VTKActors2D</code> objects are produced in:</p>
+<div class="highlight"><pre><span></span><code>fcn_RTFiles/process_contours.py
 </code></pre></div>
+<p>(Functions responsible for building contours and VTK actors are defined there.)</p>
+<hr />
+<h2 id="minimal-example">Minimal Example<a class="headerlink" href="#minimal-example" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="n">series</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">medical_image</span><span class="p">[</span><span class="n">pid</span><span class="p">][</span><span class="n">sid</span><span class="p">][</span><span class="n">mod</span><span class="p">][</span><span class="n">series_index</span><span class="p">]</span>
+
+<span class="c1"># Lists indexed by UI selection index i</span>
+<span class="n">series</span><span class="p">[</span><span class="s2">&quot;structures_names&quot;</span><span class="p">]</span>          <span class="c1"># [&quot;PTV&quot;, &quot;Lung_L&quot;, ...]</span>
+<span class="n">series</span><span class="p">[</span><span class="s2">&quot;structures_keys&quot;</span><span class="p">]</span>           <span class="c1"># [&quot;Item_1&quot;, &quot;Item_2&quot;, ...]</span>
+<span class="n">series</span><span class="p">[</span><span class="s2">&quot;structures_view&quot;</span><span class="p">]</span>           <span class="c1"># [1, 0, ...]</span>
+<span class="n">series</span><span class="p">[</span><span class="s2">&quot;structures_color&quot;</span><span class="p">]</span>          <span class="c1"># [(255,0,0), (0,255,0), ...]</span>
+<span class="n">series</span><span class="p">[</span><span class="s2">&quot;structures_line_width&quot;</span><span class="p">]</span>     <span class="c1"># [1.5, 1.5, ...]</span>
+<span class="n">series</span><span class="p">[</span><span class="s2">&quot;structures_transparency&quot;</span><span class="p">]</span>   <span class="c1"># [0.0, 0.3, ...]</span>
+<span class="n">series</span><span class="p">[</span><span class="s2">&quot;structures_mask_transparency&quot;</span><span class="p">]</span> <span class="c1"># [0.6, 0.8, ...]</span>
+
+<span class="c1"># Structure payload accessed via key</span>
+<span class="n">key</span> <span class="o">=</span> <span class="n">series</span><span class="p">[</span><span class="s2">&quot;structures_keys&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>   <span class="c1"># e.g., &quot;Item_2&quot;</span>
+<span class="n">item</span> <span class="o">=</span> <span class="n">series</span><span class="p">[</span><span class="s2">&quot;structures&quot;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span>
+<span class="n">mask3d</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;mask&quot;</span><span class="p">]</span>                 <span class="c1"># bool array (Z,Y,X)</span>
+<span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;modified&quot;</span><span class="p">]:</span>
+    <span class="c1"># trigger rebuild of contours/actors on next view</span>
+    <span class="k">pass</span>
+</code></pre></div>
+<hr />
+<h2 id="invariants-validation">Invariants &amp; Validation<a class="headerlink" href="#invariants-validation" title="Permanent link">&para;</a></h2>
+<ul>
+<li>All <code>structures_*</code> lists share the <strong>same length</strong> and <strong>order</strong>.</li>
+<li>Every entry in <code>structures_keys</code> must exist as a key in <code>structures</code>.</li>
+<li>Each <code>StructureItem.mask</code> must match the <strong>series volume shape</strong>.</li>
+<li><code>structures_view[i]</code> ∈ <code>{0,1}</code>; <code>modified</code> ∈ <code>{0,1}</code>.</li>
+<li>Colors and widths are optional but, when present, must match list lengths.</li>
+</ul>
+<hr />
 
 
 

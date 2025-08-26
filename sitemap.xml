@@ -2,46 +2,50 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://www.amigo-medphys.com/</loc>
-         <lastmod>2025-08-25</lastmod>
+         <lastmod>2025-08-26</lastmod>
     </url>
     <url>
          <loc>https://www.amigo-medphys.com/about/</loc>
-         <lastmod>2025-08-25</lastmod>
+         <lastmod>2025-08-26</lastmod>
     </url>
     <url>
          <loc>https://www.amigo-medphys.com/installation/</loc>
-         <lastmod>2025-08-25</lastmod>
+         <lastmod>2025-08-26</lastmod>
     </url>
     <url>
          <loc>https://www.amigo-medphys.com/references/</loc>
-         <lastmod>2025-08-25</lastmod>
+         <lastmod>2025-08-26</lastmod>
     </url>
     <url>
          <loc>https://www.amigo-medphys.com/DevGuidelines/Docstring/</loc>
-         <lastmod>2025-08-25</lastmod>
+         <lastmod>2025-08-26</lastmod>
     </url>
     <url>
          <loc>https://www.amigo-medphys.com/DevGuidelines/Software-documentation-guidelines/</loc>
-         <lastmod>2025-08-25</lastmod>
+         <lastmod>2025-08-26</lastmod>
     </url>
     <url>
          <loc>https://www.amigo-medphys.com/DevGuidelines/Typing/</loc>
-         <lastmod>2025-08-25</lastmod>
+         <lastmod>2025-08-26</lastmod>
     </url>
     <url>
          <loc>https://www.amigo-medphys.com/dev/changelog/</loc>
-         <lastmod>2025-08-25</lastmod>
+         <lastmod>2025-08-26</lastmod>
     </url>
     <url>
          <loc>https://www.amigo-medphys.com/dev/contributing/</loc>
-         <lastmod>2025-08-25</lastmod>
+         <lastmod>2025-08-26</lastmod>
     </url>
     <url>
          <loc>https://www.amigo-medphys.com/dev/variables%26structures/General_variable_descriptions/</loc>
-         <lastmod>2025-08-25</lastmod>
+         <lastmod>2025-08-26</lastmod>
     </url>
     <url>
          <loc>https://www.amigo-medphys.com/dev/variables%26structures/MedicalImage_type/</loc>
-         <lastmod>2025-08-25</lastmod>
+         <lastmod>2025-08-26</lastmod>
+    </url>
+    <url>
+         <loc>https://www.amigo-medphys.com/dev/variables%26structures/Structures/</loc>
+         <lastmod>2025-08-26</lastmod>
     </url>
 </urlset>
