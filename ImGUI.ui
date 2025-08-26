@@ -7197,255 +7197,6 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tab_27">
-       <attribute name="title">
-        <string>CSV Files</string>
-       </attribute>
-       <layout class="QGridLayout" name="gridLayout_29">
-        <item row="1" column="4">
-         <widget class="QPushButton" name="LoadCSVView">
-          <property name="font">
-           <font>
-            <pointsize>10</pointsize>
-            <weight>75</weight>
-            <bold>true</bold>
-           </font>
-          </property>
-          <property name="text">
-           <string>Load File</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="4">
-         <widget class="QLineEdit" name="lineEdit_14">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="font">
-           <font>
-            <pointsize>10</pointsize>
-           </font>
-          </property>
-          <property name="text">
-           <string>X - Axes</string>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="1" colspan="2">
-         <widget class="QLineEdit" name="gcode_f_name">
-          <property name="text">
-           <string>GCODE_FILE_Name</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="7" colspan="3">
-         <widget class="QComboBox" name="CSVDeli_Sel"/>
-        </item>
-        <item row="2" column="1">
-         <widget class="QDoubleSpinBox" name="CSV_Oper_Value">
-          <property name="minimum">
-           <double>-9999999999.000000000000000</double>
-          </property>
-          <property name="maximum">
-           <double>99990000.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="7" colspan="2">
-         <widget class="QPushButton" name="PlotCSVView">
-          <property name="font">
-           <font>
-            <pointsize>10</pointsize>
-            <weight>75</weight>
-            <bold>true</bold>
-           </font>
-          </property>
-          <property name="text">
-           <string>Plot</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="4">
-         <widget class="QLineEdit" name="lineEdit_16">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="font">
-           <font>
-            <pointsize>10</pointsize>
-           </font>
-          </property>
-          <property name="text">
-           <string>Lines to skip</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1" colspan="2">
-         <widget class="Line" name="line_24">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="9">
-         <widget class="QCheckBox" name="cvs_add_plot">
-          <property name="text">
-           <string>Hold Plot</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QPushButton" name="exp_csv_2_gcode">
-          <property name="font">
-           <font>
-            <pointsize>10</pointsize>
-           </font>
-          </property>
-          <property name="text">
-           <string>Exp. GCODE</string>
-          </property>
-         </widget>
-        </item>
-        <item row="8" column="5">
-         <spacer name="verticalSpacer_5">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="2" column="8">
-         <widget class="QLineEdit" name="lineEdit_17">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="font">
-           <font>
-            <pointsize>10</pointsize>
-           </font>
-          </property>
-          <property name="text">
-           <string>Header line</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="7" colspan="3">
-         <widget class="QComboBox" name="CSV_X_plot"/>
-        </item>
-        <item row="0" column="0" colspan="8">
-         <widget class="QTableWidget" name="csvTable"/>
-        </item>
-        <item row="1" column="1" colspan="2">
-         <widget class="QComboBox" name="CSV_Oper_Box"/>
-        </item>
-        <item row="2" column="7">
-         <widget class="QSpinBox" name="CSVLineSkip"/>
-        </item>
-        <item row="3" column="4">
-         <widget class="QLineEdit" name="lineEdit_13">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="font">
-           <font>
-            <pointsize>10</pointsize>
-           </font>
-          </property>
-          <property name="text">
-           <string>Delimitation</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="3" rowspan="6">
-         <widget class="Line" name="line_23">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="9">
-         <widget class="QSpinBox" name="CSVLinHeader"/>
-        </item>
-        <item row="2" column="2">
-         <widget class="QPushButton" name="CSV_Oper_Apply">
-          <property name="font">
-           <font>
-            <pointsize>10</pointsize>
-           </font>
-          </property>
-          <property name="text">
-           <string>Apply</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="2">
-         <widget class="QSpinBox" name="gcode_col">
-          <property name="minimum">
-           <number>2</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="8" colspan="2">
-         <widget class="QTextEdit" name="CSVViewText">
-          <property name="font">
-           <font>
-            <pointsize>12</pointsize>
-           </font>
-          </property>
-          <property name="html">
-           <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:12pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:7.8pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-         </widget>
-        </item>
-        <item row="7" column="4" rowspan="2" colspan="6">
-         <widget class="QWidget" name="CVS_Ax_View" native="true"/>
-        </item>
-        <item row="5" column="1">
-         <widget class="QLineEdit" name="lineEdit_4">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="text">
-           <string>Cycles</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="2">
-         <widget class="QSpinBox" name="gcode_cycles">
-          <property name="minimum">
-           <number>1</number>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="4">
-         <widget class="QLineEdit" name="lineEdit_15">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="font">
-           <font>
-            <pointsize>10</pointsize>
-           </font>
-          </property>
-          <property name="text">
-           <string>Y - Axes</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="7" colspan="3">
-         <widget class="QComboBox" name="CSV_Y_plot"/>
-        </item>
-       </layout>
-      </widget>
       <widget class="QWidget" name="tab_BrCv">
        <attribute name="title">
         <string>Breathing curves</string>
@@ -8650,8 +8401,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>443</width>
-             <height>329</height>
+             <width>172</width>
+             <height>127</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8792,8 +8543,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>165</width>
-             <height>99</height>
+             <width>141</width>
+             <height>97</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8859,8 +8610,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>443</width>
-             <height>329</height>
+             <width>222</width>
+             <height>147</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8998,8 +8749,8 @@ p, li { white-space: pre-wrap; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>206</width>
-             <height>147</height>
+             <width>174</width>
+             <height>135</height>
             </rect>
            </property>
            <attribute name="label">

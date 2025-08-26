@@ -7,7 +7,6 @@ from fcn_init.vtk_comparison_axes     import create_vtk_elements_comp
 from fcn_IrIS.FindDwell_IrIS import add_row_dw_table, remove_row_dw_table
 from fcn_processing.Im_process_list import image_processing_undo, run_image_processing
 from fcn_processing.split_dcm_series import shift_and_split_3D_matrix
-from fcn_csv_explorer.general_functions_csv_exp import openCSVFile_exp,plotCSV_ViewData, CSV_apply_oper,exp_csv2_gcode
 from fcn_processing.roi_circle import (toggle_rois, roi_c_add_row, roi_c_remove_row, export_roi_circ_table_to_csv, import_roi_circ_table, 
                                        c_roi_getdata, export_roi_circ_values_to_csv)
 from fcn_IrIS.Load_CorrectionFrames import load_offset_IrIS, load_CorrectionFrame_IrIS
@@ -119,16 +118,6 @@ def initialize_software_buttons(self):
     self.IrIS_Load_Offset.setStyleSheet("background-color: red; color: white;")
     self.IrIS_Load_CorrectionFrame.clicked.connect(lambda: load_CorrectionFrame_IrIS(self))
     self.IrIS_Load_CorrectionFrame.setStyleSheet("background-color: red; color: white;")
-    
-    # CSV explore
-    self.LoadCSVView.clicked.connect(lambda: openCSVFile_exp(self))
-    self.LoadCSVView.setStyleSheet("background-color: green; color: white;")
-    self.PlotCSVView.clicked.connect(lambda: plotCSV_ViewData(self))
-    self.PlotCSVView.setStyleSheet("background-color: blue; color: white;")
-    self.CSV_Oper_Apply.clicked.connect(lambda: CSV_apply_oper(self))
-    self.CSV_Oper_Apply.setStyleSheet("background-color: blue; color: white;")
-    self.exp_csv_2_gcode.clicked.connect(lambda: exp_csv2_gcode(self))
-    self.exp_csv_2_gcode.setStyleSheet("background-color: blue; color: white;")
     
     #  create vtk comp axes -buttom
     self.but_create_comp_axes.clicked.connect(lambda: create_vtk_elements_comp(self))
