@@ -5,8 +5,11 @@ This approach ensures that the particularities of each supported format are **ab
 
 The two main categories currently supported are:
 
-- [Medical Images](#medical-images) Detailed info - [Medical Image Structure in AMIGOpy](dev/variables&structure/Medicalimage_type.md)
-- [3D Objects](#3d-objects)
+- Medical Images -  Detailed info - [Medical Image Structure in AMIGOpy](MedicalImage_type.md)
+    Sub-items
+                 -  [Structures within image series](Structures.md) 
+                 
+- 3D Objects 
 
 Each category is briefly described below with more details about python structure in category-specific pages.
 
@@ -43,7 +46,7 @@ These files are grouped under the **`3d_objects`** category, ensuring consistent
 
 ---
 
-## **Supported Extensions**
+### **Supported Extensions**
 
 | Format | Extensions | Description                                                      |
 |--------|-----------|------------------------------------------------------------------|
@@ -53,7 +56,7 @@ These files are grouped under the **`3d_objects`** category, ensuring consistent
 
 ---
 
-## **Internal Representation**
+### **Internal Representation**
 
 All loaded 3D object data is stored within the variable:
 

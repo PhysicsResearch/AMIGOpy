@@ -39,12 +39,16 @@ theme:
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Usage:
-      - GUI: usage/gui.md
-      - API: usage/api.md
   - Development: 
-      - Guidlines: DevGuidelines/Software-documentation-guidelines.md
-      - Variables & Structures: dev/variables&structures/General_variable_descriptions.md
+      - Guidelines: DevGuidelines/Software-documentation-guidelines.md
+      - Variables & Structures: 
+        - Overview: dev/variables&structures/General_variable_descriptions.md
+        - Medical Images: 
+          - Image series: dev/variables&structures/MedicalImage_type.md
+          - Structures: dev/variables&structures/Structures.md
+  - About: dev/about.md
+  - Publications: dev/references.md
+
 markdown_extensions:
   - admonition
   - toc:
