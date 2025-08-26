@@ -7,6 +7,7 @@ from fcn_processing.denoise_methods import (apply_gaussian_filter, apply_median_
 
 from fcn_processing.cv_norm_methods import normalize_image
 from fcn_display.display_images     import displayaxial, displaycoronal, displaysagittal
+from PyQt5.QtWidgets import QMessageBox
 
 def on_operation_selected(self, index):
     # Dictionary mapping operations to their descriptions
@@ -451,6 +452,9 @@ def on_operation_selected(self, index):
         
 def run_image_processing(self):
     idx = self.layer_selection_box.currentIndex()
+    if idx not in self.display_data:
+        QMessageBox.warning(None, "Warning", "No image data was found.")
+        return
     self.display_data_undo = self.display_data[idx].copy()
     #
     if     self.process_list.currentText()== "Invert Image":

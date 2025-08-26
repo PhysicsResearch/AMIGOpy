@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QProgressDialog
+from PyQt5.QtWidgets import QProgressDialog, QMessageBox
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
 import vtk
@@ -14,6 +14,10 @@ def displayaxial(self, Im = None):
         len(self.display_data) == 0):
         return   
     idx = self.layer_selection_box.currentIndex()
+
+    if idx not in self.display_data:
+        QMessageBox.warning(None, "Warning", "No image data was found.")
+        return
     #
     for i in range(len(self.dataImporterAxial)):
 
@@ -672,7 +676,11 @@ def displaycoronal(self, Im = None):
         len(self.display_data) == 0):
         return   
     idx = self.layer_selection_box.currentIndex()
-    if self.display_data[idx].ndim==2:
+
+    if idx not in self.display_data:
+        QMessageBox.warning(None, "Warning", "No image data was found.")
+        return
+    if not isinstance(self.display_data[idx], np.ndarray) or self.display_data[idx].ndim==2:
         return
     for i in range(len(self.dataImporterCoronal)):
         # Add or update circular ROIs in the 4th layer
@@ -1335,9 +1343,6 @@ def display_brachy_channel_overlay_co(self):
 
 
 
-
-
-
 def displaysagittal(self,Im = None):
 
     # ------------------------------------------------------------------
@@ -1346,10 +1351,12 @@ def displaysagittal(self,Im = None):
         len(self.display_data) == 0):
         return                    # nothing loaded → ignore the call
 
-
-    
     idx = self.layer_selection_box.currentIndex()
-    if self.display_data[idx].ndim==2:
+    if idx not in self.display_data:
+        QMessageBox.warning(None, "Warning", "No image data was found.")
+        return
+
+    if not isinstance(self.display_data[idx], np.ndarray) or self.display_data[idx].ndim==2:
         return
     for i in range(len(self.dataImporterSagittal)):
         
