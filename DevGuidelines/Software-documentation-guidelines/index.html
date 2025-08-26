@@ -285,7 +285,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../dev/about.md" class="md-tabs__link">
+      <a href="../../about/" class="md-tabs__link">
         
   
   
@@ -304,7 +304,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../dev/references.md" class="md-tabs__link">
+      <a href="../../references/" class="md-tabs__link">
         
   
   
@@ -472,19 +472,6 @@
         
       
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Guidelines
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -496,70 +483,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-general-principles" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. General Principles
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-example-function-with-full-docstring" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Example Function with Full Docstring
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-typing-examples-python-311-syntax" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Typing Examples (Python 3.11 syntax)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-docstring-template-numpy-style" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. Docstring Template (NumPy style)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-common-pitfalls" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. Common Pitfalls
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
       
     </li>
   
@@ -758,7 +681,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/about.md" class="md-nav__link">
+      <a href="../../about/" class="md-nav__link">
         
   
   
@@ -780,7 +703,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/references.md" class="md-nav__link">
+      <a href="../../references/" class="md-nav__link">
         
   
   
@@ -818,7 +741,7 @@
 <p>This page defines the conventions for writing <strong>docstrings</strong> (see <a href="../Docstring/">Docstring Guidelines</a>) and using <strong>type hints</strong> (see <a href="../Typing/">Typing Guidelines</a>) in this project.
 We follow <strong>NumPy-style docstrings</strong> and use <strong>Python type hints</strong> as the single source of truth for parameter and return types. Target runtime: <strong>Python ≥ 3.11</strong>.</p>
 <hr />
-<h2 id="1-general-principles">1. General Principles<a class="headerlink" href="#1-general-principles" title="Permanent link">&para;</a></h2>
+<h1 id="1-general-principles">1. General Principles<a class="headerlink" href="#1-general-principles" title="Permanent link">&para;</a></h1>
 <ul>
 <li><strong>Always use Python type hints</strong> → types live in the <strong>function signature</strong>, not duplicated in the docstring.</li>
 <li>
@@ -835,7 +758,7 @@ We follow <strong>NumPy-style docstrings</strong> and use <strong>Python type hi
 <li>Use <strong>NumPy-style</strong> sections for readability and doc tool compatibility.</li>
 </ul>
 <hr />
-<h2 id="2-example-function-with-full-docstring">2. Example Function with Full Docstring<a class="headerlink" href="#2-example-function-with-full-docstring" title="Permanent link">&para;</a></h2>
+<h1 id="2-example-function-with-full-docstring">2. Example Function with Full Docstring<a class="headerlink" href="#2-example-function-with-full-docstring" title="Permanent link">&para;</a></h1>
 <p>Below is an example that demonstrates the <strong>recommended style</strong> for docstrings and type hints in this project. It shows how to document <strong>parameters</strong>, <strong>returns</strong>, <strong>modifications</strong>, <strong>calls</strong>, and <strong>exceptions</strong>.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Final</span>
@@ -890,7 +813,7 @@ We follow <strong>NumPy-style docstrings</strong> and use <strong>Python type hi
     <span class="k">pass</span>
 </code></pre></div>
 <hr />
-<h2 id="3-typing-examples-python-311-syntax">3. Typing Examples (Python 3.11 syntax)<a class="headerlink" href="#3-typing-examples-python-311-syntax" title="Permanent link">&para;</a></h2>
+<h1 id="3-typing-examples-python-311-syntax">3. Typing Examples (Python 3.11 syntax)<a class="headerlink" href="#3-typing-examples-python-311-syntax" title="Permanent link">&para;</a></h1>
 <p>Use <strong>modern forms</strong> (<code>|</code> unions, built‑in generics) and concrete library types.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">SimpleITK</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sitk</span>
@@ -921,7 +844,7 @@ We follow <strong>NumPy-style docstrings</strong> and use <strong>Python type hi
 <p><strong>Tip:</strong> For arrays, prefer <code>numpy.typing.NDArray</code> with explicit dtypes, e.g. <code>npt.NDArray[np.float32]</code>.</p>
 </blockquote>
 <hr />
-<h2 id="4-docstring-template-numpy-style">4. Docstring Template (NumPy style)<a class="headerlink" href="#4-docstring-template-numpy-style" title="Permanent link">&para;</a></h2>
+<h1 id="4-docstring-template-numpy-style">4. Docstring Template (NumPy style)<a class="headerlink" href="#4-docstring-template-numpy-style" title="Permanent link">&para;</a></h1>
 <p>Copy this template when adding new functions.</p>
 <div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">function_name</span><span class="p">(</span><span class="n">param1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">param2</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -961,7 +884,7 @@ We follow <strong>NumPy-style docstrings</strong> and use <strong>Python type hi
     <span class="o">...</span>
 </code></pre></div>
 <hr />
-<h2 id="5-common-pitfalls">5. Common Pitfalls<a class="headerlink" href="#5-common-pitfalls" title="Permanent link">&para;</a></h2>
+<h1 id="5-common-pitfalls">5. Common Pitfalls<a class="headerlink" href="#5-common-pitfalls" title="Permanent link">&para;</a></h1>
 <ul>
 <li><strong>Don’t duplicate types in the docstring</strong> — keep them in the signature.</li>
 <li><strong>Document shapes and units</strong> (e.g., <code>(z, y, x)</code>, <code>mm</code>, <code>Gy</code>) in the docstring text.</li>
