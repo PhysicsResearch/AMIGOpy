@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QProgressDialog
+from PyQt5.QtWidgets import QProgressDialog, QMessageBox
+from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
 import vtk
 import numpy as np
@@ -13,6 +14,10 @@ def displayaxial(self, Im = None):
         len(self.display_data) == 0):
         return   
     idx = self.layer_selection_box.currentIndex()
+
+    if idx not in self.display_data:
+        QMessageBox.warning(None, "Warning", "No image data was found.")
+        return
     #
     for i in range(len(self.dataImporterAxial)):
 
@@ -25,15 +30,17 @@ def displayaxial(self, Im = None):
                 # self.vtkWidgetAxial.GetRenderWindow().Render() 
                 disp_roi_axial(self)
         if i == 3 and  self.display_dw_overlay.isChecked():
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 display_dwell_positions_ax(self)
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 display_brachy_channel_overlay_ax(self)
-        if i == 3 and self.DataType == "DICOM":
-            # Check if the required fields exist in dicom_data
+        if i == 3 and self.DataType in ("DICOM", "Nifti"):
+            # Check if the required fields exist in medical_image
                 # First, clear previous overlays explicitly
+                _update_axial_mask_overlay(self)
                 disp_structure_overlay_axial(self)
+                
 
   
         if self.slice_thick[i] ==0:
@@ -88,19 +95,14 @@ def displayaxial(self, Im = None):
         self.vtkWidgetCoronal.GetRenderWindow().Render()
         self.sliceChanged.emit("axial", self.current_axial_slice_index)
 
+
 def disp_structure_overlay_axial(self):
     """
-    Show checked structures on the axial renderer.
-
-    • If VTK actors are already cached under
-      structure_data['VTKActors2D']['axial'], reuse them.
-
-    • If *only* Contours2D are present (freshly loaded bundle),
-      lazily convert those contours → vtkActors and cache them,
-      so next call is instant.
-
-    The bundle itself stays pickle-safe because actors are never stored
-    back to disk.
+    Show selected structures (structures_view==1) on the axial renderer.
+    Uses saved per-structure appearance:
+      - structures_color        -> hex "#rrggbb"
+      - structures_line_width   -> float
+      - structures_transparency -> float in [0,1]
     """
     renderer = (
         self.vtkWidgetAxial.GetRenderWindow()
@@ -115,39 +117,73 @@ def disp_structure_overlay_axial(self):
 
     # ─── grab data for the currently displayed image series ───────────
     series_dict = (
-        self.dicom_data[self.patientID][self.studyID]
+        self.medical_image[self.patientID][self.studyID]
                        [self.modality][self.series_index]
     )
     if not series_dict.get("structures"):
-        return                              # nothing to draw yet
+        return  # nothing to draw yet
 
-    slice_idx = self.current_axial_slice_index[0]     # current Z
+    slice_idx = self.current_axial_slice_index[0]  # current Z
 
-    # pixel spacing (row, col)  →  (y, x) in mm
+    # pixel spacing (row, col) → (y, x) in mm
     px_spacing = (self.pixel_spac[0, 1], self.pixel_spac[0, 0])
 
-    # ─── WARNDLG SETUP ──────────────────────────────────────────────
-    warn_dlg = None
-    for i in range(self.STRUCTlist.count()):
-        item_widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
-        if not item_widget.checkbox.isChecked():
-            continue                      # structure not selected
+    names = series_dict.get('structures_names', [])
+    keys  = series_dict.get('structures_keys', [])
+    view  = series_dict.get('structures_view', [0]*len(names))
 
-        s_key = getattr(item_widget, "structure_key", None)
-        if s_key is None:
+    # keep arrays aligned; avoid IndexError
+    n = min(len(view), len(keys), len(names))
+
+    # Saved appearance with safe defaults
+    def _align(arr, default):
+        arr = arr if isinstance(arr, list) else []
+        if len(arr) < n:
+            arr = arr + [default] * (n - len(arr))
+        else:
+            arr = arr[:n]
+        return arr
+
+    colors_hex   = _align(series_dict.get('structures_color'),        "#ffffff")
+    line_widths  = _align(series_dict.get('structures_line_width'),   2.0)
+    transpars    = _align(series_dict.get('structures_transparency'), 0.1)
+
+    def _hex_to_rgbf(h):
+        try:
+            s = (h or "").strip()
+            if s.startswith("#"):
+                s = s[1:]
+            if len(s) == 3:  # e.g. "abc" → "aabbcc"
+                s = "".join(c*2 for c in s)
+            r = int(s[0:2], 16) / 255.0
+            g = int(s[2:4], 16) / 255.0
+            b = int(s[4:6], 16) / 255.0
+            return (r, g, b)
+        except Exception:
+            return (1.0, 1.0, 1.0)
+
+    warn_dlg = None
+
+    # ─── main loop over selected structures ───────────────────────────
+    for i in range(n):
+        if view[i] != 1:
             continue
 
-        s_data = series_dict["structures"].get(s_key, {})
+        s_key = keys[i]
+        if not s_key:
+            continue
+
+        s_data = series_dict.get("structures", {}).get(s_key, {})
         if not s_data:
-            return
-        # ── 1) make sure axial actors exist  if not create all ──────────────────────────
-        if 'Contours2D' not in s_data:
-            s_data['Contours2D'] = {'axial':{}, 'sagittal':{}, 'coronal':{}},
-        if not s_data['Contours2D']:
-            return
-        
+            continue
+
+
+        # Ensure contour containers exist
+        if 'Contours2D' not in s_data or not isinstance(s_data['Contours2D'], dict):
+            s_data['Contours2D'] = {'axial': {}, 'sagittal': {}, 'coronal': {}}
+
+        # First-time creation of actors dict
         if "VTKActors2D" not in s_data:
-            # show the warn dialog once
             if warn_dlg is None:
                 warn_dlg = QProgressDialog(
                     "Pre-loading contours… it may take a few seconds",
@@ -160,52 +196,200 @@ def disp_structure_overlay_axial(self):
                 warn_dlg.show()
             s_data["VTKActors2D"] = {}
 
-        if not s_data['Contours2D']['axial'] or s_data['Modified'] == 1:          # still empty?
+        # Build contours if missing or marked modified
+        if not s_data['Contours2D'].get('axial') or s_data.get('Modified', 0) == 1:
             s_data['Contours2D'] = build_contours_for_structure(s_data['Mask3D'])
 
-        if "axial" not in s_data["VTKActors2D"] or s_data['Modified'] == 1:
-            # build once, cache forever (in RAM only)
+        # Rebuild actors (axial) if missing or modified
+        if "axial" not in s_data["VTKActors2D"] or s_data.get('Modified', 0) == 1:
             contours_axial = s_data.get("Contours2D", {}).get("axial", {})
             s_data["VTKActors2D"]["axial"] = actors_from_contours(
-                contours_axial, px_spacing,
-                line_width=item_widget.line_width_spinbox.value(),
-                color=item_widget.selectedColor.getRgbF()[:3]
-                      if item_widget.selectedColor else (1, 0, 0),
+                contours_axial,
+                px_spacing,
+                line_width=float(line_widths[i]),
+                color=_hex_to_rgbf(colors_hex[i]),
             )
 
+        if s_data.get('Modified', 0) == 1:
+            s_data['Modified'] = 0  # reset modified flag
+
         actors_dict = s_data["VTKActors2D"]["axial"]
-
-        if s_data['Modified'] == 1:
-            s_data['Modified'] = 0          # reset modified flag
-
         if slice_idx not in actors_dict:
-            continue                          # no contour on this slice
+            continue  # no contour on this slice
 
         src_actor = actors_dict[slice_idx]
 
-        # ── 2) customise appearance per-widget (colour, opacity …) ───
+        # ── customise appearance from saved arrays ────────────────────
         actor = vtk.vtkActor()
         actor.ShallowCopy(src_actor)
-        actor.GetProperty().SetColor(
-            item_widget.selectedColor.getRgbF()[:3]
-            if item_widget.selectedColor else (1, 1, 1)
-        )
-        actor.GetProperty().SetOpacity(1 - item_widget.transparency_spinbox.value())
-        actor.GetProperty().SetLineWidth(item_widget.line_width_spinbox.value())
+        actor.GetProperty().SetColor(_hex_to_rgbf(colors_hex[i]))
+        actor.GetProperty().SetOpacity(1.0 - float(transpars[i]))       # 0→opaque,1→transparent in UI
+        actor.GetProperty().SetLineWidth(float(line_widths[i]))
         actor.GetProperty().SetRepresentationToWireframe()
 
-        # move a little above the image plane so contours are visible
+        # Lift above the image plane so contours are visible
         actor.SetPosition(self.Im_Offset[0, 0],
                           self.Im_Offset[0, 1],
-                          2000)
+                          _overlay_epsilon(self))
 
         renderer.AddActor(actor)
         self.structure_actors_ax.append(actor)
+
     # ─── CLOSE THE WARNDLG ──────────────────────────────────────────
     if warn_dlg is not None and warn_dlg.isVisible():
         warn_dlg.close()
+
+    renderer.ResetCameraClippingRange()
     self.vtkWidgetAxial.GetRenderWindow().Render()
 
+def _overlay_epsilon(self):
+    # small positive offset (mm) so wireframe floats above the slice
+    try:
+        st = float(self.slice_thick[0]) if self.slice_thick is not None else 1.0
+    except Exception:
+        st = 1.0
+    return max(0.1, 0.05 * (st if st > 0 else 1.0))
+
+
+def _ensure_axial_mask_overlay(self):
+    if hasattr(self, "maskOverlayImporterAxial"):
+        return
+
+    self.maskOverlayImporterAxial = vtk.vtkImageImport()
+    self.maskOverlayImporterAxial.SetDataScalarTypeToUnsignedChar()
+    self.maskOverlayImporterAxial.SetNumberOfScalarComponents(4)  # RGBA
+
+    # 🔧 CRITICAL: match base axial spacing (x = col, y = row)
+    self.maskOverlayImporterAxial.SetDataSpacing(self.pixel_spac[0,1], self.pixel_spac[0,0], 1.0)
+    self.maskOverlayImporterAxial.SetDataOrigin(0.0, 0.0, 0.0)
+
+    self.maskOverlayActorAxial = vtk.vtkImageActor()
+    self.maskOverlayActorAxial.GetMapper().SetInputConnection(
+        self.maskOverlayImporterAxial.GetOutputPort()
+    )
+    self.maskOverlayActorAxial.InterpolateOff()
+    self.maskOverlayActorAxial.SetPickable(False)
+
+    # Position is handled in _update_axial_mask_overlay each frame
+    renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    renderer.AddActor(self.maskOverlayActorAxial)
+
+def _to_rgbf(color):
+    """(r,g,b) in [0,1] from '#hex', '#rgb', QColor, or tuple/list."""
+    if isinstance(color, QColor):
+        r, g, b, _ = color.getRgbF()
+        return r, g, b
+    if isinstance(color, (tuple, list)) and len(color) >= 3:
+        r, g, b = color[:3]
+        if max(r, g, b) > 1.0:  # 0-255 input
+            return float(r)/255.0, float(g)/255.0, float(b)/255.0
+        return float(r), float(g), float(b)
+    if isinstance(color, str):
+        s = color.strip()
+        if s.startswith("#"):
+            s = s[1:]
+        if len(s) == 3:
+            s = "".join(c*2 for c in s)
+        try:
+            return int(s[0:2],16)/255.0, int(s[2:4],16)/255.0, int(s[4:6],16)/255.0
+        except Exception:
+            pass
+    return 1.0, 0.0, 0.0
+
+def _build_axial_mask_rgba(self):
+    # base geometry from layer 0 axial slice
+    z = int(self.current_axial_slice_index[0])
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0 or
+        self.display_data[0].ndim < 2):
+        return None
+
+    if self.display_data[0].ndim == 2:
+        h, w = self.display_data[0].shape
+    else:
+        h, w = self.display_data[0].shape[1], self.display_data[0].shape[2]
+
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+
+    series = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
+    if not series.get("structures"):
+        return rgba
+
+    names  = series.get('structures_names', [])
+    keys   = series.get('structures_keys', [])
+    view   = series.get('structures_view', [0]*len(names))
+    colors = series.get('structures_color', ["#ff0000"]*len(names))
+    widths = series.get('structures_line_width', [2.0]*len(names))      # not used here
+    trans  = series.get('structures_transparency', [0.1]*len(names))    # 0→opaque, 1→transparent
+    mtr    = series.get('structures_mask_transparency', [1.0]*len(names))  # NEW
+
+    n = min(len(names), len(keys), len(view), len(colors), len(mtr))
+    if n == 0:
+        return rgba
+
+    layer_opacity = 1.0  # keep as your global multiplier if needed
+
+    for i in range(n):
+        if view[i] != 1:      # ← gate by checkbox
+            continue
+        s_key = keys[i]
+        sdat = series["structures"].get(s_key, {})
+        mask3d = sdat.get("Mask3D")
+        if mask3d is None or z < 0 or z >= mask3d.shape[0]:
+            continue
+
+        # skip if mask transparency is 1.0 (fully hidden)
+        mt = float(mtr[i])
+        if mt >= 0.999:     # small epsilon to avoid flicker
+            continue
+
+        mask2d = mask3d[z, :, :] > 0
+        if not np.any(mask2d):
+            continue
+
+        # color from the contour color
+        r, g, b = _to_rgbf(colors[i])
+        a = np.clip(layer_opacity * (1.0 - mt), 0.0, 0.99)
+
+        R = int(r * 255); G = int(g * 255); B = int(b * 255); A = int(a * 255)
+        m = mask2d
+        rgba[m, 0] = np.maximum(rgba[m, 0], R)
+        rgba[m, 1] = np.maximum(rgba[m, 1], G)
+        rgba[m, 2] = np.maximum(rgba[m, 2], B)
+        rgba[m, 3] = np.maximum(rgba[m, 3], A)
+
+    return rgba
+
+def _update_axial_mask_overlay(self):
+    _ensure_axial_mask_overlay(self)
+    rgba = _build_axial_mask_rgba(self)
+    if rgba is None:
+        self.maskOverlayActorAxial.GetProperty().SetOpacity(0.0)
+        return
+
+    h, w, _ = rgba.shape
+    data = rgba.tobytes()
+
+    imp = self.maskOverlayImporterAxial
+    # 🔧 Keep spacing synced in case series/layer changed
+    imp.SetDataSpacing(self.pixel_spac[0,1], self.pixel_spac[0,0], 1.0)
+    imp.SetDataOrigin(0.0, 0.0, 0.0)
+
+    imp.CopyImportVoidPointer(data, len(data))
+    imp.SetWholeExtent(0, w-1, 0, h-1, 0, 0)
+    imp.SetDataExtent (0, w-1, 0, h-1, 0, 0)
+    imp.SetNumberOfScalarComponents(4)
+    imp.SetDataScalarTypeToUnsignedChar()
+    imp.Modified()
+
+    # 🔧 EXACTLY match layer-0 image position
+    self.maskOverlayActorAxial.SetPosition(
+        self.Im_Offset[0, 0],
+        self.Im_Offset[0, 1],
+        _overlay_epsilon(self) * 0.5
+    )
+    self.maskOverlayActorAxial.SetOpacity(1.0)
 
 def disp_roi_axial(self):
     for row in range(self.table_circ_roi.rowCount()):
@@ -298,7 +482,7 @@ def display_dwell_positions_ax(self):
     self.dwell_actors_ax.clear()
 
     try:
-        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+        meta = (self.medical_image[self.patientID][self.studyID]          # may raise KeyError
                                 [self.modality][self.series_index]
                                 ['metadata'])
         channels = meta.get('Plan_Brachy_Channels')
@@ -392,9 +576,9 @@ def display_brachy_channel_overlay_ax(self):
         renderer.RemoveActor(actor)
     self.channel_actors_ax.clear()
 
-    # Retrieve channels from dicom_data
+    # Retrieve channels from medical_image
     try:
-        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+        meta = (self.medical_image[self.patientID][self.studyID]          # may raise KeyError
                                 [self.modality][self.series_index]
                                 ['metadata'])
         channels = meta.get('Plan_Brachy_Channels')
@@ -492,7 +676,11 @@ def displaycoronal(self, Im = None):
         len(self.display_data) == 0):
         return   
     idx = self.layer_selection_box.currentIndex()
-    if self.display_data[idx].ndim==2:
+
+    if idx not in self.display_data:
+        QMessageBox.warning(None, "Warning", "No image data was found.")
+        return
+    if not isinstance(self.display_data[idx], np.ndarray) or self.display_data[idx].ndim==2:
         return
     for i in range(len(self.dataImporterCoronal)):
         # Add or update circular ROIs in the 4th layer
@@ -504,12 +692,13 @@ def displaycoronal(self, Im = None):
             # self.vtkWidgetAxial.GetRenderWindow().Render() 
             disp_roi_coronal(self)
         if i == 3 and  self.display_dw_overlay.isChecked():
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 display_dwell_positions_co(self)
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 display_brachy_channel_overlay_co(self)
-        if i == 3 and self.DataType == "DICOM":
+        if i == 3 and self.DataType in ("DICOM", "Nifti"):
+                _update_coronal_mask_overlay(self)
                 disp_structure_overlay_coronal(self)
 
         if self.slice_thick[i] ==0:
@@ -564,15 +753,151 @@ def displaycoronal(self, Im = None):
     self.vtkWidgetAxial.GetRenderWindow().Render()
     self.sliceChanged.emit("coronal", self.current_coronal_slice_index)
 
+
+
+def _ensure_coronal_mask_overlay(self):
+    if hasattr(self, "maskOverlayImporterCoronal"):
+        return
+    self.maskOverlayImporterCoronal = vtk.vtkImageImport()
+    self.maskOverlayImporterCoronal.SetDataScalarTypeToUnsignedChar()
+    self.maskOverlayImporterCoronal.SetNumberOfScalarComponents(4)  # RGBA
+    # (col=x, row=z)
+    self.maskOverlayImporterCoronal.SetDataSpacing(self.pixel_spac[0,1], self.slice_thick[0], 1.0)
+    self.maskOverlayImporterCoronal.SetDataOrigin(0.0, 0.0, 0.0)
+
+    self.maskOverlayActorCoronal = vtk.vtkImageActor()
+    self.maskOverlayActorCoronal.GetMapper().SetInputConnection(
+        self.maskOverlayImporterCoronal.GetOutputPort()
+    )
+    self.maskOverlayActorCoronal.InterpolateOff()
+    self.maskOverlayActorCoronal.SetPickable(False)
+
+    renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    renderer.AddActor(self.maskOverlayActorCoronal)
+
+
+def _build_coronal_mask_rgba(self):
+    # Y slice index (coronal)
+    y = int(self.current_coronal_slice_index[0])
+
+    # geometry: display_data[0][:, y, :] is (z, x)
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0 or
+        self.display_data[0].ndim < 3):
+        return None
+
+    h, w = self.display_data[0].shape[0], self.display_data[0].shape[2]  # (z, x)
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+
+    series = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
+    if not series.get("structures"):
+        return rgba
+
+    names  = series.get('structures_names', [])
+    keys   = series.get('structures_keys',  [])
+    view   = series.get('structures_view',  [0]*len(names))
+    colors = series.get('structures_color', ["#ff0000"]*len(names))
+    mtr    = series.get('structures_mask_transparency', [1.0]*len(names))
+
+    n = min(len(names), len(keys), len(colors), len(mtr))
+    if n == 0:
+        return rgba
+
+    for i in range(n):
+        if view[i] != 1:      # ← gate by checkbox
+            continue
+        s_key = keys[i]
+        sdat  = series["structures"].get(s_key, {})
+        mask3d = sdat.get("Mask3D")
+        if mask3d is None or y < 0 or y >= mask3d.shape[1]:
+            continue
+
+        mt = float(mtr[i])
+        if mt >= 0.999:       # 1.0 → hidden
+            continue
+
+        mask2d = mask3d[:, y, :] > 0   # (z, x)
+        if not np.any(mask2d):
+            continue
+
+        r, g, b = _to_rgbf(colors[i])
+        a = np.clip(1.0 - mt, 0.0, 0.99)
+
+        R = int(r*255); G = int(g*255); B = int(b*255); A = int(a*255)
+        m = mask2d
+        rgba[m, 0] = np.maximum(rgba[m, 0], R)
+        rgba[m, 1] = np.maximum(rgba[m, 1], G)
+        rgba[m, 2] = np.maximum(rgba[m, 2], B)
+        rgba[m, 3] = np.maximum(rgba[m, 3], A)
+
+    return rgba
+
+
+def _update_coronal_mask_overlay(self):
+    _ensure_coronal_mask_overlay(self)
+    rgba = _build_coronal_mask_rgba(self)
+    if rgba is None:
+        self.maskOverlayActorCoronal.GetProperty().SetOpacity(0.0)
+        return
+
+    h, w, _ = rgba.shape
+    data = rgba.tobytes()
+
+    imp = self.maskOverlayImporterCoronal
+    imp.SetDataSpacing(self.pixel_spac[0,1], self.slice_thick[0], 1.0)  # (x, z)
+    imp.SetDataOrigin(0.0, 0.0, 0.0)
+    imp.CopyImportVoidPointer(data, len(data))
+    imp.SetWholeExtent(0, w-1, 0, h-1, 0, 0)
+    imp.SetDataExtent (0, w-1, 0, h-1, 0, 0)
+    imp.SetNumberOfScalarComponents(4)
+    imp.SetDataScalarTypeToUnsignedChar()
+    imp.Modified()
+
+    # Match coronal image actor position (x,z)
+    self.maskOverlayActorCoronal.SetPosition(
+        self.Im_Offset[0, 0],
+        self.Im_Offset[0, 2],
+        _overlay_epsilon(self) * 0.5
+    )
+    self.maskOverlayActorCoronal.SetOpacity(1.0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def disp_structure_overlay_coronal(self):
     """
-    Show checked structures in the *coronal* renderer.
-
-    * Actors are created on-demand from stored Contours2D and cached
-      in RAM (structure_data['VTKActors2D']['coronal']).
-
-    * No VTK objects are ever written back to disk, so the bundle
-      remains pickle-safe.
+    Show selected structures (structures_view==1) on the coronal renderer.
+    Uses saved per-structure appearance:
+      - structures_color        -> hex "#rrggbb"
+      - structures_line_width   -> float
+      - structures_transparency -> float in [0,1]
     """
     renderer = (
         self.vtkWidgetCoronal.GetRenderWindow()
@@ -580,81 +905,137 @@ def disp_structure_overlay_coronal(self):
         .GetFirstRenderer()
     )
 
-
     # ─── clear previous overlay ───────────────────────────────────────
     for actor in getattr(self, "structure_actors_co", []):
         renderer.RemoveActor(actor)
     self.structure_actors_co = []
 
-    # ─── fetch data for current series ────────────────────────────────
+    # ─── fetch current series ────────────────────────────────────────
     series_dict = (
-        self.dicom_data[self.patientID][self.studyID]
+        self.medical_image[self.patientID][self.studyID]
                        [self.modality][self.series_index]
     )
     if not series_dict.get("structures"):
-        return                         # nothing to draw
+        return  # nothing to draw
 
     slice_idx = self.current_coronal_slice_index[0]   # Y index
 
     # pixel spacing for coronal slices: (row = z, col = x)
     px_spacing = (self.slice_thick[0], self.pixel_spac[0, 0])
 
-    for i in range(self.STRUCTlist.count()):
-        widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
-        if not widget.checkbox.isChecked():
+    names = series_dict.get('structures_names', [])
+    keys  = series_dict.get('structures_keys', [])
+    view  = series_dict.get('structures_view', [0]*len(names))
+
+    # keep arrays aligned; avoid IndexError
+    n = min(len(view), len(keys), len(names))
+
+    # Saved appearance with safe defaults
+    def _align(arr, default):
+        arr = arr if isinstance(arr, list) else []
+        if len(arr) < n:
+            arr = arr + [default] * (n - len(arr))
+        else:
+            arr = arr[:n]
+        return arr
+
+    colors_hex   = _align(series_dict.get('structures_color'),        "#ffffff")
+    line_widths  = _align(series_dict.get('structures_line_width'),   2.0)
+    transpars    = _align(series_dict.get('structures_transparency'), 0.5)
+
+    def _hex_to_rgbf(h):
+        try:
+            s = (h or "").strip()
+            if s.startswith("#"):
+                s = s[1:]
+            if len(s) == 3:  # "abc" → "aabbcc"
+                s = "".join(c*2 for c in s)
+            r = int(s[0:2], 16) / 255.0
+            g = int(s[2:4], 16) / 255.0
+            b = int(s[4:6], 16) / 255.0
+            return (r, g, b)
+        except Exception:
+            return (1.0, 1.0, 1.0)
+
+    warn_dlg = None
+
+    # ─── loop over selected structures ───────────────────────────────
+    for i in range(n):
+        if view[i] != 1:
             continue
 
-        s_key = getattr(widget, "structure_key", None)
-        if s_key is None:
+        s_key = keys[i]
+        if not s_key:
             continue
 
-        s_data = series_dict["structures"].get(s_key, {})
+        s_data = series_dict.get("structures", {}).get(s_key, {})
+        if not s_data:
+            continue
 
-        # ── 1) make sure axial actors exist  if not create all ──────────────────────────
-        if 'Contours2D' not in s_data:
-            return
-        if not s_data['Contours2D']:
-            return
+        # Ensure contour containers exist
+        if 'Contours2D' not in s_data or not isinstance(s_data['Contours2D'], dict):
+            s_data['Contours2D'] = {'axial': {}, 'sagittal': {}, 'coronal': {}}
 
-        # ── 1) make sure coronal actors exist ─────────────────────────
+        # First-time actors dict
         if "VTKActors2D" not in s_data:
+            if warn_dlg is None:
+                warn_dlg = QProgressDialog(
+                    "Pre-loading contours… it may take a few seconds",
+                    None, 0, 0, self
+                )
+                warn_dlg.setWindowTitle("Please wait")
+                warn_dlg.setWindowModality(Qt.WindowModal)
+                warn_dlg.setAutoClose(False)
+                warn_dlg.setMinimumDuration(0)
+                warn_dlg.show()
             s_data["VTKActors2D"] = {}
 
-        if "coronal" not in s_data["VTKActors2D"]:
+        # Build contours if missing or modified
+        if not s_data['Contours2D'].get('coronal') or s_data.get('Modified', 0) == 1:
+            s_data['Contours2D'] = build_contours_for_structure(s_data['Mask3D'])
+
+        # Rebuild actors (coronal) if missing or modified
+        if "coronal" not in s_data["VTKActors2D"] or s_data.get('Modified', 0) == 1:
             contours_cor = s_data.get("Contours2D", {}).get("coronal", {})
             s_data["VTKActors2D"]["coronal"] = actors_from_contours(
-                contours_cor, px_spacing,
-                line_width=widget.line_width_spinbox.value(),
-                color=widget.selectedColor.getRgbF()[:3]
-                      if widget.selectedColor else (1, 0, 0),
+                contours_cor,
+                px_spacing,
+                line_width=float(line_widths[i]),
+                color=_hex_to_rgbf(colors_hex[i]),
             )
+
+        if s_data.get('Modified', 0) == 1:
+            s_data['Modified'] = 0  # reset modified flag
 
         actors_dict = s_data["VTKActors2D"]["coronal"]
         if slice_idx not in actors_dict:
-            continue                    # no contour on this Y slice
+            continue  # no contour on this Y slice
 
         src_actor = actors_dict[slice_idx]
 
-        # ── 2) customise per-UI-settings ─────────────────────────────
+        # ── style from saved arrays ───────────────────────────────────
         actor = vtk.vtkActor()
         actor.ShallowCopy(src_actor)
-        actor.GetProperty().SetColor(
-            widget.selectedColor.getRgbF()[:3]
-            if widget.selectedColor else (1, 1, 1)
-        )
-        actor.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
-        actor.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+        actor.GetProperty().SetColor(_hex_to_rgbf(colors_hex[i]))
+        actor.GetProperty().SetOpacity(1.0 - float(transpars[i]))   # 0→opaque,1→transparent in UI
+        actor.GetProperty().SetLineWidth(float(line_widths[i]))
         actor.GetProperty().SetRepresentationToWireframe()
 
-        # place slightly above image plane so wireframe is visible
+        # place slightly above image plane for visibility
         actor.SetPosition(self.Im_Offset[0, 0],    # X shift
-                          self.Im_Offset[0, 2],    # Z shift (coronal view)
-                          2000)
+                          self.Im_Offset[0, 2],    # Z shift
+                          _overlay_epsilon(self))
 
         renderer.AddActor(actor)
         self.structure_actors_co.append(actor)
 
+    # ─── CLOSE THE WARNDLG ──────────────────────────────────────────
+    if warn_dlg is not None and warn_dlg.isVisible():
+        warn_dlg.close()
+
+    renderer.ResetCameraClippingRange()
     self.vtkWidgetCoronal.GetRenderWindow().Render()
+
 
 def disp_roi_coronal(self):
     for row in range(self.table_circ_roi.rowCount()):
@@ -772,9 +1153,9 @@ def display_dwell_positions_co(self):
         renderer.RemoveActor(actor)
     self.dwell_actors_co.clear()
 
-    # Retrieve channels from dicom_data
+    # Retrieve channels from medical_image
     try:
-        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+        meta = (self.medical_image[self.patientID][self.studyID]          # may raise KeyError
                                 [self.modality][self.series_index]
                                 ['metadata'])
         channels = meta.get('Plan_Brachy_Channels')
@@ -868,9 +1249,9 @@ def display_brachy_channel_overlay_co(self):
         renderer.RemoveActor(actor)
     self.channel_actors_co.clear()
 
-    # Retrieve channels from dicom_data
+    # Retrieve channels from medical_image
     try:
-        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+        meta = (self.medical_image[self.patientID][self.studyID]          # may raise KeyError
                                 [self.modality][self.series_index]
                                 ['metadata'])
         channels = meta.get('Plan_Brachy_Channels')
@@ -962,9 +1343,6 @@ def display_brachy_channel_overlay_co(self):
 
 
 
-
-
-
 def displaysagittal(self,Im = None):
 
     # ------------------------------------------------------------------
@@ -973,10 +1351,12 @@ def displaysagittal(self,Im = None):
         len(self.display_data) == 0):
         return                    # nothing loaded → ignore the call
 
-
-    
     idx = self.layer_selection_box.currentIndex()
-    if self.display_data[idx].ndim==2:
+    if idx not in self.display_data:
+        QMessageBox.warning(None, "Warning", "No image data was found.")
+        return
+
+    if not isinstance(self.display_data[idx], np.ndarray) or self.display_data[idx].ndim==2:
         return
     for i in range(len(self.dataImporterSagittal)):
         
@@ -989,12 +1369,13 @@ def displaysagittal(self,Im = None):
             # self.vtkWidgetAxial.GetRenderWindow().Render() 
             disp_roi_sagittal(self)
         if i == 3 and  self.display_dw_overlay.isChecked():
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 display_dwell_positions_sa(self)
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
-            # Check if the required fields exist in dicom_data
+            # Check if the required fields exist in medical_image
                 display_brachy_channel_overlay_sa(self)    
-        if i == 3 and self.DataType == "DICOM":
+        if i == 3 and self.DataType in ("DICOM", "Nifti"):
+            _update_sagittal_mask_overlay(self)
             disp_structure_overlay_sagittal(self)
 
         if self.slice_thick[i] ==0:
@@ -1045,13 +1426,134 @@ def displaysagittal(self,Im = None):
     self.sliceChanged.emit("coronal", self.current_sagittal_slice_index)
     
 
+
+def _ensure_sagittal_mask_overlay(self):
+    if hasattr(self, "maskOverlayImporterSagittal"):
+        return
+    self.maskOverlayImporterSagittal = vtk.vtkImageImport()
+    self.maskOverlayImporterSagittal.SetDataScalarTypeToUnsignedChar()
+    self.maskOverlayImporterSagittal.SetNumberOfScalarComponents(4)  # RGBA
+    # (col=y, row=z)
+    self.maskOverlayImporterSagittal.SetDataSpacing(self.pixel_spac[0,0], self.slice_thick[0], 1.0)
+    self.maskOverlayImporterSagittal.SetDataOrigin(0.0, 0.0, 0.0)
+
+    self.maskOverlayActorSagittal = vtk.vtkImageActor()
+    self.maskOverlayActorSagittal.GetMapper().SetInputConnection(
+        self.maskOverlayImporterSagittal.GetOutputPort()
+    )
+    self.maskOverlayActorSagittal.InterpolateOff()
+    self.maskOverlayActorSagittal.SetPickable(False)
+
+    renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    renderer.AddActor(self.maskOverlayActorSagittal)
+
+
+def _build_sagittal_mask_rgba(self):
+    # X slice index (sagittal)
+    x = int(self.current_sagittal_slice_index[0])
+
+    # geometry: display_data[0][:, :, x] is (z, y)
+    if (not hasattr(self, "display_data") or
+        self.display_data is None or
+        len(self.display_data) == 0 or
+        self.display_data[0].ndim < 3):
+        return None
+
+    h, w = self.display_data[0].shape[0], self.display_data[0].shape[1]  # (z, y)
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+
+    series = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
+    if not series.get("structures"):
+        return rgba
+
+    names  = series.get('structures_names', [])
+    keys   = series.get('structures_keys',  [])
+    view   = series.get('structures_view',  [0]*len(names))
+    colors = series.get('structures_color', ["#ff0000"]*len(names))
+    mtr    = series.get('structures_mask_transparency', [1.0]*len(names))
+
+    n = min(len(names), len(keys), len(colors), len(mtr))
+    if n == 0:
+        return rgba
+
+    for i in range(n):
+        if view[i] != 1:      # ← gate by checkbox
+            continue
+        s_key = keys[i]
+        sdat  = series["structures"].get(s_key, {})
+        mask3d = sdat.get("Mask3D")
+        if mask3d is None or x < 0 or x >= mask3d.shape[2]:
+            continue
+
+        mt = float(mtr[i])
+        if mt >= 0.999:
+            continue
+
+        mask2d = mask3d[:, :, x] > 0   # (z, y)
+        if not np.any(mask2d):
+            continue
+
+        r, g, b = _to_rgbf(colors[i])
+        a = np.clip(1.0 - mt, 0.0, 0.99)
+
+        R = int(r*255); G = int(g*255); B = int(b*255); A = int(a*255)
+        m = mask2d
+        rgba[m, 0] = np.maximum(rgba[m, 0], R)
+        rgba[m, 1] = np.maximum(rgba[m, 1], G)
+        rgba[m, 2] = np.maximum(rgba[m, 2], B)
+        rgba[m, 3] = np.maximum(rgba[m, 3], A)
+
+    return rgba
+
+
+def _update_sagittal_mask_overlay(self):
+    _ensure_sagittal_mask_overlay(self)
+    rgba = _build_sagittal_mask_rgba(self)
+    if rgba is None:
+        self.maskOverlayActorSagittal.GetProperty().SetOpacity(0.0)
+        return
+
+    h, w, _ = rgba.shape
+    data = rgba.tobytes()
+
+    imp = self.maskOverlayImporterSagittal
+    imp.SetDataSpacing(self.pixel_spac[0,0], self.slice_thick[0], 1.0)  # (y, z)
+    imp.SetDataOrigin(0.0, 0.0, 0.0)
+    imp.CopyImportVoidPointer(data, len(data))
+    imp.SetWholeExtent(0, w-1, 0, h-1, 0, 0)
+    imp.SetDataExtent (0, w-1, 0, h-1, 0, 0)
+    imp.SetNumberOfScalarComponents(4)
+    imp.SetDataScalarTypeToUnsignedChar()
+    imp.Modified()
+
+    # Match sagittal image actor position (y,z)
+    self.maskOverlayActorSagittal.SetPosition(
+        self.Im_Offset[0, 1],
+        self.Im_Offset[0, 2],
+        _overlay_epsilon(self) * 0.5
+    )
+    self.maskOverlayActorSagittal.SetOpacity(1.0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def disp_structure_overlay_sagittal(self):
     """
-    Show checked structures in the *sagittal* renderer.
-
-    • Creates actors on-demand from Contours2D → vtkActor, caches them.
-    • Reuses cached actors on subsequent calls for speed.
-    • UI controls (colour, opacity, line-width) still work per structure.
+    Show selected structures (structures_view==1) on the sagittal renderer.
+    Uses saved per-structure appearance:
+      - structures_color        -> hex "#rrggbb"
+      - structures_line_width   -> float
+      - structures_transparency -> float in [0,1]
     """
     renderer = (
         self.vtkWidgetSagittal.GetRenderWindow()
@@ -1059,80 +1561,136 @@ def disp_structure_overlay_sagittal(self):
         .GetFirstRenderer()
     )
 
-
-    # ── clear existing overlay ────────────────────────────────────────
+    # ─── clear any actors from the previous draw ──────────────────────
     for actor in getattr(self, "structure_actors_sa", []):
         renderer.RemoveActor(actor)
     self.structure_actors_sa = []
 
-    # ── fetch current series data ─────────────────────────────────────
+    # ─── grab data for the currently displayed image series ───────────
     series_dict = (
-        self.dicom_data[self.patientID][self.studyID]
+        self.medical_image[self.patientID][self.studyID]
                        [self.modality][self.series_index]
     )
     if not series_dict.get("structures"):
-        return                              # nothing to draw
+        return  # nothing to draw yet
 
-    slice_idx = self.current_sagittal_slice_index[0]   # X index
+    slice_idx = self.current_sagittal_slice_index[0]  # X index
 
-    # pixel spacing for sagittal slices: (row = z, col = y)
+    # pixel spacing for sagittal slices: (row = z, col = y) in mm
     px_spacing = (self.slice_thick[0], self.pixel_spac[0, 1])
 
-    for i in range(self.STRUCTlist.count()):
-        widget = self.STRUCTlist.itemWidget(self.STRUCTlist.item(i))
-        if not widget.checkbox.isChecked():
+    names = series_dict.get('structures_names', [])
+    keys  = series_dict.get('structures_keys', [])
+    view  = series_dict.get('structures_view', [0]*len(names))
+
+    # keep arrays aligned; avoid IndexError
+    n = min(len(view), len(keys), len(names))
+
+    # Saved appearance with safe defaults
+    def _align(arr, default):
+        arr = arr if isinstance(arr, list) else []
+        if len(arr) < n:
+            arr = arr + [default] * (n - len(arr))
+        else:
+            arr = arr[:n]
+        return arr
+
+    colors_hex   = _align(series_dict.get('structures_color'),        "#ffffff")
+    line_widths  = _align(series_dict.get('structures_line_width'),   2.0)
+    transpars    = _align(series_dict.get('structures_transparency'), 0.5)
+
+    def _hex_to_rgbf(h):
+        try:
+            s = (h or "").strip()
+            if s.startswith("#"):
+                s = s[1:]
+            if len(s) == 3:  # "abc" → "aabbcc"
+                s = "".join(c*2 for c in s)
+            r = int(s[0:2], 16) / 255.0
+            g = int(s[2:4], 16) / 255.0
+            b = int(s[4:6], 16) / 255.0
+            return (r, g, b)
+        except Exception:
+            return (1.0, 1.0, 1.0)
+
+    warn_dlg = None
+
+    # ─── main loop over selected structures ───────────────────────────
+    for i in range(n):
+        if view[i] != 1:
             continue
 
-        s_key = getattr(widget, "structure_key", None)
-        if s_key is None:
+        s_key = keys[i]
+        if not s_key:
             continue
 
-        s_data = series_dict["structures"].get(s_key, {})
+        s_data = series_dict.get("structures", {}).get(s_key, {})
+        if not s_data:
+            continue
 
-        # ── 1) make sure sagittal actors exist ───────────────────────
-        if 'Contours2D' not in s_data:
-            return
-        if not s_data['Contours2D']:
-            return
-            
+        # Ensure contour containers exist
+        if 'Contours2D' not in s_data or not isinstance(s_data['Contours2D'], dict):
+            s_data['Contours2D'] = {'axial': {}, 'sagittal': {}, 'coronal': {}}
+
+        # First-time creation of actors dict
         if "VTKActors2D" not in s_data:
+            if warn_dlg is None:
+                warn_dlg = QProgressDialog(
+                    "Pre-loading contours… it may take a few seconds",
+                    None, 0, 0, self
+                )
+                warn_dlg.setWindowTitle("Please wait")
+                warn_dlg.setWindowModality(Qt.WindowModal)
+                warn_dlg.setAutoClose(False)
+                warn_dlg.setMinimumDuration(0)
+                warn_dlg.show()
             s_data["VTKActors2D"] = {}
 
-        if "sagittal" not in s_data["VTKActors2D"]:
-            # build once, cache in RAM
+        # Build contours if missing or marked modified
+        if not s_data['Contours2D'].get('sagittal') or s_data.get('Modified', 0) == 1:
+            s_data['Contours2D'] = build_contours_for_structure(s_data['Mask3D'])
+
+        # Rebuild actors (sagittal) if missing or modified
+        if "sagittal" not in s_data["VTKActors2D"] or s_data.get('Modified', 0) == 1:
             contours_sag = s_data.get("Contours2D", {}).get("sagittal", {})
             s_data["VTKActors2D"]["sagittal"] = actors_from_contours(
-                contours_sag, px_spacing,
-                line_width=widget.line_width_spinbox.value(),
-                color=widget.selectedColor.getRgbF()[:3]
-                      if widget.selectedColor else (1, 0, 0),
+                contours_sag,
+                px_spacing,
+                line_width=float(line_widths[i]),
+                color=_hex_to_rgbf(colors_hex[i]),
             )
+
+        if s_data.get('Modified', 0) == 1:
+            s_data['Modified'] = 0  # reset modified flag
 
         actors_dict = s_data["VTKActors2D"]["sagittal"]
         if slice_idx not in actors_dict:
-            continue                          # no contour on this X slice
+            continue  # no contour on this X slice
 
         src_actor = actors_dict[slice_idx]
 
-        # ── 2) clone & style according to UI ─────────────────────────
+        # ── customise appearance from saved arrays ────────────────────
         actor = vtk.vtkActor()
         actor.ShallowCopy(src_actor)
-        actor.GetProperty().SetColor(
-            widget.selectedColor.getRgbF()[:3]
-            if widget.selectedColor else (1, 1, 1)
-        )
-        actor.GetProperty().SetOpacity(1 - widget.transparency_spinbox.value())
-        actor.GetProperty().SetLineWidth(widget.line_width_spinbox.value())
+        actor.GetProperty().SetColor(_hex_to_rgbf(colors_hex[i]))
+        actor.GetProperty().SetOpacity(1.0 - float(transpars[i]))       # 0→opaque,1→transparent in UI
+        actor.GetProperty().SetLineWidth(float(line_widths[i]))
         actor.GetProperty().SetRepresentationToWireframe()
 
         # place slightly above image plane for visibility
         actor.SetPosition(self.Im_Offset[0, 1],    # Y shift
                           self.Im_Offset[0, 2],    # Z shift
-                          2000)
+                          _overlay_epsilon(self))
 
         renderer.AddActor(actor)
         self.structure_actors_sa.append(actor)
 
+    # ─── CLOSE THE WARNDLG ──────────────────────────────────────────
+    if warn_dlg is not None and warn_dlg.isVisible():
+        warn_dlg.close()
+
+        
+    renderer.ResetCameraClippingRange()
     self.vtkWidgetSagittal.GetRenderWindow().Render()
 
 
@@ -1252,9 +1810,9 @@ def display_dwell_positions_sa(self):
         renderer.RemoveActor(actor)
     self.dwell_actors_sa.clear()
 
-    # Retrieve channels from dicom_data
+    # Retrieve channels from medical_image
     try:
-        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+        meta = (self.medical_image[self.patientID][self.studyID]          # may raise KeyError
                                 [self.modality][self.series_index]
                                 ['metadata'])
         channels = meta.get('Plan_Brachy_Channels')
@@ -1346,9 +1904,9 @@ def display_brachy_channel_overlay_sa(self):
         renderer.RemoveActor(actor)
     self.channel_actors_sa.clear()
 
-    # Retrieve channels from dicom_data
+    # Retrieve channels from medical_image
     try:
-        meta = (self.dicom_data[self.patientID][self.studyID]          # may raise KeyError
+        meta = (self.medical_image[self.patientID][self.studyID]          # may raise KeyError
                                 [self.modality][self.series_index]
                                 ['metadata'])
         channels = meta.get('Plan_Brachy_Channels')

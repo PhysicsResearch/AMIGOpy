@@ -3,7 +3,7 @@ import numpy as np
 import pydicom
 from pydicom.tag import Tag
 import math
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from fcn_RTFiles.process_rt_files  import process_rt_plans, process_rt_struct
 
 # Import the function that retrieves a detailed description of DICOM data.
@@ -89,12 +89,20 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         'ImageComments': getattr(dicom_file, "ImageComments", ''),
                         'DoseGridScaling': getattr(dicom_file, "DoseGridScaling", "N/A"),
                         'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),
+                        'DataType': 'DICOM',
                         'Modality': modality,
-                        'DCM_Info': Header
+                        'DCM_Info': Header,
+
+                        # Useful extras
+                        'size': None,
+                        'Nifiti_info': None,         # original NIfTI fields
+                        'OriginalFilePath': None,    # for traceability - used with Nifti 
                     },
                     'images': {},
                     'ImagePositionPatients': [],
                     'SliceImageComments':{},
+                    'AM_name': None,  # name defined (auto) in populate tree function 
+                    'US_name': None,  # name that could be defined by the user in the interface (manual)
                 }
             elif modality == 'RTPLAN':
                 # Define the private creator tag explicitly - Used in ONCENTRA so it is not always available
@@ -307,54 +315,57 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
     return structured_data, non_im_files 
  
 
-def load_all_dcm(self,folder_path=None, progress_callback=None, update_label=None):
+def load_all_dcm(self, folder_path=None, progress_callback=None, update_label=None):
     """
-    Master function that facilitates loading, extraction, and organization of DICOM data.
-
-    This function calls the necessary sub-functions to process and organize the DICOM data 
-    in a hierarchical manner.
-
-    Args:
-        folder_path (str, optional): Path to the directory with DICOM files.
-        progress_callback (function, optional): Optional callback function for tracking progress.
-        update_label (label, optional): UI label to display progress updates.
-
-    Returns:
-        dicom_data (dict): Hierarchical representation of DICOM data.
+    Load and append DICOM data into self.medical_image without overwriting existing entries.
     """
-    detailed_files_info, unique_files_info, folder = get_data_description(folder_path, self.progressBar.setValue, update_label)
+    detailed_files_info, unique_files_info, folder = get_data_description(
+        folder_path, self.progressBar.setValue, update_label
+    )
     self.files_info = detailed_files_info
     if detailed_files_info is None:
-        # user cacled or folder does not exist
         return
+
     total_steps = len(detailed_files_info)
-    
+
     if update_label:
         update_label.setText(f"Loading {total_steps} files")
-        
-    self.dicom_data, non_im_files = load_images(self,detailed_files_info, self.progressBar.setValue, total_steps)
-    # Clear the lists of segmentation structures 
+
+    # ✅ Only create if not present
+    if not hasattr(self, 'medical_image') or self.medical_image is None or not isinstance(self.medical_image, dict):
+        self.medical_image = {}
+
+    # Load into a temporary dict
+    new_data, non_im_files = load_images(
+        self, detailed_files_info, self.progressBar.setValue, total_steps
+    )
+
+    # ✅ Merge new data into existing self.medical_image
+    for patient_id, studies in new_data.items():
+        patient_data = self.medical_image.setdefault(patient_id, {})
+        for study_id, modalities in studies.items():
+            study_data = patient_data.setdefault(study_id, {})
+            for modality, series_list in modalities.items():
+                modality_data = study_data.setdefault(modality, [])
+                modality_data.extend(series_list)  # append series
+
+    # Clear the segmentation structure list
     self.segStructList.clear()
 
     self.DataType = "DICOM"
-    populate_DICOM_tree(self)
-    
-    # for index, file_info in enumerate(non_im_files):
-    #     print(f"{file_info['FilePath']} {file_info['Modality']}")
-    #return dicom_data
-
+    populate_medical_image_tree(self)
 
 
 if __name__ == "__main__":
-    dicom_data = load_all_dcm()
-    # data_plot = dicom_data['Siem_K']['4']['CT'][0]['3DMatrix']
+    medical_image = load_all_dcm()
+    # data_plot = medical_image['Siem_K']['4']['CT'][0]['3DMatrix']
     # # Plot an axial slice - for example the fifth slice along the third axis (0-indexed)
     # axial_slice = data_plot[150, :,:]
     # plt.imshow(axial_slice, cmap='gray')
     # plt.colorbar()
     # plt.title('Axial Slice')
     # plt.show()
-    for patient_id, patient_data in dicom_data.items():
+    for patient_id, patient_data in medical_image.items():
         print(f"PatientID: {patient_id}")
         for study_id, study_data in patient_data.items():
             print(f"\tStudyID: {study_id}")

@@ -5,6 +5,7 @@ from fcn_display.disp_plan_data import update_disp_brachy_plan
 from fcn_display.display_images import update_layer_view
 from fcn_ctcal.ct_cal import update_ct_cal_view,load_ct_cal_curve,update_ct_cal_table
 from fcn_materialassignment.material_map import on_material_change
+from fcn_dosecalculations.eqd2_conversion import on_struct_list_change
 import os
 import sys
 
@@ -84,6 +85,10 @@ def populate_list_menus(self):
     views = ["Axial", "Coronal", "Sagittal"]
     self.views_list = self.findChild(QtWidgets.QComboBox, 'segSelectView')
     self.views_list.addItems(views)
+
+    morph_opers = ['erosion', 'dilation', 'opening', 'closing']
+    self.morph_oper_list = self.findChild(QtWidgets.QComboBox, 'morph_oper_method')
+    self.morph_oper_list.addItems(morph_opers)
 
 
     # DECT MatInfo
@@ -179,6 +184,7 @@ def populate_list_menus(self):
     #Eqd2
     self.dose_list.addItems(['None'])
     self.eqd2_struct_list.addItems(['None'])
+    self.eqd2_struct_list.currentTextChanged.connect(lambda: on_struct_list_change(self))
     
 
     #Ct calibration

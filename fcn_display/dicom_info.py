@@ -188,10 +188,10 @@ def update_meta_view_table_dicom(self, ds: Dataset, search_text: str = ""):
 # 5) Callback for search box text changes
 # ------------------------------------------------------------
 def on_metadata_search_text_changed(self, text: str):
-    if self.dicom_dataset is not None:
+    if self.medical_imageset is not None:
         update_meta_view_table_dicom(
             self,
-            self.dicom_dataset,
+            self.medical_imageset,
             search_text=text
         )
 
@@ -204,7 +204,7 @@ class DicomHeadersViewer(QMainWindow):
         self.setWindowTitle("DICOM Headers Viewer")
         self.setGeometry(100, 100, 800, 600)
 
-        self.dicom_dataset = None  # Will hold the pydicom.Dataset once loaded
+        self.medical_imageset = None  # Will hold the pydicom.Dataset once loaded
 
         # ─── Search box ─────────────────────────────────────
         self.search_box = QLineEdit(self)
@@ -265,7 +265,7 @@ class DicomHeadersViewer(QMainWindow):
             self.close()
             return
 
-        self.dicom_dataset = ds
+        self.medical_imageset = ds
         # Clear any old search text
         self.search_box.clear()
         # Populate tree with all tags

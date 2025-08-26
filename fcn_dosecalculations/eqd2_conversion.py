@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import vtk
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 import fcn_load.load_dcm
 from copy import deepcopy
 from PyQt5.QtWidgets import QMessageBox, QTableWidgetItem,QTableWidgetItem
@@ -11,35 +11,79 @@ from fcn_dosecalculations.general_fcn import scale_dose_to_CT
 import matplotlib.pyplot as plt #ONLY FOR TESTING
 
 
-###TO UPDATE
+
 def to_EQD2(D,fractions,ab):
     d=D/fractions
     dose_EQD2=D*((d+ab)/(2+ab))
     return dose_EQD2
 
-
-
-def convert_dose_matrix_to_EQD2(dose_matrix,structures,ab_values,fractions,default_ab=3):
-    #create ab matrix
-    ab_matrix=np.full(dose_matrix.shape, default_ab)
+def create_ab_matrix(self,default_ab=3):
+    if self.modality!='CT':
+        QMessageBox.warning(self,'invalid input', 'please select a valid CT')
+        return
     
-    for structure,ab in zip(structures,ab_values):
+    try: 
+        ct_shape=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'].shape
+    except:
+        QMessageBox.warning(self,'invalid input', 'please select a valid CT')
+        return
+    struct_list=self.medical_image[self.patientID][self.studyID]['CT'][self.series_index].get('ab_values',{})
+    if len(struct_list)==0:
+        QMessageBox.warning(self,'missing α/β values', 'please assign at least one structure to one α/β value')
+    ab_matrix=np.full(ct_shape, float(default_ab))
+    #Retrive binary masks
+    masks=[]
+    struct_used=[]
+    for s in self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'].values():
+        if s.get('Name') in struct_list:
+            masks.append(s['Mask3D'])
+            struct_used.append(s.get('Name'))
+   
+    if len(masks)==0:
+       QMessageBox.warning(self,'no structure found','None of the structure selected was found in the CT set.\nMake sure you are selecting the correct one!')
+       return
+   
+    #Display warning for missing structures
+    missing_struct=[struct for struct in struct_list.keys() if struct not in struct_used]
+    if len(missing_struct):
+        QMessageBox.warning(self,'missing structures',f"The structures: {','.join(missing_struct)} were not found in the CT set. \nThey will be ignored in the EQD2 calculation")
+    ab_coeff=[]
+    for struct in struct_used:
+        ab_coeff.append(struct_list[struct])
+    for structure,ab in zip(masks,ab_coeff):
         ab_matrix[structure==1]=ab
-    #plt.imshow(ab_matrix[73,:,:])
-    return to_EQD2(dose_matrix,fractions,ab_matrix)
+        print(ab)
 
-def display_message_box(title,msg):
-    msg_box = QMessageBox()
-    msg_box.setIcon(QMessageBox.Warning)
-    msg_box.setWindowTitle(title)
-    msg_box.setText(msg)
-    msg_box.exec()
 
+    self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['ab_matrix']=ab_matrix
+    populate_medical_image_tree(self)
+    
+        
+
+
+
+
+
+
+def on_struct_list_change(self):
+    if self.patientID:
+        target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
+        structure_selected = self.eqd2_struct_list.currentText()
+        ab_dict=target_series_dict.get('ab_values')
+        if structure_selected!='None' and ab_dict: 
+            if structure_selected in ab_dict.keys():
+                current_ab_val=target_series_dict['ab_values'][structure_selected]
+                self.ab_input.setText(str(current_ab_val))
+            else:
+                self.ab_input.clear()
+        else:
+            self.ab_input.clear()
+        
 
 def add_ab(self):
     # Creating a dictionary reference for the target series
     if self.patientID:
-        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
         
         structure_selected = self.eqd2_struct_list.currentText()
         ab_selected = self.ab_input.text()
@@ -49,12 +93,14 @@ def add_ab(self):
             try:
                 ab_value = float(ab_selected)  # Convert to float
             except ValueError:
-                display_message_box('α/β values', 'please enter a valid α/β ratio')
+                QMessageBox.warning(self,'invalid input', 'please enter a valid α/β ratio')
                 return  # Exit function if input is invalid
         
             # Ensure 'ab_values' exists in the dictionary
             if 'ab_values' not in target_series_dict:
                 target_series_dict['ab_values'] = {}
+
+            
         
             # Add/update the structure's alpha-beta value
             target_series_dict['ab_values'][structure_selected] = ab_value
@@ -62,12 +108,12 @@ def add_ab(self):
             # Call function to update the table
             update_alpha_beta_table(self)
         else:
-            display_message_box('missing input data', 'please select a valid structure and enter a valid valid α/β ratio')
+            QMessageBox.warning(self,'missing input data', 'please select a valid structure and enter a valid valid α/β ratio')
     else:
-        display_message_box('select patient', 'no active patient found')
+        QMessageBox.warning(self,'select patient', 'no active patient found')
 
 def delete_ab(self):
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
     
     structure_selected = self.eqd2_struct_list.currentText()
     
@@ -79,18 +125,18 @@ def delete_ab(self):
                 target_series_dict['ab_values'].pop(structure_selected)
                 update_alpha_beta_table(self)
             else:
-                display_message_box('missing input data', 'The structure does not exist')
+                QMessageBox.warning(self,'missing input data', 'The structure does not exist')
         else:
-            display_message_box('missing input data', 'no structure found')
+            QMessageBox.warning(self,'missing input data', 'no structure found')
             
     else:
-        display_message_box('missing input data', 'please select a valid structure to delete')
+        QMessageBox.warning(self,'missing input data', 'please select a valid structure to delete')
     
 
 
 def update_alpha_beta_table(self):
     # Get the dictionary containing alpha-beta values
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
     ab_values = target_series_dict.get('ab_values', {})
 
     # Clear table before updating
@@ -107,67 +153,73 @@ def update_alpha_beta_table(self):
 def update_doses_list(self):
     #Update dose list to list the dose of the current active patient and study
     if self.patientID and self.studyID:
-        dose_list=self.dicom_data[self.patientID][self.studyID]['RTDOSE'] #TBF: not sure if it works if no dose is loaded
-        if len(dose_list):
-            labels=[f"{dose['metadata']['SeriesDescription']}_Series: {dose['SeriesNumber']}" for dose in dose_list]
-            self.dose_list.clear()
-            self.dose_list.addItems(['None'])
-            self.dose_list.addItems(labels)
-        else:
-            display_message_box('missing data', 'no dose found')
-    else: 
-        display_message_box('select patient', 'no active patient found')
+
+        try:
+            dose_list=self.medical_image[self.patientID][self.studyID]['RTDOSE'] #TBF: not sure if it works if no dose is loaded
+            if len(dose_list):
+                labels=[f"{dose['metadata']['SeriesDescription']}_Series: {dose['SeriesNumber']}" for dose in dose_list]
+                self.dose_list.clear()
+                self.dose_list.addItems(['None'])
+                self.dose_list.addItems(labels)
+        except:
+            return
+
+
 
 def update_structure_list(self):
     if self.patientID and self.studyID:
         if self.modality=='CT':
-            target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+            target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
             structure_names = target_series_dict.get('structures_names', [])
             if structure_names:
                 self.eqd2_struct_list.clear()
                 self.eqd2_struct_list.addItems(['None'])
                 self.eqd2_struct_list.addItems(structure_names)
             else:
-                display_message_box('missing data', 'no structure found')
+                return
         else:
-            display_message_box('select CT set', 'select CT set to procede')
+            return
     else:
-       display_message_box('select patient', 'no active patient found')
+       return
 
 def generate_eqd2_dose(self):
      #Retrive dose slected
      if self.patientID:
-         target_dict=self.dicom_data[self.patientID][self.studyID]['RTDOSE']
+         target_dict=self.medical_image[self.patientID][self.studyID]['RTDOSE']
          dose_selected = self.dose_list.currentText()
-         struct_list=self.dicom_data[self.patientID][self.studyID]['CT'][self.series_index].get('ab_values',{})
-         print(struct_list)
+
+         ab_matrix=self.medical_image[self.patientID][self.studyID]['CT'][self.series_index].get('ab_matrix',[])
+         
+
          if dose_selected!='None':
-             if len(struct_list):
+             if len(ab_matrix):
                  
                  dose_idx=dose_selected.split(':')[1].strip()
                  dose = next( d for d in target_dict if d['SeriesNumber'] == dose_idx)
                  dose_matrix=dose['3DMatrix']
                  #check the dimensions of the dose matrix, if they are not the same as the CT, scale it
-                 if dose_matrix.size!=self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'].size:
+                 if dose_matrix.size!=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'].size:
                      dose_matrix=scale_dose_to_CT(self,dose)
                      print('dose rescaled')
                  
-                 #Retrive binary masks
-                 masks = [s['Mask3D'] for s in self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'].values() if s.get('Name') in struct_list]
-                 ab_coeff=[v for v in struct_list.values()]
-                 
+
                  #add here EQD2 
                  fractions=self.input_fractions.text()
+                 #check it the current CT has ab values associated
+                 
                  if fractions:
                      try:
                          fractions=float(fractions)
                      except:
-                         display_message_box('invalid input', 'select a valid number of fractions')
+                         QMessageBox.warning(self,'invalid input', 'select a valid number of fractions')
                          return
                 
-                     dose_matrix_eqd2=convert_dose_matrix_to_EQD2(dose_matrix,masks,ab_coeff,fractions,default_ab=3)
-                     
+                     dose_matrix_eqd2=to_EQD2(dose_matrix,fractions,ab_matrix)
+
+
                      #add dose to the tree
+                     
+                    
             
                      eqd2_dose=deepcopy(dose)
             
@@ -176,23 +228,23 @@ def generate_eqd2_dose(self):
                      ref_value = np.max(dose_matrix_eqd2)
                      eqd2_dose['metadata']['WindowWidth'] = ref_value*0.02
                      eqd2_dose['metadata']['WindowCenter']= ref_value*0.80
-                     eqd2_dose['metadata']['PixelSpacing']=self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
-                     eqd2_dose['metadata']['SliceThickness']=self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
-                     eqd2_dose['metadata']['ImagePositionPatient']=self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
+                     eqd2_dose['metadata']['PixelSpacing']=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
+                     eqd2_dose['metadata']['SliceThickness']=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
+                     eqd2_dose['metadata']['ImagePositionPatient']=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
                      print(eqd2_dose['metadata']['ImagePositionPatient'])
                      target_dict.append(eqd2_dose)
-                     populate_DICOM_tree(self)
+                     populate_medical_image_tree(self)
                      print('dose added')
                  else:
-                     display_message_box('missing input data', 'enter the number of fractions')
+                     QMessageBox.warning(self,'missing input data', 'enter the number of fractions')
              else:
-                display_message_box('missing input data', 'define α/β ratios first')
+                QMessageBox.warning(self,'missing input data', 'No α/β ratios associated with this CT')
              
     
          else:
-             display_message_box('missing input data', 'select a valid dose first')
+             QMessageBox.warning(self,'missing input data', 'select a valid dose first')
      else:
-        display_message_box('select patient', 'no active patient found')
+        QMessageBox.warning(self,'select patient', 'no active patient found')
      
      
 def eqd2_calc(self):
@@ -206,9 +258,9 @@ def eqd2_calc(self):
             fractions=float(fractions)
             ab_value=float(ab_value)
         except:
-            display_message_box('invalid input', 'please insert valid values')
+            QMessageBox.warning(self,'invalid input', 'please insert valid values')
             return
         eqd2=to_EQD2(total_dose,fractions,ab_value)
         self.eqd2_out.display(np.round(eqd2,3))
     else:
-        display_message_box('missing input', 'please insert valid values')
+        QMessageBox.warning(self,'missing input', 'please insert valid values')

@@ -4,9 +4,9 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 
 class SeriesPickerDialog(QDialog):
-    def __init__(self, dicom_data, excluded_modalities=None, source_tuple=None, parent=None):
+    def __init__(self, medical_image, excluded_modalities=None, source_tuple=None, parent=None):
         """
-        dicom_data: your nested dict
+        medical_image: your nested dict
         excluded_modalities: set like {'RTPLAN','RTSTRUCT','RTDOSE'}
         source_tuple: optional (src_patient, src_study, src_modality, src_series_index)
                       only for display purposes
@@ -15,7 +15,7 @@ class SeriesPickerDialog(QDialog):
         self.setWindowTitle("Select destination series")
         self.setModal(True)
 
-        self.dicom_data = dicom_data
+        self.medical_image = medical_image
         self.excluded_modalities = excluded_modalities or set()
         self.patientCombo = QComboBox()
         self.seriesCombo  = QComboBox()
@@ -23,8 +23,16 @@ class SeriesPickerDialog(QDialog):
         layout = QVBoxLayout(self)
 
         if source_tuple is not None:
-            sp, ss, sm, si = source_tuple
-            layout.addWidget(QLabel(f"Source: {sp} / {ss} / {sm} / idx {si}"))
+            if len(source_tuple) == 4:
+                sp, ss, sm, si = source_tuple
+                text = f"Reference: {sp} / {ss} / {sm} / {si}"
+            elif len(source_tuple) == 2:
+                sp, ss = source_tuple
+                text = f"Reference: {sp} / {ss}"
+            else:
+                # optional fallback
+                text = "Select"
+            layout.addWidget(QLabel(text))
 
         r1 = QHBoxLayout()
         r1.addWidget(QLabel("Patient:"))
@@ -42,7 +50,7 @@ class SeriesPickerDialog(QDialog):
         btns.rejected.connect(self.reject)
 
         # patients
-        self._patient_ids = sorted(self.dicom_data.keys())
+        self._patient_ids = sorted(self.medical_image.keys())
         self.patientCombo.addItems(self._patient_ids)
 
         # map series_label -> (series_label, study_id, modality, item_index)
@@ -68,7 +76,7 @@ class SeriesPickerDialog(QDialog):
             self._refresh_series_for_patient(0)
 
     def _has_valid_series(self, pid):
-        for study_id, study_data in self.dicom_data[pid].items():
+        for study_id, study_data in self.medical_image[pid].items():
             for modality, modality_data in study_data.items():
                 if modality in self.excluded_modalities:
                     continue
@@ -82,7 +90,7 @@ class SeriesPickerDialog(QDialog):
         self.seriesCombo.clear()
         self._series_map.clear()
 
-        for study_id, study_data in self.dicom_data[pid].items():
+        for study_id, study_data in self.medical_image[pid].items():
             for modality, modality_data in study_data.items():
                 if modality in self.excluded_modalities:
                     continue

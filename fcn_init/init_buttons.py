@@ -105,6 +105,10 @@ def initialize_software_buttons(self):
     self.exportSegStatsButton.setStyleSheet("background-color: blue; color:white")
     self.exportSegStrucButton.clicked.connect(lambda: exportSegStruc(self))
     self.exportSegStrucButton.setStyleSheet("background-color: blue; color:white")
+    self.ApplyMorphOper.clicked.connect(lambda: apply_morph_oper(self))
+    self.ApplyMorphOper.setStyleSheet("background-color: blue; color:white")
+    self.UndoMorphOper.clicked.connect(lambda: undo_morph_oper(self))
+    self.UndoMorphOper.setStyleSheet("background-color: blue; color:white")
     
     # Connect the button's clicked signal to the slot function - run im processing operations
     self.run_im_process.clicked.connect(lambda: run_image_processing(self))
@@ -263,9 +267,9 @@ def initialize_software_buttons(self):
     self.calc_eqd2.clicked.connect(lambda: generate_eqd2_dose(self))
     self.add_to_ab_list.clicked.connect(lambda: add_ab(self))
     self.delete_from_ab_list.clicked.connect(lambda: delete_ab(self))
-    self.eqd2_update_dose_list.clicked.connect(lambda: update_doses_list(self))
-    self.eqd2_update_structure_list.clicked.connect(lambda: update_structure_list(self))
+    
     self.calc_eqd2_2.clicked.connect(lambda: eqd2_calc(self))
+    self.ab_matrix.clicked.connect(lambda: create_ab_matrix(self))
 
     #CT CALIBRATION--------------------------------------------------------------------------
     self.load_ct_cal.clicked.connect(lambda: load_ct_cal_curve(self))
@@ -356,9 +360,9 @@ def on_display_dw_overlay_clicked(self):
     displaysagittal(self)
     displaycoronal(self)
     #
-    # Check if the required fields exist in dicom_data
+    # Check if the required fields exist in medical_image
     try:
-        dicom_data = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
+        medical_image = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
     except KeyError:
         # Show an error message if plan metadata is missing
         QtWidgets.QMessageBox.critical(self, "Plan Missing", "Please select a plan first.")
@@ -366,13 +370,13 @@ def on_display_dw_overlay_clicked(self):
         return
 
     # Check if 'Plan_Brachy_Channels' exists in 'metadata'
-    if 'Plan_Brachy_Channels' not in dicom_data:
+    if 'Plan_Brachy_Channels' not in medical_image:
         # Show an error message if Plan_Brachy_Channels is missing
         QtWidgets.QMessageBox.critical(self, "Plan Missing", "Please select a plan first.")
         self.display_dw_overlay.setChecked(False)  # Uncheck the checkbox if plan is missing
         return
 
-    channels = dicom_data['Plan_Brachy_Channels']
+    channels = medical_image['Plan_Brachy_Channels']
 
     # Check if 'Plan_Brachy_Channels' contains valid data (e.g., non-empty list or array)
     if not channels or not isinstance(channels, list):

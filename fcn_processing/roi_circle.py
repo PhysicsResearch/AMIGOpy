@@ -236,21 +236,21 @@ def import_roi_circ_table(self):
     
 def c_roi_getdata(self):
     # Check if the checkbox is checked - All imges within modality or single series
-    if getattr(self, 'file_format', None) != "DICOM":
-        QMessageBox.warning(None, "Warning", "No DICOM data was found")
+    if getattr(self, 'DataType', None) not in ["DICOM", "Nifti"]:
+        QMessageBox.warning(None, "Warning", "No DICOM/NIfTI data was found")
         return
     if self.checkBox_circ_roi_data_01.isChecked():
-        series_list = self.dicom_data[self.patientID][self.studyID][self.modality]
+        series_list = self.medical_image[self.patientID][self.studyID][self.modality]
     else:
-        series_list = [self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]]
+        series_list = [self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]]
 
     if self.checkBox_circ_roi_data_01.isChecked() and self.holdOnROI.isChecked():
         QMessageBox.warning(None, "Warning", "The 'All image series' and 'Hold on' options cannot be used at the same time")
         return
     
     # Assuming the reference image is a 3D NumPy array
-    reference_image = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
-    series_number = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['SeriesNumber']
+    reference_image = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+    series_number = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['SeriesNumber']
 
     # Clear the table before populating
     self.table_roi_c_values.setRowCount(self.table_circ_roi.rowCount())

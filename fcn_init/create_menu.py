@@ -12,6 +12,8 @@ from fcn_DECT.calculateVMIs import calculate_VMI
 from fcn_load.load_STL import load_stl_files
 from fcn_load.load_OBJ import load_obj_files
 from fcn_load.load_nifti import load_nifti_files
+from fcn_autocont.segmentator_calls import open_segmentator_tab
+from functools import partial
 
 
 def initializeMenuBar(self):
@@ -55,9 +57,10 @@ def initializeMenuBar(self):
             action.setShortcut("Ctrl+O")    
         if item == "3mf":
             action.triggered.connect(lambda: load_3mf(self))
-            action.setShortcut("Ctrl+3")    
+            action.setShortcut("Ctrl+3+D")    
         if item == "NIfTI":
             action.triggered.connect(lambda: load_nifti_files(self))
+            action.setShortcut("Ctrl+N")    
         openMenu.addAction(action)
 
     ViewMenu      = self.menuBar().addMenu("View")
@@ -138,37 +141,26 @@ def initializeMenuBar(self):
            
 
     ToolsMenu = self.menuBar().addMenu("Tools")
-    SortMenu = ToolsMenu.addMenu("Sort")
     # Add items 
-    items = ["DICOM_Folder"]
-    for item in items:
-        action = QAction(item, self)
-        # Connect the Folder action to the load_dcm function
-        if item == "DICOM_Folder":
-            action.triggered.connect(self.organize_dcm_folder)
-        SortMenu.addAction(action)
-    
-    SeriesMenu = ToolsMenu.addMenu("Series")
-    # Add items 
-    items = ["Split"]
-    for item in items:
-        action = QAction(item, self)
-        # Connect the Folder action to the load_dcm function
-        if item == "Split":
-            action.triggered.connect(lambda: shift_and_split_3D_matrix(self))
-        SeriesMenu.addAction(action)
+    dcm_fold_action = QAction("Sort DCM Folder", self)
+    dcm_fold_action.triggered.connect(self.organize_dcm_folder)
+    ToolsMenu.addAction(dcm_fold_action)
     
     # Add items 
-    items = ["Create_VMI"]
-    for item in items:
-        action = QAction(item, self)
-        # Connect the Folder action to the load_dcm function
-        if item == "Create_VMI":
-            action.triggered.connect(lambda: calculate_VMI(self))
-        SeriesMenu.addAction(action)
+    split_series_action = QAction("Split Series", self)
+    split_series_action.triggered.connect(lambda: shift_and_split_3D_matrix(self))
+    ToolsMenu.addAction(split_series_action)
+    
+    vmi_action = QAction("Split Series", self)
+    vmi_action.triggered.connect(lambda: calculate_VMI(self))
+    ToolsMenu.addAction(vmi_action)
         
-
-  
+    # Add items 
+    #  Single action directly under Tools, below Series
+    total_seg_action = QAction("TotalSegmentator", self)
+    total_seg_action.triggered.connect(partial(open_segmentator_tab, self))
+    ToolsMenu.addAction(total_seg_action)
+    
     ExportMenu = self.menuBar().addMenu("Export")
     TypeMenu = ExportMenu.addMenu("IrIS")
     # Add items 

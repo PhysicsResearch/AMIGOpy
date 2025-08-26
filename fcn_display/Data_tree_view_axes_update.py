@@ -1,5 +1,12 @@
 def update_axial_image(self,  Im = None):
     idx = self.layer_selection_box.currentIndex()
+    if idx < 0:
+        return  # no selection
+
+    try:
+        entry = self.display_data[idx]   # list/tuple index OR dict key lookup
+    except (IndexError, KeyError, TypeError):
+        return  # out of range, missing key, or wrong type
     #
     for i in range(len(self.dataImporterAxial)):
         # Add or update circular ROIs in the 4th layer
@@ -57,6 +64,14 @@ def update_axial_image(self,  Im = None):
 
 def update_coronal_image(self,  Im = None):
     idx = self.layer_selection_box.currentIndex()
+    if idx < 0:
+        return  # no selection
+
+    try:
+        entry = self.display_data[idx]   # list/tuple index OR dict key lookup
+    except (IndexError, KeyError, TypeError):
+        return  # out of range, missing key, or wrong type
+    
     if self.display_data[idx].ndim==2:
         return
     for i in range(len(self.dataImporterCoronal)):
@@ -115,8 +130,16 @@ def update_coronal_image(self,  Im = None):
 
 def update_sagittal_image(self,  Im = None):
     idx = self.layer_selection_box.currentIndex()
+    if idx < 0:
+        return  # no selection
+
+    try:
+        entry = self.display_data[idx]   # list/tuple index OR dict key lookup
+    except (IndexError, KeyError, TypeError):
+        return  # out of range, missing key, or wrong type
     if self.display_data[idx].ndim==2:
         return
+    
     for i in range(len(self.dataImporterSagittal)):
         
         # Add or update circular ROIs in the 4th layer

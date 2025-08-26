@@ -1,0 +1,84 @@
+site_name: AMIGOpy
+site_description: AMIGOpy – Medical Physics tools
+site_url: https://www.amigo-medphys.com/  # can be a docs subdomain later
+repo_url: https://github.com/PhysicsResearch/AMIGOpy
+repo_name: PhysicsResearch/AMIGOpy
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.expand        # keep sections expanded by default
+    - toc.integrate            # <-- moves page ToC into the left nav
+    - toc.follow               # highlights section you’re reading
+    - content.code.copy
+    - search.highlight
+    - search.suggest
+  palette:
+    # Make DARK the default
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    # Secondary: light
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  icon:
+    repo: fontawesome/brands/github
+
+# Navigation (edit as you add pages)
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Usage:
+      - GUI: usage/gui.md
+      - API: usage/api.md
+  - Development: 
+      - Guidlines: DevGuidelines/Software-documentation-guidelines.md
+      - Variables & Structures: dev/variables&structures/General_variable_descriptions.md
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - tables
+  - footnotes
+  - def_list
+  - attr_list
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.snippets
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/PhysicsResearch/AMIGOpy
+      name: GitHub
+    - icon: fontawesome/solid/globe
+      link: https://www.amigo-medphys.com
+      name: Website
+  consent:
+    title: Cookie consent
+    description: We use basic cookies for analytics.
+
+extra_css:
+  - styles/wa-share.css
+
+extra_javascript:
+  - javascripts/wa-share.js
+
+plugins:
+  - search

@@ -84,19 +84,12 @@ def disp_seg_image_slice(self):
 
     # If any structure is selected, display selected segmentation in layer 1
     slice_data_im = slice_data.copy()
-    if self.curr_struc_key is not None and 1 in self.display_seg_data:
-        if self.DataType == "DICOM":
-            target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-        elif self.DataType == "nifti":
-            target_series_dict = self.nifti_data[self.series_index]
-        else:
-            return
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
+    if self.curr_struc_key is not None and 1 in self.display_seg_data \
+        and 'structures' in target_series_dict and self.curr_struc_key in target_series_dict['structures']:
 
-        if self.curr_struc_key in target_series_dict['structures']:
-            target_series_dict['structures'][self.curr_struc_key]['Modified'] = 1
-            patientID = target_series_dict.get('PatientID', '')
-            seriesID = target_series_dict.get('SeriesNumber', '')
-            target_key = f"{patientID}_{seriesID}_{self.curr_struc_name}"
+        target_series_dict['structures'][self.curr_struc_key]['Modified'] = 1
+        target_key = f"{self.patientID}_{self.curr_series_no}_{self.curr_struc_name}"
 
         if self.display_seg_data[0].shape != self.display_seg_data[1].shape:
             QMessageBox.warning(None, "Warning", "Selected segmentation does not match the image volume shape.")
@@ -265,13 +258,7 @@ def render_all_seg_layers(self):
         slice_data = self.display_seg_data[0][:,int(self.current_seg_slice_index), :]
     
     height, width = slice_data.shape
-
-    if self.DataType == "DICOM":
-        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
-    elif self.DataType == "nifti":
-        target_series_dict = self.nifti_data[self.series_index]
-    else:
-        return None
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
     
     if 'structures_keys' in target_series_dict and 'structures_names' in target_series_dict:
         structures_keys = target_series_dict['structures_keys']
@@ -295,18 +282,12 @@ def render_all_seg_layers(self):
             continue
 
         patient_id, series_id, name = widget.patient_id.text(), widget.series_id.text(), widget.struct_name.text()
-        s_key = structures_keys[structures_names.index(name)]
+        if not ((patient_id == self.patientID) and (str(series_id) == str(self.curr_series_no)) \
+                and (name != self.curr_struc_name) and name in structures_names):
+            continue
 
-        if self.DataType == "DICOM":
-            if not ((patient_id == self.patientID) and (int(series_id) == self.curr_series_no) and (name != self.curr_struc_name)):
-                return
-            else:
-                mask = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
-        elif self.DataType == "nifti":
-            if series_id != self.nifti_data[self.series_index]["SeriesNumber"]:
-                return
-            else:
-                mask = self.nifti_data[self.series_index]['structures'][s_key]['Mask3D']
+        s_key = structures_keys[structures_names.index(name)]
+        mask = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
             
         if self.im_ori_seg=="axial": #Axial
             slice_data = mask[int(self.current_seg_slice_index), :, :]

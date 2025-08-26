@@ -403,7 +403,7 @@ def disp_structure_overlay_seg(self):
             renderer.RemoveActor(actor)
     self.structure_actors_seg = []
 
-    target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+    target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
     if 'structures' not in target_series_dict or not target_series_dict['structures']:
         # print("No structures found.")
         return
@@ -561,17 +561,17 @@ def Data_tree_general(self):
                 if len(hierarchy) >= 6 and hierarchy[5] == "Structures": 
                     # structures withing a SERIES
                     update_structure_list_widget(self,
-                                self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'],
-                                self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys']
+                                self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures_names'],
+                                self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys']
                             )
 
                 # list series from the same acquisition and populate a table so the user can pick what to display
                 #
                 if len(hierarchy) == 5: # Series
-                    self.display_data_seg[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                    self.display_data_seg[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
                 if len(hierarchy) == 7: # binary mask contour
-                    s_key = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
-                    self.display_data_seg[idx] = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+                    s_key = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
+                    self.display_data_seg[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
 
                 adjust_data_type_input(self,idx)
                 #
