@@ -2,7 +2,7 @@ from fcn_brachy_sources.process_brachy_database import on_brachy_load_sources
 import numpy as np
 from scipy.ndimage import rotate, shift
 from scipy.spatial.transform import Rotation as R
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from PyQt5.QtWidgets import QMessageBox
 
 def calculate_TG43_plan_dose(self):
@@ -31,13 +31,13 @@ def calculate_TG43_plan_dose(self):
     kerma_str   = self.brachy_plan_Ac.text()
     kerma_value = float(kerma_str)
     dose = dose * kerma_value / 3600 /3600
-    store_dose_to_dicom_data(self, dose, meta)
-    populate_DICOM_tree(self)
+    store_dose_to_medical_image(self, dose, meta)
+    populate_medical_image_tree(self)
 
  
-def store_dose_to_dicom_data(self, dose,meta):
+def store_dose_to_medical_image(self, dose,meta):
     """
-    Stores a dose matrix into self.dicom_data under RTDOSE at a given index.
+    Stores a dose matrix into self.medical_image under RTDOSE at a given index.
     
     If RTDOSE does not exist, it is created as a list.
     If the list has fewer elements than `index`, it is extended.
@@ -48,38 +48,38 @@ def store_dose_to_dicom_data(self, dose,meta):
         self.studyID = 'TG43_AMB'
 
     # Ensure patient level
-    if self.patientID not in self.dicom_data:
-        self.dicom_data[self.patientID] = {}
+    if self.patientID not in self.medical_image:
+        self.medical_image[self.patientID] = {}
 
     # Ensure study level
-    if self.studyID not in self.dicom_data[self.patientID]:
-        self.dicom_data[self.patientID][self.studyID] = {}
+    if self.studyID not in self.medical_image[self.patientID]:
+        self.medical_image[self.patientID][self.studyID] = {}
 
     # Ensure RTDOSE list exists
-    if 'RTDOSE' not in self.dicom_data[self.patientID][self.studyID]:
-        self.dicom_data[self.patientID][self.studyID]['RTDOSE'] = []
+    if 'RTDOSE' not in self.medical_image[self.patientID][self.studyID]:
+        self.medical_image[self.patientID][self.studyID]['RTDOSE'] = []
 
     # Append 
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'].append({})
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'].append({})
     #
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['3DMatrix']                      = dose
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']                      = {}
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['SeriesDescription'] = 'TG43_AMIGOpy'
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['SeriesNumber']                  = 1
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['WindowWidth']       = 10 
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['WindowCenter']      = 5
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['AcquisitionNumber'] = 1
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['DCM_Info']          = {}
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['StudyDescription']  = 'AMIGOpy'
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['ImageComments']     = 'Not for clinical use'
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['SliceThickness']    = meta['pixel_spacing_mm']
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['PixelSpacing']      = [meta['pixel_spacing_mm'], meta['pixel_spacing_mm']]
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['3DMatrix']                      = dose
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']                      = {}
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['SeriesDescription'] = 'TG43_AMIGOpy'
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['SeriesNumber']                  = 1
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['WindowWidth']       = 10 
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['WindowCenter']      = 5
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['AcquisitionNumber'] = 1
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['DCM_Info']          = {}
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['StudyDescription']  = 'AMIGOpy'
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['ImageComments']     = 'Not for clinical use'
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['SliceThickness']    = meta['pixel_spacing_mm']
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['PixelSpacing']      = [meta['pixel_spacing_mm'], meta['pixel_spacing_mm']]
     #
     # orig = np.array(meta['origin_mm'], dtype=float)  # turn into array
     # neg_orig = -orig                                 # elementwise negation
     # # If DICOM wants a tuple/list, convert back
-    # self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['ImagePositionPatient'] = tuple(neg_orig.tolist())
-    self.dicom_data[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['ImagePositionPatient'] = meta['origin_mm']
+    # self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['ImagePositionPatient'] = tuple(neg_orig.tolist())
+    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['ImagePositionPatient'] = meta['origin_mm']
 
 
 def get_all_brachy_dwells(self):
@@ -92,7 +92,7 @@ def get_all_brachy_dwells(self):
 
 
     try:
-        channels = self.dicom_data[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
+        channels = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
     except (KeyError, IndexError):
         QMessageBox.warning(self, "Warning", "Plan data is missing or corrupted.")
         return None

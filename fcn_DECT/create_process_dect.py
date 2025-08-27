@@ -1,4 +1,4 @@
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from fcn_DECT.spr_calc_plot import calculate_beta
 import copy
 import pydicom
@@ -34,11 +34,11 @@ def creat_DECT_derived_maps(self):
     series_label_H, patient_id_H, study_id_H, modality_H, item_index_H = self.series_info_dict[selected_index_H]      
     
     # Assuming the reference image is a 3D NumPy array
-    reference_image_L = self.dicom_data[patient_id_L][study_id_L][modality_L][item_index_L]['3DMatrix'].astype(np.float32)
-    reference_image_H = self.dicom_data[patient_id_H][study_id_H][modality_H][item_index_H]['3DMatrix'].astype(np.float32)
+    reference_image_L = self.medical_image[patient_id_L][study_id_L][modality_L][item_index_L]['3DMatrix'].astype(np.float32)
+    reference_image_H = self.medical_image[patient_id_H][study_id_H][modality_H][item_index_H]['3DMatrix'].astype(np.float32)
     
-    im_c_01 = self.dicom_data[patient_id_L][study_id_L][modality_L][item_index_L]['metadata']['ImageComments']
-    im_c_02 = self.dicom_data[patient_id_H][study_id_H][modality_H][item_index_H]['metadata']['ImageComments']
+    im_c_01 = self.medical_image[patient_id_L][study_id_L][modality_L][item_index_L]['metadata']['ImageComments']
+    im_c_02 = self.medical_image[patient_id_H][study_id_H][modality_H][item_index_H]['metadata']['ImageComments']
     Im_com  = (f"{im_c_01}_{im_c_02}")
     
 
@@ -77,21 +77,21 @@ def creat_DECT_derived_maps(self):
     RED_matrix  = np.nan_to_num(RED_matrix)
     if self.checkBox_Im_RED.isChecked():
         # copy the header of the low image ... in the future some tags will be adjusted
-        original_data = self.dicom_data[patient_id_L][study_id_L][modality_L][item_index_L].copy()
+        original_data = self.medical_image[patient_id_L][study_id_L][modality_L][item_index_L].copy()
         # Ensure the list is long enough to accommodate new indices
-        required_length = len(self.dicom_data[patient_id_L][study_id_L][modality_L]) + 1
-        while len(self.dicom_data[patient_id_L][study_id_L][modality_L]) < required_length:
-            self.dicom_data[patient_id_L][study_id_L][modality_L].append(None)
+        required_length = len(self.medical_image[patient_id_L][study_id_L][modality_L]) + 1
+        while len(self.medical_image[patient_id_L][study_id_L][modality_L]) < required_length:
+            self.medical_image[patient_id_L][study_id_L][modality_L].append(None)
         # Store data into new series indice
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]                              = copy.deepcopy(original_data)
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['3DMatrix']                  = RED_matrix.astype(np.float32)
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['SliceImageComments']        = 'RED Calculated AMB'
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['ImageComments'] = "RED Calculated AMB"
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]                              = copy.deepcopy(original_data)
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['3DMatrix']                  = RED_matrix.astype(np.float32)
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['SliceImageComments']        = 'RED Calculated AMB'
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['ImageComments'] = "RED Calculated AMB"
         image_comment = str('RED Calculated AMB')
         data_element = DataElement((0x0020, 0x4000), 'LO', image_comment)
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['DCM_Info']['ImageComments'] = data_element
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = 'Calculated RED'
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"RED {Im_com}")
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['DCM_Info']['ImageComments'] = data_element
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = 'Calculated RED'
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"RED {Im_com}")
         #
         #
         
@@ -113,21 +113,21 @@ def creat_DECT_derived_maps(self):
     Zeff_matrix  = np.nan_to_num(Zeff_matrix)
     if self.checkBox_Im_Zeff.isChecked():
         # copy the header of the low image ... in the future some tags will be adjusted
-        original_data = self.dicom_data[patient_id_L][study_id_L][modality_L][item_index_L].copy()
+        original_data = self.medical_image[patient_id_L][study_id_L][modality_L][item_index_L].copy()
         # Ensure the list is long enough to accommodate new indices
-        required_length = len(self.dicom_data[patient_id_L][study_id_L][modality_L]) + 1
-        while len(self.dicom_data[patient_id_L][study_id_L][modality_L]) < required_length:
-            self.dicom_data[patient_id_L][study_id_L][modality_L].append(None)
+        required_length = len(self.medical_image[patient_id_L][study_id_L][modality_L]) + 1
+        while len(self.medical_image[patient_id_L][study_id_L][modality_L]) < required_length:
+            self.medical_image[patient_id_L][study_id_L][modality_L].append(None)
         # Store data into new series indice
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]                              = copy.deepcopy(original_data)
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['3DMatrix']                  = Zeff_matrix.astype(np.float32)
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['SliceImageComments']        = 'Zeff Calculated AMB'
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['ImageComments'] = "Zeff Calculated AMB"
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]                              = copy.deepcopy(original_data)
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['3DMatrix']                  = Zeff_matrix.astype(np.float32)
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['SliceImageComments']        = 'Zeff Calculated AMB'
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['ImageComments'] = "Zeff Calculated AMB"
         image_comment = str('Zeff Calculated AMB')
         data_element = DataElement((0x0020, 0x4000), 'LO', image_comment)
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['DCM_Info']['ImageComments'] = data_element
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = 'Calculated Zeff'
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"Zeff {Im_com}")
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['DCM_Info']['ImageComments'] = data_element
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = 'Calculated Zeff'
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"Zeff {Im_com}")
         #
         #
     if self.checkBox_Im_I.isChecked() or self.checkBox_Im_SPR.isChecked():
@@ -220,21 +220,21 @@ def creat_DECT_derived_maps(self):
         I_matrix  = np.nan_to_num(I_matrix)
         if self.checkBox_Im_I.isChecked():
             # copy the header of the low image ... in the future some tags will be adjusted
-            original_data = self.dicom_data[patient_id_L][study_id_L][modality_L][item_index_L].copy()
+            original_data = self.medical_image[patient_id_L][study_id_L][modality_L][item_index_L].copy()
             # Ensure the list is long enough to accommodate new indices
-            required_length = len(self.dicom_data[patient_id_L][study_id_L][modality_L]) + 1
-            while len(self.dicom_data[patient_id_L][study_id_L][modality_L]) < required_length:
-                self.dicom_data[patient_id_L][study_id_L][modality_L].append(None)
+            required_length = len(self.medical_image[patient_id_L][study_id_L][modality_L]) + 1
+            while len(self.medical_image[patient_id_L][study_id_L][modality_L]) < required_length:
+                self.medical_image[patient_id_L][study_id_L][modality_L].append(None)
             # Store data into new series indice
-            self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]                              = copy.deepcopy(original_data)
-            self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['3DMatrix']                  = I_matrix.astype(np.float32)
-            self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['SliceImageComments']        = 'Ivalue Calculated AMB'
-            self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['ImageComments'] = "Ivalue Calculated AMB"
+            self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]                              = copy.deepcopy(original_data)
+            self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['3DMatrix']                  = I_matrix.astype(np.float32)
+            self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['SliceImageComments']        = 'Ivalue Calculated AMB'
+            self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['ImageComments'] = "Ivalue Calculated AMB"
             image_comment = str('Ivalue Calculated AMB')
             data_element = DataElement((0x0020, 0x4000), 'LO', image_comment)
-            self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['DCM_Info']['ImageComments'] = data_element
-            self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = 'Calculated Ivalue'
-            self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"Ivalue {Im_com}")
+            self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['DCM_Info']['ImageComments'] = data_element
+            self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = 'Calculated Ivalue'
+            self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"Ivalue {Im_com}")
     
     if self.checkBox_Im_SPR.isChecked():
         I_w          = float(self.Iv_water_ref.value())
@@ -256,23 +256,23 @@ def creat_DECT_derived_maps(self):
         SPR_matrix = RED_matrix * (numerator / denominator)
         
         # copy the header of the low image ... in the future some tags will be adjusted
-        original_data = self.dicom_data[patient_id_L][study_id_L][modality_L][item_index_L].copy()
+        original_data = self.medical_image[patient_id_L][study_id_L][modality_L][item_index_L].copy()
         # Ensure the list is long enough to accommodate new indices
-        required_length = len(self.dicom_data[patient_id_L][study_id_L][modality_L]) + 1
-        while len(self.dicom_data[patient_id_L][study_id_L][modality_L]) < required_length:
-            self.dicom_data[patient_id_L][study_id_L][modality_L].append(None)
+        required_length = len(self.medical_image[patient_id_L][study_id_L][modality_L]) + 1
+        while len(self.medical_image[patient_id_L][study_id_L][modality_L]) < required_length:
+            self.medical_image[patient_id_L][study_id_L][modality_L].append(None)
         # Store data into new series indice
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]                              = copy.deepcopy(original_data)
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['3DMatrix']                  = SPR_matrix.astype(np.float32)
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['SliceImageComments']        = 'SPR Calculated AMB'
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['ImageComments'] = "SPR Calculated AMB"
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]                              = copy.deepcopy(original_data)
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['3DMatrix']                  = SPR_matrix.astype(np.float32)
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['SliceImageComments']        = 'SPR Calculated AMB'
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['ImageComments'] = "SPR Calculated AMB"
         image_comment = str('Ivalue Calculated AMB')
         data_element = DataElement((0x0020, 0x4000), 'LO', image_comment)
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['DCM_Info']['ImageComments'] = data_element
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = 'Calculated SPR'
-        self.dicom_data[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"SPR {Im_com}")
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['DCM_Info']['ImageComments'] = data_element
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = 'Calculated SPR'
+        self.medical_image[patient_id_L][study_id_L][modality_L][required_length-1]['metadata']['LUTLabel'] = (f"SPR {Im_com}")
     
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
 
 
 
@@ -363,11 +363,11 @@ def c_roi_scatter_plot(self):
     try:
         selected_index_im_01 = self.scatter_plot_im_01.currentIndex()
         series_label_01, patient_id_01, study_id_01, modality_01, item_index_01 = self.series_info_dict[selected_index_im_01]
-        reference_image_01 = self.dicom_data[patient_id_01][study_id_01][modality_01][item_index_01]['3DMatrix']
+        reference_image_01 = self.medical_image[patient_id_01][study_id_01][modality_01][item_index_01]['3DMatrix']
     
         selected_index_im_02 = self.scatter_plot_im_02.currentIndex()
         series_label_02, patient_id_02, study_id_02, modality_02, item_index_02 = self.series_info_dict[selected_index_im_02]
-        reference_image_02 = self.dicom_data[patient_id_02][study_id_02][modality_02][item_index_02]['3DMatrix']
+        reference_image_02 = self.medical_image[patient_id_02][study_id_02][modality_02][item_index_02]['3DMatrix']
     
         num_values = self.DECT_scatt_N.value()
         point_size = self.DECT_sct_p_size.value()

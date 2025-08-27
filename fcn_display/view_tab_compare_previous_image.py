@@ -42,7 +42,7 @@ def compare_view_previous(self, Window, Level, idx, num_layers=4):
         self.view_previous_image = buf
 
     # ---- gather current metrics (robust to missing metadata) ----
-    meta = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index].get('metadata', {})
+    meta = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index].get('metadata', {})
 
     def _safe_tuple(m, key, n):
         v = m.get(key, None)

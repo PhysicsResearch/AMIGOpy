@@ -33,7 +33,8 @@ from fcn_breathing_curves.functions_plot import calcStats, plotViewData_BrCv_plo
 from fcn_breathing_curves.functions_edit import applyOperations, undoOperations, exportData, plotViewData_BrCv_edit, cropRange_BrCv_edit, exportGCODE#, cropCurve_BrCv_edit
 from fcn_breathing_curves.functions_phantom_operation import setDuetIP, defineInputFolder
 from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, update_doses_list, update_structure_list, eqd2_calc
-from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc, DeleteSeg, undo_brush_seg
+from fcn_segmentation.functions_segmentation import (threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc, 
+                                                     DeleteSeg, undo_brush_seg, apply_morph_oper, undo_morph_oper)
 from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes,add_row_to_ct_table, export_ct_cal_to_csv
 from fcn_densitymap.density_map import create_density_map,del_density_map
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
@@ -101,6 +102,10 @@ def initialize_software_buttons(self):
     self.exportSegStatsButton.setStyleSheet("background-color: blue; color:white")
     self.exportSegStrucButton.clicked.connect(lambda: exportSegStruc(self))
     self.exportSegStrucButton.setStyleSheet("background-color: blue; color:white")
+    self.ApplyMorphOper.clicked.connect(lambda: apply_morph_oper(self))
+    self.ApplyMorphOper.setStyleSheet("background-color: blue; color:white")
+    self.UndoMorphOper.clicked.connect(lambda: undo_morph_oper(self))
+    self.UndoMorphOper.setStyleSheet("background-color: blue; color:white")
     
     # Connect the button's clicked signal to the slot function - run im processing operations
     self.run_im_process.clicked.connect(lambda: run_image_processing(self))
@@ -259,8 +264,7 @@ def initialize_software_buttons(self):
     self.calc_eqd2.clicked.connect(lambda: generate_eqd2_dose(self))
     self.add_to_ab_list.clicked.connect(lambda: add_ab(self))
     self.delete_from_ab_list.clicked.connect(lambda: delete_ab(self))
-    self.eqd2_update_dose_list.clicked.connect(lambda: update_doses_list(self))
-    self.eqd2_update_structure_list.clicked.connect(lambda: update_structure_list(self))
+    
     self.calc_eqd2_2.clicked.connect(lambda: eqd2_calc(self))
 
     #CT CALIBRATION--------------------------------------------------------------------------
@@ -352,9 +356,9 @@ def on_display_dw_overlay_clicked(self):
     displaysagittal(self)
     displaycoronal(self)
     #
-    # Check if the required fields exist in dicom_data
+    # Check if the required fields exist in medical_image
     try:
-        dicom_data = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
+        medical_image = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
     except KeyError:
         # Show an error message if plan metadata is missing
         QtWidgets.QMessageBox.critical(self, "Plan Missing", "Please select a plan first.")
@@ -362,13 +366,13 @@ def on_display_dw_overlay_clicked(self):
         return
 
     # Check if 'Plan_Brachy_Channels' exists in 'metadata'
-    if 'Plan_Brachy_Channels' not in dicom_data:
+    if 'Plan_Brachy_Channels' not in medical_image:
         # Show an error message if Plan_Brachy_Channels is missing
         QtWidgets.QMessageBox.critical(self, "Plan Missing", "Please select a plan first.")
         self.display_dw_overlay.setChecked(False)  # Uncheck the checkbox if plan is missing
         return
 
-    channels = dicom_data['Plan_Brachy_Channels']
+    channels = medical_image['Plan_Brachy_Channels']
 
     # Check if 'Plan_Brachy_Channels' contains valid data (e.g., non-empty list or array)
     if not channels or not isinstance(channels, list):

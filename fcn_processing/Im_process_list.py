@@ -503,8 +503,8 @@ def image_processing_undo(self):
     self.display_data[idx] = self.display_data_undo.copy()
     if self.DataType == "IrIS":
         self.IrIS_data[self.patientID]['3DMatrix'] = self.display_data[idx]
-    elif self.DataType == "DICOM":
-        self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'] = self.display_data[idx]   
+    elif self.DataType == "DICOM" or self.DataType == "Nifti":
+        self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'] = self.display_data[idx]   
     # update display
     displayaxial(self)
     displaysagittal(self)

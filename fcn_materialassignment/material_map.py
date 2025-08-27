@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
 import csv, math
 from PyQt5.QtGui         import QColor, QBrush
 from PyQt5.QtCore        import Qt
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from PyQt5.QtWidgets import QInputDialog, QMessageBox
 
 def update_material_list(self):
@@ -123,7 +123,7 @@ def del_mat2HU(self):
         
 def update_mat_struct_list(self):
     try:
-        target_series_dict = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]
+        target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
         structure_names = target_series_dict.get('structures_names', [])
     except:
         #QMessageBox.critical(self,'No valid set selected', 'Your current selection has no associated structures!')
@@ -231,7 +231,7 @@ def generate_mat_map(self):
 
     #Retrive CT_info
     if self.patientID:
-        target_dict=self.dicom_data[self.patientID][self.studyID]
+        target_dict=self.medical_image[self.patientID][self.studyID]
     else:
         QMessageBox.critical(self, 'Error', 'No Patient selected')
         return
@@ -311,14 +311,14 @@ def generate_mat_map(self):
     
     entry={'3DMatrix':mat_map,'Material_used':mat_used}
     target['mat_maps'][f'mat_map_{len(existing)}']=entry
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
     
 
     
 
 def delete_mat_map(self):
     if self.patientID:
-        target_dict=self.dicom_data[self.patientID][self.studyID]
+        target_dict=self.medical_image[self.patientID][self.studyID]
     else:
         QMessageBox.critical(self, 'Error', 'No Patient selected')
         return
@@ -342,7 +342,7 @@ def delete_mat_map(self):
         else:
             target['mat_maps'].pop(item)
         
-        populate_DICOM_tree(self)
+        populate_medical_image_tree(self)
         
         QMessageBox.information(self, "Deleted", f"Material map '{item}' has been deleted.")
 

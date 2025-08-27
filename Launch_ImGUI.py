@@ -39,6 +39,7 @@ from fcn_init.init_tool_tip import set_tooltip
 from fcn_3Dview.surfaces_3D_table import init_STL_Surface_table
 from fcn_3Dview.protons_3D_plan import init_3D_proton_table
 from fcn_init.init_data_tree import set_context_menu
+# from fcn_init.init_reg_elements import init_reg_elements
 
 
 # ── constants in module / class scope ─────────────────────────────────────────
@@ -120,7 +121,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # This section initialize variables related to images dimentions, currentl displaying set
         # slice index ... It is important so different element of the GUI can have access to them 
         #
-        self.dicom_data   = None            # Initialize the attribute to store DICOM data
+        self.medical_image   = None            # Initialize the attribute to store DICOM data
         self.IrIS_data    = None            # Initialize the attribute to store IrIS data
         self.STL_data     = None            # Initialize the attribute to store STL data
         self.IrIS_corr    = {}              # Initialize the attribute to store IrIS correction data
@@ -229,6 +230,9 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
 
         # set data tree context menu
         set_context_menu(self)
+
+        #
+        # init_reg_elements(self)
 
 
 
@@ -441,12 +445,26 @@ def _find_widget_in_gridlayout(layout, widget):
 
 
 if __name__ == "__main__":
+
+    import sys
+    from PyQt5.QtCore import Qt, QCoreApplication
+    from PyQt5.QtGui import QSurfaceFormat
+    from PyQt5.QtWidgets import QApplication
+    import qdarkstyle
+
+    # Pick ONE of these attributes. DesktopOpenGL first; if you’re on RDP/VM, use SoftwareOpenGL instead.
+    QCoreApplication.setAttribute(Qt.AA_UseDesktopOpenGL, True)
+    # QCoreApplication.setAttribute(Qt.AA_UseSoftwareOpenGL, True)  # ← use this line instead if needed
+
+    # Force a Compatibility profile (NOT Core), and set reasonable buffers
     fmt = QSurfaceFormat()
-    fmt.setVersion(3, 2)                   # request at least OpenGL 3.2
-    fmt.setProfile(QSurfaceFormat.CoreProfile)
+    fmt.setRenderableType(QSurfaceFormat.OpenGL)
+    fmt.setProfile(QSurfaceFormat.CompatibilityProfile)
+    # fmt.setVersion(3, 2)  # optional; let Qt choose if unsure
     fmt.setDepthBufferSize(24)
     fmt.setStencilBufferSize(8)
     QSurfaceFormat.setDefaultFormat(fmt)
+
     app = QApplication(sys.argv)
     folder_path = None
     if len(sys.argv) > 1:

@@ -1,5 +1,5 @@
 import numpy as np
-from fcn_load.load_dcm import populate_DICOM_tree
+from fcn_load.load_dcm import populate_medical_image_tree
 import tkinter as tk
 from tkinter import simpledialog
 import copy
@@ -17,9 +17,9 @@ def shift_and_split_3D_matrix(self):
         raise ValueError("No valid number of intervals provided")
 
     # Retrieve the original data
-    original_matrix = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
-    slice_image_comments = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['SliceImageComments']
-    image_patient_positions = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index]['ImagePositionPatients']
+    original_matrix = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+    slice_image_comments = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['SliceImageComments']
+    image_patient_positions = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['ImagePositionPatients']
 
     # Determine the number of frames in each new matrix
     total_frames = original_matrix.shape[0]
@@ -35,18 +35,18 @@ def shift_and_split_3D_matrix(self):
     split_image_patient_positions = np.array_split(image_patient_positions, intervals)
     
     # Copy the rest of the data from the original series index
-    original_data = self.dicom_data[self.patientID][self.studyID][self.modality][self.series_index].copy()
+    original_data = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index].copy()
 
     # Ensure the list is long enough to accommodate new indices
-    required_length = len(self.dicom_data[self.patientID][self.studyID][self.modality]) + intervals
-    while len(self.dicom_data[self.patientID][self.studyID][self.modality]) < required_length:
-        self.dicom_data[self.patientID][self.studyID][self.modality].append(None)
+    required_length = len(self.medical_image[self.patientID][self.studyID][self.modality]) + intervals
+    while len(self.medical_image[self.patientID][self.studyID][self.modality]) < required_length:
+        self.medical_image[self.patientID][self.studyID][self.modality].append(None)
 
     # Shift existing series indices down to make space
-    for i in range(len(self.dicom_data[self.patientID][self.studyID][self.modality]) - 1, self.series_index, -1):
-        if self.dicom_data[self.patientID][self.studyID][self.modality][i] is not None:
-            self.dicom_data[self.patientID][self.studyID][self.modality][i + intervals] = self.dicom_data[self.patientID][self.studyID][self.modality][i]
-            self.dicom_data[self.patientID][self.studyID][self.modality][i] = None
+    for i in range(len(self.medical_image[self.patientID][self.studyID][self.modality]) - 1, self.series_index, -1):
+        if self.medical_image[self.patientID][self.studyID][self.modality][i] is not None:
+            self.medical_image[self.patientID][self.studyID][self.modality][i + intervals] = self.medical_image[self.patientID][self.studyID][self.modality][i]
+            self.medical_image[self.patientID][self.studyID][self.modality][i] = None
     #
     # Update the series index to reflect the new series
     orig_series_str = original_data['SeriesNumber']
@@ -55,19 +55,19 @@ def shift_and_split_3D_matrix(self):
     # Store the split data into new series indices
     for i in range(intervals):
         new_series_index = self.series_index + i
-        self.dicom_data[self.patientID][self.studyID][self.modality][new_series_index] = copy.deepcopy(original_data)
-        self.dicom_data[self.patientID][self.studyID][self.modality][new_series_index]['3DMatrix'] = split_matrices[i]
-        self.dicom_data[self.patientID][self.studyID][self.modality][new_series_index]['SliceImageComments'] = split_slice_image_comments[i]
-        self.dicom_data[self.patientID][self.studyID][self.modality][new_series_index]['ImagePositionPatients'] = split_image_patient_positions[i]
-        self.dicom_data[self.patientID][self.studyID][self.modality][new_series_index]['metadata']['ImageComments'] = split_slice_image_comments[i][0]
-        self.dicom_data[self.patientID][self.studyID][self.modality][new_series_index]['SeriesNumber']= f"{int(orig_series_str)}__{i}"
+        self.medical_image[self.patientID][self.studyID][self.modality][new_series_index] = copy.deepcopy(original_data)
+        self.medical_image[self.patientID][self.studyID][self.modality][new_series_index]['3DMatrix'] = split_matrices[i]
+        self.medical_image[self.patientID][self.studyID][self.modality][new_series_index]['SliceImageComments'] = split_slice_image_comments[i]
+        self.medical_image[self.patientID][self.studyID][self.modality][new_series_index]['ImagePositionPatients'] = split_image_patient_positions[i]
+        self.medical_image[self.patientID][self.studyID][self.modality][new_series_index]['metadata']['ImageComments'] = split_slice_image_comments[i][0]
+        self.medical_image[self.patientID][self.studyID][self.modality][new_series_index]['SeriesNumber']= f"{int(orig_series_str)}__{i}"
         image_comment = str(split_slice_image_comments[i][0])
         data_element = DataElement((0x0020, 0x4000), 'LO', image_comment)
-        self.dicom_data[self.patientID][self.studyID][self.modality][new_series_index]['metadata']['DCM_Info']['ImageComments'] = data_element
+        self.medical_image[self.patientID][self.studyID][self.modality][new_series_index]['metadata']['DCM_Info']['ImageComments'] = data_element
 
         
     # Remove the original series index data
-    self.dicom_data[self.patientID][self.studyID][self.modality].pop(self.series_index + intervals)
+    self.medical_image[self.patientID][self.studyID][self.modality].pop(self.series_index + intervals)
    
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
   

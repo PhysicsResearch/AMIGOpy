@@ -10,7 +10,7 @@ from fcn_display.mouse_move_slicechanges import onMouseMoveCoronal, onMouseMoveS
 def populate_layer_list(self):
     # List of operations
     layer = ["0","1","2"]
-    self.active_layer = self.findChild(QtWidgets.QComboBox, 'layer_selection_box')
+    self.active_layer = self.findChild(QtWidgets.QComboBox, 'Layer_selection')
     # Populate the QComboBox
     self.active_layer.addItems(layer)
     # You can also connect the selection change event to a function

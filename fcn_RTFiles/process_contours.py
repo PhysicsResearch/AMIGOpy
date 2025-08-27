@@ -1,7 +1,7 @@
 import numpy as np
 from skimage.draw import polygon
 from skimage.measure import find_contours
-from fcn_load.populate_dcm_list import populate_DICOM_tree
+from fcn_load.populate_med_image_list import populate_medical_image_tree
 from PyQt5.QtWidgets import QMessageBox, QDialog
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
@@ -20,13 +20,13 @@ def find_matching_series(self, Ref):
     """
     matches = []
 
-    # Make sure this patientID is in dicom_data
-    if self.patientID not in self.dicom_data:
+    # Make sure this patientID is in medical_image
+    if self.patientID not in self.medical_image:
         print(f"No data found for patientID={self.patientID}")
         return matches
 
     # Loop over all studies for this patient
-    for studyID, study_data in self.dicom_data[self.patientID].items():
+    for studyID, study_data in self.medical_image[self.patientID].items():
         # Loop over all modalities in each study
         for modality, modality_data in study_data.items():
             # If the next level is a list, iterate accordingly
@@ -127,11 +127,11 @@ def create_contour_masks(self):
         QMessageBox.warning(None, "Warning", "No DICOM data was found")
         return
     # ─── 1) gather data ●────────────────────────────────────────────
-    data_dict = self.dicom_data[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]
+    data_dict = self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]
 
     # ── 2) Ask user to pick the destination/target series ───────────
     dlg = SeriesPickerDialog(
-        self.dicom_data,
+        self.medical_image,
         excluded_modalities={'RTPLAN', 'RTSTRUCT', 'RTDOSE'},
         source_tuple=(self.patientID_struct, self.StructRefSeries.text()),
         parent=self
@@ -146,14 +146,14 @@ def create_contour_masks(self):
 
     # Validate and fetch the selected target
     try:
-        target = self.dicom_data[dest_patient][dest_study][dest_modality][dest_index]
+        target = self.medical_image[dest_patient][dest_study][dest_modality][dest_index]
     except Exception:
         QMessageBox.warning(self, "Error", "Selected destination series could not be loaded.")
         return
 
-    pixel_spac     = np.array(self.dicom_data[dest_patient][dest_study][dest_modality][dest_index]['metadata']['PixelSpacing'])[None, :]
-    slice_thick    = np.array(self.dicom_data[dest_patient][dest_study][dest_modality][dest_index]['metadata']['SliceThickness'])
-    Im_PatPosition = np.array(self.dicom_data[dest_patient][dest_study][dest_modality][dest_index]['metadata']['ImagePositionPatient'])
+    pixel_spac     = np.array(self.medical_image[dest_patient][dest_study][dest_modality][dest_index]['metadata']['PixelSpacing'])[None, :]
+    slice_thick    = np.array(self.medical_image[dest_patient][dest_study][dest_modality][dest_index]['metadata']['SliceThickness'])
+    Im_PatPosition = np.array(self.medical_image[dest_patient][dest_study][dest_modality][dest_index]['metadata']['ImagePositionPatient'])
 
     # ─── 2) Replace vs. Append ●────────────────────────────────────
     existing = target.get('structures', {})
@@ -227,7 +227,7 @@ def create_contour_masks(self):
 
     worker.finished.connect(thread.quit)
     worker.finished.connect(prog_dlg.close)
-    worker.finished.connect(lambda: populate_DICOM_tree(self))
+    worker.finished.connect(lambda: populate_medical_image_tree(self))
 
     worker.canceled.connect(thread.quit)
     worker.canceled.connect(prog_dlg.close)
@@ -249,7 +249,7 @@ def create_contour_masks(self):
         # assume widget.checkbox is your QCheckBox
         if hasattr(widget, 'checkbox'):
             widget.checkbox.setChecked(False)
-    populate_DICOM_tree(self)
+    populate_medical_image_tree(self)
     #update_mat_struct_list(self)
 
 

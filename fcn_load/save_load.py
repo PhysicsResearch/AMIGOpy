@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QFileDialog, QProgressDialog,
                              QMessageBox, QApplication)
 import joblib, pickle, importlib.util
 from pathlib import Path
-from fcn_load.load_dcm import populate_DICOM_tree
+from fcn_load.load_dcm import populate_medical_image_tree
 import copy
 import numpy as np
 
@@ -22,7 +22,7 @@ def strip_vtk_actors_from_dicom_tree(node):
     Parameters
     ----------
     node : any
-        Typically the deep-copied dicom_data tree.
+        Typically the deep-copied medical_image tree.
 
     Returns
     -------
@@ -123,8 +123,23 @@ class SaveWorker(QObject):
         finally:
             self.finished.emit()
 
+def _shim_pydicom_pickle():
+    """
+    Provide a stub for pydicom.sequence.validate_dataset if missing,
+    so old pickles can unpickle under pydicom ≥3.0.
+    """
+    try:
+        import pydicom.sequence as seq
+        if not hasattr(seq, "validate_dataset"):
+            def validate_dataset(x):  # no-op stub
+                return x
+            seq.validate_dataset = validate_dataset
+    except Exception:
+        # If pydicom isn't installed in this env, just skip.
+        pass
+
 class LoadWorker(QObject):
-    result   = pyqtSignal(object)    # loaded dicom_data
+    result   = pyqtSignal(object)    # loaded medical_image
     finished = pyqtSignal()
     error    = pyqtSignal(str)
 
@@ -134,6 +149,7 @@ class LoadWorker(QObject):
 
     def run(self):
         try:
+            _shim_pydicom_pickle()
             data = joblib.load(self._path, mmap_mode=None)
             self.result.emit(data)
         except Exception as e:
@@ -149,7 +165,7 @@ BUNDLE_FILTER = "AMIGOpy data (*.amigo)"
 
 def save_amigo_bundle(self):
     """
-    Save self.dicom_data in a background thread while showing
+    Save self.medical_image in a background thread while showing
     an indeterminate (animated) progress bar.
     """
     path, _ = QFileDialog.getSaveFileName(
@@ -167,19 +183,15 @@ def save_amigo_bundle(self):
     dlg.setMinimumDuration(0)        # show immediately
     dlg.setValue(0)
     # used for debugging
-    if self.DataType == "DICOM":
-        find_unpicklable(self.dicom_data)
-    elif self.DataType == "nifti":
-        find_unpicklable(self.nifti_data)
+    if self.DataType == "DICOM" or self.DataType == "Nifti":
+        find_unpicklable(self.medical_image)
     else:
         return
     #
     # 2) Thread + worker
     thread = QThread(self)
-    if self.DataType == "DICOM":
-        worker = SaveWorker(self.dicom_data, path)
-    elif self.DataType == "nifti":
-        worker = SaveWorker(self.nifti_data, path)
+    if self.DataType == "DICOM" or self.DataType == "Nifti":
+        worker = SaveWorker(self.medical_image, path)
     else:
         return
 
@@ -239,14 +251,10 @@ def load_amigo_bundle(self, path: str | None = None):
         except:
             self.DataType = "DICOM"
 
-        if self.DataType == "DICOM":
-            self.dicom_data = data
+        if self.DataType == "DICOM" or self.DataType == "nifti":
+            self.medical_image = data
             self.DataType = "DICOM"
-            populate_DICOM_tree(self)        # refresh your UI
-        elif self.DataType == "nifti": 
-            self.nifti_data = data
-            self.DataType = "nifti"
-            populate_nifti_tree(self)
+            populate_medical_image_tree(self)        # refresh your UI
         else:
             return
 
@@ -278,7 +286,7 @@ def find_unpicklable(obj, *, skip_numpy=True, _path="root"):
     Parameters
     ----------
     obj : any
-        The object tree to inspect (e.g. self.dicom_data).
+        The object tree to inspect (e.g. self.medical_image).
     skip_numpy : bool, default True
         Large NumPy arrays are almost always pickle-safe and expensive to
         test; skip them unless you really suspect trouble there.
