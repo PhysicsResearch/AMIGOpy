@@ -31,7 +31,7 @@ from fcn_breathing_curves.functions_import import openCSVFile_BrCv, setParams, c
 from fcn_breathing_curves.functions_plot import calcStats, plotViewData_BrCv_plot, exportPlot
 from fcn_breathing_curves.functions_edit import applyOperations, undoOperations, exportData, plotViewData_BrCv_edit, cropRange_BrCv_edit, exportGCODE#, cropCurve_BrCv_edit
 from fcn_breathing_curves.functions_phantom_operation import setDuetIP, defineInputFolder, setAcqStart, exportMoVeData
-from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, update_doses_list, update_structure_list, eqd2_calc
+from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, create_ab_matrix, eqd2_calc
 from fcn_segmentation.functions_segmentation import threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc, DeleteSeg, undo_brush_seg
 from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes,add_row_to_ct_table, export_ct_cal_to_csv
 from fcn_densitymap.density_map import create_density_map,del_density_map
