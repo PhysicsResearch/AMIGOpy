@@ -187,8 +187,18 @@ def addColumns(self, dataframe):
 
     # Add local maxima and minima
     if "mark" in dataframe.columns and self.curve_origin == "measured":
-        idxs = dataframe[dataframe["mark"] == "Z"].index
+        df_copy = dataframe.copy()
+        df_copy['mark'] = df_copy['mark'].astype(str)
 
+        idxs = dataframe[dataframe["mark"] == "Z"].index
+        dataframe['mark'] = np.nan
+        for idx in idxs:
+            start = max(0, idx - 15)
+            end = min(len(dataframe) - 1, idx + 15)
+            peak_idx = df_copy.loc[start:end, 'amplitude'].idxmax()
+            dataframe.at[peak_idx, 'mark'] = 'Z'
+
+        idxs = dataframe[dataframe["mark"] == "Z"].index
         for i in range(len(idxs)-1):
             min_idx = dataframe.loc[idxs[i]:idxs[i+1], "amplitude"].idxmin()
             dataframe.loc[min_idx, "mark"] = "P_min"
@@ -199,14 +209,20 @@ def addColumns(self, dataframe):
 
     # If phase information in the CSV/VXP file create separate id per cycle
     # (instance already created in createCv function)
-    if "phase" in dataframe.columns and "instance" not in dataframe.columns:
+    if "mark" in dataframe.columns:
         dataframe["instance"] = 0
 
-        for i in range(1, len(dataframe)):
-            if dataframe.loc[i, "phase"] < dataframe.loc[i-1, "phase"]:
-                dataframe.loc[i, "instance"] = dataframe.loc[i-1, "instance"] + 1
+        idxs = dataframe[dataframe["mark"] == "Z"].index
+        for k, idx in enumerate(idxs):
+            if k == 0:
+                start = 0
+                end = idx
             else:
-                dataframe.loc[i, "instance"] = dataframe.loc[i-1, "instance"]
+                start = idxs[k - 1]
+                end = idx
+            dataframe.loc[start:end, "instance"] = k
+            if k == len(idxs) - 1:
+                dataframe.loc[idx:len(dataframe), "instance"] = k + 1
 
     if "instance" in dataframe.columns:
         dataframe["cycle time"] = 0
