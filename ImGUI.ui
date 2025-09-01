@@ -8269,6 +8269,13 @@
                   </property>
                  </widget>
                 </item>
+                <item row="3" column="2">
+                 <widget class="QCheckBox" name="stop_until_radiation">
+                  <property name="text">
+                   <string>Stop until radiation</string>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </widget>
              </widget>
