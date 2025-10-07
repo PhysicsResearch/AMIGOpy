@@ -12,6 +12,7 @@ from fcn_DECT.calculateVMIs import calculate_VMI
 from fcn_load.load_STL import load_stl_files
 from fcn_load.load_OBJ import load_obj_files
 from fcn_load.load_nifti import load_nifti_files
+from fcn_load.load_mha import load_mha_files
 from fcn_autocont.segmentator_calls import open_segmentator_tab
 from functools import partial
 
@@ -36,7 +37,7 @@ def initializeMenuBar(self):
     # open
     openMenu = fileMenu.addMenu("Open")
     # Add items 
-    items = ["DICOM", "NIfTI","AMIGOpy","STL","Obj","3mf", "Tiff", "EGSPhant","IrIS", "MCNPinp", "MCNPout"]
+    items = ["DICOM", "NIfTI","AMIGOpy","MHA","STL","Obj","3mf", "Tiff", "EGSPhant","IrIS", "MCNPinp", "MCNPout"]
     for item in items:
         action = QAction(item, self)
         # Connect the Folder action to the load_dcm function
@@ -48,6 +49,9 @@ def initializeMenuBar(self):
             action.setShortcut("Ctrl+I")
         if item == "AMIGOpy":
             action.triggered.connect(lambda: load_amigo_bundle(self))
+            action.setShortcut("Ctrl+A") 
+        if item == "MHA":
+            action.triggered.connect(lambda: load_mha_files(self))
             action.setShortcut("Ctrl+A") 
         if item == "STL":
             action.triggered.connect(lambda: load_stl_files(self))
