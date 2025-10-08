@@ -219,10 +219,13 @@ def update_MoVeData(self):
                     return
             else:  
                 return
+        if hasattr(self, 'pause') and not self.stop_until_radiation.isChecked():
+            pause_continue_GCODE(self, False)
+            delattr(self, 'pause')
             
         if not self.MoVeAutoControl.isChecked():
             self.MoVeUserSetSpeed = self.MoVeSpeedFactor.value()
-        if self.MoVeAutoControl.isChecked():
+        if self.MoVeAutoControl.isChecked() and len(self.time_buffer) > 10:
             calc_diff(self)
 
         self.time_buffer.append(t)
@@ -288,7 +291,7 @@ def exportMoVeData(self):
     if not hasattr(self, 'MoVeData'):
         return
 
-    formatted_time = datetime.now().strftime("%Y%m%d_%H%M") 
+    formatted_time = datetime.now().strftime("%Y%m%d_%H%M%S") 
     filepath = os.path.join(csv_root, filename.replace(".gcode", f"_MoVe_{formatted_time}.csv"))
     df = pd.DataFrame(self.MoVeData)
     df.to_csv(filepath, index=False)
