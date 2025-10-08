@@ -292,7 +292,7 @@ def c_roi_getvoxels(self):
                         mask[z] = x*x + y*y <= radius*radius
                     except:
                         QMessageBox.warning(None, "Warning", f"Slice index {z} is out of bounds for the image with shape {reference_image.shape}")
-                        continue
+                        break
     
                 # Apply the mask to the reference image
                 masked_data = reference_image[mask]
