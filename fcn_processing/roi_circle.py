@@ -261,6 +261,7 @@ def c_roi_getvoxels(self):
         return
     
     voxels_data = {}
+    skip = False
     
     for i, series_data in enumerate(series_list):
         reference_image = series_data['3DMatrix']
@@ -292,8 +293,11 @@ def c_roi_getvoxels(self):
                         mask[z] = x*x + y*y <= radius*radius
                     except:
                         QMessageBox.warning(None, "Warning", f"Slice index {z} is out of bounds for the image with shape {reference_image.shape}")
+                        skip = True
                         break
-    
+            
+                if skip: 
+                    break
                 # Apply the mask to the reference image
                 masked_data = reference_image[mask]
                 voxels_data[f'Series_{series_number}_ROI_{row}'] = masked_data.flatten()
