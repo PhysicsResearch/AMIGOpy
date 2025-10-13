@@ -11,8 +11,8 @@ from vtkmodules.util.numpy_support import numpy_to_vtk, get_vtk_array_type
 import numpy as np
 import matplotlib.cm as cm
 
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import QTimer, Qt
+from PySide6 import QtWidgets
+from PySide6.QtCore import QTimer, Qt
 from functools import partial
 
 from fcn_3Dview.surfaces_3D_table import add_stl_to_table

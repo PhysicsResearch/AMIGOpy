@@ -2,8 +2,8 @@ import numpy as np
 import os
 import tkinter as tk
 from tkinter import filedialog
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QStandardItemModel, QStandardItem
 from fcn_load.populate_med_image_list import _get_or_create_parent_item
 from concurrent.futures import ProcessPoolExecutor
 from skimage.measure import block_reduce

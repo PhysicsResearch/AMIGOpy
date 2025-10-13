@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
+from PySide6.QtWidgets import QFileDialog, QMessageBox, QApplication
 import vtk
 from vtkmodules.util.numpy_support import vtk_to_numpy
 import numpy as np

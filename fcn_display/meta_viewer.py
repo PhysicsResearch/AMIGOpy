@@ -3,7 +3,7 @@ from pydicom.dataset import Dataset
 from pydicom.sequence import Sequence
 from pydicom.multival import MultiValue
 
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
     QTreeWidget,

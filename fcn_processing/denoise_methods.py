@@ -5,7 +5,7 @@ from skimage.restoration import denoise_wavelet, denoise_tv_chambolle, rolling_b
 from skimage.filters import prewitt
 import numpy as np
 #from bm3d import bm3d
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 
 
 def apply_gaussian_filter(self):

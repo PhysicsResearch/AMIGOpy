@@ -3,8 +3,8 @@ from fcn_display.display_images_seg import disp_seg_image_slice
 from fcn_display.colormap_set import set_color_map
 from fcn_display.win_level import set_window
 import time
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 def left_button_pressseg_event(self, caller, event):
     self.left_but_pressed[0] = 1

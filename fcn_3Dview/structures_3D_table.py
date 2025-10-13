@@ -1,13 +1,13 @@
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QTableWidgetItem, QPushButton, QCheckBox, QSpinBox, QColorDialog, QDoubleSpinBox
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QTableWidgetItem, QPushButton, QCheckBox, QSpinBox, QColorDialog, QDoubleSpinBox, QAbstractItemView, QHeaderView
 
 def init_3D_Struct_table(self):
     self._3D_Struct_table.setColumnCount(7)  #
     self._3D_Struct_table.setHorizontalHeaderLabels([
         "Name", "Color", "Size", "Visible", "Surface", "Transparency", "Delete"
     ])
-    self._3D_Struct_table.setEditTriggers(self._3D_Struct_table.NoEditTriggers)  # Optional: make non-editable
-    self._3D_Struct_table.setSelectionBehavior(self._3D_Struct_table.SelectRows)
+    self._3D_Struct_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+    self._3D_Struct_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
 
 
 def add_cloud_to_table(self, name, color=(1,0,0), size=3, visible=True, surface=False, transparency=1):

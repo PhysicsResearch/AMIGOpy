@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from PyQt5.QtWidgets import QVBoxLayout, QTableWidgetItem, QFileDialog
+from PySide6.QtWidgets import QVBoxLayout, QTableWidgetItem, QFileDialog
 
 
 def getColumnIndexByName(self, column_name):
@@ -158,7 +158,7 @@ def plotViewData_BrCv_plot(self):
         for x, y in zip(x_data, y_data):
             ax.plot(x, y)
 
-    from PyQt5 import QtWidgets
+    from PySide6 import QtWidgets
     self.plotPeaksBrCv = QtWidgets.QCheckBox(self.smoothing_BrCv)
     self.plotPeaksBrCv.setChecked(False)
     self.plotPeaksBrCv.setObjectName("plotPeaksBrCv")

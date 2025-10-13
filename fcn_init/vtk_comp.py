@@ -2,8 +2,8 @@ import vtk
 import numpy as np
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from vtkmodules.all import  vtkAxesActor, vtkOrientationMarkerWidget, vtkTransform
-from PyQt5.QtWidgets import QVBoxLayout
-from PyQt5 import QtWidgets
+from PySide6.QtWidgets import QVBoxLayout
+from PySide6 import QtWidgets
 from fcn_display.mouse_move_slicechanges import onMouseMoveCoronal, onMouseMoveSagittal, onMouseMoveAxial, left_button_pressaxial_event, left_button_releaseaxial_event
 
 

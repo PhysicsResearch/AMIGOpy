@@ -8,8 +8,8 @@ from matplotlib.figure import Figure
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
-from PyQt5.QtCore import QThread, QUrl
+from PySide6.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
+from PySide6.QtCore import QThread, QUrl
 from datetime import datetime
 
 WINDOW_DURATION = 10     # seconds to show on the plot

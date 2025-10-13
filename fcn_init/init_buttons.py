@@ -1,8 +1,9 @@
 import vtk
-from PyQt5.QtWidgets import QApplication, QPushButton, QWidget, QVBoxLayout, QAction, QShortcut
-from PyQt5 import QtWidgets  # Import the correct module for QMessageBox
-from PyQt5.QtGui import QKeySequence
-from PyQt5.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QPushButton, QWidget, QVBoxLayout
+from PySide6.QtGui import QAction, QShortcut
+from PySide6 import QtWidgets  # Import the correct module for QMessageBox
+from PySide6.QtGui import QKeySequence
+from PySide6.QtCore import Qt
 from fcn_init.vtk_comparison_axes     import create_vtk_elements_comp
 from fcn_IrIS.FindDwell_IrIS import add_row_dw_table, remove_row_dw_table
 from fcn_processing.Im_process_list import image_processing_undo, run_image_processing

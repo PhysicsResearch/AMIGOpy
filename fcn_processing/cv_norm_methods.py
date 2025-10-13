@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from PyQt5.QtWidgets   import QApplication
+from PySide6.QtWidgets   import QApplication
 from fcn_display.Data_tree_general import adjust_data_type_input
 from fcn_display.display_images    import displayaxial, displaycoronal, displaysagittal
 from fcn_processing.conver_clip_data  import convert_and_clip_data

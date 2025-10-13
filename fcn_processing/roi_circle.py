@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QFileDialog, QMessageBox
-from PyQt5.QtGui import QColor
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QFileDialog, QMessageBox
+from PySide6.QtGui import QColor
 import pandas as pd
 import os
 import numpy as np

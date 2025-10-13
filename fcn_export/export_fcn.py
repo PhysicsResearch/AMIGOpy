@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
+from PySide6.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
 
 # IrIS ------------------------------------------------------------
 def export_np_array(self):

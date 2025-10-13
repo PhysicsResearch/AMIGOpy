@@ -1,8 +1,8 @@
 # ──────────────────────────────────────────────────────────────
 # Imports  (put these near the top of your file)
 # ──────────────────────────────────────────────────────────────
-from PyQt5.QtCore    import QObject, QThread, pyqtSignal, Qt
-from PyQt5.QtWidgets import (QFileDialog, QProgressDialog,
+from PySide6.QtCore    import QObject, QThread, Signal, Qt
+from PySide6.QtWidgets import (QFileDialog, QProgressDialog,
                              QMessageBox, QApplication)
 import joblib, pickle, importlib.util
 from pathlib import Path
@@ -95,8 +95,8 @@ def _pick_compressor():
 # Worker classes run inside a QThread
 # ──────────────────────────────────────────────────────────────
 class SaveWorker(QObject):
-    finished = pyqtSignal()
-    error    = pyqtSignal(str)
+    finished = Signal()
+    error    = Signal(str)
 
     def __init__(self, data, path):
         super().__init__()
@@ -139,9 +139,9 @@ def _shim_pydicom_pickle():
         pass
 
 class LoadWorker(QObject):
-    result   = pyqtSignal(object)    # loaded medical_image
-    finished = pyqtSignal()
-    error    = pyqtSignal(str)
+    result   = Signal(object)    # loaded medical_image
+    finished = Signal()
+    error    = Signal(str)
 
     def __init__(self, path):
         super().__init__()

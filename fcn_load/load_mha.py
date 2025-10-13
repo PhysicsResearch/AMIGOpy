@@ -1,7 +1,7 @@
 import os
 import SimpleITK as sitk
 import numpy as np
-from PyQt5.QtWidgets import QFileDialog
+from PySide6.QtWidgets import QFileDialog
 from pathlib import Path
 
 MHA_EXTS = ('.mha', '.mhd')  # single-file .mha or header+raw .mhd

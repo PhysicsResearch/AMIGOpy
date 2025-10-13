@@ -7,7 +7,7 @@ from fcn_processing.denoise_methods import (apply_gaussian_filter, apply_median_
 
 from fcn_processing.cv_norm_methods import normalize_image
 from fcn_display.display_images     import displayaxial, displaycoronal, displaysagittal
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 def on_operation_selected(self, index):
     # Dictionary mapping operations to their descriptions

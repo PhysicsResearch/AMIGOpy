@@ -1,9 +1,9 @@
 import vtk
 import numpy as np
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from PyQt5.QtWidgets import QVBoxLayout
-from PyQt5.QtCore import QRegExp
-from PyQt5.QtGui import QRegExpValidator, QIntValidator
+from PySide6.QtWidgets import QVBoxLayout
+from PySide6.QtCore import QRegularExpression
+from PySide6.QtGui import QRegularExpressionValidator, QIntValidator
 from fcn_display.seg_mouse_fcn import left_button_pressseg_event, left_button_releaseseg_event, on_scroll_backwardseg, on_scroll_forwardseg, onMouseMoveseg, on_right_click_move_pan
 
 def setup_vtk_seg(self):
@@ -102,8 +102,8 @@ def setup_vtk_seg(self):
     self.vtkWidgetSeg.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event:onMouseMoveseg(self, caller, event))
 
     # Limit the naming of structures to letters and digits
-    reg_ex = QRegExp("[a-zA-Z][a-zA-Z0-9]{0,15}")
-    input_validator = QRegExpValidator(reg_ex, self.segStructName)
+    reg_ex = QRegularExpression("[a-zA-Z][a-zA-Z0-9]{0,15}")
+    input_validator = QRegularExpressionValidator(reg_ex, self.segStructName)
     self.segStructName.setValidator(input_validator)
 
     minHU_validator = QIntValidator(-1024, 3000, self.threshMinHU)

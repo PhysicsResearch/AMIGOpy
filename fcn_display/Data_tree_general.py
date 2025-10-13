@@ -1,7 +1,7 @@
 import numpy as np
-from PyQt5.QtGui import  QStandardItem
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QMessageBox, QTableWidgetItem, QCheckBox, QWidget, QHBoxLayout, QTableWidget, QTableWidgetItem, QCheckBox
+from PySide6.QtGui import  QStandardItem
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QMessageBox, QTableWidgetItem, QCheckBox, QWidget, QHBoxLayout, QTableWidget, QTableWidgetItem, QCheckBox
 from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
 from pydicom.multival import MultiValue
 from fcn_display.meta_viewer import update_meta_view_table_dicom

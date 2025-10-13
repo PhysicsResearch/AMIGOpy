@@ -1,7 +1,7 @@
 import numpy as np
 import time
 from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
-from PyQt5.QtCore import QTimer
+from PySide6.QtCore import QTimer
 
 def play_4D_sequence(self):
     # Initialize an empty list to hold (index, sequence_id) tuples

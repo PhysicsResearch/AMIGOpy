@@ -1,10 +1,10 @@
 import sys
 import re
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication, QWidget, QPushButton, QVBoxLayout, 
     QFileDialog, QInputDialog, QMessageBox
 )
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
 
 def split_gcode(self):
     """

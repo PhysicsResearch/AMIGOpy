@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
+from PySide6.QtWidgets import QFileDialog, QMessageBox, QApplication
 import numpy as np
 from pathlib import Path
 from fcn_load.populate_stl_list import populate_stl_tree

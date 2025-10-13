@@ -1,7 +1,7 @@
 from fcn_display.display_images   import displayaxial, displaycoronal, displaysagittal
 from fcn_display.display_images_seg import disp_seg_image_slice
 from fcn_display.display_images_IrISeval import disp_eval_iris_slice
-from PyQt5.QtWidgets import QInputDialog
+from PySide6.QtWidgets import QInputDialog
 import numpy as np
 from fcn_display.colormap_set import set_color_map
 

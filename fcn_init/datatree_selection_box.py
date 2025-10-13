@@ -1,7 +1,7 @@
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QDialogButtonBox
 )
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
 
 class SeriesPickerDialog(QDialog):
     def __init__(self, medical_image, excluded_modalities=None, source_tuple=None, parent=None):
@@ -63,6 +63,7 @@ class SeriesPickerDialog(QDialog):
 
         self.selected_patient = None
         self.selected_series_tuple = None
+        self.DataTreeView.setStyleSheet("QTreeWidget { border: 1px solid palette(mid); border-radius: 4px; }")
 
     def _select_first_patient_with_valid_series(self):
         for i, pid in enumerate(self._patient_ids):

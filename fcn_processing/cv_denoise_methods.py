@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
 
 def apply_gaussian_blur(self):

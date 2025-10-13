@@ -1,8 +1,8 @@
 import vtk 
 import numpy as np
-from PyQt5.QtWidgets import QMessageBox
-from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt
+from PySide6.QtWidgets import QMessageBox
+from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt
 
 
 def update_seg_slider(self):

@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QProgressDialog, QMessageBox
-from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt
+from PySide6.QtWidgets import QProgressDialog, QMessageBox
+from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt
 import vtk
 import numpy as np
 import math

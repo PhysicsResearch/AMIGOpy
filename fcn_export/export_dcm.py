@@ -3,7 +3,7 @@ import pydicom
 from pydicom.dataset import FileDataset
 from pydicom.uid import generate_uid
 from datetime import datetime, timedelta
-from PyQt5.QtWidgets import QFileDialog, QApplication
+from PySide6.QtWidgets import QFileDialog, QApplication
 import sys
 import os
 

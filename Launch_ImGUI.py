@@ -1,10 +1,33 @@
-import sys
-import os
+import os, sys, traceback, faulthandler
+faulthandler.enable()
+os.environ.setdefault("QT_OPENGL", "software")  # safer on RDP/VM
+
+from PySide6.QtCore import Qt, QCoreApplication
+from PySide6.QtGui import QSurfaceFormat, QIcon
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QToolBar
+from PySide6.QtCore import QEvent, Qt, QTimer, Signal, QObject
+# Force software GL (stable on many Windows setups)
+QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_UseSoftwareOpenGL, True)
+
+# Compatibility profile is safest with VTK on Windows
+fmt = QSurfaceFormat()
+fmt.setRenderableType(QSurfaceFormat.OpenGL)
+fmt.setProfile(QSurfaceFormat.CompatibilityProfile)
+fmt.setVersion(3, 2)
+fmt.setDepthBufferSize(24)
+fmt.setStencilBufferSize(8)
+QSurfaceFormat.setDefaultFormat(fmt)
+
+from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor as QVTKWidget
+
+import vtk
+from PySide6.QtWidgets import QApplication
 import qdarkstyle
-from PyQt5.QtGui      import QIcon, QSurfaceFormat
-from PyQt5.QtWidgets  import QApplication, QMainWindow, QToolBar
-from PyQt5 import QtWidgets
-from ImGUI import Ui_AMIGOpy  # Assuming this is the name of your main window class in ImGUI.py
+
+
+
+
+from uiImGUI import Ui_AMIGOpy
 from fcn_load.sort_dcm import get_data_description
 from fcn_load.org_fol_dcm import organize_files_into_folders
 from fcn_breathing_curves.functions_plot import init_BrCv_plot, plotViewData_BrCv_plot
@@ -31,8 +54,8 @@ from fcn_init.init_drop_options       import initialize_drop_fcn
 from fcn_load.load_dcm                import load_all_dcm
 from fcn_segmentation.functions_segmentation import plot_hist
 from fcn_init.init_vtk_3D_display     import init_vtk3d_widget
-import vtk
-from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal, QObject
+
+
 from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin
 from fcn_3Dview.structures_3D_table import init_3D_Struct_table 
 from fcn_init.init_tool_tip import set_tooltip
@@ -59,7 +82,7 @@ _VIEW_ATTRS = {
 class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
         # emmit signal when the slice changes
         # This signal can be connected to other functions to update the display when the slice changes.
-    sliceChanged = pyqtSignal(str, list)
+    sliceChanged = Signal(str, list)
 
     def __init__(self,folder_path=None):
         super(MyApp, self).__init__()
@@ -155,7 +178,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.SagittalSlider.valueChanged.connect(self.on_sagittalslider_change)
         self.CoronalSlider.valueChanged.connect(self.on_coronalslider_change)
         
-        
+
               
         # # Initialize VTK components
         setup_vtk_comp(self)
@@ -233,6 +256,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
 
         #
         # init_reg_elements(self)
+        
 
 
 
@@ -324,7 +348,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         return self._cycle_order[(idx + 1) % len(self._cycle_order)]
 
     def eventFilter(self, watched, event):
-        if event.type() == QEvent.MouseButtonDblClick and event.button() == Qt.LeftButton:
+        if event.type() == QEvent.MouseButtonDblClick and event.button() == Qt.MouseButton.LeftButton:
             if watched is self.im_display_tab:
                 self.set_view_mode("all")
                 return True
@@ -444,17 +468,21 @@ def _find_widget_in_gridlayout(layout, widget):
 
 
 
+
+
+
+
 if __name__ == "__main__":
 
+    # Pick ONE of these attributes. DesktopOpenGL first; if you’re on RDP/VM, use SoftwareOpenGL instead.
+    QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_UseDesktopOpenGL, True)
+    # QCoreApplication.setAttribute(Qt.AA_UseSoftwareOpenGL, True)  # ← use this line instead if needed
     import sys
-    from PyQt5.QtCore import Qt, QCoreApplication
-    from PyQt5.QtGui import QSurfaceFormat
-    from PyQt5.QtWidgets import QApplication
+    from PySide6.QtCore import Qt, QCoreApplication
+    from PySide6.QtGui import QSurfaceFormat
+    from PySide6.QtWidgets import QApplication
     import qdarkstyle
 
-    # Pick ONE of these attributes. DesktopOpenGL first; if you’re on RDP/VM, use SoftwareOpenGL instead.
-    QCoreApplication.setAttribute(Qt.AA_UseDesktopOpenGL, True)
-    # QCoreApplication.setAttribute(Qt.AA_UseSoftwareOpenGL, True)  # ← use this line instead if needed
 
     # Force a Compatibility profile (NOT Core), and set reasonable buffers
     fmt = QSurfaceFormat()
@@ -470,12 +498,12 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         folder_path = sys.argv[1]  # Capture folder path from the command-line arguments
     window = MyApp(folder_path)
-    app.setStyleSheet(qdarkstyle.load_stylesheet())
+    app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6'))
     window.show()
     if folder_path is not None:
         print(folder_path)
         load_all_dcm(window,folder_path, progress_callback=None, update_label=None)
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 
