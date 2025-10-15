@@ -219,9 +219,9 @@ def initialize_software_buttons(self):
     self.Reg_manual_Tx.valueChanged.connect(lambda: update_translation_x(self))
     self.Reg_manual_Ty.valueChanged.connect(lambda: update_translation_y(self))
     self.Reg_manual_Tz.valueChanged.connect(lambda: update_translation_z(self))
-    self.Reg_manual_Rot_X.editingFinished.connect(lambda: update_rotation_x(self))
-    self.Reg_manual_Rot_Y.editingFinished.connect(lambda: update_rotation_y(self))
-    self.Reg_manual_Rot_Z.editingFinished.connect(lambda: update_rotation_z(self))
+    self.Reg_manual_Rot_X.valueChanged.connect(lambda: update_rotation_x(self))
+    self.Reg_manual_Rot_Y.valueChanged.connect(lambda: update_rotation_y(self))
+    self.Reg_manual_Rot_Z.valueChanged.connect(lambda: update_rotation_z(self))
     self.Manual_reg_step.valueChanged.connect(lambda: set_transformation_step(self))
     #
     self.apply_Im_transformation.clicked.connect(lambda: apply_trasnformation(self))

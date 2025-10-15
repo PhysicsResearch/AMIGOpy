@@ -251,40 +251,37 @@ def on_DataTreeView_clicked(self,index):
                 self.pixel_spac[idx, :2]      = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
                 self.Im_PatPosition[idx, :3]  = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
                 #
+                # Update image transformation tab
+                with ExitStack() as stack:
+                    # set values without triggering signals for the reference and moving image
+
+                    for w in (self.Reg_manual_Tx, self.Reg_manual_Ty, self.Reg_manual_Tz):
+                        stack.enter_context(QtCore.QSignalBlocker(w))
+                    self.Reg_manual_Tx.setValue(float(self.Im_PatPosition[idx, 0]))
+                    self.Reg_manual_Ty.setValue(float(self.Im_PatPosition[idx, 1]))
+                    self.Reg_manual_Tz.setValue(float(self.Im_PatPosition[idx, 2]))                                
+                    self.Reg_manual_Refx.setValue(float(self.Im_PatPosition[0, 0]))
+                    self.Reg_manual_Refy.setValue(float(self.Im_PatPosition[0, 1]))
+                    self.Reg_manual_Refz.setValue(float(self.Im_PatPosition[0, 2]))
+                    self.Reg_manual_Rot_X.setValue(float(0))
+                    self.Reg_manual_Rot_Y.setValue(float(0))
+                    self.Reg_manual_Rot_Z.setValue(float(0))
+                    self.Manual_reg_step.setValue(float(1))
+                    #
+                    self._ax = float(self.Reg_manual_Rot_X.value())
+                    self._ay = float(self.Reg_manual_Rot_Y.value())
+                    self._az = float(self.Reg_manual_Rot_Z.value())
+                    #
+                    #
+                    for sb in (self.Reg_manual_Rot_X, self.Reg_manual_Rot_Y, self.Reg_manual_Rot_Z):
+                        sb.setKeyboardTracking(False)  # only emit when editing finished or arrows used
+
                 if idx>0:
                     self.Im_Offset[idx,0]   = (self.Im_PatPosition[idx,0]-self.Im_PatPosition[0,0])
                     self.Im_Offset[idx,1]   = (self.display_data[0].shape[1]*self.pixel_spac[0,0]-self.display_data[idx].shape[1]*self.pixel_spac[idx,0])-(self.Im_PatPosition[idx,1]-self.Im_PatPosition[0,1])
                     self.Im_Offset[idx,2]   = (self.Im_PatPosition[idx,2]-self.Im_PatPosition[0,2])
                     # layer one can be used for image registration ... update values in the GUI just in case it will be used.
-                    if idx==1:
-                        with ExitStack() as stack:
-                            # set values without triggering signals for the reference and moving image
 
-                            for w in (self.Reg_manual_Tx, self.Reg_manual_Ty, self.Reg_manual_Tz):
-                                stack.enter_context(QtCore.QSignalBlocker(w))
-                            self.Reg_manual_Tx.setValue(float(self.Im_PatPosition[1, 0]))
-                            self.Reg_manual_Ty.setValue(float(self.Im_PatPosition[1, 1]))
-                            self.Reg_manual_Tz.setValue(float(self.Im_PatPosition[1, 2]))                                
-                            self.Reg_manual_Refx.setValue(float(self.Im_PatPosition[0, 0]))
-                            self.Reg_manual_Refy.setValue(float(self.Im_PatPosition[0, 1]))
-                            self.Reg_manual_Refz.setValue(float(self.Im_PatPosition[0, 2]))
-                            self.Reg_manual_Rot_X.setValue(float(0))
-                            self.Reg_manual_Rot_Y.setValue(float(0))
-                            self.Reg_manual_Rot_Z.setValue(float(0))
-                            self.Manual_reg_step.setValue(float(1))
-                            #
-                            self._ax = float(self.Reg_manual_Rot_X.value())
-                            self._ay = float(self.Reg_manual_Rot_Y.value())
-                            self._az = float(self.Reg_manual_Rot_Z.value())
-                            #
-                            self.slice_thick_ref = self.slice_thick[1].copy()
-                            self.pixel_spac_ref  = self.pixel_spac[1, :2].copy()
-                            #
-                            self._vol_orig = self.display_data[1].copy()
-                            self._rot_out = np.empty_like(self._vol_orig, dtype=np.float32)
-                            #
-                            for sb in (self.Reg_manual_Rot_X, self.Reg_manual_Rot_Y, self.Reg_manual_Rot_Z):
-                                sb.setKeyboardTracking(False)  # only emit when editing finished or arrows used
 
                 #
                 # Update the slider's value to match the current slice index

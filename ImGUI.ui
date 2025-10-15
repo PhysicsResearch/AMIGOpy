@@ -809,9 +809,133 @@
               </widget>
               <widget class="QWidget" name="tab_45">
                <attribute name="title">
-                <string>Registration</string>
+                <string>Transform</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_81">
+                <item row="0" column="2">
+                 <widget class="QGroupBox" name="groupBox_13">
+                  <property name="title">
+                   <string>Rotation</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_83">
+                   <item row="0" column="1">
+                    <widget class="QLineEdit" name="lineEdit_73">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>Moving </string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="1">
+                    <widget class="QDoubleSpinBox" name="Reg_manual_Rot_X"/>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QDoubleSpinBox" name="Reg_manual_Rot_Y"/>
+                   </item>
+                   <item row="3" column="1">
+                    <widget class="QDoubleSpinBox" name="Reg_manual_Rot_Z"/>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QGroupBox" name="groupBox_15">
+                  <property name="title">
+                   <string>Resolution</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_85">
+                   <item row="0" column="0">
+                    <widget class="QLineEdit" name="lineEdit_88">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>Current</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="2">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_2">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="3">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_3">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QLineEdit" name="lineEdit_89">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>Target</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="1">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_6"/>
+                   </item>
+                   <item row="1" column="2">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_5"/>
+                   </item>
+                   <item row="1" column="3">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_4"/>
+                   </item>
+                   <item row="2" column="3">
+                    <widget class="QPushButton" name="pushButton_6">
+                     <property name="text">
+                      <string>Apply</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="2" column="1" colspan="2">
+                 <widget class="QGroupBox" name="groupBox_14">
+                  <property name="title">
+                   <string>Flip</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_84">
+                   <item row="1" column="1">
+                    <widget class="QPushButton" name="pushButton_4">
+                     <property name="text">
+                      <string>Y</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QPushButton" name="pushButton_3">
+                     <property name="text">
+                      <string>X</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QPushButton" name="pushButton_5">
+                     <property name="text">
+                      <string>Z</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
                 <item row="0" column="0">
                  <widget class="QGroupBox" name="groupBox_12">
                   <property name="title">
@@ -863,7 +987,7 @@
                       <bool>false</bool>
                      </property>
                      <property name="text">
-                      <string>Ref.- Layer 0</string>
+                      <string>Layer 0</string>
                      </property>
                     </widget>
                    </item>
@@ -873,7 +997,7 @@
                       <bool>false</bool>
                      </property>
                      <property name="text">
-                      <string>Layer 1</string>
+                      <string>Layer</string>
                      </property>
                     </widget>
                    </item>
@@ -954,54 +1078,99 @@
                   </layout>
                  </widget>
                 </item>
-                <item row="0" column="1">
-                 <widget class="QGroupBox" name="groupBox_13">
+                <item row="3" column="0" colspan="3">
+                 <widget class="QGroupBox" name="groupBox_17">
                   <property name="title">
-                   <string>Rotation</string>
+                   <string>Crop</string>
                   </property>
-                  <layout class="QGridLayout" name="gridLayout_83">
-                   <item row="0" column="1">
-                    <widget class="QLineEdit" name="lineEdit_73">
+                  <layout class="QGridLayout" name="gridLayout_86">
+                   <item row="0" column="2" colspan="2">
+                    <widget class="QLineEdit" name="lineEdit_85">
                      <property name="enabled">
                       <bool>false</bool>
                      </property>
                      <property name="text">
-                      <string>Moving </string>
+                      <string>Y</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="4" colspan="2">
+                    <widget class="QLineEdit" name="lineEdit_87">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>Z</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_14">
+                     <property name="enabled">
+                      <bool>false</bool>
                      </property>
                     </widget>
                    </item>
                    <item row="1" column="1">
-                    <widget class="QDoubleSpinBox" name="Reg_manual_Rot_X"/>
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_15">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="2">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_16">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="3">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_17">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="4">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_19">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="5">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_18">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="0">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_21"/>
                    </item>
                    <item row="2" column="1">
-                    <widget class="QDoubleSpinBox" name="Reg_manual_Rot_Y"/>
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_22"/>
                    </item>
-                   <item row="3" column="1">
-                    <widget class="QDoubleSpinBox" name="Reg_manual_Rot_Z"/>
+                   <item row="2" column="2">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_20"/>
                    </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item row="2" column="0" colspan="2">
-                 <widget class="QGroupBox" name="groupBox_14">
-                  <property name="title">
-                   <string>Metrics</string>
-                  </property>
-                  <layout class="QGridLayout" name="gridLayout_84">
-                   <item row="0" column="0">
+                   <item row="2" column="3">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_25"/>
+                   </item>
+                   <item row="2" column="4">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_23"/>
+                   </item>
+                   <item row="2" column="5">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_24"/>
+                   </item>
+                   <item row="0" column="0" colspan="2">
                     <widget class="QLineEdit" name="lineEdit_84">
                      <property name="enabled">
                       <bool>false</bool>
                      </property>
                      <property name="text">
-                      <string>MAE</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QLineEdit" name="lineEdit_85">
-                     <property name="enabled">
-                      <bool>false</bool>
+                      <string>X</string>
                      </property>
                     </widget>
                    </item>
@@ -8755,7 +8924,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>174</width>
+             <width>175</width>
              <height>106</height>
             </rect>
            </property>
@@ -8822,7 +8991,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>242</width>
+             <width>243</width>
              <height>165</height>
             </rect>
            </property>
