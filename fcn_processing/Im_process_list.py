@@ -451,7 +451,7 @@ def on_operation_selected(self, index):
         
         
 def run_image_processing(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     if idx not in self.display_data:
         QMessageBox.warning(None, "Warning", "No image data was found.")
         return
@@ -503,7 +503,7 @@ def run_image_processing(self):
     displaycoronal(self)   
 
 def image_processing_undo(self): 
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.display_data[idx] = self.display_data_undo.copy()
     if self.DataType == "IrIS":
         self.IrIS_data[self.patientID]['3DMatrix'] = self.display_data[idx]

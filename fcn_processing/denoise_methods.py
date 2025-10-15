@@ -13,7 +13,7 @@ def apply_gaussian_filter(self):
     cval      = int(self.Proces_spinbox_05.value())
     truncate  = int(self.Proces_spinbox_06.value())
     mode      = self.Process_set_box2.currentText()
-    idx       = self.layer_selection_box.currentIndex()
+    idx       = self.layer_selected.currentIndex()
     # Initialize kernel_size as a list
     if    self.Process_set_box3.currentText() == "2D":
         sigma     = [0, 0]
@@ -58,7 +58,7 @@ def apply_median_filter(self):
     origin   = int(self.Proces_spinbox_04.value())
     cval      = int(self.Proces_spinbox_05.value())
     mode      = self.Process_set_box2.currentText()
-    idx       = self.layer_selection_box.currentIndex()
+    idx       = self.layer_selected.currentIndex()
     # Initialize size as a list based on the dimensionality
     if self.Process_set_box3.currentText() == "2D":
         size = [
@@ -103,7 +103,7 @@ def apply_percentile_filter(self):
     origin     = int(self.Proces_spinbox_04.value())
     cval       = int(self.Proces_spinbox_05.value())
     mode       = self.Process_set_box2.currentText()
-    idx        = self.layer_selection_box.currentIndex()
+    idx        = self.layer_selected.currentIndex()
     percentile = int(self.Proces_spinbox_06.value())  # Example: Add a spinbox for percentile    
     if percentile < 0 or percentile > 100:
         raise ValueError("Percentile must be between 0 and 100")
@@ -151,7 +151,7 @@ def apply_maximum_filter(self):
     origin     = int(self.Proces_spinbox_04.value())
     cval       = int(self.Proces_spinbox_05.value())
     mode       = self.Process_set_box2.currentText()
-    idx        = self.layer_selection_box.currentIndex()
+    idx        = self.layer_selected.currentIndex()
     #    
     # Initialize size as a list based on the dimensionality
     if self.Process_set_box3.currentText() == "2D":
@@ -196,7 +196,7 @@ def apply_minimum_filter(self):
     origin     = int(self.Proces_spinbox_04.value())
     cval       = int(self.Proces_spinbox_05.value())
     mode       = self.Process_set_box2.currentText()
-    idx        = self.layer_selection_box.currentIndex() 
+    idx        = self.layer_selected.currentIndex() 
     #    
     # Initialize size as a list based on the dimensionality
     if self.Process_set_box3.currentText() == "2D":
@@ -239,7 +239,7 @@ def apply_minimum_filter(self):
         
 
 def apply_wiener_filter(self):
-    idx        = self.layer_selection_box.currentIndex() 
+    idx        = self.layer_selected.currentIndex() 
     # Get the noise value and set to None if negative
     noise = float(self.Proces_spinbox_04.value())
     if noise < 0:
@@ -285,7 +285,7 @@ def apply_wiener_filter(self):
 
 def apply_fourier_gaussian_filter(self):
     sigma = float(self.Proces_spinbox_01.value())  # Example: Add a spinbox for Gaussian sigma
-    idx        = self.layer_selection_box.currentIndex() 
+    idx        = self.layer_selected.currentIndex() 
     # Get the noise value and set to None if negative
     noise = float(self.Proces_spinbox_04.value())
     if noise < 0:
@@ -331,7 +331,7 @@ def apply_fourier_gaussian_filter(self):
 
 def apply_gaussian_gradient_filter(self):
     sigma = float(self.Proces_spinbox_01.value())  # Example: Add a spinbox for Gaussian sigma
-    idx        = self.layer_selection_box.currentIndex() 
+    idx        = self.layer_selected.currentIndex() 
     # Get the noise value and set to None if negative
     noise = float(self.Proces_spinbox_04.value())
     if noise < 0:
@@ -370,7 +370,7 @@ def apply_gaussian_gradient_filter(self):
        
 def apply_gaussian_laplace_filter(self):
     sigma = float(self.Proces_spinbox_01.value())  # Example: Add a spinbox for Gaussian sigma
-    idx        = self.layer_selection_box.currentIndex() 
+    idx        = self.layer_selected.currentIndex() 
     # Get the noise value and set to None if negative
     noise = float(self.Proces_spinbox_04.value())
     if noise < 0:
@@ -408,7 +408,7 @@ def apply_gaussian_laplace_filter(self):
        
 def apply_sobel_filter(self):
     axis = int(self.Proces_spinbox_01.value()) 
-    idx  = self.layer_selection_box.currentIndex() 
+    idx  = self.layer_selected.currentIndex() 
     mode       = self.Process_set_box2.currentText()
     # Get the noise value and set to None if negative
     cval = float(self.Proces_spinbox_02.value())
@@ -445,7 +445,7 @@ def apply_sobel_filter(self):
     
     
 def apply_denoise_wavelet(self):
-    idx  = self.layer_selection_box.currentIndex() 
+    idx  = self.layer_selected.currentIndex() 
     # sigma: Standard deviation of the noise.
     # wavelet: Type of wavelet to use (default is 'db1').
     sigma = float(self.Proces_spinbox_01.value())  
@@ -493,7 +493,7 @@ def apply_denoise_wavelet(self):
     
 
 def apply_denoise_tv_chambolle(self):
-    idx  = self.layer_selection_box.currentIndex() 
+    idx  = self.layer_selected.currentIndex() 
     # weight: Denoising weight. Higher values remove more noise but also more details.
     weight = float(self.Proces_spinbox_01.value())  # Example: Add a spinbox for weight
     # 
@@ -540,7 +540,7 @@ def apply_denoise_tv_chambolle(self):
 
     
 def apply_rolling_ball(self):
-    idx  = self.layer_selection_box.currentIndex() 
+    idx  = self.layer_selected.currentIndex() 
     # radius: Radius of the ball. Larger values remove larger structures.
     radius = float(self.Proces_spinbox_01.value())  # Example: Add a spinbox for radius
     # 
@@ -586,7 +586,7 @@ def apply_rolling_ball(self):
 
     
 def apply_denoise_nl_means(self):
-    idx  = self.layer_selection_box.currentIndex()
+    idx  = self.layer_selected.currentIndex()
     # patch_size: Size of patches used for denoising.
     # patch_distance: Maximal distance in pixels where to search patches used for denoising.
     # h: Cut-off distance (in gray levels).
@@ -636,7 +636,7 @@ def apply_denoise_nl_means(self):
 
  
 def apply_denoise_bilateral(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     sigma_color = float(self.Proces_spinbox_01.value())  # Example: Add a spinbox for sigma_color
     sigma_spatial = float(self.Proces_spinbox_02.value())  # Example: Add a spinbox for sigma_spatial
 
@@ -679,7 +679,7 @@ def apply_denoise_bilateral(self):
     
     
 def apply_prewitt_filter(self):
-    idx  = self.layer_selection_box.currentIndex()
+    idx  = self.layer_selected.currentIndex()
     axis = int(self.Proces_spinbox_01.value()) 
     # 
     if self.Process_set_box3.currentText() == "2D":
@@ -723,7 +723,7 @@ def apply_prewitt_filter(self):
         self.display_data[idx] = postprocess_image(denoised, min_val, ptp_val, original_dtype)
        
 def apply_bm3d_denoising(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     # sigma_psd  = float(self.Proces_spinbox_01.value())     # Standard deviation of the noise
     # #
     # if self.Process_set_box3.currentText() == "2D":

@@ -71,7 +71,7 @@ def initialize_3Dsliders(self, low: float, high: float, n_steps: int = 100):
         w.blockSignals(False)
 
     # record both the absolute data range and current threshold for this layer
-    layer = self.layer_selection_box.currentIndex()
+    layer = self.layer_selected.currentIndex()
     self._full_ranges[layer] = (self.slider3D_LOW, self.slider3D_HIGH)
     self._thresholds[layer]  = (self.slider3D_LOW, self.slider3D_HIGH)
 
@@ -99,7 +99,7 @@ def _from_slider(self, idx: int, sval: int):
         self.View3D_Threshold_slider_02.blockSignals(False)
         self.View3D_Threshold_spin_02.setValue(v)
 
-    layer = self.layer_selection_box.currentIndex()
+    layer = self.layer_selected.currentIndex()
     # print(f"[DEBUG] _from_slider: layer={layer}, idx={idx}, sval={sval}")  
     # store the new threshold for this layer
     tmin = self.View3D_Threshold_spin_01.value()
@@ -171,7 +171,7 @@ def initialize_crop_widgets(self, dims: tuple, layer_idx: int):
 
 def _crop_from_slider(self, axis: str, idx_crop: int, sval: int):
     """Handler for crop sliders: updates only that layer’s crop."""
-    layer = self.layer_selection_box.currentIndex()
+    layer = self.layer_selected.currentIndex()
     if layer not in self._dims:
         initialize_crop_widgets(self, self._imgs[layer].GetDimensions(), layer)
     nx, ny, nz = self._dims[layer]
@@ -208,7 +208,7 @@ def _crop_from_spin(self, axis: str, idx_crop: int, val: int):
 def _apply_crop(self):
     """Apply recorded crop extents to the selected (or all) layers."""
     apply_all = self.View3D_update_all_3D.isChecked()
-    sel = self.layer_selection_box.currentIndex()
+    sel = self.layer_selected.currentIndex()
     for li, volobj in self._volumes.items():
         if apply_all or li == sel:
             xmin, xmax, ymin, ymax, zmin, zmax = self._crops.get(
@@ -250,7 +250,7 @@ def play_4D_sequence_3D(self, play: bool):
             t_idx = checked[self._play3D_index][0]
             vol   = self.medical_image[self.patientID][self.studyID][self.modality][t_idx]['3DMatrix']
             apply_all = self.View3D_update_all_3D.isChecked()
-            sel       = self.layer_selection_box.currentIndex()
+            sel       = self.layer_selected.currentIndex()
             if apply_all:
                 for li in self._volumes:
                     self.update_3d_volume(vol, layer_idx=li)
@@ -299,7 +299,7 @@ class VTK3DViewerMixin:
         self.View3D_update_all_3D.stateChanged.connect(self._on_colormap_changed)
 
         # layer change restores state
-        self.layer_selection_box.currentIndexChanged.connect(self._on_layer_changed)
+        self.layer_selected.currentIndexChanged.connect(self._on_layer_changed)
 
         # threshold callbacks
         self.View3D_Threshold_slider_01.valueChanged.connect(partial(_from_slider, self, 1))
@@ -395,7 +395,7 @@ class VTK3DViewerMixin:
 
     def _on_colormap_changed(self, *_):
         apply_all = self.View3D_update_all_3D.isChecked()
-        sel   = self.layer_selection_box.currentIndex()
+        sel   = self.layer_selected.currentIndex()
         cmap  = self.findChild(QtWidgets.QComboBox, 'View3D_colormap').currentText()
         for li, ctf in self._ctfs.items():
             if apply_all or li==sel:
@@ -403,7 +403,7 @@ class VTK3DViewerMixin:
                 otf = self._otfs[li]
                 otf.RemoveAllPoints()
                 otf.AddPoint(tmin,0.0)
-                layer = self.layer_selection_box.currentIndex()
+                layer = self.layer_selected.currentIndex()
                 opacity = self._opacities[layer] 
                 otf.AddPoint(tmax, opacity)
                 self.update_color_transfer(li, ctf, cmap, tmin, tmax)
@@ -451,7 +451,7 @@ class VTK3DViewerMixin:
         otf = self._otfs[new_idx]
         otf.RemoveAllPoints()
         otf.AddPoint(tmin, 0.0)
-        layer = self.layer_selection_box.currentIndex()
+        layer = self.layer_selected.currentIndex()
         opacity = self._opacities[layer] 
         otf.AddPoint(tmax, opacity)
 
@@ -495,7 +495,7 @@ class VTK3DViewerMixin:
                              offset=(0.0,0.0,0.0)):
         """Load a new 3D numpy array into a VTK volume and display it."""
         if layer_idx is None:
-            layer_idx = self.layer_selection_box.currentIndex()
+            layer_idx = self.layer_selected.currentIndex()
 
         # remove old volume if any
         if layer_idx in self._volumes:
@@ -595,7 +595,7 @@ class VTK3DViewerMixin:
     def update_3d_volume(self, volume_np, layer_idx=None):
         """Update just the scalar data of an existing volume."""
         if layer_idx is None:
-            layer_idx = self.layer_selection_box.currentIndex()
+            layer_idx = self.layer_selected.currentIndex()
         vol = np.flip(volume_np, axis=1)
         arr = numpy_to_vtk(vol.ravel(order='C'), deep=True,
                            array_type=get_vtk_array_type(vol.dtype))

@@ -30,7 +30,7 @@ class Ui_AMIGOpy(object):
     def setupUi(self, AMIGOpy):
         if not AMIGOpy.objectName():
             AMIGOpy.setObjectName(u"AMIGOpy")
-        AMIGOpy.resize(1737, 1169)
+        AMIGOpy.resize(1731, 1156)
         AMIGOpy.setAutoFillBackground(False)
         AMIGOpy.setInputMethodHints(Qt.InputMethodHint.ImhNone)
         self.centralwidget = QWidget(AMIGOpy)
@@ -403,27 +403,38 @@ class Ui_AMIGOpy(object):
         self.tab_17.setObjectName(u"tab_17")
         self.gridLayout_12 = QGridLayout(self.tab_17)
         self.gridLayout_12.setObjectName(u"gridLayout_12")
-        self.Func_description = QTextEdit(self.tab_17)
-        self.Func_description.setObjectName(u"Func_description")
-        self.Func_description.setFont(font)
-
-        self.gridLayout_12.addWidget(self.Func_description, 0, 2, 2, 2)
-
-        self.run_im_process = QPushButton(self.tab_17)
+        self.tabWidget_10 = QTabWidget(self.tab_17)
+        self.tabWidget_10.setObjectName(u"tabWidget_10")
+        self.tab_44 = QWidget()
+        self.tab_44.setObjectName(u"tab_44")
+        self.gridLayout_80 = QGridLayout(self.tab_44)
+        self.gridLayout_80.setObjectName(u"gridLayout_80")
+        self.run_im_process = QPushButton(self.tab_44)
         self.run_im_process.setObjectName(u"run_im_process")
         font2 = QFont()
         font2.setPointSize(10)
         font2.setBold(True)
         self.run_im_process.setFont(font2)
 
-        self.gridLayout_12.addWidget(self.run_im_process, 1, 0, 1, 1)
+        self.gridLayout_80.addWidget(self.run_im_process, 0, 2, 1, 1)
 
-        self.Process_list = QComboBox(self.tab_17)
+        self.ImageUndo_operation = QPushButton(self.tab_44)
+        self.ImageUndo_operation.setObjectName(u"ImageUndo_operation")
+        self.ImageUndo_operation.setFont(font2)
+
+        self.gridLayout_80.addWidget(self.ImageUndo_operation, 0, 3, 1, 1)
+
+        self.Process_list = QComboBox(self.tab_44)
         self.Process_list.setObjectName(u"Process_list")
 
-        self.gridLayout_12.addWidget(self.Process_list, 0, 0, 1, 2)
+        self.gridLayout_80.addWidget(self.Process_list, 0, 0, 1, 2)
 
-        self.ProcessSetBox = QGroupBox(self.tab_17)
+        self.pushButton_2 = QPushButton(self.tab_44)
+        self.pushButton_2.setObjectName(u"pushButton_2")
+
+        self.gridLayout_80.addWidget(self.pushButton_2, 0, 4, 1, 1)
+
+        self.ProcessSetBox = QGroupBox(self.tab_44)
         self.ProcessSetBox.setObjectName(u"ProcessSetBox")
         self.ProcessSetBox.setEnabled(True)
         self.gridLayout_13 = QGridLayout(self.ProcessSetBox)
@@ -551,13 +562,157 @@ class Ui_AMIGOpy(object):
         self.gridLayout_13.addWidget(self.Proces_label_04, 3, 0, 1, 1)
 
 
-        self.gridLayout_12.addWidget(self.ProcessSetBox, 4, 0, 1, 4)
+        self.gridLayout_80.addWidget(self.ProcessSetBox, 4, 0, 1, 5)
 
-        self.ImageUndo_operation = QPushButton(self.tab_17)
-        self.ImageUndo_operation.setObjectName(u"ImageUndo_operation")
-        self.ImageUndo_operation.setFont(font2)
+        self.tabWidget_10.addTab(self.tab_44, "")
+        self.tab_45 = QWidget()
+        self.tab_45.setObjectName(u"tab_45")
+        self.gridLayout_81 = QGridLayout(self.tab_45)
+        self.gridLayout_81.setObjectName(u"gridLayout_81")
+        self.groupBox_12 = QGroupBox(self.tab_45)
+        self.groupBox_12.setObjectName(u"groupBox_12")
+        self.gridLayout_82 = QGridLayout(self.groupBox_12)
+        self.gridLayout_82.setObjectName(u"gridLayout_82")
+        self.Manual_reg_step = QDoubleSpinBox(self.groupBox_12)
+        self.Manual_reg_step.setObjectName(u"Manual_reg_step")
+        self.Manual_reg_step.setMaximum(2000.000000000000000)
 
-        self.gridLayout_12.addWidget(self.ImageUndo_operation, 1, 1, 1, 1)
+        self.gridLayout_82.addWidget(self.Manual_reg_step, 2, 1, 1, 1)
+
+        self.Reg_manual_Ty = QDoubleSpinBox(self.groupBox_12)
+        self.Reg_manual_Ty.setObjectName(u"Reg_manual_Ty")
+        self.Reg_manual_Ty.setDecimals(3)
+        self.Reg_manual_Ty.setMinimum(-200000.000000000000000)
+        self.Reg_manual_Ty.setMaximum(200000.000000000000000)
+        self.Reg_manual_Ty.setSingleStep(1.000000000000000)
+
+        self.gridLayout_82.addWidget(self.Reg_manual_Ty, 1, 2, 1, 1)
+
+        self.Reg_manual_Tz = QDoubleSpinBox(self.groupBox_12)
+        self.Reg_manual_Tz.setObjectName(u"Reg_manual_Tz")
+        self.Reg_manual_Tz.setDecimals(3)
+        self.Reg_manual_Tz.setMinimum(-200000.000000000000000)
+        self.Reg_manual_Tz.setMaximum(200000.000000000000000)
+        self.Reg_manual_Tz.setSingleStep(1.000000000000000)
+
+        self.gridLayout_82.addWidget(self.Reg_manual_Tz, 1, 3, 1, 1)
+
+        self.lineEdit_72 = QLineEdit(self.groupBox_12)
+        self.lineEdit_72.setObjectName(u"lineEdit_72")
+        self.lineEdit_72.setEnabled(False)
+
+        self.gridLayout_82.addWidget(self.lineEdit_72, 0, 0, 1, 1)
+
+        self.lineEdit_71 = QLineEdit(self.groupBox_12)
+        self.lineEdit_71.setObjectName(u"lineEdit_71")
+        self.lineEdit_71.setEnabled(False)
+
+        self.gridLayout_82.addWidget(self.lineEdit_71, 1, 0, 1, 1)
+
+        self.Reg_manual_Tx = QDoubleSpinBox(self.groupBox_12)
+        self.Reg_manual_Tx.setObjectName(u"Reg_manual_Tx")
+        self.Reg_manual_Tx.setDecimals(3)
+        self.Reg_manual_Tx.setMinimum(-200000.000000000000000)
+        self.Reg_manual_Tx.setMaximum(200000.000000000000000)
+        self.Reg_manual_Tx.setSingleStep(1.000000000000000)
+
+        self.gridLayout_82.addWidget(self.Reg_manual_Tx, 1, 1, 1, 1)
+
+        self.Reg_manual_Refz = QDoubleSpinBox(self.groupBox_12)
+        self.Reg_manual_Refz.setObjectName(u"Reg_manual_Refz")
+        self.Reg_manual_Refz.setEnabled(False)
+
+        self.gridLayout_82.addWidget(self.Reg_manual_Refz, 0, 3, 1, 1)
+
+        self.Reg_manual_Refy = QDoubleSpinBox(self.groupBox_12)
+        self.Reg_manual_Refy.setObjectName(u"Reg_manual_Refy")
+        self.Reg_manual_Refy.setEnabled(False)
+
+        self.gridLayout_82.addWidget(self.Reg_manual_Refy, 0, 2, 1, 1)
+
+        self.lineEdit_74 = QLineEdit(self.groupBox_12)
+        self.lineEdit_74.setObjectName(u"lineEdit_74")
+        self.lineEdit_74.setEnabled(False)
+
+        self.gridLayout_82.addWidget(self.lineEdit_74, 2, 0, 1, 1)
+
+        self.lineEdit_86 = QLineEdit(self.groupBox_12)
+        self.lineEdit_86.setObjectName(u"lineEdit_86")
+
+        self.gridLayout_82.addWidget(self.lineEdit_86, 2, 2, 1, 1)
+
+        self.reg_fill_value = QDoubleSpinBox(self.groupBox_12)
+        self.reg_fill_value.setObjectName(u"reg_fill_value")
+        self.reg_fill_value.setMinimum(-10000000.000000000000000)
+        self.reg_fill_value.setMaximum(100000.000000000000000)
+        self.reg_fill_value.setValue(-1024.000000000000000)
+
+        self.gridLayout_82.addWidget(self.reg_fill_value, 2, 3, 1, 1)
+
+        self.Reg_manual_Refx = QDoubleSpinBox(self.groupBox_12)
+        self.Reg_manual_Refx.setObjectName(u"Reg_manual_Refx")
+        self.Reg_manual_Refx.setEnabled(False)
+
+        self.gridLayout_82.addWidget(self.Reg_manual_Refx, 0, 1, 1, 1)
+
+        self.apply_Im_transformation = QPushButton(self.groupBox_12)
+        self.apply_Im_transformation.setObjectName(u"apply_Im_transformation")
+
+        self.gridLayout_82.addWidget(self.apply_Im_transformation, 3, 3, 1, 1)
+
+
+        self.gridLayout_81.addWidget(self.groupBox_12, 0, 0, 1, 1)
+
+        self.groupBox_13 = QGroupBox(self.tab_45)
+        self.groupBox_13.setObjectName(u"groupBox_13")
+        self.gridLayout_83 = QGridLayout(self.groupBox_13)
+        self.gridLayout_83.setObjectName(u"gridLayout_83")
+        self.lineEdit_73 = QLineEdit(self.groupBox_13)
+        self.lineEdit_73.setObjectName(u"lineEdit_73")
+        self.lineEdit_73.setEnabled(False)
+
+        self.gridLayout_83.addWidget(self.lineEdit_73, 0, 1, 1, 1)
+
+        self.Reg_manual_Rot_X = QDoubleSpinBox(self.groupBox_13)
+        self.Reg_manual_Rot_X.setObjectName(u"Reg_manual_Rot_X")
+
+        self.gridLayout_83.addWidget(self.Reg_manual_Rot_X, 1, 1, 1, 1)
+
+        self.Reg_manual_Rot_Y = QDoubleSpinBox(self.groupBox_13)
+        self.Reg_manual_Rot_Y.setObjectName(u"Reg_manual_Rot_Y")
+
+        self.gridLayout_83.addWidget(self.Reg_manual_Rot_Y, 2, 1, 1, 1)
+
+        self.Reg_manual_Rot_Z = QDoubleSpinBox(self.groupBox_13)
+        self.Reg_manual_Rot_Z.setObjectName(u"Reg_manual_Rot_Z")
+
+        self.gridLayout_83.addWidget(self.Reg_manual_Rot_Z, 3, 1, 1, 1)
+
+
+        self.gridLayout_81.addWidget(self.groupBox_13, 0, 1, 1, 1)
+
+        self.groupBox_14 = QGroupBox(self.tab_45)
+        self.groupBox_14.setObjectName(u"groupBox_14")
+        self.gridLayout_84 = QGridLayout(self.groupBox_14)
+        self.gridLayout_84.setObjectName(u"gridLayout_84")
+        self.lineEdit_84 = QLineEdit(self.groupBox_14)
+        self.lineEdit_84.setObjectName(u"lineEdit_84")
+        self.lineEdit_84.setEnabled(False)
+
+        self.gridLayout_84.addWidget(self.lineEdit_84, 0, 0, 1, 1)
+
+        self.lineEdit_85 = QLineEdit(self.groupBox_14)
+        self.lineEdit_85.setObjectName(u"lineEdit_85")
+        self.lineEdit_85.setEnabled(False)
+
+        self.gridLayout_84.addWidget(self.lineEdit_85, 0, 1, 1, 1)
+
+
+        self.gridLayout_81.addWidget(self.groupBox_14, 2, 0, 1, 2)
+
+        self.tabWidget_10.addTab(self.tab_45, "")
+
+        self.gridLayout_12.addWidget(self.tabWidget_10, 0, 1, 1, 1)
 
         self.tabView01.addTab(self.tab_17, "")
         self.tab_31 = QWidget()
@@ -5437,7 +5592,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg.setObjectName(u"toolBox_seg")
         self.seg_manual_contour = QWidget()
         self.seg_manual_contour.setObjectName(u"seg_manual_contour")
-        self.seg_manual_contour.setGeometry(QRect(0, 0, 254, 129))
+        self.seg_manual_contour.setGeometry(QRect(0, 0, 442, 307))
         self.gridLayout_60 = QGridLayout(self.seg_manual_contour)
         self.gridLayout_60.setObjectName(u"gridLayout_60")
         self.undoSegText = QLineEdit(self.seg_manual_contour)
@@ -5517,7 +5672,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg.addItem(self.seg_manual_contour, u"Manual contouring && edits")
         self.page_thresholding = QWidget()
         self.page_thresholding.setObjectName(u"page_thresholding")
-        self.page_thresholding.setGeometry(QRect(0, 0, 175, 106))
+        self.page_thresholding.setGeometry(QRect(0, 0, 174, 106))
         self.gridLayout_70 = QGridLayout(self.page_thresholding)
         self.gridLayout_70.setObjectName(u"gridLayout_70")
         self.indexMinThreshSeg = QSpinBox(self.page_thresholding)
@@ -5562,7 +5717,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg.addItem(self.page_thresholding, u"Thresholding")
         self.morph_oper = QWidget()
         self.morph_oper.setObjectName(u"morph_oper")
-        self.morph_oper.setGeometry(QRect(0, 0, 243, 165))
+        self.morph_oper.setGeometry(QRect(0, 0, 242, 165))
         self.gridLayout_79 = QGridLayout(self.morph_oper)
         self.gridLayout_79.setObjectName(u"gridLayout_79")
         self.lineEdit_70 = QLineEdit(self.morph_oper)
@@ -5757,10 +5912,10 @@ class Ui_AMIGOpy(object):
 
         self.gridLayout_14.addWidget(self.lineEdit_19, 6, 1, 1, 1)
 
-        self.Layer_selection = QComboBox(self.groupBox)
-        self.Layer_selection.setObjectName(u"Layer_selection")
+        self.Layer_sel = QComboBox(self.groupBox)
+        self.Layer_sel.setObjectName(u"Layer_sel")
 
-        self.gridLayout_14.addWidget(self.Layer_selection, 1, 2, 1, 1)
+        self.gridLayout_14.addWidget(self.Layer_sel, 1, 2, 1, 1)
 
         self.Layer_3_alpha_sli = QSlider(self.groupBox)
         self.Layer_3_alpha_sli.setObjectName(u"Layer_3_alpha_sli")
@@ -5881,8 +6036,7 @@ class Ui_AMIGOpy(object):
         QWidget.setTabOrder(self.Proces_spinbox_04, self.Proces_spinbox_05)
         QWidget.setTabOrder(self.Proces_spinbox_05, self.Proces_spinbox_06)
         QWidget.setTabOrder(self.Proces_spinbox_06, self.Process_set_box)
-        QWidget.setTabOrder(self.Process_set_box, self.run_im_process)
-        QWidget.setTabOrder(self.run_im_process, self.IrIS_Load_CorrectionFrame)
+        QWidget.setTabOrder(self.Process_set_box, self.IrIS_Load_CorrectionFrame)
         QWidget.setTabOrder(self.IrIS_Load_CorrectionFrame, self.lineEdit_6)
         QWidget.setTabOrder(self.lineEdit_6, self.Skip_IrIS_Files)
         QWidget.setTabOrder(self.Skip_IrIS_Files, self.Load_IrIS_Files)
@@ -5921,9 +6075,7 @@ class Ui_AMIGOpy(object):
         QWidget.setTabOrder(self.I_value_a_coeff_calc, self.N_lin_fit)
         QWidget.setTabOrder(self.N_lin_fit, self.I_value_b_coeff_calc)
         QWidget.setTabOrder(self.I_value_b_coeff_calc, self.tabWidget_5)
-        QWidget.setTabOrder(self.tabWidget_5, self.Process_list)
-        QWidget.setTabOrder(self.Process_list, self.Func_description)
-        QWidget.setTabOrder(self.Func_description, self.reset_table_mat)
+        QWidget.setTabOrder(self.tabWidget_5, self.reset_table_mat)
         QWidget.setTabOrder(self.reset_table_mat, self.tabModules)
         QWidget.setTabOrder(self.tabModules, self.Proces_label_01)
         QWidget.setTabOrder(self.Proces_label_01, self.Proces_label_02)
@@ -5943,6 +6095,7 @@ class Ui_AMIGOpy(object):
         self.tabView01.setCurrentIndex(0)
         self.tabWidget_6.setCurrentIndex(0)
         self.tabWidget_4.setCurrentIndex(0)
+        self.tabWidget_10.setCurrentIndex(1)
         self.tabWidget_8.setCurrentIndex(0)
         self.tabWidget_9.setCurrentIndex(0)
         self.tabWidget_3Dview.setCurrentIndex(0)
@@ -5999,8 +6152,21 @@ class Ui_AMIGOpy(object):
         self.lineEdit_64.setText(QCoreApplication.translate("AMIGOpy", u"Search", None))
         self.tabView01.setTabText(self.tabView01.indexOf(self.tab_13), QCoreApplication.translate("AMIGOpy", u"MetaData", None))
         self.run_im_process.setText(QCoreApplication.translate("AMIGOpy", u"Run", None))
-        self.ProcessSetBox.setTitle(QCoreApplication.translate("AMIGOpy", u"Settings", None))
         self.ImageUndo_operation.setText(QCoreApplication.translate("AMIGOpy", u"UNDO", None))
+        self.pushButton_2.setText(QCoreApplication.translate("AMIGOpy", u"Help", None))
+        self.ProcessSetBox.setTitle(QCoreApplication.translate("AMIGOpy", u"Settings", None))
+        self.tabWidget_10.setTabText(self.tabWidget_10.indexOf(self.tab_44), QCoreApplication.translate("AMIGOpy", u"Process", None))
+        self.groupBox_12.setTitle(QCoreApplication.translate("AMIGOpy", u"Translation", None))
+        self.lineEdit_72.setText(QCoreApplication.translate("AMIGOpy", u"Ref.- Layer 0", None))
+        self.lineEdit_71.setText(QCoreApplication.translate("AMIGOpy", u"Layer 1", None))
+        self.lineEdit_74.setText(QCoreApplication.translate("AMIGOpy", u"STEP", None))
+        self.lineEdit_86.setText(QCoreApplication.translate("AMIGOpy", u"Fill value", None))
+        self.apply_Im_transformation.setText(QCoreApplication.translate("AMIGOpy", u"Apply", None))
+        self.groupBox_13.setTitle(QCoreApplication.translate("AMIGOpy", u"Rotation", None))
+        self.lineEdit_73.setText(QCoreApplication.translate("AMIGOpy", u"Moving ", None))
+        self.groupBox_14.setTitle(QCoreApplication.translate("AMIGOpy", u"Metrics", None))
+        self.lineEdit_84.setText(QCoreApplication.translate("AMIGOpy", u"MAE", None))
+        self.tabWidget_10.setTabText(self.tabWidget_10.indexOf(self.tab_45), QCoreApplication.translate("AMIGOpy", u"Registration", None))
         self.tabView01.setTabText(self.tabView01.indexOf(self.tab_17), QCoreApplication.translate("AMIGOpy", u"Processing", None))
         self.lineEdit_5.setText(QCoreApplication.translate("AMIGOpy", u"Speed", None))
         self.Play4D_Buttom.setText(QCoreApplication.translate("AMIGOpy", u"Play 4DCT", None))

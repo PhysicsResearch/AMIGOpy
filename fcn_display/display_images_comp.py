@@ -5,7 +5,7 @@ def sliderCompareView_change(self):
 
 
 def disp_comp_image_slice(self):
-    layer  = int(self.layer_selection_box.currentIndex())
+    layer  = int(self.layer_selected.currentIndex())
     #start_time = time.time()
     if self.Comp_linkSlices.isChecked():
         r_1 = 0;

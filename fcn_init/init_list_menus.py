@@ -28,9 +28,9 @@ def populate_list_menus(self):
 
     # Populate selection box
     Layers = ["0", "1", "2", "3"]
-    self.layer_selection_box = self.findChild(QtWidgets.QComboBox, 'Layer_selection')
-    self.layer_selection_box.addItems(Layers)   
-    self.layer_selection_box.currentIndexChanged.connect(lambda: update_layer_view(self))
+    self.layer_selected = self.findChild(QtWidgets.QComboBox, 'Layer_sel')
+    self.layer_selected.addItems(Layers)   
+    self.layer_selected.currentIndexChanged.connect(lambda: update_layer_view(self))
 
     # List of operations
     operations = ["none","Invert Image", "Average", "Sum","Crop","Normalize", "Threshold", "Denoise Gaussian","Denoise Median","Denoise Percentile",

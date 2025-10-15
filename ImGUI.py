@@ -117,10 +117,10 @@ class Ui_AMIGOpy(object):
 
         self.gridLayout_14.addWidget(self.lineEdit_19, 6, 1, 1, 1)
 
-        self.layer_selection_box = QComboBox(self.groupBox)
-        self.layer_selection_box.setObjectName(u"layer_selection_box")
+        self.layer_selected = QComboBox(self.groupBox)
+        self.layer_selected.setObjectName(u"layer_selection_box")
 
-        self.gridLayout_14.addWidget(self.layer_selection_box, 1, 2, 1, 1)
+        self.gridLayout_14.addWidget(self.layer_selected, 1, 2, 1, 1)
 
         self.Layer_3_alpha_slider = QSlider(self.groupBox)
         self.Layer_3_alpha_slider.setObjectName(u"Layer_3_alpha_slider")

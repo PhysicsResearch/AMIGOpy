@@ -1,5 +1,5 @@
 def update_axial_image(self,  Im = None):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     if idx < 0:
         return  # no selection
 
@@ -63,7 +63,7 @@ def update_axial_image(self,  Im = None):
         #     
 
 def update_coronal_image(self,  Im = None):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     if idx < 0:
         return  # no selection
 
@@ -129,7 +129,7 @@ def update_coronal_image(self,  Im = None):
         #    
 
 def update_sagittal_image(self,  Im = None):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     if idx < 0:
         return  # no selection
 

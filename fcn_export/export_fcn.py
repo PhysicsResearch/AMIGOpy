@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
 def export_np_array(self):
 
     # if save_path:
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     if idx not in self.display_data_IrIS_eval or self.display_data_IrIS_eval[idx].size == 0:
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Critical)
@@ -52,7 +52,7 @@ def export_dw_np(self):
 def export_dcm_np_array(self):
     save_folder = get_save_path()
     # if save_path:
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     full_path = f"{save_folder}/{self.series_index+1}_export.npy"
     array_to_save = self.display_data[idx]
     # Save the array to disk

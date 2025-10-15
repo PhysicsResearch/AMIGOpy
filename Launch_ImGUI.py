@@ -288,19 +288,19 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.LeftButtonCoronalDown = False
 
     def on_axialslider_change(self):
-        idx = self.layer_selection_box.currentIndex()
+        idx = self.layer_selected.currentIndex()
         # Set the slice index based on the slider value.
         self.current_axial_slice_index[idx] = self.AxialSlider.value()
         change_sliceAxial(self,0)
         
     def on_sagittalslider_change(self):
-        idx = self.layer_selection_box.currentIndex()
+        idx = self.layer_selected.currentIndex()
         # Set the slice index based on the slider value.
         self.current_sagittal_slice_index[idx] = self.SagittalSlider.value()
         change_sliceSagittal(self,0)
             
     def on_coronalslider_change(self):
-        idx = self.layer_selection_box.currentIndex()
+        idx = self.layer_selected.currentIndex()
         # Set the slice index based on the slider value.
         self.current_coronal_slice_index[idx] = self.CoronalSlider.value()
         change_sliceCoronal(self,0)

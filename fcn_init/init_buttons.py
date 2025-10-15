@@ -41,6 +41,7 @@ from fcn_3Dview.volume_3d_viewer import play_4D_sequence_3D
 from fcn_materialassignment.material_assignment_properties import add_mat_row,del_mat_row,add_element,del_element,save_mat_db,undo_changes
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
 from fcn_materialassignment.material_map import mat2HU,del_mat2HU,generate_mat_map,delete_mat_map,struct2mat,del_stuct2mat,update_mat_struct_list
+from fcn_reg.rigid_reg_manual import update_translation_x, update_translation_y, update_translation_z, update_rotation_x, update_rotation_y, update_rotation_z, set_transformation_step, apply_trasnformation
 
 
 def initialize_software_buttons(self):
@@ -214,6 +215,18 @@ def initialize_software_buttons(self):
     self.CreateMask_Structures.clicked.connect(lambda: create_contour_masks(self))  # create mask
     self.CreateMask_Structures.setStyleSheet("background-color: blue; color: white;")
 
+    # Image registrations
+    self.Reg_manual_Tx.valueChanged.connect(lambda: update_translation_x(self))
+    self.Reg_manual_Ty.valueChanged.connect(lambda: update_translation_y(self))
+    self.Reg_manual_Tz.valueChanged.connect(lambda: update_translation_z(self))
+    self.Reg_manual_Rot_X.editingFinished.connect(lambda: update_rotation_x(self))
+    self.Reg_manual_Rot_Y.editingFinished.connect(lambda: update_rotation_y(self))
+    self.Reg_manual_Rot_Z.editingFinished.connect(lambda: update_rotation_z(self))
+    self.Manual_reg_step.valueChanged.connect(lambda: set_transformation_step(self))
+    #
+    self.apply_Im_transformation.clicked.connect(lambda: apply_trasnformation(self))
+    self.apply_Im_transformation.setStyleSheet("background-color: blue; color: white;")
+    
     # -----------------------------------------
     # Plan
     # ------------------------------------------

@@ -317,6 +317,6 @@ def render_all_seg_layers(self):
 
 
 def update_layer_view_seg(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     tabName = self.tabModules.tabText(self.tabModules.currentIndex())
     self.layerTab[tabName] = idx

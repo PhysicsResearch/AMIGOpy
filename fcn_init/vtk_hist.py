@@ -6,7 +6,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from fcn_display.win_level import set_window
 
 def set_vtk_histogran_fig(self): 
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     
     # Close the previous figure if it exists
     if hasattr(self, 'fig_Hist_01') and self.fig_Hist_01:
