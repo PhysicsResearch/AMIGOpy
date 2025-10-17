@@ -27,6 +27,7 @@ import qdarkstyle
 
 
 
+
 from uiImGUI import Ui_AMIGOpy
 from fcn_load.sort_dcm import get_data_description
 from fcn_load.org_fol_dcm import organize_files_into_folders
@@ -62,7 +63,7 @@ from fcn_init.init_tool_tip import set_tooltip
 from fcn_3Dview.surfaces_3D_table import init_STL_Surface_table
 from fcn_3Dview.protons_3D_plan import init_3D_proton_table
 from fcn_init.init_data_tree import set_context_menu
-# from fcn_init.init_reg_elements import init_reg_elements
+
 
 
 # ── constants in module / class scope ─────────────────────────────────────────
@@ -473,41 +474,54 @@ def _find_widget_in_gridlayout(layout, widget):
 
 
 if __name__ == "__main__":
-
-    # Pick ONE of these attributes. DesktopOpenGL first; if you’re on RDP/VM, use SoftwareOpenGL instead.
-    QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_UseDesktopOpenGL, True)
-    # QCoreApplication.setAttribute(Qt.AA_UseSoftwareOpenGL, True)  # ← use this line instead if needed
-    import sys
-    from PySide6.QtCore import Qt, QCoreApplication
-    from PySide6.QtGui import QSurfaceFormat
-    from PySide6.QtWidgets import QApplication
+    import sys, os, time
+    from PySide6.QtCore import Qt, QCoreApplication, QTimer
+    from PySide6.QtGui import QSurfaceFormat, QPixmap
+    from PySide6.QtWidgets import QApplication, QSplashScreen
     import qdarkstyle
+    import resources_rc 
 
-
-    # Force a Compatibility profile (NOT Core), and set reasonable buffers
+    # --- Keep your GL defaults (unchanged) ---
     fmt = QSurfaceFormat()
     fmt.setRenderableType(QSurfaceFormat.OpenGL)
     fmt.setProfile(QSurfaceFormat.CompatibilityProfile)
-    # fmt.setVersion(3, 2)  # optional; let Qt choose if unsure
     fmt.setDepthBufferSize(24)
     fmt.setStencilBufferSize(8)
     QSurfaceFormat.setDefaultFormat(fmt)
 
     app = QApplication(sys.argv)
-    folder_path = None
-    if len(sys.argv) > 1:
-        folder_path = sys.argv[1]  # Capture folder path from the command-line arguments
+
+    # --- Show splash ASAP ---
+    # Pu
+    pix = QPixmap(":/assets/Open_logo.png")
+    if pix.isNull():
+        pix = QPixmap(600, 300); pix.fill(Qt.black)
+    if pix.isNull():
+        pix = QPixmap(600, 300)  # fallback
+        pix.fill(Qt.black)
+    splash = QSplashScreen(pix)
+    splash.showMessage("Starting AMIGOpy…", Qt.AlignBottom | Qt.AlignHCenter | Qt.TextWordWrap, Qt.white)
+    splash.show()
+    app.processEvents()  # let the splash paint immediately
+
+    # --- Create main window (keep __init__ as-is for now) ---
+    folder_path = sys.argv[1] if len(sys.argv) > 1 else None
     window = MyApp(folder_path)
+
+    # Optional: apply theme after splash is visible
     app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6'))
+    splash.showMessage("Loading UI…", Qt.AlignBottom | Qt.AlignHCenter | Qt.TextWordWrap, Qt.white)
+    app.processEvents()
+
+    # --- Show window and close splash ---
     window.show()
+    splash.finish(window)
+
+    # (Optional) if you pass a folder on the command line, keep your current behavior
     if folder_path is not None:
-        print(folder_path)
-        load_all_dcm(window,folder_path, progress_callback=None, update_label=None)
+        load_all_dcm(window, folder_path, progress_callback=None, update_label=None)
+
     sys.exit(app.exec())
-
-
-
-
 
 
 
