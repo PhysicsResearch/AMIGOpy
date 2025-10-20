@@ -15,17 +15,18 @@ jobs:
     runs-on: windows-latest
     env:
       KMP_DUPLICATE_LIB_OK: "TRUE"
-      # Extra guards against stray Qt discovery
+      # Guard against stray Qt discovery
       PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
       QT_PLUGIN_PATH: ""
       QT_QPA_PLATFORM_PLUGIN_PATH: ""
-      # Cache directory for Nuitka downloads and dependency walker
+      # Cache dir for Nuitka downloads/depends
       NUITKA_CACHE_DIR: ${{ github.workspace }}\.nuitka-cache
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Your project still uses conda; compilation will run in a clean venv to avoid DLL clashes.
       - name: Setup Miniconda (builder env)
         uses: conda-incubator/setup-miniconda@v3
         with:
@@ -62,23 +63,23 @@ jobs:
           QT_PLUGIN_PATH: ""
           QT_QPA_PLATFORM_PLUGIN_PATH: ""
         run: |
-          # 1) Create & activate clean venv
+          # 1) Clean venv
           python -m venv venv-build
           $venvScripts = "$(Resolve-Path .\venv-build\Scripts)"
 
-          # 2) Scrub PATH so conda DLLs (e.g., ...\Library\bin) aren't visible
+          # 2) Scrub PATH so conda DLLs aren't visible during build
           $oldPath = $env:Path
           $env:Path = "$venvScripts;$env:SystemRoot\system32;$env:SystemRoot"
 
-          # 3) Install only what's needed to compile/run the GUI
+          # 3) Install minimal deps
           python -m pip install --upgrade pip wheel setuptools
           pip install "pyside6==6.7.3" pillow pydicom
           pip install "nuitka>=2.2" ordered-set zstandard
 
-          # 4) Sanity check PySide6 before compiling
+          # 4) Sanity check
           python -c "import PySide6.QtCore as QC; print('✅ PySide6 OK:', QC.__file__)"
 
-          # 5) Compile with Nuitka (non-interactive)
+          # 5) Compile (non-interactive)
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           python -m nuitka Launch_ImGUI.py `
             --standalone `
@@ -117,7 +118,7 @@ jobs:
             --include-data-files=fcn_materialassignment\materials_db.csv=fcn_materialassignment\materials_db.csv `
             --include-data-dir=fcn_ctcal\ct_cal_curves=fcn_ctcal\ct_cal_curves
 
-          # 6) Restore PATH for later steps
+          # 6) Restore PATH
           $env:Path = $oldPath
 
       # -------- Option A: flatten Nuitka .dist folder --------
@@ -149,15 +150,22 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
-      # -------------------- INNO SETUP --------------------
-      - name: Install Inno Setup
+      # -------------------- INNO SETUP (Chocolatey only, robust) --------------------
+      - name: Ensure Inno Setup (ISCC) is installed
         shell: powershell
         run: |
-          try {
-            winget install --id JRSoftware.InnoSetup --accept-package-agreements --accept-source-agreements --silent
-          } catch {
+          $ErrorActionPreference = "Stop"
+          $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (Test-Path $iscc) {
+            Write-Host "ISCC already present at $iscc"
+          } else {
             choco install innosetup -y --no-progress
+            if (!(Test-Path $iscc)) {
+              $isccAlt = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+              if (Test-Path $isccAlt) { $iscc = $isccAlt } else { throw "ISCC.exe not found after install." }
+            }
           }
+          & $iscc /? | Out-Null
 
       - name: Build AMIGOpy installer
         shell: powershell
