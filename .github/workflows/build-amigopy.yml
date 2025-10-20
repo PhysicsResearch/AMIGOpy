@@ -19,13 +19,13 @@ jobs:
       PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
       QT_PLUGIN_PATH: ""
       QT_QPA_PLATFORM_PLUGIN_PATH: ""
+      # Put Nuitka cache in workspace so we can cache it between runs
+      NUITKA_CACHE_DIR: ${{ github.workspace }}\.nuitka-cache
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Your project still uses conda for other tasks; we keep it,
-      # but the actual compile runs in an isolated venv to avoid DLL clashes.
       - name: Setup Miniconda (builder env)
         uses: conda-incubator/setup-miniconda@v3
         with:
@@ -41,6 +41,21 @@ jobs:
       - name: Upgrade pip tooling (inside conda env)
         shell: powershell
         run: python -m pip install --upgrade pip wheel setuptools
+
+      # Cache Nuitka cache folder (includes Dependency Walker download)
+      - name: Cache Nuitka cache
+        uses: actions/cache@v4
+        with:
+          path: .nuitka-cache
+          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', 'AMIGOpy.iss', '.github/workflows/build-amigopy.yml') }}
+          restore-keys: ${{ runner.os }}-nuitka-
+
+      # Optional: pre-install Dependency Walker so Nuitka finds it and doesn't prompt
+      - name: Install Dependency Walker (optional)
+        shell: powershell
+        run: |
+          choco install depends -y --no-progress
+        continue-on-error: true
 
       # -------------------- BUILD (isolated) --------------------
       - name: Build with Nuitka (GUI only, isolated venv)
@@ -66,7 +81,7 @@ jobs:
           # 4) Sanity check PySide6 before compiling
           python -c "import PySide6.QtCore as QC; print('✅ PySide6 OK:', QC.__file__)"
 
-          # 5) Compile with Nuitka
+          # 5) Compile with Nuitka (non-interactive downloads)
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           python -m nuitka Launch_ImGUI.py `
             --standalone `
@@ -76,6 +91,7 @@ jobs:
             --include-qt-plugins=platforms,imageformats,styles `
             --windows-console-mode=force `
             --report=dist\AMIGOpy\build_report.html `
+            --assume-yes-for-downloads `
             --include-package=pydicom `
             --include-package-data=pydicom `
             --include-package=PIL `
@@ -141,7 +157,6 @@ jobs:
         run: |
           $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (!(Test-Path $iscc)) { $iscc = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe" }
-          # If your .iss expects to read from dist\AMIGOpy, just call it directly:
           & $iscc AMIGOpy.iss
 
       - name: Upload installer (unsigned)
