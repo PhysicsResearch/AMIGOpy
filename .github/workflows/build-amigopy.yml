@@ -15,15 +15,18 @@ jobs:
     runs-on: windows-latest
     env:
       KMP_DUPLICATE_LIB_OK: "TRUE"
+      # Guard against stray Qt discovery
       PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
       QT_PLUGIN_PATH: ""
       QT_QPA_PLATFORM_PLUGIN_PATH: ""
+      # Cache dir for Nuitka downloads/depends
       NUITKA_CACHE_DIR: ${{ github.workspace }}\.nuitka-cache
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Keep your conda env for other tasks; the compile runs in a clean venv
       - name: Setup Miniconda (builder env)
         uses: conda-incubator/setup-miniconda@v3
         with:
@@ -68,13 +71,20 @@ jobs:
           $oldPath = $env:Path
           $env:Path = "$venvScripts;$env:SystemRoot\system32;$env:SystemRoot"
 
-          # 3) Install minimal deps
+          # 3) Install minimal deps (add VTK)
           python -m pip install --upgrade pip wheel setuptools
           pip install "pyside6==6.7.3" pillow pydicom
+          pip install "vtk==9.3.1"
           pip install "nuitka>=2.2" ordered-set zstandard
 
-          # 4) Sanity check
-          python -c "import PySide6.QtCore as QC; print('✅ PySide6 OK:', QC.__file__)"
+          # 4) Sanity check (also confirms VTK importable)
+          python -c "import PySide6.QtCore as QC; import vtkmodules; print('✅ PySide6 OK:', QC.__file__)"
+
+          # 4.1) Resolve absolute source path of vtkmodules for --include-data-dir
+          $vtkSrc = python -c "import os, vtkmodules; print(os.path.dirname(vtkmodules.__file__))"
+          $vtkSrc = $vtkSrc.Trim()
+          # Normalize backslashes to forward slashes for Nuitka CLI
+          $vtkSrc = $vtkSrc -replace '\\','/'
 
           # 5) Compile (non-interactive)
           New-Item -ItemType Directory -Force -Path dist | Out-Null
@@ -92,7 +102,7 @@ jobs:
             --include-package=PIL `
             --include-package=vtkmodules `
             --include-package=vtkmodules.qt `
-            --include-data-dir=vtkmodules=vtkmodules `
+            --include-data-dir="$vtkSrc=vtkmodules" `
             --nofollow-import-to=totalsegmentator `
             --nofollow-import-to=torch `
             --nofollow-import-to=torchvision `
@@ -121,6 +131,7 @@ jobs:
           # 6) Restore PATH
           $env:Path = $oldPath
 
+      # -------- Flatten Nuitka .dist folder to match your Inno script --------
       - name: Flatten Nuitka dist into dist\AMIGOpy
         shell: powershell
         run: |
@@ -149,7 +160,7 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
-      # -------------------- INNO SETUP (Chocolatey, no failing help) --------------------
+      # -------------------- INNO SETUP (Chocolatey, robust) --------------------
       - name: Ensure Inno Setup (ISCC) is installed
         shell: powershell
         run: |
@@ -162,12 +173,7 @@ jobs:
               if (Test-Path $isccAlt) { $iscc = $isccAlt } else { throw "ISCC.exe not found after install." }
             }
           }
-          # Do NOT fail the step just for printing help
-          try {
-            & $iscc /?
-          } catch {
-            Write-Host "ISCC is installed; ignoring non-zero help exit."
-          }
+          try { & $iscc /? | Out-Null } catch { Write-Host "ISCC present; ignoring non-zero help exit." }
           $global:LASTEXITCODE = 0
 
       - name: Build AMIGOpy installer
