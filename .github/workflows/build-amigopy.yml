@@ -39,10 +39,15 @@ jobs:
       - name: Purge conda Qt stacks
         shell: powershell
         run: |
+          $ErrorActionPreference = 'Continue'
           mamba remove -y --quiet `
             qt qt-main qt6-main qt-webengine `
             pyqt pyqt5 pyqt6 `
-            pyside6 shiboken6 || echo "Nothing to remove"
+            pyside6 shiboken6
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Nothing to remove (Qt/PyQt/PySide not present)."
+            $global:LASTEXITCODE = 0
+          }
 
       # (Optional) You added Graphviz earlier; it can drag extra DLLs. Skip unless you truly need it.
       # - name: Add Graphviz to PATH (conda)
