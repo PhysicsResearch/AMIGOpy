@@ -2,27 +2,30 @@ name: Build AMIGOpy — unsigned (GUI only)
 
 on:
   push:
-    branches: Development
+    branches: [ Development ]
   workflow_dispatch:
     inputs:
       app_version:
-        description: "Installer version (e.g. 0.4.0)"
+        description: "Installer version (optional)"
         required: false
-        default: "0.4.0"
+        default: ""
 
 jobs:
   build-amigopy:
     runs-on: windows-latest
     env:
       KMP_DUPLICATE_LIB_OK: "TRUE"
-      # Make PySide6 ignore external Qt/plugin dirs that may be on PATH
+      # Extra guards against stray Qt discovery
       PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
-      QT_PLUGIN_PATH: ""   # empty to avoid picking up conda's Qt plugins
-      QT_QPA_PLATFORM_PLUGIN_PATH: ""  # extra guard
+      QT_PLUGIN_PATH: ""
+      QT_QPA_PLATFORM_PLUGIN_PATH: ""
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      # Your project still uses conda for other tasks; we keep it,
+      # but the actual compile runs in an isolated venv to avoid DLL clashes.
       - name: Setup Miniconda (builder env)
         uses: conda-incubator/setup-miniconda@v3
         with:
@@ -35,43 +38,35 @@ jobs:
           mamba-version: "*"
           use-mamba: true
 
-      # ⚠️ Remove Qt/PyQt/PySide6 from the conda env to avoid DLL conflicts
-      - name: Purge conda Qt stacks
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Continue'
-          mamba remove -y --quiet `
-            qt qt-main qt6-main qt-webengine `
-            pyqt pyqt5 pyqt6 `
-            pyside6 shiboken6
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "Nothing to remove (Qt/PyQt/PySide not present)."
-            $global:LASTEXITCODE = 0
-          }
-
-      # (Optional) You added Graphviz earlier; it can drag extra DLLs. Skip unless you truly need it.
-      # - name: Add Graphviz to PATH (conda)
-      #   shell: powershell
-      #   run: echo "$env:CONDA_PREFIX\Library\bin" >> $env:GITHUB_PATH
-
-      - name: Upgrade pip tooling
+      - name: Upgrade pip tooling (inside conda env)
         shell: powershell
         run: python -m pip install --upgrade pip wheel setuptools
 
-      - name: Install runtime deps + Nuitka (pip)
+      # -------------------- BUILD (isolated) --------------------
+      - name: Build with Nuitka (GUI only, isolated venv)
         shell: powershell
+        env:
+          PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
+          QT_PLUGIN_PATH: ""
+          QT_QPA_PLATFORM_PLUGIN_PATH: ""
         run: |
-          pip install --upgrade "pyside6>=6.6" pillow pydicom
+          # 1) Create & activate clean venv
+          python -m venv venv-build
+          $venvScripts = "$(Resolve-Path .\venv-build\Scripts)"
+
+          # 2) Scrub PATH so conda DLLs (e.g., ...\Library\bin) aren't visible
+          $oldPath = $env:Path
+          $env:Path = "$venvScripts;$env:SystemRoot\system32;$env:SystemRoot"
+
+          # 3) Install only what's needed to compile/run the GUI
+          python -m pip install --upgrade pip wheel setuptools
+          pip install "pyside6==6.7.3" pillow pydicom
           pip install "nuitka>=2.2" ordered-set zstandard
 
-      # ✅ Sanity check PySide6 before Nuitka runs
-      - name: Verify PySide6 import
-        shell: powershell
-        run: python -c "import PySide6, PySide6.QtCore as QC; print('PySide6 OK:', QC.__file__)"
+          # 4) Sanity check PySide6 before compiling
+          python -c "import PySide6.QtCore as QC; print('✅ PySide6 OK:', QC.__file__)"
 
-      - name: Build with Nuitka (GUI only)
-        shell: powershell
-        run: |
+          # 5) Compile with Nuitka
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           python -m nuitka Launch_ImGUI.py `
             --standalone `
@@ -109,6 +104,8 @@ jobs:
             --include-data-files=fcn_materialassignment\materials_db.csv=fcn_materialassignment\materials_db.csv `
             --include-data-dir=fcn_ctcal\ct_cal_curves=fcn_ctcal\ct_cal_curves
 
+          # 6) Restore PATH for subsequent steps
+          $env:Path = $oldPath
 
       - name: Verify dist contents (GUI only)
         shell: powershell
@@ -129,7 +126,7 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
-      # --- Inno Setup packaging (uses your AMIGOpy.iss in repo root) ---
+      # -------------------- INNO SETUP --------------------
       - name: Install Inno Setup
         shell: powershell
         run: |
@@ -144,18 +141,13 @@ jobs:
         run: |
           $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (!(Test-Path $iscc)) { $iscc = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe" }
-          # If you moved/renamed the script, adjust the path below:
-          & $iscc `
-            "/DAppVersion=$Env:APP_VERSION" `
-            "/DSourceDistDir=$(Resolve-Path 'dist/AMIGOpy').Path" `
-            AMIGOpy.iss
+          # If your .iss expects to read from dist\AMIGOpy, just call it directly:
+          & $iscc AMIGOpy.iss
 
       - name: Upload installer (unsigned)
         uses: actions/upload-artifact@v4
         with:
           name: AMIGOpy-Installer-unsigned
-          path: |
-            Output/AMIGOpy-Setup*.exe
-            installer/out/AMIGOpy-Setup-*.exe
-          if-no-files-found: warn
+          path: Output/AMIGOpy-Setup*.exe
+          if-no-files-found: error
           overwrite: true
