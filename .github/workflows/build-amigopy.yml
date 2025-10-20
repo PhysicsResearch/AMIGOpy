@@ -90,6 +90,9 @@ jobs:
             --include-package=pydicom `
             --include-package-data=pydicom `
             --include-package=PIL `
+            --include-package=vtkmodules `
+            --include-package=vtkmodules.qt `
+            --include-data-dir=vtkmodules=vtkmodules `
             --nofollow-import-to=totalsegmentator `
             --nofollow-import-to=torch `
             --nofollow-import-to=torchvision `
