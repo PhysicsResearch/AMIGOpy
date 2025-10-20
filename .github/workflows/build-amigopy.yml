@@ -1,0 +1,155 @@
+name: Build AMIGOpy — unsigned (GUI only)
+
+on:
+  push:
+    branches: Development
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: "Installer version (e.g. 0.4.0)"
+        required: false
+        default: "0.4.0"
+
+jobs:
+  build-amigopy:
+    runs-on: windows-latest
+    env:
+      KMP_DUPLICATE_LIB_OK: "TRUE"
+      APP_VERSION: ${{ github.event.inputs.app_version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Conda env (same as you use) ---
+      - name: Setup Miniconda (builder env)
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniconda-version: "latest"
+          python-version: "3.11"
+          environment-file: amigo.yml
+          activate-environment: amigo
+          auto-update-conda: true
+          channels: conda-forge,defaults
+          # optional but nice:
+          mamba-version: "*"
+          use-mamba: true
+
+      - name: Cache pip (inside conda env)
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', 'pyproject.toml') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Cache Nuitka compilation cache
+        uses: actions/cache@v4
+        with:
+          path: .nuitka-cache
+          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', 'scripts/build.ps1') }}
+          restore-keys: ${{ runner.os }}-nuitka-
+
+      - name: Add Graphviz to PATH (conda)
+        shell: powershell
+        run: echo "$env:CONDA_PREFIX\Library\bin" >> $env:GITHUB_PATH
+
+      - name: Upgrade pip tooling
+        shell: powershell
+        run: python -m pip install --upgrade pip wheel setuptools
+
+      # ---- Build-time deps only (keep light; we exclude torch/etc. in Nuitka flags) ----
+      - name: Install runtime deps and Nuitka
+        shell: powershell
+        run: |
+          pip install pyside6 pillow pydicom
+          pip install "nuitka>=2.2" ordered-set zstandard
+
+      - name: Build with Nuitka (GUI only)
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+
+          python -m nuitka Launch_ImGUI.py `
+            --standalone `
+            --remove-output `
+            --output-dir=dist\AMIGOpy `
+            --enable-plugin=pyside6 `
+            --include-qt-plugins=platforms,imageformats,styles `
+            --windows-console-mode=force `
+            --report=dist\AMIGOpy\build_report.html `
+            --include-package=pydicom `
+            --include-package-data=pydicom `
+            --include-package=PIL `
+            --nofollow-import-to=totalsegmentator `
+            --nofollow-import-to=torch `
+            --nofollow-import-to=torchvision `
+            --nofollow-import-to=monai `
+            --nofollow-import-to=nnunet `
+            --nofollow-import-to=nnunetv2 `
+            --nofollow-import-to=einops `
+            --nofollow-import-to=tqdm `
+            --nofollow-import-to=fastapi `
+            --nofollow-import-to=starlette `
+            --nofollow-import-to=uvicorn `
+            --nofollow-import-to=pydantic `
+            --include-data-files=icons\ruler.png=icons\ruler.png `
+            --include-data-files=icons\dcm_insp.png=icons\dcm_insp.png `
+            --include-data-files=icons\brush.png=icons\brush.png `
+            --include-data-files=icons\eraser.png=icons\eraser.png `
+            --include-data-files=icons\layout.png=icons\layout.png `
+            --include-data-files=icons\roi_point.png=icons\roi_point.png `
+            --include-data-files=icons\roi_circle.png=icons\roi_circle.png `
+            --include-data-files=icons\roi_ellipse.png=icons\roi_ellipse.png `
+            --include-data-files=icons\roi_square.png=icons\roi_square.png `
+            --include-data-files=icons\undo.png=icons\undo.png `
+            --include-data-files=fcn_materialassignment\materials_db.csv=fcn_materialassignment\materials_db.csv `
+            --include-data-dir=fcn_ctcal\ct_cal_curves=fcn_ctcal\ct_cal_curves
+
+      - name: Verify dist contents (GUI only)
+        shell: powershell
+        run: |
+          if (-not (Test-Path "dist\AMIGOpy\Launch_ImGUI.exe")) { throw "Launch_ImGUI.exe missing" }
+          Get-ChildItem -Recurse dist\AMIGOpy | Select-Object -First 40 | Format-List -Property FullName,Length
+
+      - name: Zip portable build
+        shell: powershell
+        run: |
+          Compress-Archive -Path "dist/AMIGOpy/*" -DestinationPath "AMIGOpy-win-portable.zip" -Force
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AMIGOpy-win-portable
+          path: AMIGOpy-win-portable.zip
+          if-no-files-found: error
+          overwrite: true
+
+      # --- Inno Setup packaging (uses your AMIGOpy.iss in repo root) ---
+      - name: Install Inno Setup
+        shell: powershell
+        run: |
+          try {
+            winget install --id JRSoftware.InnoSetup --accept-package-agreements --accept-source-agreements --silent
+          } catch {
+            choco install innosetup -y --no-progress
+          }
+
+      - name: Build AMIGOpy installer
+        shell: powershell
+        run: |
+          $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { $iscc = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe" }
+          # If you moved/renamed the script, adjust the path below:
+          & $iscc `
+            "/DAppVersion=$Env:APP_VERSION" `
+            "/DSourceDistDir=$(Resolve-Path 'dist/AMIGOpy').Path" `
+            AMIGOpy.iss
+
+      - name: Upload installer (unsigned)
+        uses: actions/upload-artifact@v4
+        with:
+          name: AMIGOpy-Installer-unsigned
+          path: |
+            Output/AMIGOpy-Setup*.exe
+            installer/out/AMIGOpy-Setup-*.exe
+          if-no-files-found: warn
+          overwrite: true
