@@ -19,7 +19,7 @@ jobs:
       PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
       QT_PLUGIN_PATH: ""
       QT_QPA_PLATFORM_PLUGIN_PATH: ""
-      # Put Nuitka cache in workspace so we can cache it between runs
+      # Cache directory for Nuitka downloads and dependency walker
       NUITKA_CACHE_DIR: ${{ github.workspace }}\.nuitka-cache
 
     steps:
@@ -42,19 +42,16 @@ jobs:
         shell: powershell
         run: python -m pip install --upgrade pip wheel setuptools
 
-      # Cache Nuitka cache folder (includes Dependency Walker download)
       - name: Cache Nuitka cache
         uses: actions/cache@v4
         with:
           path: .nuitka-cache
-          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', 'AMIGOpy.iss', '.github/workflows/build-amigopy.yml') }}
+          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', '.github/workflows/build-amigopy.yml') }}
           restore-keys: ${{ runner.os }}-nuitka-
 
-      # Optional: pre-install Dependency Walker so Nuitka finds it and doesn't prompt
       - name: Install Dependency Walker (optional)
         shell: powershell
-        run: |
-          choco install depends -y --no-progress
+        run: choco install depends -y --no-progress
         continue-on-error: true
 
       # -------------------- BUILD (isolated) --------------------
@@ -81,7 +78,7 @@ jobs:
           # 4) Sanity check PySide6 before compiling
           python -c "import PySide6.QtCore as QC; print('✅ PySide6 OK:', QC.__file__)"
 
-          # 5) Compile with Nuitka (non-interactive downloads)
+          # 5) Compile with Nuitka (non-interactive)
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           python -m nuitka Launch_ImGUI.py `
             --standalone `
@@ -120,8 +117,18 @@ jobs:
             --include-data-files=fcn_materialassignment\materials_db.csv=fcn_materialassignment\materials_db.csv `
             --include-data-dir=fcn_ctcal\ct_cal_curves=fcn_ctcal\ct_cal_curves
 
-          # 6) Restore PATH for subsequent steps
+          # 6) Restore PATH for later steps
           $env:Path = $oldPath
+
+      # -------- Option A: flatten Nuitka .dist folder --------
+      - name: Flatten Nuitka dist into dist\AMIGOpy
+        shell: powershell
+        run: |
+          $root = "dist\AMIGOpy"
+          $src  = Join-Path $root "Launch_ImGUI.dist"
+          if (!(Test-Path $src)) { throw "Expected $src not found" }
+          Copy-Item -Path "$src\*" -Destination $root -Recurse -Force
+          Remove-Item -Path $src -Recurse -Force
 
       - name: Verify dist contents (GUI only)
         shell: powershell
