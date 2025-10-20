@@ -15,18 +15,15 @@ jobs:
     runs-on: windows-latest
     env:
       KMP_DUPLICATE_LIB_OK: "TRUE"
-      # Guard against stray Qt discovery
       PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
       QT_PLUGIN_PATH: ""
       QT_QPA_PLATFORM_PLUGIN_PATH: ""
-      # Cache dir for Nuitka downloads/depends
       NUITKA_CACHE_DIR: ${{ github.workspace }}\.nuitka-cache
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Your project still uses conda; compilation will run in a clean venv to avoid DLL clashes.
       - name: Setup Miniconda (builder env)
         uses: conda-incubator/setup-miniconda@v3
         with:
@@ -121,7 +118,6 @@ jobs:
           # 6) Restore PATH
           $env:Path = $oldPath
 
-      # -------- Option A: flatten Nuitka .dist folder --------
       - name: Flatten Nuitka dist into dist\AMIGOpy
         shell: powershell
         run: |
@@ -150,22 +146,26 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
-      # -------------------- INNO SETUP (Chocolatey only, robust) --------------------
+      # -------------------- INNO SETUP (Chocolatey, no failing help) --------------------
       - name: Ensure Inno Setup (ISCC) is installed
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
           $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          if (Test-Path $iscc) {
-            Write-Host "ISCC already present at $iscc"
-          } else {
+          if (!(Test-Path $iscc)) {
             choco install innosetup -y --no-progress
             if (!(Test-Path $iscc)) {
               $isccAlt = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
               if (Test-Path $isccAlt) { $iscc = $isccAlt } else { throw "ISCC.exe not found after install." }
             }
           }
-          & $iscc /? | Out-Null
+          # Do NOT fail the step just for printing help
+          try {
+            & $iscc /?
+          } catch {
+            Write-Host "ISCC is installed; ignoring non-zero help exit."
+          }
+          $global:LASTEXITCODE = 0
 
       - name: Build AMIGOpy installer
         shell: powershell
