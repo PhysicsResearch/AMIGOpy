@@ -3,3 +3,4 @@ energiesMevion.mat
 .vscode/
 *.gz
 site/
+dist/
