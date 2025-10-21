@@ -62,6 +62,8 @@ jobs:
           PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
           QT_PLUGIN_PATH: ""
           QT_QPA_PLATFORM_PLUGIN_PATH: ""
+          # If matplotlib is imported, avoid interactive backends during build
+          MPLBACKEND: "Agg"
         run: |
           # 1) Clean venv
           python -m venv venv-build
@@ -71,20 +73,31 @@ jobs:
           $oldPath = $env:Path
           $env:Path = "$venvScripts;$env:SystemRoot\system32;$env:SystemRoot"
 
-          # 3) Install minimal deps (add VTK)
+          # 3) Install runtime deps (match what the GUI actually imports)
           python -m pip install --upgrade pip wheel setuptools
+
+          # Qt + core imaging stack
           pip install "pyside6==6.7.3" pillow pydicom
+          pip install "numpy==1.26.*" "scipy==1.12.*"
+          pip install "scikit-image==0.22.*" "nibabel==5.*" "SimpleITK==2.5.*"
+          pip install "opencv-python-headless==4.10.*"
+
+          # Styling + visualization
+          pip install "qdarkstyle>=3.1" "qstylizer>=0.2.2"
           pip install "vtk==9.3.1"
+
+          # Matplotlib (and let it pull its deps like kiwisolver, cycler, fonttools)
+          pip install "matplotlib==3.8.*"
+
+          # Builder
           pip install "nuitka>=2.2" ordered-set zstandard
 
-          # 4) Sanity check (also confirms VTK importable)
-          python -c "import PySide6.QtCore as QC; import vtkmodules; print('✅ PySide6 OK:', QC.__file__)"
+          # 4) Sanity check (also confirms big libs import)
+          python -c "import PySide6.QtCore as QC; import vtkmodules, qdarkstyle, skimage, nibabel, SimpleITK, cv2, numpy, scipy, matplotlib; print('✅ Imports OK:', QC.__file__)"
 
           # 4.1) Resolve absolute source path of vtkmodules for --include-data-dir
           $vtkSrc = python -c "import os, vtkmodules; print(os.path.dirname(vtkmodules.__file__))"
-          $vtkSrc = $vtkSrc.Trim()
-          # Normalize backslashes to forward slashes for Nuitka CLI
-          $vtkSrc = $vtkSrc -replace '\\','/'
+          $vtkSrc = $vtkSrc.Trim() -replace '\\','/'
 
           # 5) Compile (non-interactive)
           New-Item -ItemType Directory -Force -Path dist | Out-Null
@@ -97,12 +110,34 @@ jobs:
             --windows-console-mode=force `
             --report=dist\AMIGOpy\build_report.html `
             --assume-yes-for-downloads `
+
             --include-package=pydicom `
             --include-package-data=pydicom `
             --include-package=PIL `
+
+            --include-package=numpy `
+            --include-package=scipy `
+
+            --include-package=skimage `
+            --include-package-data=skimage `
+
+            --include-package=nibabel `
+
+            --include-package=SimpleITK `
+
+            --include-package=cv2 `
+
             --include-package=vtkmodules `
             --include-package=vtkmodules.qt `
             --include-data-dir="$vtkSrc=vtkmodules" `
+
+            --include-package=qdarkstyle `
+            --include-package-data=qdarkstyle `
+            --include-package=qstylizer `
+
+            --include-package=matplotlib `
+            --include-package-data=matplotlib `
+
             --nofollow-import-to=totalsegmentator `
             --nofollow-import-to=torch `
             --nofollow-import-to=torchvision `
@@ -115,6 +150,7 @@ jobs:
             --nofollow-import-to=starlette `
             --nofollow-import-to=uvicorn `
             --nofollow-import-to=pydantic `
+
             --include-data-files=icons\ruler.png=icons\ruler.png `
             --include-data-files=icons\dcm_insp.png=icons\dcm_insp.png `
             --include-data-files=icons\brush.png=icons\brush.png `
@@ -125,8 +161,8 @@ jobs:
             --include-data-files=icons\roi_ellipse.png=icons\roi_ellipse.png `
             --include-data-files=icons\roi_square.png=icons\roi_square.png `
             --include-data-files=icons\undo.png=icons\undo.png `
-            --include-data-files=fcn_materialassignment\materials_db.csv=fcn_materialassignment\materials_db.csv `
-            --include-data-dir=fcn_ctcal\ct_cal_curves=fcn_ctcal\ct_cal_curves
+            --include-data-dir=fcn_ctcal\ct_cal_curves=fcn_ctcal\ct_cal_curves `
+            --include-data-files=fcn_materialassignment\materials_db.csv=fcn_materialassignment\materials_db.csv
 
           # 6) Restore PATH
           $env:Path = $oldPath
