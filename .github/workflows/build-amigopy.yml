@@ -50,14 +50,14 @@ jobs:
           python -m venv venv-build
           $venvScripts = "$(Resolve-Path .\venv-build\Scripts)"
 
-          # 2) Use only the venv on PATH (keeps system DLLs out)
+          # 2) Use only the venv on PATH
           $oldPath = $env:Path
           $env:Path = "$venvScripts;$env:SystemRoot\system32;$env:SystemRoot"
 
-          # 3) Install runtime deps (Py 3.12)
+          # 3) Install runtime deps (Py 3.12 compatible)
           python -m pip install --upgrade pip wheel setuptools
 
-          # --- PySide6 stack (explicitly include Addons & Essentials so QtWebEngine is present) ---
+          # PySide6 stack (include Addons + Essentials so QtWebEngine resources are present)
           pip install `
             "PySide6==6.7.3" `
             "PySide6-Addons==6.7.3" `
@@ -81,20 +81,11 @@ jobs:
           # Builder
           pip install "nuitka>=2.2" ordered-set zstandard
 
-          # 4) Sanity check: make sure QtWebEngine is importable
-          python - << 'PY'
-          import PySide6.QtCore as QC
-          from PySide6 import QtWebEngineCore
-          import os, pkgutil
-          print("✅ PySide6 OK:", QC.__file__)
-          print("✅ QtWebEngineCore:", QtWebEngineCore.__file__)
-          PY
+          # 4) Sanity check: ensure QtWebEngine is importable (PowerShell-friendly one-liner)
+          python -c "import PySide6.QtCore as QC; from PySide6 import QtWebEngineCore as QW; print('PySide6:', QC.__file__); print('QtWebEngineCore:', QW.__file__)"
 
-          # 4.1) Resolve absolute source path of vtkmodules for --include-data-dir
-          $vtkSrc = python - << 'PY'
-          import os, vtkmodules
-          print(os.path.dirname(vtkmodules.__file__))
-          PY
+          # 4.1) Resolve absolute source path of vtkmodules for --include-data-dir (PowerShell-friendly)
+          $vtkSrc = python -c "import os, vtkmodules; print(os.path.dirname(vtkmodules.__file__))"
           $vtkSrc = ($vtkSrc.Trim() -replace '\\','/')
           $vtkDataArg = "--include-data-dir=$vtkSrc=vtkmodules"
 
@@ -105,7 +96,7 @@ jobs:
             "--remove-output",
             "--output-dir=dist\AMIGOpy",
             "--enable-plugin=pyside6",
-            "--include-qt-plugins=platforms,imageformats,styles",  # WebEngine resources are auto-detected by plugin
+            "--include-qt-plugins=platforms,imageformats,styles",
             "--windows-console-mode=force",
             "---report=dist\AMIGOpy\build_report.html".Replace("---","--"),
             "--assume-yes-for-downloads",
