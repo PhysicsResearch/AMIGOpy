@@ -15,33 +15,20 @@ jobs:
     runs-on: windows-latest
     env:
       KMP_DUPLICATE_LIB_OK: "TRUE"
-      # Guard against stray Qt discovery
       PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
       QT_PLUGIN_PATH: ""
       QT_QPA_PLATFORM_PLUGIN_PATH: ""
-      # Cache dir for Nuitka downloads/depends
       NUITKA_CACHE_DIR: ${{ github.workspace }}\.nuitka-cache
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Keep your conda env for other tasks; compile happens in an isolated venv
-      - name: Setup Miniconda (builder env)
-        uses: conda-incubator/setup-miniconda@v3
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
-          miniconda-version: "latest"
-          python-version: "3.12"
-          environment-file: amigo.yml
-          activate-environment: amigo
-          auto-update-conda: true
-          channels: conda-forge,defaults
-          mamba-version: "*"
-          use-mamba: true
-
-      - name: Upgrade pip tooling (inside conda env)
-        shell: powershell
-        run: python -m pip install --upgrade pip wheel setuptools
+          python-version: '3.12'
+          cache: 'pip'
 
       - name: Cache Nuitka cache
         uses: actions/cache@v4
@@ -63,11 +50,11 @@ jobs:
           python -m venv venv-build
           $venvScripts = "$(Resolve-Path .\venv-build\Scripts)"
 
-          # 2) Scrub PATH so conda DLLs aren't visible during build
+          # 2) Use only the venv on PATH (keeps system DLLs/conda out)
           $oldPath = $env:Path
           $env:Path = "$venvScripts;$env:SystemRoot\system32;$env:SystemRoot"
 
-          # 3) Install runtime deps (match what the GUI actually imports)
+          # 3) Install runtime deps (Python 3.12–compatible)
           python -m pip install --upgrade pip wheel setuptools
 
           # Qt + core imaging stack
@@ -80,20 +67,22 @@ jobs:
           pip install "qdarkstyle>=3.1" "qstylizer>=0.2.2"
           pip install "vtk==9.3.1"
           pip install "matplotlib==3.8.*"
+
+          # HTTP stack
           pip install "requests>=2.31" certifi
 
           # Builder
           pip install "nuitka>=2.2" ordered-set zstandard
 
-          # 4) Sanity check (also confirms big libs import)
-          python -c "import PySide6.QtCore as QC; import vtkmodules, qdarkstyle, skimage, nibabel, SimpleITK, cv2, numpy, scipy, matplotlib; print('✅ Imports OK:', QC.__file__)"
+          # 4) Sanity check (confirms big libs import)
+          python -c "import PySide6.QtCore as QC; import vtkmodules, qdarkstyle, skimage, nibabel, SimpleITK, cv2, numpy, scipy, matplotlib, requests; print('✅ Imports OK:', QC.__file__)"
 
           # 4.1) Resolve absolute source path of vtkmodules for --include-data-dir
           $vtkSrc = python -c "import os, vtkmodules; print(os.path.dirname(vtkmodules.__file__))"
           $vtkSrc = ($vtkSrc.Trim() -replace '\\','/')
           $vtkDataArg = "--include-data-dir=$vtkSrc=vtkmodules"
 
-          # 5) Build args as an array (no fragile line continuations)
+          # 5) Build args as an array (safer than line continuations)
           $args = @(
             "Launch_ImGUI.py",
             "--standalone",
@@ -102,7 +91,7 @@ jobs:
             "--enable-plugin=pyside6",
             "--include-qt-plugins=platforms,imageformats,styles",
             "--windows-console-mode=force",
-            "---report=dist\AMIGOpy\build_report.html".Replace("---","--"),  # avoid YAML parsing of --report
+            "---report=dist\AMIGOpy\build_report.html".Replace("---","--"),
             "--assume-yes-for-downloads",
 
             "--include-package=pydicom",
@@ -130,6 +119,7 @@ jobs:
 
             "--include-package=matplotlib",
             "--include-package-data=matplotlib",
+
             "--include-package=requests",
             "--include-package-data=certifi",
 
@@ -163,7 +153,7 @@ jobs:
           # Insert the dynamic VTK data include
           $args += $vtkDataArg
 
-          # 6) Compile (non-interactive)
+          # 6) Compile
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           python -m nuitka @args
 
@@ -212,7 +202,6 @@ jobs:
               if (Test-Path $isccAlt) { $iscc = $isccAlt } else { throw "ISCC.exe not found after install." }
             }
           }
-          # Do not fail if help returns non-zero
           try { & $iscc /? | Out-Null } catch { Write-Host "ISCC present; ignoring non-zero help exit." }
           $global:LASTEXITCODE = 0
 
