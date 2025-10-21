@@ -31,7 +31,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           miniconda-version: "latest"
-          python-version: "3.11"
+          python-version: "3.12"
           environment-file: amigo.yml
           activate-environment: amigo
           auto-update-conda: true
@@ -80,6 +80,7 @@ jobs:
           pip install "qdarkstyle>=3.1" "qstylizer>=0.2.2"
           pip install "vtk==9.3.1"
           pip install "matplotlib==3.8.*"
+          pip install "requests>=2.31" certifi
 
           # Builder
           pip install "nuitka>=2.2" ordered-set zstandard
@@ -129,6 +130,8 @@ jobs:
 
             "--include-package=matplotlib",
             "--include-package-data=matplotlib",
+            "--include-package=requests",
+            "--include-package-data=certifi",
 
             "--nofollow-import-to=totalsegmentator",
             "--nofollow-import-to=torch",
