@@ -30,8 +30,7 @@ Returns:
 import os
 import pydicom
 import argparse
-import tkinter as tk
-from tkinter import filedialog
+from PySide6.QtWidgets import QApplication, QFileDialog
 import numpy as np
 
 
@@ -43,11 +42,16 @@ def get_folder_path_from_cmd():
     return parser.parse_args().directory
 
 
+def _ensure_app():
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    return app
+
 def get_folder_path_from_dialog():
-    """Open a GUI dialog for the user to select a directory if none is provided."""
-    root = tk.Tk()
-    root.withdraw()  # Hide the main window
-    return filedialog.askdirectory(title="Select a Folder")
+    """Open a GUI dialog for the user to select a directory if none is provided.""" 
+    _ensure_app()
+    return QFileDialog.getExistingDirectory(None, "Select a Folder") or None
 
 
 def get_all_files(path):
@@ -272,10 +276,11 @@ def get_data_description(folder_path=None, progress_callback=None, update_label=
 
     # if user wants to organize the dta into folder ask for the folder path
     if sort_folder == 1:
-        # Getting the root destination folder from the user.
-        root = tk.Tk()
-        root.withdraw()  # Hide the main window
-        outputfolder = filedialog.askdirectory(title="Select an OUTPUT Folder - Create one and use the refresh button if necessary")
+        _ensure_app()
+        outputfolder = QFileDialog.getExistingDirectory(
+            None,
+            "Select an OUTPUT Folder - Create one and use the refresh button if necessary"
+        ) or None
     else:
         outputfolder = None
 

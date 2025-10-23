@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="/assets">
+    <file alias="Open_logo.png">assets/Open_logo.png</file>
+  </qresource>
+</RCC>

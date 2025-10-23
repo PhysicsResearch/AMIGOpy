@@ -1,8 +1,8 @@
 import os
-from PyQt5.QtWidgets import QAction
-from PyQt5.QtCore import Qt,  QSize
-from PyQt5.QtGui import   QIcon, QFont
-from PyQt5.QtWidgets import QToolButton, QToolTip
+from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt,  QSize
+from PySide6.QtGui import   QIcon, QFont
+from PySide6.QtWidgets import QToolButton, QToolTip
 from fcn_display.ruller import RulerWidget
 from fcn_display.dicom_info import open_dicom_tag_viewer
 from fcn_display.circ_ell_roi import CircleRoiWidget, EllipsoidRoiWidget, SquareRoiWidget, PointRoiWidget

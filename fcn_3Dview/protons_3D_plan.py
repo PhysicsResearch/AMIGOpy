@@ -1,6 +1,6 @@
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QTableWidgetItem, QPushButton, QCheckBox, QSpinBox, QColorDialog, QDoubleSpinBox
-from PyQt5.QtGui import QColor
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QTableWidgetItem, QPushButton, QCheckBox, QSpinBox, QColorDialog, QDoubleSpinBox, QAbstractItemView, QHeaderView
+from PySide6.QtGui import QColor
 import numpy as np
 from math import floor, ceil
 import functools
@@ -15,8 +15,17 @@ def init_3D_proton_table(self):
         "Iso X", "Iso Y", "Iso Z",
         "Reset", "Point Color"
     ])
-    self._3D_proton_table.setEditTriggers(self._3D_proton_table.NoEditTriggers)
-    self._3D_proton_table.setSelectionBehavior(self._3D_proton_table.SelectRows)
+    # Qt6 scoped enums
+    self._3D_proton_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+    self._3D_proton_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+    self._3D_proton_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+
+    # Optional: nicer sizing
+    hh = self._3D_proton_table.horizontalHeader()
+    vh = self._3D_proton_table.verticalHeader()
+    hh.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+    hh.setStretchLastSection(True)
+    vh.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
 
 def add_beam_to_proton_table(self, beam_name, info_df, visible=False, point_size=3, point_color=(1,0,0)):
     row = self._3D_proton_table.rowCount()

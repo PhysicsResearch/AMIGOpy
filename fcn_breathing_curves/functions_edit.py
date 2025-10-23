@@ -10,7 +10,7 @@ import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from PyQt5.QtWidgets import QVBoxLayout, QFileDialog
+from PySide6.QtWidgets import QVBoxLayout, QFileDialog
 from fcn_breathing_curves.functions_import import addColumns
 
 

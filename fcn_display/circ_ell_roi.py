@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets
 import vtk
 import math
 from fcn_display.roi_additional_plots import show_roi_plots

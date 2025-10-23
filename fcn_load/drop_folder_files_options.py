@@ -1,6 +1,6 @@
 import os
-from PyQt5.QtWidgets import QWidget, QTreeView
-from PyQt5.QtCore import Qt
+from PySide6.QtWidgets import QWidget, QTreeView, QAbstractItemView
+from PySide6.QtCore import Qt
 from fcn_load.load_dcm  import load_all_dcm
 from fcn_display.dicom_info import open_dicom_tag_viewer
 from fcn_load.save_load import load_amigo_bundle
@@ -26,7 +26,7 @@ class FolderDropTreeView(QTreeView):
         self.main_window = parent
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
-        self.setDragDropMode(self.DropOnly)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.DropOnly)
 
         # Bind shared event handlers
         self.dragEnterEvent = lambda event: generic_drag_enter_event(self, event)

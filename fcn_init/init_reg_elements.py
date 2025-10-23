@@ -1,6 +1,6 @@
 # init_reg_elements.py
 
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
 
 def init_reg_elements(self):
     """

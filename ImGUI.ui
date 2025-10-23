@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1737</width>
-    <height>1169</height>
+    <width>1731</width>
+    <height>1156</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <bool>false</bool>
   </property>
   <property name="inputMethodHints">
-   <set>Qt::ImhNone</set>
+   <set>Qt::InputMethodHint::ImhNone</set>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_3" rowstretch="0,8,1,0,0,0,0,0" columnstretch="2,8,0">
@@ -30,7 +30,7 @@
        <item row="12" column="6">
         <spacer name="horizontalSpacer_14">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -58,7 +58,7 @@
           <string>Transparency</string>
          </property>
          <property name="alignment">
-          <set>Qt::AlignCenter</set>
+          <set>Qt::AlignmentFlag::AlignCenter</set>
          </property>
         </widget>
        </item>
@@ -75,7 +75,7 @@
           <number>100</number>
          </property>
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
@@ -92,7 +92,7 @@
        <item row="9" column="1" colspan="6">
         <widget class="Line" name="line_10">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
@@ -102,14 +102,14 @@
           <number>100</number>
          </property>
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
        <item row="12" column="5">
         <spacer name="horizontalSpacer_13">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -129,7 +129,7 @@
        <item row="11" column="2" colspan="4">
         <widget class="QSlider" name="horizontalSlider_5">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
@@ -149,7 +149,7 @@
           <number>100</number>
          </property>
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
@@ -172,14 +172,14 @@
           <number>100</number>
          </property>
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
        <item row="12" column="1">
         <spacer name="horizontalSpacer_10">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -192,14 +192,14 @@
        <item row="2" column="1" colspan="6">
         <widget class="Line" name="line_11">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
        <item row="12" column="3">
         <spacer name="horizontalSpacer_11">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -243,7 +243,7 @@
        <item row="12" column="4">
         <spacer name="horizontalSpacer_12">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -256,7 +256,7 @@
        <item row="12" column="2">
         <spacer name="horizontalSpacer_15">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -299,7 +299,7 @@
     <item row="5" column="1" colspan="2">
      <widget class="Line" name="line">
       <property name="orientation">
-       <enum>Qt::Horizontal</enum>
+       <enum>Qt::Orientation::Horizontal</enum>
       </property>
      </widget>
     </item>
@@ -316,7 +316,7 @@
         <item row="1" column="1">
          <widget class="QSlider" name="SagittalSlider">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
          </widget>
         </item>
@@ -326,7 +326,7 @@
            <number>25</number>
           </property>
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
          </widget>
         </item>
@@ -336,7 +336,7 @@
         <item row="5" column="0">
          <widget class="QSlider" name="CoronalSlider">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
          </widget>
         </item>
@@ -412,7 +412,7 @@
                 <item row="2" column="2">
                  <spacer name="horizontalSpacer_46">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -492,7 +492,7 @@
                 <item row="2" column="3" colspan="2">
                  <spacer name="horizontalSpacer_45">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -567,7 +567,7 @@
             <item row="2" column="1">
              <spacer name="horizontalSpacer_80">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -604,14 +604,14 @@
                 <item row="3" column="0" colspan="5">
                  <widget class="Line" name="line_18">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                  </widget>
                 </item>
                 <item row="5" column="0" colspan="5">
                  <widget class="Line" name="line_19">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                  </widget>
                 </item>
@@ -638,7 +638,7 @@
                 <item row="7" column="0">
                  <spacer name="verticalSpacer_3">
                   <property name="orientation">
-                   <enum>Qt::Vertical</enum>
+                   <enum>Qt::Orientation::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -785,269 +785,644 @@
             <string>Processing</string>
            </attribute>
            <layout class="QGridLayout" name="gridLayout_12">
-            <item row="0" column="2" rowspan="2" colspan="2">
-             <widget class="QTextEdit" name="Func_description">
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
+            <item row="2" column="0" colspan="2">
+             <widget class="QTabWidget" name="tabWidget_10">
+              <property name="currentIndex">
+               <number>0</number>
               </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QPushButton" name="run_im_process">
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-                <weight>75</weight>
-                <bold>true</bold>
-               </font>
-              </property>
-              <property name="text">
-               <string>Run</string>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="0" colspan="2">
-             <widget class="QComboBox" name="Process_list"/>
-            </item>
-            <item row="4" column="0" colspan="4">
-             <widget class="QGroupBox" name="ProcessSetBox">
-              <property name="enabled">
-               <bool>true</bool>
-              </property>
-              <property name="title">
-               <string>Settings</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_13">
-               <item row="5" column="2">
-                <widget class="QComboBox" name="Process_set_box2"/>
-               </item>
-               <item row="2" column="3">
-                <spacer name="horizontalSpacer_9">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item row="5" column="4">
-                <widget class="QComboBox" name="Process_set_box3"/>
-               </item>
-               <item row="6" column="0">
-                <spacer name="verticalSpacer_4">
-                 <property name="orientation">
-                  <enum>Qt::Vertical</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>20</width>
-                   <height>40</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item row="4" column="2">
-                <widget class="QDoubleSpinBox" name="Proces_spinbox_05">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                  </font>
-                 </property>
-                 <property name="minimum">
-                  <double>-1.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>99999999.989999994635582</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="2">
-                <widget class="QDoubleSpinBox" name="Proces_spinbox_02">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                  </font>
-                 </property>
-                 <property name="minimum">
-                  <double>-1.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>99999999.989999994635582</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="4">
-                <widget class="QDoubleSpinBox" name="Proces_spinbox_06">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                  </font>
-                 </property>
-                 <property name="minimum">
-                  <double>-1.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>999999999.990000009536743</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="7" column="0">
-                <widget class="QComboBox" name="Process_DataType_box"/>
-               </item>
-               <item row="2" column="1">
-                <spacer name="horizontalSpacer_7">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item row="0" column="0">
-                <widget class="QLineEdit" name="Proces_label_01">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                  </font>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="0">
-                <widget class="QDoubleSpinBox" name="Proces_spinbox_01">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                  </font>
-                 </property>
-                 <property name="minimum">
-                  <double>-1.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>99999999999.990005493164063</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="0">
-                <widget class="QComboBox" name="Process_set_box"/>
-               </item>
-               <item row="4" column="0">
-                <widget class="QDoubleSpinBox" name="Proces_spinbox_04">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                  </font>
-                 </property>
-                 <property name="minimum">
-                  <double>-1.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>9999999999.989999771118164</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="4">
-                <widget class="QDoubleSpinBox" name="Proces_spinbox_03">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                  </font>
-                 </property>
-                 <property name="minimum">
-                  <double>-1.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>999999999990000.000000000000000</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="4">
-                <widget class="QLineEdit" name="Proces_label_06">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                  </font>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="2">
-                <widget class="QLineEdit" name="Proces_label_05">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                  </font>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="2">
-                <widget class="QLineEdit" name="Proces_label_02">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                  </font>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="4">
-                <widget class="QLineEdit" name="Proces_label_03">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                  </font>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="0">
-                <widget class="QLineEdit" name="Proces_label_04">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                  </font>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QPushButton" name="ImageUndo_operation">
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-                <weight>75</weight>
-                <bold>true</bold>
-               </font>
-              </property>
-              <property name="text">
-               <string>UNDO</string>
-              </property>
+              <widget class="QWidget" name="tab_44">
+               <attribute name="title">
+                <string>Transform</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_81">
+                <item row="0" column="0">
+                 <widget class="QGroupBox" name="groupBox_12">
+                  <property name="title">
+                   <string>Translation</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_82">
+                   <item row="0" column="0">
+                    <widget class="QLineEdit" name="lineEdit_71">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>Lay. 0</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1" colspan="2">
+                    <widget class="QDoubleSpinBox" name="Reg_manual_Refx">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="minimum">
+                      <double>-9999999.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>9999999.990000000223517</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="3">
+                    <widget class="QDoubleSpinBox" name="Reg_manual_Refy">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="minimum">
+                      <double>-9999999.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>9999999.990000000223517</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="4" colspan="3">
+                    <widget class="QDoubleSpinBox" name="Reg_manual_Refz">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="minimum">
+                      <double>-9999999.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>9999999.990000000223517</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QLineEdit" name="lineEdit_72">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>Layer</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="1" colspan="2">
+                    <widget class="QDoubleSpinBox" name="Reg_manual_Tx">
+                     <property name="minimum">
+                      <double>-9999999.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>9999999.990000000223517</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="0">
+                    <widget class="QLineEdit" name="lineEdit_73">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>STEP</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="5" colspan="2">
+                    <widget class="QPushButton" name="apply_Im_transformation">
+                     <property name="text">
+                      <string>Apply</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="3">
+                    <widget class="QDoubleSpinBox" name="Reg_manual_Ty">
+                     <property name="minimum">
+                      <double>-9999999.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>9999999.990000000223517</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="4" colspan="3">
+                    <widget class="QDoubleSpinBox" name="Reg_manual_Tz">
+                     <property name="minimum">
+                      <double>-9999999.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>9999999.990000000223517</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="3">
+                    <widget class="QLineEdit" name="lineEdit_89">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>Fill val.</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="1" colspan="2">
+                    <widget class="QDoubleSpinBox" name="Manual_reg_step">
+                     <property name="minimum">
+                      <double>-9999999.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>9999999.990000000223517</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="4" colspan="3">
+                    <widget class="QDoubleSpinBox" name="reg_fill_value">
+                     <property name="minimum">
+                      <double>-9999999.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>9999999.990000000223517</double>
+                     </property>
+                     <property name="value">
+                      <double>-1024.000000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QGroupBox" name="groupBox_13">
+                  <property name="title">
+                   <string>Rotation</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_83">
+                   <item row="0" column="0">
+                    <widget class="QLineEdit" name="lineEdit_85">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>Moving</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QDoubleSpinBox" name="Reg_manual_Rot_X"/>
+                   </item>
+                   <item row="2" column="0">
+                    <widget class="QDoubleSpinBox" name="Reg_manual_Rot_Y"/>
+                   </item>
+                   <item row="3" column="0">
+                    <widget class="QDoubleSpinBox" name="Reg_manual_Rot_Z"/>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QGroupBox" name="groupBox_14">
+                  <property name="title">
+                   <string>Resolution</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_84">
+                   <item row="0" column="0">
+                    <widget class="QLineEdit" name="lineEdit_74">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_15">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="2">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_13">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="3">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_14">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QLineEdit" name="lineEdit_84">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="1">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_18"/>
+                   </item>
+                   <item row="1" column="2">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_17"/>
+                   </item>
+                   <item row="1" column="3">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_16"/>
+                   </item>
+                   <item row="2" column="3">
+                    <widget class="QPushButton" name="pushButton_2">
+                     <property name="text">
+                      <string>Apply</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QGroupBox" name="groupBox_15">
+                  <property name="title">
+                   <string>Flip</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_85">
+                   <item row="2" column="1">
+                    <widget class="QPushButton" name="pushButton_5">
+                     <property name="text">
+                      <string>Y</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="1">
+                    <widget class="QPushButton" name="pushButton_6">
+                     <property name="text">
+                      <string>Z</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="1">
+                    <widget class="QPushButton" name="pushButton_4">
+                     <property name="text">
+                      <string>X</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="2" column="0" colspan="2">
+                 <widget class="QGroupBox" name="groupBox_16">
+                  <property name="title">
+                   <string>Crop</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_86">
+                   <item row="1" column="7">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_22">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="0">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_27"/>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_26"/>
+                   </item>
+                   <item row="1" column="1">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_20">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_21">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="6">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_23">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="6" colspan="2">
+                    <widget class="QLineEdit" name="lineEdit_88">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="7">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_28"/>
+                   </item>
+                   <item row="2" column="6">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_29"/>
+                   </item>
+                   <item row="1" column="4">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_24">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="4">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_30"/>
+                   </item>
+                   <item row="1" column="3">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_19">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="3">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_25"/>
+                   </item>
+                   <item row="0" column="0" colspan="2">
+                    <widget class="QLineEdit" name="lineEdit_86">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="3" colspan="2">
+                    <widget class="QLineEdit" name="lineEdit_87">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="tab_45">
+               <attribute name="title">
+                <string>Process</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_80">
+                <item row="0" column="0" colspan="2">
+                 <widget class="QComboBox" name="Process_list"/>
+                </item>
+                <item row="0" column="2" rowspan="2">
+                 <widget class="QTextEdit" name="Func_description">
+                  <property name="font">
+                   <font>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QPushButton" name="run_im_process">
+                  <property name="font">
+                   <font>
+                    <pointsize>10</pointsize>
+                    <bold>true</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Run</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QPushButton" name="ImageUndo_operation">
+                  <property name="font">
+                   <font>
+                    <pointsize>10</pointsize>
+                    <bold>true</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>UNDO</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0" colspan="3">
+                 <widget class="QGroupBox" name="ProcessSetBox">
+                  <property name="enabled">
+                   <bool>true</bool>
+                  </property>
+                  <property name="title">
+                   <string>Settings</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_13">
+                   <item row="5" column="2">
+                    <widget class="QComboBox" name="Process_set_box2"/>
+                   </item>
+                   <item row="2" column="3">
+                    <spacer name="horizontalSpacer_9">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item row="5" column="4">
+                    <widget class="QComboBox" name="Process_set_box3"/>
+                   </item>
+                   <item row="6" column="0">
+                    <spacer name="verticalSpacer_4">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Vertical</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>40</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item row="4" column="2">
+                    <widget class="QDoubleSpinBox" name="Proces_spinbox_05">
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                     <property name="minimum">
+                      <double>-1.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>99999999.989999994635582</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="2">
+                    <widget class="QDoubleSpinBox" name="Proces_spinbox_02">
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                     <property name="minimum">
+                      <double>-1.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>99999999.989999994635582</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="4" column="4">
+                    <widget class="QDoubleSpinBox" name="Proces_spinbox_06">
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                     <property name="minimum">
+                      <double>-1.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>999999999.990000009536743</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="7" column="0">
+                    <widget class="QComboBox" name="Process_DataType_box"/>
+                   </item>
+                   <item row="2" column="1">
+                    <spacer name="horizontalSpacer_7">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item row="0" column="0">
+                    <widget class="QLineEdit" name="Proces_label_01">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="0">
+                    <widget class="QDoubleSpinBox" name="Proces_spinbox_01">
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                     <property name="minimum">
+                      <double>-1.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>99999999999.990005493164063</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="5" column="0">
+                    <widget class="QComboBox" name="Process_set_box"/>
+                   </item>
+                   <item row="4" column="0">
+                    <widget class="QDoubleSpinBox" name="Proces_spinbox_04">
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                     <property name="minimum">
+                      <double>-1.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>9999999999.989999771118164</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="4">
+                    <widget class="QDoubleSpinBox" name="Proces_spinbox_03">
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                     <property name="minimum">
+                      <double>-1.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>999999999990000.000000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="4">
+                    <widget class="QLineEdit" name="Proces_label_06">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="2">
+                    <widget class="QLineEdit" name="Proces_label_05">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="2">
+                    <widget class="QLineEdit" name="Proces_label_02">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="4">
+                    <widget class="QLineEdit" name="Proces_label_03">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="0">
+                    <widget class="QLineEdit" name="Proces_label_04">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
              </widget>
             </item>
            </layout>
@@ -1093,7 +1468,7 @@
                 <item row="1" column="2">
                  <spacer name="horizontalSpacer_24">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -1106,7 +1481,7 @@
                 <item row="1" column="1">
                  <spacer name="horizontalSpacer_25">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -1149,7 +1524,7 @@
                 <item row="0" column="1">
                  <spacer name="horizontalSpacer_79">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -1162,7 +1537,7 @@
                 <item row="1" column="0">
                  <spacer name="verticalSpacer_22">
                   <property name="orientation">
-                   <enum>Qt::Vertical</enum>
+                   <enum>Qt::Orientation::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -1272,29 +1647,22 @@
                 <string>Data</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_34">
-                <item row="2" column="1">
-                 <widget class="QPushButton" name="exp_csv_roi_c_values">
-                  <property name="text">
-                   <string>ExportCSV</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
+                <item row="1" column="0">
                  <widget class="QPushButton" name="get_circ_roi_data2">
                   <property name="text">
                    <string>GET</string>
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="0" colspan="2">
-                 <widget class="QTableWidget" name="table_roi_c_values"/>
-                </item>
                 <item row="1" column="1">
-                 <widget class="QCheckBox" name="exportVoxValsROI">
+                 <widget class="QPushButton" name="exp_csv_roi_c_values">
                   <property name="text">
-                   <string>Export ROI voxel values</string>
+                   <string>ExportCSV</string>
                   </property>
                  </widget>
+                </item>
+                <item row="0" column="0" colspan="2">
+                 <widget class="QTableWidget" name="table_roi_c_values"/>
                 </item>
                </layout>
               </widget>
@@ -1360,7 +1728,7 @@
               <bool>false</bool>
              </property>
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
@@ -1400,7 +1768,7 @@
               <bool>false</bool>
              </property>
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
@@ -1440,7 +1808,7 @@
               <bool>false</bool>
              </property>
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
@@ -1480,7 +1848,7 @@
         <item row="3" column="3">
          <spacer name="View3DhorizontalSpacer_78">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
           <property name="sizeHint" stdset="0">
            <size>
@@ -1493,7 +1861,7 @@
         <item row="2" column="0">
          <spacer name="View3DverticalSpacer_22">
           <property name="orientation">
-           <enum>Qt::Vertical</enum>
+           <enum>Qt::Orientation::Vertical</enum>
           </property>
           <property name="sizeHint" stdset="0">
            <size>
@@ -1506,7 +1874,7 @@
         <item row="0" column="0">
          <spacer name="View3DverticalSpacer_21">
           <property name="orientation">
-           <enum>Qt::Vertical</enum>
+           <enum>Qt::Orientation::Vertical</enum>
           </property>
           <property name="sizeHint" stdset="0">
            <size>
@@ -1519,7 +1887,7 @@
         <item row="3" column="2">
          <spacer name="View3DhorizontalSpacer_79">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
           <property name="sizeHint" stdset="0">
            <size>
@@ -1532,7 +1900,7 @@
         <item row="3" column="1">
          <spacer name="View3DhorizontalSpacer_77">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
           <property name="sizeHint" stdset="0">
            <size>
@@ -1596,7 +1964,7 @@
            <item row="15" column="3">
             <spacer name="View3DhorizontalSpacer_86">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1609,21 +1977,21 @@
            <item row="2" column="1" colspan="4">
             <widget class="QSlider" name="View3D_Threshold_slider_01">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
            <item row="6" column="1" colspan="4">
             <widget class="QSlider" name="View3D_coronal_slider_01">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
            <item row="14" column="5">
             <spacer name="View3DverticalSpacer_23">
              <property name="orientation">
-              <enum>Qt::Vertical</enum>
+              <enum>Qt::Orientation::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1636,7 +2004,7 @@
            <item row="4" column="1" colspan="4">
             <widget class="QSlider" name="View3D_axial_slider_01">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
@@ -1646,7 +2014,7 @@
            <item row="15" column="0">
             <spacer name="View3DhorizontalSpacer_80">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1672,7 +2040,7 @@
            <item row="15" column="4">
             <spacer name="View3DhorizontalSpacer_82">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1688,7 +2056,7 @@
            <item row="15" column="2">
             <spacer name="View3DhorizontalSpacer_85">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1714,14 +2082,14 @@
            <item row="8" column="1" colspan="4">
             <widget class="QSlider" name="View3D_sagittal_slider_01">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
            <item row="9" column="1" colspan="4">
             <widget class="QSlider" name="View3D_sagittal_slider_02">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
@@ -1747,7 +2115,7 @@
            <item row="1" column="1" colspan="4">
             <widget class="QSlider" name="View3D_isovalue_slider">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
@@ -1764,7 +2132,7 @@
            <item row="3" column="1" colspan="4">
             <widget class="QSlider" name="View3D_Threshold_slider_02">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
@@ -1781,7 +2149,7 @@
            <item row="15" column="1">
             <spacer name="View3DhorizontalSpacer_81">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1794,14 +2162,14 @@
            <item row="5" column="1" colspan="4">
             <widget class="QSlider" name="View3D_axial_slider_02">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
            <item row="15" column="5">
             <spacer name="View3DhorizontalSpacer_83">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1842,7 +2210,7 @@
                  <bool>false</bool>
                 </property>
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                </widget>
               </item>
@@ -1886,7 +2254,7 @@
            <item row="7" column="1" colspan="4">
             <widget class="QSlider" name="View3D_coronal_slider_02">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
@@ -1916,7 +2284,7 @@
         <item row="1" column="0">
          <spacer name="verticalSpacer_19">
           <property name="orientation">
-           <enum>Qt::Vertical</enum>
+           <enum>Qt::Orientation::Vertical</enum>
           </property>
           <property name="sizeHint" stdset="0">
            <size>
@@ -1936,7 +2304,7 @@
         <item row="3" column="1">
          <widget class="QSlider" name="SliderCompareView">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
          </widget>
         </item>
@@ -2013,7 +2381,7 @@
         <item row="1" column="0" colspan="9">
          <widget class="Line" name="line_12">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
          </widget>
         </item>
@@ -2043,7 +2411,7 @@
         <item row="3" column="7">
          <spacer name="horizontalSpacer_16">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
           <property name="sizeHint" stdset="0">
            <size>
@@ -2097,7 +2465,7 @@
                <string>3.1</string>
               </property>
               <property name="alignment">
-               <set>Qt::AlignCenter</set>
+               <set>Qt::AlignmentFlag::AlignCenter</set>
               </property>
              </widget>
             </item>
@@ -2114,7 +2482,7 @@
             <item row="6" column="0" colspan="20">
              <widget class="Line" name="line_3">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
              </widget>
             </item>
@@ -2216,7 +2584,7 @@
             <item row="7" column="7">
              <spacer name="horizontalSpacer_2">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -2229,7 +2597,7 @@
             <item row="7" column="12">
              <spacer name="horizontalSpacer_4">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -2259,7 +2627,7 @@
             <item row="7" column="10">
              <spacer name="horizontalSpacer_3">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -2279,14 +2647,14 @@
             <item row="4" column="0" colspan="20">
              <widget class="Line" name="line_2">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
              </widget>
             </item>
             <item row="7" column="14">
              <spacer name="horizontalSpacer_8">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -2363,14 +2731,14 @@
             <item row="18" column="3">
              <widget class="Line" name="line_8">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
              </widget>
             </item>
             <item row="24" column="3">
              <spacer name="verticalSpacer_2">
               <property name="orientation">
-               <enum>Qt::Vertical</enum>
+               <enum>Qt::Orientation::Vertical</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -2423,7 +2791,7 @@
             <item row="0" column="0">
              <widget class="Line" name="line_4">
               <property name="orientation">
-               <enum>Qt::Vertical</enum>
+               <enum>Qt::Orientation::Vertical</enum>
               </property>
              </widget>
             </item>
@@ -2440,7 +2808,7 @@
             <item row="26" column="1">
              <spacer name="horizontalSpacer_6">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -2453,7 +2821,7 @@
             <item row="12" column="3">
              <widget class="Line" name="line_6">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
              </widget>
             </item>
@@ -2473,7 +2841,7 @@
             <item row="26" column="0">
              <spacer name="horizontalSpacer_5">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -2486,7 +2854,7 @@
             <item row="15" column="3">
              <widget class="Line" name="line_7">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
              </widget>
             </item>
@@ -2506,7 +2874,7 @@
             <item row="9" column="3">
              <widget class="Line" name="line_5">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
              </widget>
             </item>
@@ -2862,7 +3230,7 @@
             <item row="3" column="6">
              <spacer name="horizontalSpacer">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -2885,7 +3253,7 @@
             <item row="3" column="4">
              <spacer name="horizontalSpacer_26">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -2958,7 +3326,7 @@
             <item row="2" column="7">
              <spacer name="horizontalSpacer_27">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -3053,7 +3421,7 @@
                <item row="1" column="6">
                 <spacer name="horizontalSpacer_39">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -3083,7 +3451,7 @@
                <item row="0" column="13">
                 <spacer name="verticalSpacer_7">
                  <property name="orientation">
-                  <enum>Qt::Vertical</enum>
+                  <enum>Qt::Orientation::Vertical</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -3096,7 +3464,7 @@
                <item row="1" column="4">
                 <spacer name="horizontalSpacer_37">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -3109,7 +3477,7 @@
                <item row="1" column="0">
                 <spacer name="horizontalSpacer_33">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -3122,7 +3490,7 @@
                <item row="1" column="7">
                 <spacer name="horizontalSpacer_40">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -3151,7 +3519,7 @@
                <item row="1" column="2">
                 <spacer name="horizontalSpacer_35">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -3164,7 +3532,7 @@
                <item row="1" column="8">
                 <spacer name="horizontalSpacer_41">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -3187,7 +3555,7 @@
                <item row="1" column="5">
                 <spacer name="horizontalSpacer_38">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -3207,7 +3575,7 @@
                <item row="1" column="1">
                 <spacer name="horizontalSpacer_34">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -3220,7 +3588,7 @@
                <item row="1" column="3">
                 <spacer name="horizontalSpacer_36">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -3233,7 +3601,7 @@
                <item row="1" column="9">
                 <spacer name="horizontalSpacer_42">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -3282,7 +3650,7 @@
             <item row="3" column="7">
              <spacer name="horizontalSpacer_31">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -3295,7 +3663,7 @@
             <item row="3" column="4">
              <spacer name="horizontalSpacer_28">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -3308,7 +3676,7 @@
             <item row="3" column="5">
              <spacer name="horizontalSpacer_29">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -3321,7 +3689,7 @@
             <item row="3" column="6">
              <spacer name="horizontalSpacer_30">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -3334,7 +3702,7 @@
             <item row="3" column="8">
              <spacer name="horizontalSpacer_32">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -3392,7 +3760,7 @@
                 <item row="0" column="0">
                  <spacer name="verticalSpacer_9">
                   <property name="orientation">
-                   <enum>Qt::Vertical</enum>
+                   <enum>Qt::Orientation::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -3411,7 +3779,7 @@
                 <item row="1" column="0">
                  <spacer name="verticalSpacer_11">
                   <property name="orientation">
-                   <enum>Qt::Vertical</enum>
+                   <enum>Qt::Orientation::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -3424,7 +3792,7 @@
                 <item row="2" column="0">
                  <spacer name="verticalSpacer_10">
                   <property name="orientation">
-                   <enum>Qt::Vertical</enum>
+                   <enum>Qt::Orientation::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -3446,7 +3814,7 @@
                 <item row="3" column="0">
                  <spacer name="verticalSpacer_8">
                   <property name="orientation">
-                   <enum>Qt::Vertical</enum>
+                   <enum>Qt::Orientation::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -3915,7 +4283,7 @@
                 <item row="2" column="1">
                  <spacer name="horizontalSpacer_48">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -3935,7 +4303,7 @@
                 <item row="2" column="2">
                  <spacer name="horizontalSpacer_49">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -3951,7 +4319,7 @@
                 <item row="2" column="3">
                  <spacer name="horizontalSpacer_51">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -3971,7 +4339,7 @@
                 <item row="2" column="0">
                  <spacer name="horizontalSpacer_44">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -3984,7 +4352,7 @@
                 <item row="2" column="4">
                  <spacer name="horizontalSpacer_50">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -4014,7 +4382,7 @@
                     <item row="5" column="4">
                      <spacer name="horizontalSpacer_67">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4042,7 +4410,7 @@
                     <item row="5" column="13">
                      <spacer name="horizontalSpacer_71">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4055,7 +4423,7 @@
                     <item row="5" column="1">
                      <spacer name="horizontalSpacer_52">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4068,7 +4436,7 @@
                     <item row="5" column="11">
                      <spacer name="horizontalSpacer_72">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4081,7 +4449,7 @@
                     <item row="5" column="9">
                      <spacer name="horizontalSpacer_75">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4097,7 +4465,7 @@
                     <item row="5" column="5">
                      <spacer name="horizontalSpacer_68">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4110,7 +4478,7 @@
                     <item row="5" column="3">
                      <spacer name="horizontalSpacer_53">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4123,7 +4491,7 @@
                     <item row="5" column="2">
                      <spacer name="horizontalSpacer_54">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4136,7 +4504,7 @@
                     <item row="5" column="6">
                      <spacer name="horizontalSpacer_73">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4149,7 +4517,7 @@
                     <item row="5" column="7">
                      <spacer name="horizontalSpacer_74">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4162,7 +4530,7 @@
                     <item row="5" column="14">
                      <spacer name="horizontalSpacer_61">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4178,7 +4546,7 @@
                     <item row="5" column="12">
                      <spacer name="horizontalSpacer_70">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4191,7 +4559,7 @@
                     <item row="5" column="10">
                      <spacer name="horizontalSpacer_69">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4204,7 +4572,7 @@
                     <item row="5" column="8">
                      <spacer name="horizontalSpacer_76">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4225,13 +4593,13 @@
                        </font>
                       </property>
                       <property name="layoutDirection">
-                       <enum>Qt::LeftToRight</enum>
+                       <enum>Qt::LayoutDirection::LeftToRight</enum>
                       </property>
                       <property name="text">
                        <string>A0</string>
                       </property>
                       <property name="alignment">
-                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                       <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                       </property>
                      </widget>
                     </item>
@@ -4249,13 +4617,13 @@
                        </font>
                       </property>
                       <property name="layoutDirection">
-                       <enum>Qt::LeftToRight</enum>
+                       <enum>Qt::LayoutDirection::LeftToRight</enum>
                       </property>
                       <property name="text">
                        <string>A1</string>
                       </property>
                       <property name="alignment">
-                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                       <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                       </property>
                      </widget>
                     </item>
@@ -4273,13 +4641,13 @@
                        </font>
                       </property>
                       <property name="layoutDirection">
-                       <enum>Qt::LeftToRight</enum>
+                       <enum>Qt::LayoutDirection::LeftToRight</enum>
                       </property>
                       <property name="text">
                        <string>A2</string>
                       </property>
                       <property name="alignment">
-                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                       <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                       </property>
                      </widget>
                     </item>
@@ -4309,13 +4677,13 @@
                        </font>
                       </property>
                       <property name="layoutDirection">
-                       <enum>Qt::LeftToRight</enum>
+                       <enum>Qt::LayoutDirection::LeftToRight</enum>
                       </property>
                       <property name="text">
                        <string>A3</string>
                       </property>
                       <property name="alignment">
-                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                       <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                       </property>
                      </widget>
                     </item>
@@ -4333,13 +4701,13 @@
                        </font>
                       </property>
                       <property name="layoutDirection">
-                       <enum>Qt::LeftToRight</enum>
+                       <enum>Qt::LayoutDirection::LeftToRight</enum>
                       </property>
                       <property name="text">
                        <string>A4</string>
                       </property>
                       <property name="alignment">
-                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                       <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                       </property>
                      </widget>
                     </item>
@@ -4357,13 +4725,13 @@
                        </font>
                       </property>
                       <property name="layoutDirection">
-                       <enum>Qt::LeftToRight</enum>
+                       <enum>Qt::LayoutDirection::LeftToRight</enum>
                       </property>
                       <property name="text">
                        <string>A5</string>
                       </property>
                       <property name="alignment">
-                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                       <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                       </property>
                      </widget>
                     </item>
@@ -4383,7 +4751,7 @@
                     <item row="8" column="8">
                      <spacer name="verticalSpacer_17">
                       <property name="orientation">
-                       <enum>Qt::Vertical</enum>
+                       <enum>Qt::Orientation::Vertical</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4396,7 +4764,7 @@
                     <item row="12" column="3">
                      <spacer name="horizontalSpacer_56">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4409,7 +4777,7 @@
                     <item row="1" column="8">
                      <spacer name="verticalSpacer_13">
                       <property name="orientation">
-                       <enum>Qt::Vertical</enum>
+                       <enum>Qt::Orientation::Vertical</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4422,7 +4790,7 @@
                     <item row="3" column="8">
                      <spacer name="verticalSpacer_15">
                       <property name="orientation">
-                       <enum>Qt::Vertical</enum>
+                       <enum>Qt::Orientation::Vertical</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4448,7 +4816,7 @@
                     <item row="10" column="8">
                      <spacer name="verticalSpacer_18">
                       <property name="orientation">
-                       <enum>Qt::Vertical</enum>
+                       <enum>Qt::Orientation::Vertical</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4461,7 +4829,7 @@
                     <item row="12" column="7">
                      <spacer name="horizontalSpacer_57">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4474,7 +4842,7 @@
                     <item row="0" column="8">
                      <spacer name="verticalSpacer_12">
                       <property name="orientation">
-                       <enum>Qt::Vertical</enum>
+                       <enum>Qt::Orientation::Vertical</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4487,7 +4855,7 @@
                     <item row="12" column="6">
                      <spacer name="horizontalSpacer_58">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4500,7 +4868,7 @@
                     <item row="12" column="0">
                      <spacer name="horizontalSpacer_55">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4513,7 +4881,7 @@
                     <item row="12" column="5">
                      <spacer name="horizontalSpacer_59">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4526,7 +4894,7 @@
                     <item row="2" column="8">
                      <spacer name="verticalSpacer_14">
                       <property name="orientation">
-                       <enum>Qt::Vertical</enum>
+                       <enum>Qt::Orientation::Vertical</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4539,7 +4907,7 @@
                     <item row="6" column="8">
                      <spacer name="verticalSpacer_16">
                       <property name="orientation">
-                       <enum>Qt::Vertical</enum>
+                       <enum>Qt::Orientation::Vertical</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4552,7 +4920,7 @@
                     <item row="12" column="4">
                      <spacer name="horizontalSpacer_60">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4599,7 +4967,7 @@
                     <item row="2" column="0">
                      <spacer name="horizontalSpacer_43">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4622,7 +4990,7 @@
                     <item row="2" column="0">
                      <spacer name="horizontalSpacer_62">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4635,7 +5003,7 @@
                     <item row="2" column="4">
                      <spacer name="horizontalSpacer_63">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4648,7 +5016,7 @@
                     <item row="2" column="2">
                      <spacer name="horizontalSpacer_65">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4661,7 +5029,7 @@
                     <item row="2" column="3">
                      <spacer name="horizontalSpacer_64">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4674,7 +5042,7 @@
                     <item row="2" column="1">
                      <spacer name="horizontalSpacer_66">
                       <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
+                       <enum>Qt::Orientation::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
@@ -4861,10 +5229,10 @@
               <item>
                <spacer name="horizontalSpacer_47">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeType">
-                 <enum>QSizePolicy::Fixed</enum>
+                 <enum>QSizePolicy::Policy::Fixed</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5060,7 +5428,7 @@
               <item row="17" column="1">
                <spacer name="HS_6">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5087,7 +5455,7 @@
               <item row="16" column="1">
                <spacer name="HS_1">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5120,7 +5488,7 @@
               <item row="20" column="0" colspan="2">
                <spacer name="HS_2">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5140,7 +5508,7 @@
               <item row="18" column="1">
                <spacer name="HS_5">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5153,7 +5521,7 @@
               <item row="6" column="1" colspan="2">
                <spacer name="HS_8">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5166,7 +5534,7 @@
               <item row="19" column="1">
                <spacer name="HS_4">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5179,7 +5547,7 @@
               <item row="14" column="0" colspan="2">
                <spacer name="HS_3">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5206,7 +5574,7 @@
               <item row="2" column="1" colspan="2">
                <spacer name="HS_7">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5243,7 +5611,7 @@
               <item row="15" column="0" colspan="3">
                <widget class="Line" name="horizontalline_left_grid">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                </widget>
               </item>
@@ -5254,7 +5622,7 @@
               <item row="0" column="2" colspan="2">
                <spacer name="HS_11">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5274,7 +5642,7 @@
               <item row="9" column="0">
                <widget class="Line" name="verticalline_middle_grid">
                 <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+                 <enum>Qt::Orientation::Vertical</enum>
                 </property>
                </widget>
               </item>
@@ -5298,7 +5666,7 @@
               <item row="4" column="0">
                <widget class="Line" name="line_split_planevaluation_2">
                 <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+                 <enum>Qt::Orientation::Vertical</enum>
                 </property>
                </widget>
               </item>
@@ -5315,14 +5683,14 @@
               <item row="2" column="0" colspan="4">
                <widget class="Line" name="line_split_planevaluation_3">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                </widget>
               </item>
               <item row="5" column="1">
                <spacer name="HS_10">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5342,7 +5710,7 @@
               <item row="8" column="1">
                <spacer name="HS_9">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5355,7 +5723,7 @@
               <item row="7" column="1">
                <spacer name="HS_17">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5396,7 +5764,7 @@
               <item row="16" column="0" colspan="3">
                <spacer name="HS_12">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5412,7 +5780,7 @@
               <item row="8" column="0" colspan="4">
                <spacer name="HS_13">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5435,7 +5803,7 @@
               <item row="10" column="1" colspan="3">
                <spacer name="HS_16">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5468,7 +5836,7 @@
               <item row="12" column="1" colspan="3">
                <spacer name="HS_14">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5484,7 +5852,7 @@
               <item row="17" column="0" colspan="4">
                <spacer name="HS_15">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5497,7 +5865,7 @@
               <item row="7" column="0" colspan="4">
                <widget class="Line" name="line_grid_right">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                </widget>
               </item>
@@ -5735,7 +6103,7 @@
               <item row="9" column="1" colspan="3">
                <spacer name="HS_18">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -5866,7 +6234,7 @@
                <item row="1" column="2" colspan="2">
                 <spacer name="hs_mat_2">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -6014,7 +6382,7 @@
             <item row="3" column="0">
              <spacer name="vspacer_ct_cal">
               <property name="orientation">
-               <enum>Qt::Vertical</enum>
+               <enum>Qt::Orientation::Vertical</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -6072,7 +6440,7 @@
             <item row="2" column="0" colspan="3">
              <widget class="Line" name="line_9">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
              </widget>
             </item>
@@ -6089,7 +6457,7 @@
             <item row="3" column="0">
              <spacer name="verticalSpacer_6">
               <property name="orientation">
-               <enum>Qt::Vertical</enum>
+               <enum>Qt::Orientation::Vertical</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -6138,7 +6506,7 @@
                 <item row="18" column="13">
                  <spacer name="horizontalSpacer_21">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -6184,7 +6552,7 @@
                 <item row="1" column="0" colspan="16">
                  <widget class="Line" name="line_20">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                  </widget>
                 </item>
@@ -6228,7 +6596,7 @@
                 <item row="2" column="10" rowspan="18">
                  <widget class="Line" name="line_21">
                   <property name="orientation">
-                   <enum>Qt::Vertical</enum>
+                   <enum>Qt::Orientation::Vertical</enum>
                   </property>
                  </widget>
                 </item>
@@ -6332,7 +6700,7 @@
                 <item row="6" column="0" colspan="7">
                  <widget class="Line" name="line_22">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                  </widget>
                 </item>
@@ -6459,7 +6827,7 @@
                       <item row="1" column="0">
                        <widget class="Line" name="line_17">
                         <property name="orientation">
-                         <enum>Qt::Horizontal</enum>
+                         <enum>Qt::Orientation::Horizontal</enum>
                         </property>
                        </widget>
                       </item>
@@ -6490,14 +6858,14 @@
                    <item row="0" column="0">
                     <widget class="Line" name="line_14">
                      <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
+                      <enum>Qt::Orientation::Horizontal</enum>
                      </property>
                     </widget>
                    </item>
                    <item row="5" column="1">
                     <spacer name="horizontalSpacer_20">
                      <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
+                      <enum>Qt::Orientation::Horizontal</enum>
                      </property>
                      <property name="sizeHint" stdset="0">
                       <size>
@@ -6722,7 +7090,7 @@
                    <item row="10" column="0" colspan="2">
                     <widget class="Line" name="line_16">
                      <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
+                      <enum>Qt::Orientation::Horizontal</enum>
                      </property>
                     </widget>
                    </item>
@@ -6826,7 +7194,7 @@
                    <item row="1" column="0">
                     <widget class="Line" name="line_15">
                      <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
+                      <enum>Qt::Orientation::Horizontal</enum>
                      </property>
                     </widget>
                    </item>
@@ -6854,7 +7222,7 @@
                       <string>Scipy signal find peaks</string>
                      </property>
                      <property name="alignment">
-                      <set>Qt::AlignCenter</set>
+                      <set>Qt::AlignmentFlag::AlignCenter</set>
                      </property>
                     </widget>
                    </item>
@@ -6937,7 +7305,7 @@
                       <string>Additional AMIGOpy settings</string>
                      </property>
                      <property name="alignment">
-                      <set>Qt::AlignCenter</set>
+                      <set>Qt::AlignmentFlag::AlignCenter</set>
                      </property>
                     </widget>
                    </item>
@@ -7015,7 +7383,7 @@
                    <item row="1" column="0">
                     <spacer name="horizontalSpacer_23">
                      <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
+                      <enum>Qt::Orientation::Horizontal</enum>
                      </property>
                      <property name="sizeHint" stdset="0">
                       <size>
@@ -7048,7 +7416,7 @@
                <item row="1" column="1">
                 <spacer name="horizontalSpacer_22">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -7074,7 +7442,7 @@
                   <string>Channel</string>
                  </property>
                  <property name="alignment">
-                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                  <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                  </property>
                 </widget>
                </item>
@@ -7094,10 +7462,10 @@
             <item row="3" column="0">
              <spacer name="horizontalSpacer_17">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeType">
-               <enum>QSizePolicy::Expanding</enum>
+               <enum>QSizePolicy::Policy::Expanding</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -7110,7 +7478,7 @@
             <item row="3" column="2">
              <spacer name="horizontalSpacer_18">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -7129,7 +7497,7 @@
                <item row="1" column="0">
                 <widget class="QSlider" name="Slider_Eval_IrIS">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                 </widget>
                </item>
@@ -7142,7 +7510,7 @@
                <item row="1" column="2">
                 <spacer name="verticalSpacer">
                  <property name="orientation">
-                  <enum>Qt::Vertical</enum>
+                  <enum>Qt::Orientation::Vertical</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -7176,14 +7544,14 @@
             <item row="1" column="0">
              <widget class="Line" name="line_13">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
              </widget>
             </item>
             <item row="3" column="1">
              <spacer name="horizontalSpacer_19">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -7201,6 +7569,256 @@
            </attribute>
           </widget>
          </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_27">
+       <attribute name="title">
+        <string>CSV Files</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_29">
+        <item row="1" column="4">
+         <widget class="QPushButton" name="LoadCSVView">
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>Load File</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="4">
+         <widget class="QLineEdit" name="lineEdit_14">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>X - Axes</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1" colspan="2">
+         <widget class="QLineEdit" name="gcode_f_name">
+          <property name="text">
+           <string>GCODE_FILE_Name</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="7" colspan="3">
+         <widget class="QComboBox" name="CSVDeli_Sel"/>
+        </item>
+        <item row="2" column="1">
+         <widget class="QDoubleSpinBox" name="CSV_Oper_Value">
+          <property name="minimum">
+           <double>-9999999999.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>99990000.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="7" colspan="2">
+         <widget class="QPushButton" name="PlotCSVView">
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>Plot</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="4">
+         <widget class="QLineEdit" name="lineEdit_16">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Lines to skip</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1" colspan="2">
+         <widget class="Line" name="line_24">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="9">
+         <widget class="QCheckBox" name="cvs_add_plot">
+          <property name="text">
+           <string>Hold Plot</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QPushButton" name="exp_csv_2_gcode">
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Exp. GCODE</string>
+          </property>
+         </widget>
+        </item>
+        <item row="8" column="5">
+         <spacer name="verticalSpacer_5">
+          <property name="orientation">
+           <enum>Qt::Orientation::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="2" column="8">
+         <widget class="QLineEdit" name="lineEdit_17">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Header line</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="7" colspan="3">
+         <widget class="QComboBox" name="CSV_X_plot"/>
+        </item>
+        <item row="0" column="0" colspan="8">
+         <widget class="QTableWidget" name="csvTable"/>
+        </item>
+        <item row="1" column="1" colspan="2">
+         <widget class="QComboBox" name="CSV_Oper_Box"/>
+        </item>
+        <item row="2" column="7">
+         <widget class="QSpinBox" name="CSVLineSkip"/>
+        </item>
+        <item row="3" column="4">
+         <widget class="QLineEdit" name="lineEdit_13">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Delimitation</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="3" rowspan="6">
+         <widget class="Line" name="line_23">
+          <property name="orientation">
+           <enum>Qt::Orientation::Vertical</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="9">
+         <widget class="QSpinBox" name="CSVLinHeader"/>
+        </item>
+        <item row="2" column="2">
+         <widget class="QPushButton" name="CSV_Oper_Apply">
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Apply</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="2">
+         <widget class="QSpinBox" name="gcode_col">
+          <property name="minimum">
+           <number>2</number>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="8" colspan="2">
+         <widget class="QTextEdit" name="CSVViewText">
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+           </font>
+          </property>
+          <property name="html">
+           <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+hr { height: 1px; border-width: 0; }
+li.unchecked::marker { content: &quot;\2610&quot;; }
+li.checked::marker { content: &quot;\2612&quot;; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI'; font-size:12pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'MS Shell Dlg 2'; font-size:7.8pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="4" rowspan="2" colspan="6">
+         <widget class="QWidget" name="CVS_Ax_View" native="true"/>
+        </item>
+        <item row="5" column="1">
+         <widget class="QLineEdit" name="lineEdit_4">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Cycles</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="2">
+         <widget class="QSpinBox" name="gcode_cycles">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="4">
+         <widget class="QLineEdit" name="lineEdit_15">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Y - Axes</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="7" colspan="3">
+         <widget class="QComboBox" name="CSV_Y_plot"/>
         </item>
        </layout>
       </widget>
@@ -7265,7 +7883,7 @@
                <item row="6" column="1">
                 <spacer name="verticalSpacer_BrCv_2">
                  <property name="orientation">
-                  <enum>Qt::Vertical</enum>
+                  <enum>Qt::Orientation::Vertical</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -7428,7 +8046,7 @@
                <item row="6" column="1" rowspan="2">
                 <spacer name="verticalSpacer_BrCv">
                  <property name="orientation">
-                  <enum>Qt::Vertical</enum>
+                  <enum>Qt::Orientation::Vertical</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -7444,7 +8062,7 @@
             <item row="2" column="2">
              <spacer name="horizontalSpacer_BrCv">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -7619,7 +8237,7 @@
               <item row="9" column="1" colspan="2">
                <spacer name="verticalSpacer_BrCv_4">
                 <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+                 <enum>Qt::Orientation::Vertical</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -7662,7 +8280,7 @@
                  <item row="0" column="0">
                   <widget class="QCheckBox" name="interp_BrCv">
                    <property name="layoutDirection">
-                    <enum>Qt::RightToLeft</enum>
+                    <enum>Qt::LayoutDirection::RightToLeft</enum>
                    </property>
                    <property name="text">
                     <string>Interpolate</string>
@@ -7734,7 +8352,7 @@
               <item row="5" column="1" colspan="2">
                <widget class="Line" name="line_BrCv">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                </widget>
               </item>
@@ -7754,7 +8372,7 @@
                  <item row="2" column="0">
                   <widget class="QCheckBox" name="smooth_BrCv">
                    <property name="layoutDirection">
-                    <enum>Qt::RightToLeft</enum>
+                    <enum>Qt::LayoutDirection::RightToLeft</enum>
                    </property>
                    <property name="text">
                     <string>Smoothing</string>
@@ -7805,7 +8423,7 @@
                     </sizepolicy>
                    </property>
                    <property name="orientation">
-                    <enum>Qt::Horizontal</enum>
+                    <enum>Qt::Orientation::Horizontal</enum>
                    </property>
                   </widget>
                  </item>
@@ -7855,7 +8473,7 @@
                  <number>999999</number>
                 </property>
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                </widget>
               </item>
@@ -7875,7 +8493,7 @@
               <item row="7" column="0">
                <spacer name="verticalSpacer_BrCv_6">
                 <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+                 <enum>Qt::Orientation::Vertical</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -7901,7 +8519,7 @@
                  <number>999999</number>
                 </property>
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                </widget>
               </item>
@@ -8004,7 +8622,7 @@
             <item row="0" column="1">
              <layout class="QGridLayout" name="gridLayout_BrCv_11" rowstretch="4,1,1,1,1,1,1" columnstretch="1,1,1,1">
               <property name="sizeConstraint">
-               <enum>QLayout::SetMinimumSize</enum>
+               <enum>QLayout::SizeConstraint::SetMinimumSize</enum>
               </property>
               <item row="1" column="1">
                <widget class="QComboBox" name="plotXAxis_BrCv">
@@ -8075,7 +8693,7 @@
               <item row="6" column="0">
                <spacer name="verticalSpacer_BrCv_3">
                 <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+                 <enum>Qt::Orientation::Vertical</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -8127,7 +8745,7 @@
                 <item row="2" column="0" colspan="5">
                  <widget class="QWebEngineView" name="DuetControlView">
                   <property name="focusPolicy">
-                   <enum>Qt::WheelFocus</enum>
+                   <enum>Qt::FocusPolicy::WheelFocus</enum>
                   </property>
                   <property name="url">
                    <url>
@@ -8163,7 +8781,7 @@
                 <item row="0" column="3" colspan="2">
                  <spacer name="horizontalSpacer_78">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -8225,7 +8843,7 @@
                    <number>1</number>
                   </property>
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                  </widget>
                 </item>
@@ -8242,7 +8860,7 @@
                 <item row="1" column="2">
                  <spacer name="horizontalSpacer_77">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -8273,13 +8891,6 @@
                  <widget class="QPushButton" name="exportDataMoVe">
                   <property name="text">
                    <string>Export motion verification data</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="2">
-                 <widget class="QCheckBox" name="stop_until_radiation">
-                  <property name="text">
-                   <string>Stop until radiation</string>
                   </property>
                  </widget>
                 </item>
@@ -8330,7 +8941,7 @@
            <item row="2" column="0">
             <widget class="QCheckBox" name="initStructCheck">
              <property name="layoutDirection">
-              <enum>Qt::RightToLeft</enum>
+              <enum>Qt::LayoutDirection::RightToLeft</enum>
              </property>
              <property name="text">
               <string>All series</string>
@@ -8398,7 +9009,7 @@
         <item row="6" column="0" colspan="2">
          <widget class="QSlider" name="segViewSlider">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
          </widget>
         </item>
@@ -8415,8 +9026,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>443</width>
-             <height>329</height>
+             <width>442</width>
+             <height>307</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8517,7 +9128,7 @@
                <number>5</number>
               </property>
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
              </widget>
             </item>
@@ -8540,7 +9151,7 @@
             <item row="5" column="1">
              <spacer name="verticalSpacer_20">
               <property name="orientation">
-               <enum>Qt::Vertical</enum>
+               <enum>Qt::Orientation::Vertical</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -8557,8 +9168,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>165</width>
-             <height>99</height>
+             <width>175</width>
+             <height>106</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8607,7 +9218,7 @@
             <item row="3" column="2">
              <spacer name="verticalSpacer_21">
               <property name="orientation">
-               <enum>Qt::Vertical</enum>
+               <enum>Qt::Orientation::Vertical</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -8624,8 +9235,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>238</width>
-             <height>151</height>
+             <width>243</width>
+             <height>165</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8641,7 +9252,7 @@
                <string>Connectivity</string>
               </property>
               <property name="alignment">
-               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
               </property>
              </widget>
             </item>
@@ -8651,13 +9262,13 @@
                <bool>false</bool>
               </property>
               <property name="layoutDirection">
-               <enum>Qt::LeftToRight</enum>
+               <enum>Qt::LayoutDirection::LeftToRight</enum>
               </property>
               <property name="text">
                <string>Operation</string>
               </property>
               <property name="alignment">
-               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
               </property>
              </widget>
             </item>
@@ -8677,7 +9288,7 @@
             <item row="6" column="4">
              <spacer name="verticalSpacer_23">
               <property name="orientation">
-               <enum>Qt::Vertical</enum>
+               <enum>Qt::Orientation::Vertical</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -8696,13 +9307,13 @@
                <bool>false</bool>
               </property>
               <property name="layoutDirection">
-               <enum>Qt::LeftToRight</enum>
+               <enum>Qt::LayoutDirection::LeftToRight</enum>
               </property>
               <property name="text">
                <string>Rank (dimension)</string>
               </property>
               <property name="alignment">
-               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
               </property>
              </widget>
             </item>
@@ -8715,7 +9326,7 @@
                <string>Iterations</string>
               </property>
               <property name="alignment">
-               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
               </property>
              </widget>
             </item>
@@ -8763,8 +9374,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>206</width>
-             <height>147</height>
+             <width>228</width>
+             <height>134</height>
             </rect>
            </property>
            <attribute name="label">
@@ -8812,7 +9423,7 @@
        <item row="12" column="6">
         <spacer name="horizontalSpacer_14">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -8840,7 +9451,7 @@
           <string>Transparency</string>
          </property>
          <property name="alignment">
-          <set>Qt::AlignCenter</set>
+          <set>Qt::AlignmentFlag::AlignCenter</set>
          </property>
         </widget>
        </item>
@@ -8860,7 +9471,7 @@
           <number>100</number>
          </property>
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
@@ -8877,7 +9488,7 @@
        <item row="9" column="1" colspan="6">
         <widget class="Line" name="line_10">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
@@ -8887,14 +9498,14 @@
           <number>100</number>
          </property>
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
        <item row="12" column="5">
         <spacer name="horizontalSpacer_13">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -8917,7 +9528,7 @@
        <item row="11" column="2" colspan="4">
         <widget class="QSlider" name="horizontalSlider_5">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
@@ -8929,7 +9540,7 @@
         </widget>
        </item>
        <item row="1" column="2">
-        <widget class="QComboBox" name="Layer_selection"/>
+        <widget class="QComboBox" name="Layer_sel"/>
        </item>
        <item row="8" column="2" colspan="4">
         <widget class="QSlider" name="Layer_3_alpha_sli">
@@ -8937,7 +9548,7 @@
           <number>100</number>
          </property>
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
@@ -8960,14 +9571,14 @@
           <number>100</number>
          </property>
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
        <item row="12" column="1">
         <spacer name="horizontalSpacer_10">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -8980,14 +9591,14 @@
        <item row="2" column="1" colspan="6">
         <widget class="Line" name="line_11">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
         </widget>
        </item>
        <item row="12" column="3">
         <spacer name="horizontalSpacer_11">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -9037,7 +9648,7 @@
        <item row="12" column="4">
         <spacer name="horizontalSpacer_12">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -9050,7 +9661,7 @@
        <item row="12" column="2">
         <spacer name="horizontalSpacer_15">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -9066,7 +9677,7 @@
     <item row="5" column="1" colspan="2">
      <widget class="Line" name="line">
       <property name="orientation">
-       <enum>Qt::Horizontal</enum>
+       <enum>Qt::Orientation::Horizontal</enum>
       </property>
      </widget>
     </item>
@@ -9089,7 +9700,6 @@
   <tabstop>Proces_spinbox_05</tabstop>
   <tabstop>Proces_spinbox_06</tabstop>
   <tabstop>Process_set_box</tabstop>
-  <tabstop>run_im_process</tabstop>
   <tabstop>IrIS_Load_CorrectionFrame</tabstop>
   <tabstop>lineEdit_6</tabstop>
   <tabstop>Skip_IrIS_Files</tabstop>
@@ -9130,8 +9740,6 @@
   <tabstop>I_value_b_coeff_calc</tabstop>
   <tabstop>tabWidget_5</tabstop>
   <tabstop>DataTreeView</tabstop>
-  <tabstop>Process_list</tabstop>
-  <tabstop>Func_description</tabstop>
   <tabstop>reset_table_mat</tabstop>
   <tabstop>tabModules</tabstop>
   <tabstop>Proces_label_01</tabstop>

@@ -1,5 +1,7 @@
-from PyQt5.QtWidgets import QMenuBar, QAction, QActionGroup
-from PyQt5.QtGui import QFont
+from PySide6.QtWidgets import QMenuBar
+from PySide6.QtGui import QAction, QActionGroup
+from PySide6.QtGui import QFont
+
 from fcn_load.read_IrIS import load_IrIS_folder
 from fcn_load.load_dcm  import load_all_dcm
 from fcn_load.save_load import load_amigo_bundle, save_amigo_bundle

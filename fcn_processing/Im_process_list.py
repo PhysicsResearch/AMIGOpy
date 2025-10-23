@@ -7,7 +7,7 @@ from fcn_processing.denoise_methods import (apply_gaussian_filter, apply_median_
 
 from fcn_processing.cv_norm_methods import normalize_image
 from fcn_display.display_images     import displayaxial, displaycoronal, displaysagittal
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 def on_operation_selected(self, index):
     # Dictionary mapping operations to their descriptions
@@ -451,7 +451,7 @@ def on_operation_selected(self, index):
         
         
 def run_image_processing(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     if idx not in self.display_data:
         QMessageBox.warning(None, "Warning", "No image data was found.")
         return
@@ -503,7 +503,7 @@ def run_image_processing(self):
     displaycoronal(self)   
 
 def image_processing_undo(self): 
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.display_data[idx] = self.display_data_undo.copy()
     if self.DataType == "IrIS":
         self.IrIS_data[self.patientID]['3DMatrix'] = self.display_data[idx]

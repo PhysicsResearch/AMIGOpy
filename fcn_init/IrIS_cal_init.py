@@ -1,6 +1,6 @@
 from fcn_IrIS.CalibrationMk_IrIS  import  plot_mk_cal_data, set_ref_shift, update_table, export_mk_pos2csv
 from fcn_IrIS.CalibrationTable_IrIS  import load_csv_into_table, load_csv_ref_pro, load_referencecsv_into_table
-from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView
+from PySide6.QtWidgets import QTableWidgetItem, QHeaderView
 
 
 def init_cal_markers_IrIS(self):

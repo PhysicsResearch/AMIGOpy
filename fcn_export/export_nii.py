@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import numpy as np
 import SimpleITK as sitk
-from PyQt5.QtWidgets import QFileDialog
+from PySide6.QtWidgets import QFileDialog
 
 def export_nifti(self, Patient, Study, Modality, Series,
                       output_folder=None, file_name=None):

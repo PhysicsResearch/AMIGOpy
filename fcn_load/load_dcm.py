@@ -89,6 +89,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         'ImageComments': getattr(dicom_file, "ImageComments", ''),
                         'DoseGridScaling': getattr(dicom_file, "DoseGridScaling", "N/A"),
                         'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),
+                        'PatientPosition': getattr(dicom_file, "PatientPosition", "N/A"),
                         'DataType': 'DICOM',
                         'Modality': modality,
                         'DCM_Info': Header,
@@ -197,6 +198,25 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         sorted_image_data = sorted(series_data['images'].items(), key=lambda x: x[0])
                         series_data['3DMatrix'] = np.stack([item[1]['ImageData'] for item in sorted_image_data], axis=0)
                         series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
+                        #
+                        # --- Normalize Feet-First to Head-First by rotating 180° around patient Z (in-plane) ---
+                        pos = str(series_data['metadata'].get('PatientPosition', '')).upper()
+                        # Handle Feet-First positions (FFS, FFP, FFDR, FFDL, etc.)
+                        if pos.startswith('FF'):
+                            # Rotate each axial slice 180°: flip rows (axis=1) and columns (axis=2)
+                            if '3DMatrix' in series_data and series_data['3DMatrix'] is not None:
+                                series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
+                                series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=2)
+                                series_data['metadata']['AMIGO_PatientPositionNormalized'] = True
+                        else:
+                            series_data['metadata']['AMIGO_PatientPositionNormalized'] = False
+                        #
+                            # Third letter 'P' (prone) -> rotate 180° about patient X (L-R)
+                        if len(pos) >= 3 and pos[2] == 'P':
+                            series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
+                            series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=2)
+                            normalized = True
+                        #
                         if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] >0):
                             print('Image needs to be flipped to match coordinate system')
                             series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)

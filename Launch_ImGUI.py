@@ -1,11 +1,29 @@
-import sys
-import os
+import os, sys, traceback, faulthandler
+faulthandler.enable()
+os.environ.setdefault("QT_OPENGL", "software")  # safer on RDP/VM
+
+from PySide6.QtCore import Qt, QCoreApplication
+from PySide6.QtGui import QSurfaceFormat, QIcon
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QToolBar
+from PySide6.QtCore import QEvent, Qt, QTimer, Signal, QObject
+# Force software GL (stable on many Windows setups)
+QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_UseSoftwareOpenGL, True)
+
+# Compatibility profile is safest with VTK on Windows
+fmt = QSurfaceFormat()
+fmt.setRenderableType(QSurfaceFormat.OpenGL)
+fmt.setProfile(QSurfaceFormat.CompatibilityProfile)
+fmt.setVersion(3, 2)
+fmt.setDepthBufferSize(24)
+fmt.setStencilBufferSize(8)
+QSurfaceFormat.setDefaultFormat(fmt)
+
+from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor as QVTKWidget
+
+import vtk
+from PySide6.QtWidgets import QApplication
 import qdarkstyle
-import pandas as pd
-from PyQt5.QtGui      import QIcon, QSurfaceFormat
-from PyQt5.QtWidgets  import QApplication, QMainWindow, QToolBar
-from PyQt5 import QtWidgets
-from ImGUI import Ui_AMIGOpy  # Assuming this is the name of your main window class in ImGUI.py
+from uiImGUI import Ui_AMIGOpy
 from fcn_load.sort_dcm import get_data_description
 from fcn_load.org_fol_dcm import organize_files_into_folders
 from fcn_breathing_curves.functions_plot import init_BrCv_plot, plotViewData_BrCv_plot
@@ -32,8 +50,8 @@ from fcn_init.init_drop_options       import initialize_drop_fcn
 from fcn_load.load_dcm                import load_all_dcm
 from fcn_segmentation.functions_segmentation import plot_hist
 from fcn_init.init_vtk_3D_display     import init_vtk3d_widget
-import vtk
-from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal, QObject
+
+
 from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin
 from fcn_3Dview.structures_3D_table import init_3D_Struct_table 
 from fcn_init.init_tool_tip import set_tooltip
@@ -41,9 +59,9 @@ from fcn_3Dview.surfaces_3D_table import init_STL_Surface_table
 from fcn_3Dview.protons_3D_plan import init_3D_proton_table
 from fcn_init.init_data_tree import set_context_menu
 from fcn_3DPrinting.material_selection import calculate_red_settings
-from fcn_3DPrinting import handlers as hdl
 
 # from fcn_init.init_reg_elements import init_reg_elements
+
 
 
 # ── constants in module / class scope ─────────────────────────────────────────
@@ -63,7 +81,7 @@ _VIEW_ATTRS = {
 class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
         # emmit signal when the slice changes
         # This signal can be connected to other functions to update the display when the slice changes.
-    sliceChanged = pyqtSignal(str, list)
+    sliceChanged = Signal(str, list)
 
     def __init__(self,folder_path=None):
         super(MyApp, self).__init__()
@@ -161,7 +179,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.SagittalSlider.valueChanged.connect(self.on_sagittalslider_change)
         self.CoronalSlider.valueChanged.connect(self.on_coronalslider_change)
         
-        
+
               
         # # Initialize VTK components
         setup_vtk_comp(self)
@@ -237,9 +255,6 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # set data tree context menu
         set_context_menu(self)
 
-        # 3dprinting material selection part
-
-
 
     def organize_dcm_folder(self):
         self.label.setText("Reading folders")
@@ -269,19 +284,19 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.LeftButtonCoronalDown = False
 
     def on_axialslider_change(self):
-        idx = self.layer_selection_box.currentIndex()
+        idx = self.layer_selected.currentIndex()
         # Set the slice index based on the slider value.
         self.current_axial_slice_index[idx] = self.AxialSlider.value()
         change_sliceAxial(self,0)
         
     def on_sagittalslider_change(self):
-        idx = self.layer_selection_box.currentIndex()
+        idx = self.layer_selected.currentIndex()
         # Set the slice index based on the slider value.
         self.current_sagittal_slice_index[idx] = self.SagittalSlider.value()
         change_sliceSagittal(self,0)
             
     def on_coronalslider_change(self):
-        idx = self.layer_selection_box.currentIndex()
+        idx = self.layer_selected.currentIndex()
         # Set the slice index based on the slider value.
         self.current_coronal_slice_index[idx] = self.CoronalSlider.value()
         change_sliceCoronal(self,0)
@@ -329,7 +344,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         return self._cycle_order[(idx + 1) % len(self._cycle_order)]
 
     def eventFilter(self, watched, event):
-        if event.type() == QEvent.MouseButtonDblClick and event.button() == Qt.LeftButton:
+        if event.type() == QEvent.MouseButtonDblClick and event.button() == Qt.MouseButton.LeftButton:
             if watched is self.im_display_tab:
                 self.set_view_mode("all")
                 return True
@@ -455,42 +470,59 @@ def calculate_red(self):
             result = calculate_red_settings(self.cal_mat_path, self.ICRU_reference_path, filament, tissue)
             self.result_text.setPlainText(str(result))
 
+
+
+
+
 if __name__ == "__main__":
-
-    import sys
-    from PyQt5.QtCore import Qt, QCoreApplication
-    from PyQt5.QtGui import QSurfaceFormat
-    from PyQt5.QtWidgets import QApplication
+    import sys, os, time
+    from PySide6.QtCore import Qt, QCoreApplication, QTimer
+    from PySide6.QtGui import QSurfaceFormat, QPixmap
+    from PySide6.QtWidgets import QApplication, QSplashScreen
     import qdarkstyle
+    import resources_rc 
 
-    # Pick ONE of these attributes. DesktopOpenGL first; if you’re on RDP/VM, use SoftwareOpenGL instead.
-    QCoreApplication.setAttribute(Qt.AA_UseDesktopOpenGL, True)
-    # QCoreApplication.setAttribute(Qt.AA_UseSoftwareOpenGL, True)  # ← use this line instead if needed
-
-    # Force a Compatibility profile (NOT Core), and set reasonable buffers
+    # --- Keep your GL defaults (unchanged) ---
     fmt = QSurfaceFormat()
     fmt.setRenderableType(QSurfaceFormat.OpenGL)
     fmt.setProfile(QSurfaceFormat.CompatibilityProfile)
-    # fmt.setVersion(3, 2)  # optional; let Qt choose if unsure
     fmt.setDepthBufferSize(24)
     fmt.setStencilBufferSize(8)
     QSurfaceFormat.setDefaultFormat(fmt)
 
     app = QApplication(sys.argv)
-    folder_path = None
-    if len(sys.argv) > 1:
-        folder_path = sys.argv[1]  # Capture folder path from the command-line arguments
+
+    # --- Show splash ASAP ---
+    # Pu
+    pix = QPixmap(":/assets/Open_logo.png")
+    if pix.isNull():
+        pix = QPixmap(600, 300); pix.fill(Qt.black)
+    if pix.isNull():
+        pix = QPixmap(600, 300)  # fallback
+        pix.fill(Qt.black)
+    splash = QSplashScreen(pix)
+    splash.showMessage("Starting AMIGOpy…", Qt.AlignBottom | Qt.AlignHCenter | Qt.TextWordWrap, Qt.white)
+    splash.show()
+    app.processEvents()  # let the splash paint immediately
+
+    # --- Create main window (keep __init__ as-is for now) ---
+    folder_path = sys.argv[1] if len(sys.argv) > 1 else None
     window = MyApp(folder_path)
-    app.setStyleSheet(qdarkstyle.load_stylesheet())
+
+    # Optional: apply theme after splash is visible
+    app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6'))
+    splash.showMessage("Loading UI…", Qt.AlignBottom | Qt.AlignHCenter | Qt.TextWordWrap, Qt.white)
+    app.processEvents()
+
+    # --- Show window and close splash ---
     window.show()
+    splash.finish(window)
+
+    # (Optional) if you pass a folder on the command line, keep your current behavior
     if folder_path is not None:
-        print(folder_path)
-        load_all_dcm(window,folder_path, progress_callback=None, update_label=None)
-    sys.exit(app.exec_())
+        load_all_dcm(window, folder_path, progress_callback=None, update_label=None)
 
-
-
-
+    sys.exit(app.exec())
 
 
 
