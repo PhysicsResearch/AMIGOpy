@@ -1,6 +1,7 @@
 import sys
 import os
 import qdarkstyle
+import pandas as pd
 from PyQt5.QtGui      import QIcon, QSurfaceFormat
 from PyQt5.QtWidgets  import QApplication, QMainWindow, QToolBar
 from PyQt5 import QtWidgets
@@ -39,6 +40,9 @@ from fcn_init.init_tool_tip import set_tooltip
 from fcn_3Dview.surfaces_3D_table import init_STL_Surface_table
 from fcn_3Dview.protons_3D_plan import init_3D_proton_table
 from fcn_init.init_data_tree import set_context_menu
+from fcn_3DPrinting.material_selection import calculate_red_settings
+from fcn_3DPrinting import handlers as hdl
+
 # from fcn_init.init_reg_elements import init_reg_elements
 
 
@@ -86,7 +90,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         init_3D_Struct_table(self)
         init_STL_Surface_table(self)
         init_3D_proton_table(self)
-
+        
         #
         self.LeftButtonSagittalDown = False
         self.LeftButtonCoronalDown  = False
@@ -115,6 +119,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.transTab['Breathing curves']   = [1,0,0,0]
         self.layerTab['Segmentation']       = 0
         self.transTab['Segmentation']       = [1,0.99,0.99,0]
+        self.layerTab['3D Printing']        = 0
+        self.transTab['3D Printing']        = [1,0,0,0]
         #
 
 
@@ -231,8 +237,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # set data tree context menu
         set_context_menu(self)
 
-        #
-        # init_reg_elements(self)
+        # 3dprinting material selection part
 
 
 
@@ -443,6 +448,12 @@ def _find_widget_in_gridlayout(layout, widget):
     return None, None, 1, 1
 
 
+def calculate_red(self):
+        filament = self.filament_combo.currentText()
+        tissue   = self.tissue_combo.currentText()
+        if filament and tissue:
+            result = calculate_red_settings(self.cal_mat_path, self.ICRU_reference_path, filament, tissue)
+            self.result_text.setPlainText(str(result))
 
 if __name__ == "__main__":
 

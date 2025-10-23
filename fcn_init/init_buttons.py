@@ -40,6 +40,8 @@ from fcn_3Dview.volume_3d_viewer import play_4D_sequence_3D
 from fcn_materialassignment.material_assignment_properties import add_mat_row,del_mat_row,add_element,del_element,save_mat_db,undo_changes
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
 from fcn_materialassignment.material_map import mat2HU,del_mat2HU,generate_mat_map,delete_mat_map,struct2mat,del_stuct2mat,update_mat_struct_list
+from fcn_3DPrinting.material_selection import calculate_red_settings
+from fcn_3DPrinting import handlers as hdl
 
 
 def initialize_software_buttons(self):
@@ -290,7 +292,13 @@ def initialize_software_buttons(self):
     self.remove_mat_from_struct.clicked.connect(lambda: del_stuct2mat(self))
     self.update_mat_struct_list.clicked.connect(lambda: update_mat_struct_list(self))
     
-
+    # 3D Printing buttons connect
+    # setStyleSheet("background-color: green; color: white;")
+    self.import_reference_btn.clicked.connect(lambda: hdl.import_reference_file(self))
+    self.import_tested_filaments_btn.clicked.connect(lambda: hdl.load_gammex_file(self))
+    self.load_cal_btn.clicked.connect(lambda: hdl.load_cal_file(self))
+    self.show_filaments_button.clicked.connect(lambda: hdl.show_best_matching_filaments(self))
+    self.RED_calc_button.clicked.connect(lambda: hdl.calculate_red(self))
 
  
     # Circle ROI -----------------------------------------------------------------------------------
@@ -311,6 +319,9 @@ def initialize_software_buttons(self):
     self.exp_csv_roi_c_values.setStyleSheet("background-color: blue; color: white;")
     
     
+
+
+
 def on_display_dw_overlay_clicked(self):
     """
     Slot called when the display_dw_overlay checkbox is clicked.
