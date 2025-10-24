@@ -59,6 +59,7 @@ from fcn_3Dview.surfaces_3D_table import init_STL_Surface_table
 from fcn_3Dview.protons_3D_plan import init_3D_proton_table
 from fcn_init.init_data_tree import set_context_menu
 from fcn_3DPrinting.material_selection import calculate_red_settings
+from fcn_3DPrinting import handlers as hdl
 
 # from fcn_init.init_reg_elements import init_reg_elements
 
@@ -88,6 +89,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         
         # Set up the user interface from Designer.
         self.setupUi(self)
+
         self.setWindowTitle("AMIGOpy")
         #
         #
@@ -255,6 +257,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # set data tree context menu
         set_context_menu(self)
 
+        
 
     def organize_dcm_folder(self):
         self.label.setText("Reading folders")

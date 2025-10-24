@@ -314,6 +314,7 @@ def initialize_software_buttons(self):
     self.show_filaments_button.clicked.connect(lambda: hdl.show_best_matching_filaments(self))
     self.RED_calc_button.clicked.connect(lambda: hdl.calculate_red(self))
 
+
  
     # Circle ROI -----------------------------------------------------------------------------------
     # display (or not) ROI
