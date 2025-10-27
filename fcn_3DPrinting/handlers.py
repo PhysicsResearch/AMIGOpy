@@ -1,4 +1,4 @@
-from tkinter import filedialog
+# removed: from tkinter import filedialog
 import os
 import pandas as pd
 from PySide6.QtWidgets import QFileDialog
@@ -45,12 +45,13 @@ class PandasModel(QtCore.QAbstractTableModel):
 
 def import_reference_file(self):
     global reference_path
-    file_path = filedialog.askopenfilename(title="Select Reference File")
-    if file_path:
-        self.reference_path = file_path
+    # file_path = filedialog.askopenfilename(title="Select Reference File")
+    path, _ = QFileDialog.getOpenFileName(self, "Select Reference File")
+    if path:
+        self.reference_path = path
         # print(f"Reference file loaded: {reference_path}")
         # self.result_text.append(f"Reference file loaded:\n{reference_path}")
-        tissues = give_tissues(file_path)
+        tissues = give_tissues(path)
         self.tissue_combo.clear()
         self.tissue_combo.addItems(tissues)
         self.tissue_combo.setEnabled(True)
@@ -92,8 +93,6 @@ def show_best_matching_filaments(self):
     model = PandasModel(df)
     self.tableView_filaments.setModel(model)
 
-
-
 def calculate_red(self):
     filament = self.filament_combo.currentText()
     tissue = self.tissue_combo.currentText()
@@ -106,7 +105,6 @@ def calculate_red(self):
     input1 = "Flow and Infill" if self.radio_flow_infill.isChecked() else "Flow"
     input2 = "Extrapolate" if self.radio_extrap.isChecked() else "No"
 
-    
     # Run your RED calculation
     result = RED_or_RED_and_infill(
         input1=input1,
