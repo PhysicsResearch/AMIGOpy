@@ -48,6 +48,7 @@ from fcn_init.init_load_files         import load_Source_cal_csv_file
 from fcn_init.init_list_menus         import populate_list_menus
 from fcn_init.init_drop_options       import initialize_drop_fcn
 from fcn_load.load_dcm                import load_all_dcm
+from fcn_init.vtk_hist import init_histogram_ui
 from fcn_segmentation.functions_segmentation import plot_hist
 from fcn_init.init_vtk_3D_display     import init_vtk3d_widget
 
@@ -65,18 +66,41 @@ from fcn_3DPrinting import handlers as hdl
 
 
 
-# ── constants in module / class scope ─────────────────────────────────────────
-_ORIG_POS = {                     # Designer coordinates
-    "axial":     {"pane": (0, 0), "slider": (1, 0)},
-    "coronal":   {"pane": (0, 1), "slider": (1, 1)},
-    "sagittal":  {"pane": (2, 0), "slider": (3, 0)},
+
+# map logical names -> (pane_object_name, slider_object_name)
+_VIEW_ATTRS = {
+    "axial":    ("VTK_view_01", "AxialSlider"),
+    "sagittal": ("VTK_view_02", "SagittalSlider"),
+    "coronal":  ("VTK_view_03", "CoronalSlider"),
 }
 
-_VIEW_ATTRS = {
-    "axial":    ("VTK_view_01", "vtkWidgetAxial",    "AxialSlider"),
-    "coronal":  ("VTK_view_03", "vtkWidgetCoronal",  "CoronalSlider"),
-    "sagittal": ("VTK_view_02", "vtkWidgetSagittal", "SagittalSlider"),
+# original grid positions in the new layout
+_ORIG_POS = {
+    "axial":    {"pane": (0, 0), "slider": (1, 0)},
+    "sagittal": {"pane": (0, 1), "slider": (1, 1)},
+    "coronal":  {"pane": (0, 2), "slider": (1, 2)},
+    # tab spans all columns at row=2
+    "tab":      {"pane": (2, 0), "span": (1, 3)},
 }
+# 
+def _resolve_names(axis: str):
+    """
+    Return (pane_name, vtk_name, slider_name) no matter how _VIEW_ATTRS is shaped.
+    If only (pane, slider) are provided, vtk_name == pane_name.
+    """
+    names = _VIEW_ATTRS[axis]
+    if isinstance(names, dict):
+        pane = names["pane"]
+        vtk  = names.get("vtk", pane)
+        sl   = names["slider"]
+        return pane, vtk, sl
+    elif len(names) == 3:
+        return names  # (pane, vtk, slider)
+    elif len(names) == 2:
+        pane, sl = names
+        return pane, pane, sl
+    else:
+        raise ValueError(f"Bad mapping for {axis}: {names!r}")
 # ──────────────────────────────────────────────────────────────────────────────
 
 class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
@@ -187,7 +211,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         setup_vtk_comp(self)
         setup_vtk_IrISEval(self)
         setup_vtk_seg(self)
-
+        init_histogram_ui(self)
+        self._hook_vtk_dblclicks()
         # Calibration module IrIS
         init_cal_markers_IrIS(self)
         
@@ -225,10 +250,11 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self._max_axis = None
         self._cycle_order = ["axial", "sagittal", "coronal"]
 
-        for axis, (_, vtk_name, _) in _VIEW_ATTRS.items():
-            vtkw = getattr(self, vtk_name)
-            vtkw._axis_name = axis
-            vtkw.installEventFilter(self)
+        # for axis in _VIEW_ATTRS.keys():
+        #     _, vtk_name, _ = _resolve_names(axis)
+        #     vtkw = getattr(self, vtk_name)
+        #     vtkw._axis_name = axis
+        #     vtkw.installEventFilter(self)
 
         # Install filter on the parent container for “show all”
         self.im_display_tab.installEventFilter(self)
@@ -392,10 +418,32 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
                 return True
 
         return super().eventFilter(watched, event)
+
+
+
+    def _hook_vtk_dblclicks(self):
+        # Install the event filter on the QVTKRenderWindowInteractor children,
+        # not on the placeholder containers.
+        for axis in _VIEW_ATTRS.keys():
+            pane_name, _, _ = _resolve_names(axis)
+            holder = getattr(self, pane_name)
+            for vtk_child in holder.findChildren(QVTKWidget):
+                vtk_child._axis_name = axis
+                vtk_child.installEventFilter(self)
         
+
+
     def set_view_mode(self, mode: str = "all"):
         """
         mode = "all" | "axial" | "coronal" | "sagittal"
+        3-col layout in 'all':
+        row 0: VTK1 | VTK2 | VTK3
+        row 1:  S1  |  S2  |  S3
+        row 2: [ tabView01 spans 3 cols ]
+        In single mode:
+        row 0: [   BIG spans 3 cols   ]
+        row 1: [ BIG slider spans 3  ]
+        (tab + other views/sliders hidden)
         """
         if mode not in {"all", "axial", "coronal", "sagittal"}:
             print(f"[set_view_mode] unknown key {mode!r}")
@@ -403,58 +451,76 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
 
         gl = self.gridLayout_4
 
-        # ------ FIX: unpack 3-tuple, keep pane & slider -------------------------
-        views = {
-            k: (
-                getattr(self, pane_name),         # placeholder QWidget
-                getattr(self, slider_name)        # its QSlider
-            )
-            for k, (pane_name, _, slider_name) in _VIEW_ATTRS.items()
-        }
-        # ------------------------------------------------------------------------
+        # resolve widgets
+        def w(name): return getattr(self, name)
+        views = {k: (w(p), w(s)) for k, (p, s) in _VIEW_ATTRS.items()}
+        tab = self.tabView01
 
-        # ── 1) hide everything first ────────────────────────────────────────────
-        for vw, sl in views.values():
-            vw.hide(); sl.hide()
-
-        self.tabView01.hide()
-        self.label_2.hide()
-
-        # ── 2) detach all layout items (keeps grid clean) ──────────────────────
+        # clear grid
         while gl.count():
             gl.takeAt(0)
 
-        # ── 3) branch on mode ──────────────────────────────────────────────────
+        # hide everything upfront (prevents leftovers)
+        for vw, sl in views.values():
+            vw.hide()
+            sl.hide()
+            sl.setMinimumHeight(0)
+        tab.hide()
+        if hasattr(self, "label_2"):
+            self.label_2.hide()  # just in case
+
         if mode == "all":
-            # put every pane + slider back where Designer had them
+            # --- equal 3-up + sliders + tab
+            gl.setRowStretch(0, 5)   # views
+            gl.setRowStretch(1, 0)   # sliders
+            gl.setRowStretch(2, 2)   # tab
+            gl.setColumnStretch(0, 1); gl.setColumnStretch(1, 1); gl.setColumnStretch(2, 1)
+
             for key, (vw, sl) in views.items():
-                r_pane, c_pane       = _ORIG_POS[key]["pane"]
-                r_slider, c_slider   = _ORIG_POS[key]["slider"]
+                r, c = _ORIG_POS[key]["pane"];   gl.addWidget(vw, r, c, 1, 1); vw.show()
+                r, c = _ORIG_POS[key]["slider"]; gl.addWidget(sl, r, c, 1, 1); sl.show()
 
-                gl.addWidget(vw, r_pane,  c_pane, 1, 1)
-                gl.addWidget(sl, r_slider, c_slider, 1, 1)
-                vw.show(); sl.show()
+            r, c = _ORIG_POS["tab"]["pane"]; rs, cs = _ORIG_POS["tab"]["span"]
+            gl.addWidget(tab, r, c, rs, cs); tab.show()
 
-            # bottom-right extras
-            gl.addWidget(self.tabView01, 2, 1, 2, 1)
-            gl.addWidget(self.label_2,   3, 1)
-            self.tabView01.show(); self.label_2.show()
+            self._max_axis = None
+            return
 
-            # original slider row keeps default min-height
-            gl.setRowMinimumHeight(3, 0)
+        # --- true single-ax maximize: only BIG view + its slider
+        big_axis = mode
+        big_vw, big_sl = views[big_axis]
 
+        # give almost all space to row 0 (big view); small to row 1 (slider)
+        gl.setRowStretch(0, 9)    # big view
+        gl.setRowStretch(1, 1)    # slider
+        gl.setRowStretch(2, 0)    # no tab row used
+        gl.setColumnStretch(0, 1); gl.setColumnStretch(1, 1); gl.setColumnStretch(2, 1)
+
+        # add ONLY the big view and its slider
+        gl.addWidget(big_vw, 0, 0, 1, 3); big_vw.show()
+        gl.addWidget(big_sl, 1, 0, 1, 3); big_sl.show()
+
+        # keep tab/others hidden (already hidden above)
+        self._max_axis = big_axis
+
+    def _resolve_names(axis: str):
+        names = _VIEW_ATTRS[axis]
+        if isinstance(names, dict):
+            pane = names["pane"]; vtk = names.get("vtk", pane); sl = names["slider"]; return pane, vtk, sl
+        elif len(names) == 3:
+            return names
+        elif len(names) == 2:
+            pane, sl = names; return pane, pane, sl
         else:
-            # maximise one pane
-            vw, sl   = views[mode]
-            gl.addWidget(vw, 0, 0, 3, 2)        # rows 0-2, both columns
-            gl.addWidget(sl, 3, 0, 1, 2)        # slider row, both columns
-            vw.show();  sl.show()
+            raise ValueError(f"Bad mapping for {axis}: {names!r}")
 
-            # guarantee slider stays visible even if window shrinks
-            gl.setRowMinimumHeight(3, sl.sizeHint().height())
-
-        self._max_axis = None if mode == "all" else mode
-
+    def _hook_vtk_dblclicks(self):
+        for axis in _VIEW_ATTRS.keys():
+            pane_name, _, _ = _resolve_names(axis)
+            holder = getattr(self, pane_name)
+            for vtk_child in holder.findChildren(QVTKWidget):
+                vtk_child._axis_name = axis
+                vtk_child.installEventFilter(self)
 
 
 def _find_widget_in_gridlayout(layout, widget):
