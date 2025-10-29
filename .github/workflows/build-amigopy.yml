@@ -78,6 +78,7 @@ jobs:
           # Data stack
           pip install "pandas==2.2.*"
           pip install "numexpr>=2.10,<3"
+          pip install "pyarrow==14.*"
           # Builder
           pip install "nuitka>=2.2" ordered-set zstandard
 
@@ -145,6 +146,8 @@ jobs:
             "--include-package-data=pandas",
 
             "--include-package=numexpr",
+            "--include-package=pyarrow",
+            "--include-package-data=pyarrow",
 
             "--nofollow-import-to=totalsegmentator",
             "--nofollow-import-to=torch",
