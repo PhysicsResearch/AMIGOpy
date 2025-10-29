@@ -50,58 +50,49 @@ jobs:
           # 1) Clean venv
           python -m venv venv-build
           $venvScripts = "$(Resolve-Path .\venv-build\Scripts)"
-
           # 2) Use only the venv on PATH
           $oldPath = $env:Path
           $env:Path = "$venvScripts;$env:SystemRoot\system32;$env:SystemRoot"
-
           # 3) Install runtime deps (Py 3.12 compatible)
           python -m pip install --upgrade pip wheel setuptools
-
           # PySide6 stack (+Addons/Essentials for WebEngine)
           pip install `
             "PySide6==6.7.3" `
             "PySide6-Addons==6.7.3" `
             "PySide6-Essentials==6.7.3" `
             "shiboken6==6.7.3"
-
           # Imaging / array stack
           pip install "numpy==1.26.*" "scipy==1.12.*"
           pip install pillow pydicom
           pip install "scikit-image==0.22.*" "nibabel==5.*" "SimpleITK==2.5.*"
           pip install "opencv-python-headless==4.10.*"
-
           # Styling + visualization
           pip install "qdarkstyle>=3.1" "qstylizer>=0.2.2"
           pip install "vtk==9.3.1"
           pip install "matplotlib==3.8.*"
-
           # Networking
           pip install "requests>=2.31" certifi
-          # NEW: serialization/utilities used by your code
+          # Serialization/utilities used by your code
           pip install "joblib>=1.3,<2"
           pip install "openpyxl>=3.1"
+          # Data stack
           pip install "pandas==2.2.*"
-          pip install "pyarrow==14.*"
-
+          pip install "numexpr>=2.10,<3"
           # Builder
           pip install "nuitka>=2.2" ordered-set zstandard
 
           # 4) Sanity check (QtWebEngine present)
           python -c "import PySide6.QtCore as QC; from PySide6 import QtWebEngineCore as QW; print('PySide6:', QC.__file__); print('QtWebEngineCore:', QW.__file__)"
-
           # 4.1) Resolve VTK data dir
           $vtkSrc = python -c "import os, vtkmodules; print(os.path.dirname(vtkmodules.__file__))"
           $vtkSrc = ($vtkSrc.Trim() -replace '\\','/')
           $vtkDataArg = "--include-data-dir=$vtkSrc=vtkmodules"
-
           # 4.2) Detect QtWebEngine resources/libexec and include them (fallback if plugin can’t find them)
           $qtBase = python -c "import os, PySide6; print(os.path.join(os.path.dirname(PySide6.__file__),'Qt'))"
           $qtBase = ($qtBase.Trim() -replace '\\','/')
           $qtRes  = "$qtBase/resources"
           $qtTr   = "$qtBase/translations"
           $qtExec = "$qtBase/libexec"
-
           $qtArgs = @()
           if (Test-Path $qtRes)  { $qtArgs += "--include-data-dir=$qtRes=PySide6/Qt/resources" }
           if (Test-Path $qtTr)   { $qtArgs += "--include-data-dir=$qtTr=PySide6/Qt/translations" }
@@ -145,13 +136,15 @@ jobs:
 
             "--include-package=requests",
             "--include-package-data=certifi",
-            # NEW
+
             "--include-package=joblib",
+            "--include-package=openpyxl",
             "--include-package-data=openpyxl",
+
             "--include-package=pandas",
             "--include-package-data=pandas",
-            "--include-package=pyarrow",
-            "--include-package-data=pyarrow",
+
+            "--include-package=numexpr",
 
             "--nofollow-import-to=totalsegmentator",
             "--nofollow-import-to=torch",
