@@ -1,7 +1,6 @@
 import os, sys, traceback, faulthandler
 faulthandler.enable()
 os.environ.setdefault("QT_OPENGL", "software")  # safer on RDP/VM
-os.environ.setdefault("PANDAS_DISABLE_PYARROW", "1")  # make pandas ignore pyarrow entirely
 
 from PySide6.QtCore import Qt, QCoreApplication
 from PySide6.QtGui import QSurfaceFormat, QIcon
