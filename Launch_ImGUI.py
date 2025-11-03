@@ -129,7 +129,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # Enable drag and drop
         initialize_drop_fcn(self)
         # load ref csv files
-        load_Source_cal_csv_file(self)
+        # load_Source_cal_csv_file(self)
         #
         init_3D_Struct_table(self)
         init_STL_Surface_table(self)
