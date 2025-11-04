@@ -5780,6 +5780,11 @@ class Ui_AMIGOpy(object):
 
         self.gridLayout_MotionVerification.addWidget(self.exportDataMoVe, 4, 0, 1, 1)
 
+        self.stop_until_radiation = QCheckBox(self.tab_MoVe)
+        self.stop_until_radiation.setObjectName(u"stop_until_radiation")
+
+        self.gridLayout_MotionVerification.addWidget(self.stop_until_radiation, 3, 2, 1, 1)
+
         self.gridLayout_MotionVerification.setColumnStretch(0, 1)
         self.gridLayout_MotionVerification.setColumnStretch(1, 1)
         self.gridLayout_MotionVerification.setColumnStretch(2, 4)
@@ -5897,7 +5902,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg.setObjectName(u"toolBox_seg")
         self.seg_manual_contour = QWidget()
         self.seg_manual_contour.setObjectName(u"seg_manual_contour")
-        self.seg_manual_contour.setGeometry(QRect(0, 0, 461, 293))
+        self.seg_manual_contour.setGeometry(QRect(0, 0, 254, 129))
         self.gridLayout_60 = QGridLayout(self.seg_manual_contour)
         self.gridLayout_60.setObjectName(u"gridLayout_60")
         self.undoSegText = QLineEdit(self.seg_manual_contour)
@@ -6824,6 +6829,7 @@ class Ui_AMIGOpy(object):
         self.lineEdit_80.setText(QCoreApplication.translate("AMIGOpy", u"System latency (s)", None))
         self.MoVeAcqStart.setText(QCoreApplication.translate("AMIGOpy", u"Acquisition Start", None))
         self.exportDataMoVe.setText(QCoreApplication.translate("AMIGOpy", u"Export motion verification data", None))
+        self.stop_until_radiation.setText(QCoreApplication.translate("AMIGOpy", u"Stop until radiation", None))
         self.BrCv_PhOperWidget.setTabText(self.BrCv_PhOperWidget.indexOf(self.tab_MoVe), QCoreApplication.translate("AMIGOpy", u"Motion Verification", None))
         self.tabWidget_BrCv.setTabText(self.tabWidget_BrCv.indexOf(self.tab_PhOper), QCoreApplication.translate("AMIGOpy", u"Phantom operation", None))
         self.tabModules.setTabText(self.tabModules.indexOf(self.tab_BrCv), QCoreApplication.translate("AMIGOpy", u"Breathing curves", None))
