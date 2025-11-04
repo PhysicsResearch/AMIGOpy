@@ -37,14 +37,14 @@ def initialize_drop_fcn(self):
                 layout.addWidget(self.VTK_view_03, row, col)
                 break
 
-    # # Replace DataTreeView
-    # old_tree = self.DataTreeView
-    # layout = old_tree.parent().layout()
-    # for row in range(layout.rowCount()):
-    #     for col in range(layout.columnCount()):
-    #         if layout.itemAtPosition(row, col) and layout.itemAtPosition(row, col).widget() is old_tree:
-    #             layout.removeWidget(old_tree)
-    #             old_tree.deleteLater()
-    #             self.DataTreeView = FolderDropTreeView(self)  
-    #             layout.addWidget(self.DataTreeView, row, col)
-    #             break
+    # Replace DataTreeView
+    old_tree = self.DataTreeView
+    layout = old_tree.parent().layout()
+    for row in range(layout.rowCount()):
+        for col in range(layout.columnCount()):
+            if layout.itemAtPosition(row, col) and layout.itemAtPosition(row, col).widget() is old_tree:
+                layout.removeWidget(old_tree)
+                old_tree.deleteLater()
+                self.DataTreeView = FolderDropTreeView(self)  
+                layout.addWidget(self.DataTreeView, row, col)
+                break
