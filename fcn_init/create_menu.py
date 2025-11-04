@@ -55,19 +55,14 @@ def initializeMenuBar(self):
             action.setShortcut("Ctrl+A") 
         if item == "MHA":
             action.triggered.connect(lambda: load_mha_files(self))
-            action.setShortcut("Ctrl+A") 
         if item == "npy":
             action.triggered.connect(lambda: load_npy_files(self))
-            action.setShortcut("Ctrl+A") 
         if item == "STL":
-            action.triggered.connect(lambda: load_stl_files(self))
-            action.setShortcut("Ctrl+S")    
+            action.triggered.connect(lambda: load_stl_files(self)) 
         if item == "Obj":
-            action.triggered.connect(lambda: load_obj_files(self))
-            action.setShortcut("Ctrl+O")    
+            action.triggered.connect(lambda: load_obj_files(self))  
         if item == "3mf":
-            action.triggered.connect(lambda: load_3mf(self))
-            action.setShortcut("Ctrl+3+D")    
+            action.triggered.connect(lambda: load_3mf(self)) 
         if item == "NIfTI":
             action.triggered.connect(lambda: load_nifti_files(self))
             action.setShortcut("Ctrl+N")    
