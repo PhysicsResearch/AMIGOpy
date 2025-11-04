@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1713</width>
-    <height>1117</height>
+    <height>1122</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -8985,7 +8985,10 @@ li.checked::marker { content: &quot;\2612&quot;; }
                <attribute name="title">
                 <string>Motion Verification</string>
                </attribute>
-               <layout class="QGridLayout" name="gridLayout_MotionVerification" columnstretch="1,1,4">
+               <layout class="QGridLayout" name="gridLayout_93">
+                <item row="0" column="0" colspan="3">
+                 <widget class="QWidget" name="MoVeView" native="true"/>
+                </item>
                 <item row="1" column="0">
                  <widget class="QLineEdit" name="lineEdit_MoVeOffset">
                   <property name="enabled">
@@ -8993,29 +8996,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
                   </property>
                   <property name="text">
                    <string>Offset</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="1">
-                 <widget class="QDoubleSpinBox" name="MoVeSystemLatency"/>
-                </item>
-                <item row="0" column="0" colspan="3">
-                 <widget class="QWidget" name="MoVeView" native="true"/>
-                </item>
-                <item row="2" column="2">
-                 <widget class="QCheckBox" name="MoVeAutoControl">
-                  <property name="text">
-                   <string>Auto-control</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_MoVeSF">
-                  <property name="enabled">
-                   <bool>false</bool>
-                  </property>
-                  <property name="text">
-                   <string>Speed factor</string>
                   </property>
                  </widget>
                 </item>
@@ -9035,16 +9015,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
                   </property>
                  </widget>
                 </item>
-                <item row="3" column="0">
-                 <widget class="QLineEdit" name="lineEdit_80">
-                  <property name="enabled">
-                   <bool>false</bool>
-                  </property>
-                  <property name="text">
-                   <string>System latency (s)</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="1" column="2">
                  <spacer name="horizontalSpacer_77">
                   <property name="orientation">
@@ -9058,6 +9028,16 @@ li.checked::marker { content: &quot;\2612&quot;; }
                   </property>
                  </spacer>
                 </item>
+                <item row="2" column="0">
+                 <widget class="QLineEdit" name="lineEdit_MoVeSF">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string>Speed factor</string>
+                  </property>
+                 </widget>
+                </item>
                 <item row="2" column="1">
                  <widget class="QSpinBox" name="MoVeSpeedFactor">
                   <property name="maximum">
@@ -9068,10 +9048,30 @@ li.checked::marker { content: &quot;\2612&quot;; }
                   </property>
                  </widget>
                 </item>
-                <item row="4" column="1">
-                 <widget class="QPushButton" name="MoVeAcqStart">
+                <item row="2" column="2">
+                 <widget class="QCheckBox" name="MoVeAutoControl">
                   <property name="text">
-                   <string>Acquisition Start</string>
+                   <string>Auto-control</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLineEdit" name="lineEdit_80">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string>System latency (s)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QDoubleSpinBox" name="MoVeSystemLatency"/>
+                </item>
+                <item row="3" column="2">
+                 <widget class="QCheckBox" name="stop_until_radiation">
+                  <property name="text">
+                   <string>Stop until radiation</string>
                   </property>
                  </widget>
                 </item>
@@ -9079,6 +9079,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
                  <widget class="QPushButton" name="exportDataMoVe">
                   <property name="text">
                    <string>Export motion verification data</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QPushButton" name="MoVeAcqStart">
+                  <property name="text">
+                   <string>Acquisition Start</string>
                   </property>
                  </widget>
                 </item>
@@ -9214,8 +9221,8 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>457</width>
-             <height>290</height>
+             <width>254</width>
+             <height>129</height>
             </rect>
            </property>
            <attribute name="label">
