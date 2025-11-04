@@ -10,7 +10,7 @@ from fcn_display.meta_viewer import update_meta_view_table_dicom
 from fcn_display.disp_data_type import adjust_data_type_input, adjust_data_type_comp_input, adjust_data_type_input_IrIS_eval, adjust_data_type_seg_input
 from fcn_display.display_images_comp import disp_comp_image_slice
 from fcn_display.display_images_seg import disp_seg_image_slice
-from fcn_init.vtk_hist import set_vtk_histogran_fig
+from fcn_init.view_hist import set_vtk_histogran_fig
 from fcn_display.colormap_set import set_color_map
 from fcn_display.win_level import set_window
 from fcn_display.disp_plan_data import update_plan_tables
