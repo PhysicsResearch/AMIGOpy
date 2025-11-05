@@ -8648,6 +8648,16 @@ li.checked::marker { content: &quot;\2612&quot;; }
                  <item row="2" column="2">
                   <widget class="QComboBox" name="smooth_method_BrCv"/>
                  </item>
+                 <item row="4" column="0">
+                  <widget class="QCheckBox" name="detrend_BrCv">
+                   <property name="layoutDirection">
+                    <enum>Qt::LayoutDirection::RightToLeft</enum>
+                   </property>
+                   <property name="text">
+                    <string>Detrend</string>
+                   </property>
+                  </widget>
+                 </item>
                 </layout>
                </widget>
               </item>

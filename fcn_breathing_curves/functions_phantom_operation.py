@@ -136,7 +136,6 @@ def init_MoVeTab(self):
 
     # Start MoVe data thread
     self.ani = FuncAnimation(self.fig_MoVe, lambda frame: update_MoVeData(self), interval=50)
-    plt.show()
     # self.move_thread = MoVeThread(self)
     # self.move_thread.start()
 
@@ -192,7 +191,7 @@ def pause_continue_GCODE(self, pause=True):
 
 
 def update_MoVeData(self):
-    try:
+    # try:
         t, x, geiger = get_duet_status(self)
         if t is None:
             return
@@ -235,8 +234,8 @@ def update_MoVeData(self):
         self.MoVeData['acq'].append(0)
         self.MoVeData['geiger'].append(geiger)
         plot_MoVeData(self)
-    except:
-        return
+    # except:
+    #     return
     
 
 def calc_diff(self):

@@ -5445,6 +5445,12 @@ class Ui_AMIGOpy(object):
 
         self.gridLayout_77.addWidget(self.smooth_method_BrCv, 2, 2, 1, 1)
 
+        self.detrend_BrCv = QCheckBox(self.smoothing_BrCv)
+        self.detrend_BrCv.setObjectName(u"detrend_BrCv")
+        self.detrend_BrCv.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+
+        self.gridLayout_77.addWidget(self.detrend_BrCv, 4, 0, 1, 1)
+
         self.gridLayout_77.setColumnStretch(0, 1)
         self.gridLayout_77.setColumnStretch(1, 1)
         self.gridLayout_77.setColumnStretch(2, 1)
@@ -6779,6 +6785,7 @@ class Ui_AMIGOpy(object):
         self.lineEdit_79.setText(QCoreApplication.translate("AMIGOpy", u"kernel size", None))
         self.lineEdit_78.setText(QCoreApplication.translate("AMIGOpy", u"method", None))
         self.lineEdit_81.setText(QCoreApplication.translate("AMIGOpy", u"cut-off frequency", None))
+        self.detrend_BrCv.setText(QCoreApplication.translate("AMIGOpy", u"Detrend", None))
         self.lineEdit_BrCv_26.setText(QCoreApplication.translate("AMIGOpy", u"X max", None))
         self.clipCycles_BrCv.setText(QCoreApplication.translate("AMIGOpy", u"Clip to whole cycles", None))
         self.lineEdit_BrCv_25.setText(QCoreApplication.translate("AMIGOpy", u"X min", None))
