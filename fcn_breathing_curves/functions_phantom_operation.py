@@ -105,6 +105,7 @@ def init_MoVeTab(self):
         return
     
     self.acq_timestamps = self.orig_data.loc[(self.orig_data["acq"] == 1), "timestamp"].tolist()
+    self.ampl_scaling_MoVe = self.orig_data["amplitude"].min() + self.orig_data["amplitude"].max()
     self.MoVeOffsetSlider.setRange(-200, 200)
 
     self.t0 = time.time() 
@@ -166,7 +167,7 @@ def get_duet_status(self):
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
-            x = data['coords']['xyz'][0]
+            x = data['coords']['xyz'][0] * -1 + self.ampl_scaling_MoVe
             geiger = data['sensors']['probeValue']
             t = time.time() - self.t0 + self.tprint
             return t, x, geiger

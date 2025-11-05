@@ -433,6 +433,13 @@ def copyCurve(self):
     """
     
     df = self.dfEdit_BrCv
+    min_ = df['amplitude'].min()
+
+    if self.detrend_BrCv.isChecked():
+        from scipy.signal import detrend
+        df['amplitude'] = detrend(df['amplitude'])
+        df['amplitude'] = df['amplitude'] - df['amplitude'].min() + min_
+
     N = self.copyCurve_BrCv.value()
     timestep = df.iloc[1]["timestamp"] - df.iloc[0]["timestamp"]
     
@@ -578,7 +585,10 @@ def exportGCODE(self):
     results[f'{col}_vel'] = vel
     results[f'{col}_speed'] = speed 
     results[f'{col}_accel'] = accel
-    results["acq"] = df["acq"]
+    if 'acq' in df.columns:
+        results["acq"] = df["acq"]
+    else:
+        results["acq"] = 0
     results["start"] = df["start"]
 
     try:
@@ -621,17 +631,22 @@ def exportGCODE(self):
 
     gcode_file_path = os.path.join(folder_path, file_name + ".gcode")
     gcode_lines = ["G90"]  # Initialize G-code lines with absolute positioning command
+    max_, min_ = df[df.columns[1]].max(), df[df.columns[1]].min()
     # Write G-code file
     for i, row in df.iterrows():
         if i == 0:
-            continue  # Skip the first row for G-code generation
-        # Calculate speed in mm per minute
-        speed = row[f'{df.columns[1]}_speed'] * np.sqrt(len(axis_labels))
+            speed = 1000  # Set to default speed for fast initialization
+        else:
+            # Calculate speed in mm per minute
+            speed = row[f'{df.columns[1]}_speed'] * np.sqrt(len(axis_labels))
         # Prepare G-code line
         gcode_line = f"G0 F{speed:.6f}"
         for j, col in enumerate(axis_labels):
             if j < len(axis_labels):
-                gcode_line += f" {axis_labels[j]}{row[f'{df.columns[1]}']:.6f}"  # X, Y, Z, U, W
+                if col == 'Z':
+                    gcode_line += f" {axis_labels[j]}{row[f'{df.columns[1]}']:.6f}"  # X, Y, Z, U, W
+                else:
+                    gcode_line += f" {axis_labels[j]}{row[f'{df.columns[1]}'] * -1 + max_ + min_:.6f}"  # X, Y, Z, U, W
             else:
                 gcode_line += f" {chr(85 + j)}{row[f'{df.columns[1]}']:.6f}"  # Continue with U, V, W, etc. if more than 5 columns
         gcode_lines.append(gcode_line)
