@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.animation import FuncAnimation
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
 from PySide6.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
 from PySide6.QtCore import QThread, QUrl
@@ -25,6 +25,8 @@ def onTabChanged(self):
         self.MoVeSpeedFactor.setValue(100)
         self.MoVeSpeedFactor.valueChanged.connect(lambda: set_GCODE_speed(self))
         init_MoVeTab(self)
+    if self.BrCv_PhOperWidget.currentIndex() == 0:
+        exportMoVeData(self)
 
 
 def setDuetIP(self):
