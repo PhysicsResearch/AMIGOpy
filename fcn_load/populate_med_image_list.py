@@ -1,5 +1,81 @@
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 
+def populate_image(self):
+    """
+    Populate a top level 'Image' branch using self.image.
+
+    self.image is expected to be a list of series dictionaries:
+        {
+            'SeriesNumber': ...,
+            'metadata': {
+                'SeriesDescription': <file name>,
+                'DataType': 'TIFF' or 'PNG' or ...
+                ...
+            },
+            '3DMatrix': numpy array
+        }
+    Tree structure:
+
+        Data
+            Medical Image
+                ...
+            Image
+                <file name 1>
+                <file name 2>
+                ...
+    """
+
+    # If there is no image data, nothing to do
+    if not hasattr(self, 'image') or not isinstance(self.image, list) or not self.image:
+        return
+
+    # Ensure model exists
+    if not hasattr(self, 'model') or self.model is None:
+        self.model = QStandardItemModel()
+        self.DataTreeView.setModel(self.model)
+        self.model.setHorizontalHeaderLabels(['Data'])
+
+    # Get or create top level "Image" item
+    image_root = _get_or_create_parent_item(self, 'Image')
+    if image_root is None:
+        return
+
+    # Clear previous children
+    image_root.removeRows(0, image_root.rowCount())
+
+    # Fill with one row per image
+    for series in self.image:
+        meta = series.get('metadata', {})
+        filename = meta.get('SeriesDescription') or series.get('SeriesNumber') or "Image"
+        data_type = meta.get('DataType', '')
+
+        # Label: "filename" (optionally with type)
+        label = filename
+
+        item = QStandardItem(label)
+        image_root.appendRow(item)
+
+        # Tooltip with type, size and path
+        size = meta.get('Size')
+        path = meta.get('OriginalFilePath', '')
+        tooltip_bits = []
+        if data_type:
+            tooltip_bits.append(f"type={data_type}")
+        if size is not None:
+            tooltip_bits.append(f"size={size}")
+        if path:
+            tooltip_bits.append(path)
+        if tooltip_bits:
+            item.setToolTip(" | ".join(tooltip_bits))
+
+        # Optionally store the full series for later lookup
+        # from PySide6.QtCore import Qt
+        # item.setData(series, Qt.UserRole)
+
+    # Expand everything so the us
+    # er sees the new branch
+    self.DataTreeView.expandAll()
+
 
 def populate_medical_image_tree(self):
     #self.medical_image=load_all_dcm(folder_path=None, progress_callback=self.update_progress,update_label=self.label);

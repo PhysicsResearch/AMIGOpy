@@ -101,7 +101,86 @@ def on_DataTreeView_clicked(self,index):
             opacity=0.5,
             highlight=True
         )
-        #
+    #
+    elif hierarchy[0] == "Image":
+        # flat image list, no patient or study
+        if len(hierarchy) < 2:
+            return
+
+        # index in self.image saved in UserRole, fall back to row if needed
+        item = model.itemFromIndex(index)
+        img_idx = item.data(Qt.UserRole)
+        if img_idx is None:
+            img_idx = hierarchy_indices[1].row()
+
+        if not hasattr(self, "image") or not isinstance(self.image, list):
+            return
+        if img_idx < 0 or img_idx >= len(self.image):
+            return
+
+        series = self.image[img_idx]
+        meta   = series.get("metadata", {})
+        vol    = series.get("3DMatrix")
+        if vol is None:
+            return
+
+        # treat as generic image type
+        self.DataType = meta.get("DataType", "Image")
+
+        currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
+        layer_idx = self.layer_selected.currentIndex()
+
+        if currentTabText == "View":
+            # main volume to display on this layer
+            self.display_data[layer_idx] = vol
+            adjust_data_type_input(self, layer_idx)
+
+            # shapes are (z, y, x) with z=1 for 2D images
+            nz, ny, nx = vol.shape
+            self.current_axial_slice_index[layer_idx]    = nz // 2
+            self.current_sagittal_slice_index[layer_idx] = ny // 2
+            self.current_coronal_slice_index[layer_idx]  = nx // 2
+
+            # geometry for overlay
+            slice_thick = meta.get("SliceThickness", 1.0)
+            pix_sp = meta.get("PixelSpacing", (1.0, 1.0))
+            origin = meta.get("Origin", (0.0, 0.0, 0.0))
+
+            self.slice_thick[layer_idx] = float(slice_thick)
+            self.pixel_spac[layer_idx, 0] = float(pix_sp[0])
+            self.pixel_spac[layer_idx, 1] = float(pix_sp[1])
+            self.Im_PatPosition[layer_idx, 0] = float(origin[0])
+            self.Im_PatPosition[layer_idx, 1] = float(origin[1])
+            # if z spacing or origin[2] do not exist, keep default zero
+            if len(origin) > 2:
+                self.Im_PatPosition[layer_idx, 2] = float(origin[2])
+
+            # update sliders
+            self.AxialSlider.setMaximum(nz - 1)
+            self.SagittalSlider.setMaximum(nx - 1)
+            self.CoronalSlider.setMaximum(ny - 1)
+            self.AxialSlider.setValue(self.current_axial_slice_index[layer_idx])
+            self.SagittalSlider.setValue(self.current_sagittal_slice_index[layer_idx])
+            self.CoronalSlider.setValue(self.current_coronal_slice_index[layer_idx])
+
+            # simple window and level based on image statistics
+            data = vol.astype(float)
+            mean_val = float(data.mean())
+            std_val = float(data.std())
+            if std_val > 0:
+                Window = 3.0 * std_val
+            else:
+                Window = 100.0
+            Level = mean_val
+
+            # reuse the existing comparison logic to update WL and camera
+            # compare_view_previous(self, Window, Level, layer_idx)
+
+            displayaxial(self)
+            displaysagittal(self)
+            displaycoronal(self)
+
+            set_vtk_histogran_fig(self)
     elif hierarchy[0] == "Medical Image":
         self.AMType = "Medical Image" # AMIGO grouping file type
         # Temporarily block signals so this won't fire textChanged again

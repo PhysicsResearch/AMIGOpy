@@ -16,6 +16,7 @@ from fcn_load.load_OBJ import load_obj_files
 from fcn_load.load_nifti import load_nifti_files
 from fcn_load.load_mha import load_mha_files
 from fcn_load.load_npy import load_npy_files
+from fcn_load.load_tiff_similar import load_tiff_files, load_png_files, load_jpeg_files, load_bmp_files  
 from fcn_autocont.segmentator_calls import open_segmentator_tab
 from functools import partial
 
@@ -66,6 +67,8 @@ def initializeMenuBar(self):
         if item == "NIfTI":
             action.triggered.connect(lambda: load_nifti_files(self))
             action.setShortcut("Ctrl+N")    
+        if item == "Tiff":
+            action.triggered.connect(lambda: load_tiff_files(self))
         openMenu.addAction(action)
 
     ViewMenu      = self.menuBar().addMenu("View")
