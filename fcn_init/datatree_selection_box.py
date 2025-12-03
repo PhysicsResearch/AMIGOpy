@@ -63,7 +63,6 @@ class SeriesPickerDialog(QDialog):
 
         self.selected_patient = None
         self.selected_series_tuple = None
-        self.DataTreeView.setStyleSheet("QTreeWidget { border: 1px solid palette(mid); border-radius: 4px; }")
 
     def _select_first_patient_with_valid_series(self):
         for i, pid in enumerate(self._patient_ids):

@@ -2,7 +2,7 @@ name: Build AMIGOpy — unsigned (GUI only)
 
 on:
   push:
-    branches: [ Development ]
+    branches: [ Main ]
   workflow_dispatch:
     inputs:
       app_version:
