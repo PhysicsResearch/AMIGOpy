@@ -31,13 +31,13 @@ class PointRoiWidget(QtCore.QObject):
         self.imageActor  = image_actor
         self.orientation = orientation
 
-        # stats-dragging picker & flags
+        # stats-dragging picker and flags
         self._stats_picker   = vtk.vtkPropPicker()
         self._dragging_stats = False
         self._stats_start    = (0, 0)
         self._stats_orig_pix = (0.0, 0.0)
 
-        # geometry + state
+        # geometry and state
         self.crossSources = []    # two vtkLineSource
         self.crossActors  = []    # two vtkActor
         self.handleWidget = None
@@ -84,7 +84,7 @@ class PointRoiWidget(QtCore.QObject):
             return False
         return super().eventFilter(obj, event)
 
-    # --- helper to cancel VTK dolly/zoom state after a Qt menu steals the release
+    # helper to “release” the VTK right-button state so dolly/zoom is not stuck
     def _cancel_vtk_right_button(self):
         style = self.interactor.GetInteractorStyle()
         try:
@@ -92,13 +92,15 @@ class PointRoiWidget(QtCore.QObject):
                 style.OnRightButtonUp()
         except Exception:
             pass
-        # also emit a release event to be safe
         try:
             self.interactor.InvokeEvent("RightButtonReleaseEvent")
         except Exception:
             pass
 
     def _on_right_click(self, caller, event):
+        # stop the interactor style from entering dolly mode
+        self._cancel_vtk_right_button()
+
         x, y = self.interactor.GetEventPosition()
         # hit test 3D cross actors
         self._picker_right.Pick(x, y, 0, self.renderer)
@@ -108,14 +110,13 @@ class PointRoiWidget(QtCore.QObject):
         hit_text = (self._stats_picker.GetActor2D() is self.statsActor)
 
         if (hit_actor in self.crossActors) or hit_text:
-            chosen, act_profile, act_delete = _context_menu(self.vtkWidget, enable_profile=False)
-            # ensure VTK doesn't remain in "dolly" state after the menu
+            # make extra sure VTK thinks the right button is up
             self._cancel_vtk_right_button()
+            chosen, act_profile, act_delete = _context_menu(self.vtkWidget, enable_profile=False)
             if chosen == act_delete:
                 self.delete()
         else:
-            # not our ROI: still ensure the style isn't stuck
-            self._cancel_vtk_right_button()
+            return
 
     def delete(self):
         # reset any internal flags that could affect interaction
@@ -139,8 +140,11 @@ class PointRoiWidget(QtCore.QObject):
         if hasattr(self.parent, 'points') and self in getattr(self.parent, 'points', []):
             self.parent.points.remove(self)
 
-    # — stats‐drag handlers —
+    # stats-drag handlers
     def _on_stats_press(self, caller, event):
+        if self.statsActor is None:
+            self._dragging_stats = False
+            return
         x, y = self.interactor.GetEventPosition()
         self._stats_picker.Pick(x, y, 0, self.renderer)
         if self._stats_picker.GetActor2D() is self.statsActor:
@@ -151,7 +155,7 @@ class PointRoiWidget(QtCore.QObject):
             self._stats_orig_pix = (disp[0], disp[1])
 
     def _on_stats_drag(self, caller, event):
-        if not self._dragging_stats:
+        if not self._dragging_stats or self.statsActor is None:
             return
         x, y = self.interactor.GetEventPosition()
         dx, dy = x - self._stats_start[0], y - self._stats_start[1]
@@ -163,16 +167,17 @@ class PointRoiWidget(QtCore.QObject):
 
     def _on_stats_release(self, caller, event):
         self._dragging_stats = False
-        self.parent._text_dragging = False
+        if hasattr(self.parent, "_text_dragging"):
+            self.parent._text_dragging = False
 
     def _get_view_center_world(self):
         w, h = self.renWin.GetSize()
-        cx, cy = w/2, h/2
+        cx, cy = w / 2, h / 2
         self.renderer.SetDisplayPoint(cx, cy, 0)
         self.renderer.DisplayToWorld()
         x, y, z, w4 = self.renderer.GetWorldPoint()
         if w4:
-            x, y = x/w4, y/w4
+            x, y = x / w4, y / w4
         z = self.imageActor.GetCenter()[2] + 1.0
         return x, y, z
 
@@ -229,6 +234,8 @@ class PointRoiWidget(QtCore.QObject):
         self.renWin.Render()
 
     def _on_handle_move(self, caller, event):
+        if self.handleWidget is None:
+            return
         new_pt = self.handleWidget.GetRepresentation().GetWorldPosition()
         self._last_point = new_pt
         self._update_cross()
@@ -236,6 +243,8 @@ class PointRoiWidget(QtCore.QObject):
         self.renWin.Render()
 
     def _update_cross(self):
+        if len(self.crossSources) < 2:
+            return
         cx, cy, cz = self._last_point
         half = self._cross_half_length
         self.crossSources[0].SetPoint1(cx - half, cy, cz)
@@ -327,6 +336,7 @@ class CircleRoiWidget(QtCore.QObject):
         self.parent.sliceChanged.connect(self._onSliceChanged)
         self.vtkWidget.installEventFilter(self)
 
+        # right-click menu
         self._picker_right = vtk.vtkPropPicker()
         self.interactor.AddObserver("RightButtonPressEvent", self._on_right_click, 1)
 
@@ -336,7 +346,7 @@ class CircleRoiWidget(QtCore.QObject):
             return False
         return super().eventFilter(obj, event)
 
-    # same helper as in PointRoiWidget
+    # same helper as in Point
     def _cancel_vtk_right_button(self):
         style = self.interactor.GetInteractorStyle()
         try:
@@ -353,17 +363,25 @@ class CircleRoiWidget(QtCore.QObject):
         self._update_stats()
 
     def _on_right_click(self, caller, event):
+        # release any VTK dolly/zoom state
+        self._cancel_vtk_right_button()
+
         x, y = self.interactor.GetEventPosition()
         if not self.circleSrc:
-            self._cancel_vtk_right_button()
             return
-        picker = vtk.vtkPropPicker(); picker.Pick(x, y, 0, self.renderer)
+        # pick circle actor
+        picker = vtk.vtkPropPicker()
+        picker.Pick(x, y, 0, self.renderer)
         hit_actor = (picker.GetActor() is self.circleActor)
-        stats_picker = vtk.vtkPropPicker(); stats_picker.Pick(x, y, 0, self.renderer)
+
+        # pick stats text
+        stats_picker = vtk.vtkPropPicker()
+        stats_picker.Pick(x, y, 0, self.renderer)
         hit_text = (hasattr(self, 'statsActor') and stats_picker.GetActor2D() is self.statsActor)
+
         if hit_actor or hit_text:
-            chosen, act_profile, act_delete = _context_menu(self.vtkWidget, enable_profile=True)
             self._cancel_vtk_right_button()
+            chosen, act_profile, act_delete = _context_menu(self.vtkWidget, enable_profile=True)
             if chosen == act_delete:
                 self.delete()
             elif chosen == act_profile:
@@ -380,15 +398,16 @@ class CircleRoiWidget(QtCore.QObject):
                     window_title="Circle ROI Histogram"
                 )
         else:
-            self._cancel_vtk_right_button()
+            return
 
     def _get_view_center_world(self):
         w, h = self.renWin.GetSize()
-        cx, cy = w/2, h/2
+        cx, cy = w / 2, h / 2
         self.renderer.SetDisplayPoint(cx, cy, 0)
         self.renderer.DisplayToWorld()
         x, y, z, w4 = self.renderer.GetWorldPoint()
-        if w4: x, y = x/w4, y/w4
+        if w4:
+            x, y = x / w4, y / w4
         z = self.imageActor.GetCenter()[2] + 1.0
         return x, y, z
 
@@ -451,6 +470,9 @@ class CircleRoiWidget(QtCore.QObject):
 
     # stats drag
     def _on_stats_press(self, caller, event):
+        if self.statsActor is None:
+            self._dragging_stats = False
+            return
         x, y = self.interactor.GetEventPosition()
         self._stats_picker.Pick(x, y, 0, self.renderer)
         if self._stats_picker.GetActor2D() is self.statsActor:
@@ -461,10 +483,11 @@ class CircleRoiWidget(QtCore.QObject):
             self._stats_orig_pix = (disp[0], disp[1])
 
     def _on_stats_drag(self, caller, event):
-        if not self._dragging_stats:
+        if not self._dragging_stats or self.statsActor is None:
             return
         x, y = self.interactor.GetEventPosition()
-        dx = x - self._stats_start[0]; dy = y - self._stats_start[1]
+        dx = x - self._stats_start[0]
+        dy = y - self._stats_start[1]
         w, h = self.renWin.GetSize()
         new_x = (self._stats_orig_pix[0] + dx) / w
         new_y = (self._stats_orig_pix[1] + dy) / h
@@ -473,10 +496,14 @@ class CircleRoiWidget(QtCore.QObject):
 
     def _on_stats_release(self, caller, event):
         self._dragging_stats = False
+        if hasattr(self.parent, "_text_dragging"):
+            self.parent._text_dragging = False
 
-    # circle drag & handle
+    # circle drag and handle
     def _on_press(self, caller, event):
         if self._dragging_stats:
+            return
+        if self.circleActor is None:
             return
         x, y = self.interactor.GetEventPosition()
         self._picker.Pick(x, y, 0, self.renderer)
@@ -490,22 +517,28 @@ class CircleRoiWidget(QtCore.QObject):
     def _on_drag(self, caller, event):
         if self._dragging_stats:
             return
+        if not self._dragging or self.circleSrc is None or self.circleActor is None:
+            return
         x, y = self.interactor.GetEventPosition()
-        if self._dragging:
-            wx, wy, _ = self._get_world_point(x, y)
-            dx, dy = self._drag_offset
-            new_ctr = (wx + dx, wy + dy, self._last_center[2])
-            self._last_center = new_ctr
-            self.circleSrc.SetCenter(*new_ctr)
-            self._update_handles()
-            self._update_stats()
-            self.renWin.Render()
+        wx, wy, _ = self._get_world_point(x, y)
+        dx, dy = self._drag_offset
+        new_ctr = (wx + dx, wy + dy, self._last_center[2])
+        self._last_center = new_ctr
+        self.circleSrc.SetCenter(*new_ctr)
+        self._update_handles()
+        self._update_stats()
+        self.renWin.Render()
 
     def _on_release(self, caller, event):
         self._dragging = False
-        self.parent._text_dragging = False
+        if hasattr(self.parent, "_text_dragging"):
+            self.parent._text_dragging = False
 
     def _on_handle_move(self, name):
+        if self.circleSrc is None or not self.handles:
+            return
+        if name not in self.handles:
+            return
         cx, cy, cz = self._last_center
         ex, ey, _ = self.handles[name].GetRepresentation().GetWorldPosition()
         new_r = math.dist((cx, cy), (ex, ey))
@@ -517,6 +550,8 @@ class CircleRoiWidget(QtCore.QObject):
         self.renWin.Render()
 
     def _update_handles(self):
+        if not self.handles:
+            return
         cx, cy, cz = self._last_center
         r = self._last_radius
         positions = {
@@ -526,14 +561,17 @@ class CircleRoiWidget(QtCore.QObject):
             'west':  (cx - r, cy, cz)
         }
         for n, p in positions.items():
-            self.handles[n].GetRepresentation().SetWorldPosition(p)
+            h = self.handles.get(n)
+            if h is None:
+                continue
+            h.GetRepresentation().SetWorldPosition(p)
 
     def _get_world_point(self, x, y):
         self.renderer.SetDisplayPoint(x, y, 0)
         self.renderer.DisplayToWorld()
         wp = self.renderer.GetWorldPoint()
         if wp[3] != 0.0:
-            return wp[0]/wp[3], wp[1]/wp[3], wp[2]/wp[3]
+            return wp[0] / wp[3], wp[1] / wp[3], wp[2] / wp[3]
         return wp[0], wp[1], wp[2]
 
     def _update_stats(self):
@@ -599,11 +637,15 @@ class CircleRoiWidget(QtCore.QObject):
 
     def set_fill_color(self, r, g, b, a=0.3):
         p = self.circleActor.GetProperty()
-        p.SetColor(r, g, b); p.SetOpacity(a); self.renWin.Render()
+        p.SetColor(r, g, b)
+        p.SetOpacity(a)
+        self.renWin.Render()
 
     def set_edge_color(self, r, g, b):
         p = self.circleActor.GetProperty()
-        p.SetEdgeColor(r, g, b); p.EdgeVisibilityOn(); self.renWin.Render()
+        p.SetEdgeColor(r, g, b)
+        p.EdgeVisibilityOn()
+        self.renWin.Render()
 
     def delete(self):
         # reset flags
@@ -643,11 +685,11 @@ class EllipsoidRoiWidget(QtCore.QObject):
         self.imageActor  = image_actor
         self.orientation = orientation
 
-        # geometry & state
-        self.polySrc     = None
-        self.actor       = None
-        self.handles     = {}
-        self.is_visible  = False
+        # geometry and state
+        self.polySrc      = None
+        self.actor        = None
+        self.handles      = {}
+        self.is_visible   = False
         self._last_center = (0.0, 0.0, 0.0)
         self._last_rx     = 0.0
         self._last_ry     = 0.0
@@ -675,7 +717,7 @@ class EllipsoidRoiWidget(QtCore.QObject):
             return False
         return super().eventFilter(obj, event)
 
-    # same helper as above
+    # same helper
     def _cancel_vtk_right_button(self):
         style = self.interactor.GetInteractorStyle()
         try:
@@ -692,17 +734,21 @@ class EllipsoidRoiWidget(QtCore.QObject):
         self._update_stats()
 
     def _on_right_click(self, caller, event):
+        self._cancel_vtk_right_button()
+
         x, y = self.interactor.GetEventPosition()
         if not self.actor:
-            self._cancel_vtk_right_button()
             return
-        picker = vtk.vtkPropPicker(); picker.Pick(x, y, 0, self.renderer)
-        stats_picker = vtk.vtkPropPicker(); stats_picker.Pick(x, y, 0, self.renderer)
+        picker = vtk.vtkPropPicker()
+        picker.Pick(x, y, 0, self.renderer)
+        stats_picker = vtk.vtkPropPicker()
+        stats_picker.Pick(x, y, 0, self.renderer)
         hit = (picker.GetActor() is self.actor)
         hit_text = (hasattr(self, 'statsActor') and stats_picker.GetActor2D() is self.statsActor)
+
         if hit or hit_text:
-            chosen, act_profile, act_delete = _context_menu(self.vtkWidget, enable_profile=True)
             self._cancel_vtk_right_button()
+            chosen, act_profile, act_delete = _context_menu(self.vtkWidget, enable_profile=True)
             if chosen == act_delete:
                 self.delete()
             elif chosen == act_profile:
@@ -720,16 +766,17 @@ class EllipsoidRoiWidget(QtCore.QObject):
                     return_dialog=False
                 )
         else:
-            self._cancel_vtk_right_button()
+            return
 
-    # setup, drag & stats logic
+    # setup, drag and stats logic
     def _get_view_center_world(self):
         w, h = self.renWin.GetSize()
-        cx, cy = w/2, h/2
+        cx, cy = w / 2, h / 2
         self.renderer.SetDisplayPoint(cx, cy, 0)
         self.renderer.DisplayToWorld()
         x, y, z, w4 = self.renderer.GetWorldPoint()
-        if w4: x, y = x/w4, y/w4
+        if w4:
+            x, y = x / w4, y / w4
         z = self.imageActor.GetCenter()[2] + 1.0
         return x, y, z
 
@@ -799,6 +846,9 @@ class EllipsoidRoiWidget(QtCore.QObject):
 
     # stats dragging
     def _on_stats_press(self, caller, event):
+        if not hasattr(self, 'statsActor') or self.statsActor is None:
+            self._dragging_stats = False
+            return
         x, y = self.interactor.GetEventPosition()
         self._stats_picker.Pick(x, y, 0, self.renderer)
         if self._stats_picker.GetActor2D() is self.statsActor:
@@ -809,22 +859,26 @@ class EllipsoidRoiWidget(QtCore.QObject):
             self._stats_orig_pix = (disp[0], disp[1])
 
     def _on_stats_drag(self, caller, event):
-        if not self._dragging_stats:
+        if not self._dragging_stats or self.statsActor is None:
             return
         x, y = self.interactor.GetEventPosition()
         dx, dy = x - self._stats_start[0], y - self._stats_start[1]
         w, h = self.renWin.GetSize()
-        nx = (self._stats_orig_pix[0] + dx) / w
-        ny = (self._stats_orig_pix[1] + dy) / h
-        self.statsActor.GetPositionCoordinate().SetValue(nx, ny)
+        new_x = (self._stats_orig_pix[0] + dx) / w
+        new_y = (self._stats_orig_pix[1] + dy) / h
+        self.statsActor.GetPositionCoordinate().SetValue(new_x, new_y)
         self.renWin.Render()
 
     def _on_stats_release(self, caller, event):
         self._dragging_stats = False
+        if hasattr(self.parent, "_text_dragging"):
+            self.parent._text_dragging = False
 
-    # ellipse dragging / handles
+    # ellipse dragging and handles
     def _on_press(self, caller, event):
         if self._dragging_stats:
+            return
+        if self.actor is None:
             return
         x, y = self.interactor.GetEventPosition()
         self._picker.Pick(x, y, 0, self.renderer)
@@ -838,22 +892,28 @@ class EllipsoidRoiWidget(QtCore.QObject):
     def _on_drag(self, caller, event):
         if self._dragging_stats:
             return
+        if not self._dragging_center or self.actor is None:
+            return
         x, y = self.interactor.GetEventPosition()
-        if self._dragging_center:
-            wx, wy, _ = self._get_world_point(x, y)
-            dx, dy = self._drag_offset
-            newc = (wx + dx, wy + dy, self._last_center[2])
-            self._last_center = newc
-            self.actor.SetPosition(*newc)
-            self._update_handles()
-            self._update_stats()
-            self.renWin.Render()
+        wx, wy, _ = self._get_world_point(x, y)
+        dx, dy = self._drag_offset
+        newc = (wx + dx, wy + dy, self._last_center[2])
+        self._last_center = newc
+        self.actor.SetPosition(*newc)
+        self._update_handles()
+        self._update_stats()
+        self.renWin.Render()
 
     def _on_release(self, caller, event):
         self._dragging_center = False
-        self.parent._text_dragging = False
+        if hasattr(self.parent, "_text_dragging"):
+            self.parent._text_dragging = False
 
     def _on_handle_move(self, name):
+        if self.actor is None or not self.handles:
+            return
+        if name not in self.handles:
+            return
         cx, cy, cz = self._last_center
         ex, ey, _ = self.handles[name].GetRepresentation().GetWorldPosition()
         if name == 'east':
@@ -867,10 +927,15 @@ class EllipsoidRoiWidget(QtCore.QObject):
         self.renWin.Render()
 
     def _update_handles(self):
+        if not self.handles:
+            return
         cx, cy, cz = self._last_center
-        self.handles['center'].GetRepresentation().SetWorldPosition((cx, cy, cz))
-        self.handles['east'].GetRepresentation().SetWorldPosition((cx + self._last_rx, cy, cz))
-        self.handles['north'].GetRepresentation().SetWorldPosition((cx, cy + self._last_ry, cz))
+        if 'center' in self.handles:
+            self.handles['center'].GetRepresentation().SetWorldPosition((cx, cy, cz))
+        if 'east' in self.handles:
+            self.handles['east'].GetRepresentation().SetWorldPosition((cx + self._last_rx, cy, cz))
+        if 'north' in self.handles:
+            self.handles['north'].GetRepresentation().SetWorldPosition((cx, cy + self._last_ry, cz))
 
     def _get_world_point(self, x, y):
         self.renderer.SetDisplayPoint(x, y, 0)
@@ -933,7 +998,8 @@ class EllipsoidRoiWidget(QtCore.QObject):
         self.actor.SetVisibility(self.is_visible)
         for h in self.handles.values():
             h.On() if self.is_visible else h.Off()
-        self.statsActor.SetVisibility(self.is_visible)
+        if self.statsActor:
+            self.statsActor.SetVisibility(self.is_visible)
         self.renWin.Render()
 
     def delete(self):
@@ -966,7 +1032,7 @@ class EllipsoidRoiWidget(QtCore.QObject):
 class SquareRoiWidget(QtCore.QObject):
     """
     Rectangle ROI widget (named SquareRoiWidget for legacy). Users can adjust width and height independently.
-    Supports dragging of the stats text box like Circle/Ellipse.
+    Supports dragging of the stats text box like Circle and Ellipse.
     """
     def __init__(self, vtk_widget, renderer, parent, image_actor, orientation):
         super().__init__(parent)
@@ -978,7 +1044,7 @@ class SquareRoiWidget(QtCore.QObject):
         self.imageActor  = image_actor
         self.orientation = orientation
 
-        # geometry & state
+        # geometry and state
         self.squareSrc   = None
         self.squareActor = None
         self.handles     = {}
@@ -994,7 +1060,6 @@ class SquareRoiWidget(QtCore.QObject):
         self._dragging_center = False
         self._drag_offset     = (0.0, 0.0)
         self._dragging_stats  = False
-        # NOTE: keep start/orig for stats drag if you later use them
         self._stats_start     = (0, 0)
         self._stats_orig_pix  = (0.0, 0.0)
         self.parent._text_dragging = False
@@ -1003,7 +1068,7 @@ class SquareRoiWidget(QtCore.QObject):
         self._stats_picker = vtk.vtkPropPicker()
         self._picker       = vtk.vtkPropPicker()
 
-        # (optional) profile helper lines (hidden by default)
+        # optional profile helper lines (hidden by default)
         self._vline_src = vtk.vtkLineSource()
         self._vline_mapper = vtk.vtkPolyDataMapper()
         self._vline_mapper.SetInputConnection(self._vline_src.GetOutputPort())
@@ -1044,7 +1109,7 @@ class SquareRoiWidget(QtCore.QObject):
             return False
         return super().eventFilter(obj, event)
 
-    # same helper as above
+    # helper
     def _cancel_vtk_right_button(self):
         style = self.interactor.GetInteractorStyle()
         try:
@@ -1111,19 +1176,21 @@ class SquareRoiWidget(QtCore.QObject):
 
     def _get_view_center_world(self):
         w, h = self.renWin.GetSize()
-        cx, cy = w/2, h/2
+        cx, cy = w / 2, h / 2
         self.renderer.SetDisplayPoint(cx, cy, 0)
         self.renderer.DisplayToWorld()
         x, y, z, w4 = self.renderer.GetWorldPoint()
         if w4:
-            x, y = x/w4, y/w4
+            x, y = x / w4, y / w4
         z = self.imageActor.GetCenter()[2] + 1.0
         return x, y, z
 
     def _on_right_click(self, caller, event):
+        # tell VTK "right button is up" before anything
+        self._cancel_vtk_right_button()
+
         x, y = self.interactor.GetEventPosition()
         if not self.squareSrc:
-            self._cancel_vtk_right_button()
             return
         self._picker_right.Pick(x, y, 0, self.renderer)
         picked = self._picker_right.GetActor()
@@ -1131,13 +1198,12 @@ class SquareRoiWidget(QtCore.QObject):
         picked_text = (self._stats_picker.GetActor2D() is self.statsActor)
 
         if picked is self.squareActor or picked_text:
-            chosen, act_profile, act_delete = _context_menu(self.vtkWidget, enable_profile=True)
             self._cancel_vtk_right_button()
+            chosen, act_profile, act_delete = _context_menu(self.vtkWidget, enable_profile=True)
             if chosen == act_delete:
                 self.delete()
             elif chosen == act_profile:
-                # simple: open the profile dialog (no extra helper lines wiring here)
-                show_roi_plots(
+                dlg = show_roi_plots(
                     parent=self.parent,
                     display_data=self.parent.display_data,
                     Im_Offset=self.parent.Im_Offset,
@@ -1148,13 +1214,61 @@ class SquareRoiWidget(QtCore.QObject):
                     radii=(self._last_rx, self._last_ry),
                     roi_type='square',
                     window_title='Rectangle ROI Analysis',
-                    return_dialog=False
+                    return_dialog=True
                 )
+                if dlg is None:
+                    return
+
+                # Connect sliders (values are in world mm)
+                def on_x(val):
+                    self._update_vertical_profile_line(float(val))
+
+                def on_y(val):
+                    self._update_horizontal_profile_line(float(val))
+
+                dlg.sld_x.valueChanged.connect(on_x)
+                dlg.sld_y.valueChanged.connect(on_y)
+
+                dlg.show()
         else:
-            self._cancel_vtk_right_button()
+            return
+
+    #
+    # profile helper lines
+    #
+    def _update_vertical_profile_line(self, x_mm: float):
+        """Draw vertical red line at given X (world mm) through the current ROI."""
+        if not self.squareSrc:
+            return
+        cx, cy, cz = self._last_center
+        rx, ry     = self._last_rx, self._last_ry
+        y0 = cy - ry
+        y1 = cy + ry
+        self._vline_src.SetPoint1(x_mm, y0, cz)
+        self._vline_src.SetPoint2(x_mm, y1, cz)
+        self._vline_src.Modified()
+        self._vline_actor.SetVisibility(True)
+        self.renWin.Render()
+
+    def _update_horizontal_profile_line(self, y_mm: float):
+        """Draw horizontal red line at given Y (world mm) through the current ROI."""
+        if not self.squareSrc:
+            return
+        cx, cy, cz = self._last_center
+        rx, ry     = self._last_rx, self._last_ry
+        x0 = cx - rx
+        x1 = cx + rx
+        self._hline_src.SetPoint1(x0, y_mm, cz)
+        self._hline_src.SetPoint2(x1, y_mm, cz)
+        self._hline_src.Modified()
+        self._hline_actor.SetVisibility(True)
+        self.renWin.Render()
 
     # stats dragging handlers
     def _on_stats_press(self, caller, event):
+        if self.statsActor is None:
+            self._dragging_stats = False
+            return
         x, y = self.interactor.GetEventPosition()
         self._stats_picker.Pick(x, y, 0, self.renderer)
         if self._stats_picker.GetActor2D() is self.statsActor:
@@ -1165,10 +1279,11 @@ class SquareRoiWidget(QtCore.QObject):
             self._stats_orig_pix = (disp[0], disp[1])
 
     def _on_stats_drag(self, caller, event):
-        if not self._dragging_stats:
+        if not self._dragging_stats or self.statsActor is None:
             return
         x, y = self.interactor.GetEventPosition()
-        dx = x - self._stats_start[0]; dy = y - self._stats_start[1]
+        dx = x - self._stats_start[0]
+        dy = y - self._stats_start[1]
         w, h = self.renWin.GetSize()
         self.statsActor.GetPositionCoordinate().SetValue(
             (self._stats_orig_pix[0] + dx) / w,
@@ -1178,11 +1293,14 @@ class SquareRoiWidget(QtCore.QObject):
 
     def _on_stats_release(self, caller, event):
         self._dragging_stats = False
-        self.parent._text_dragging = False
+        if hasattr(self.parent, "_text_dragging"):
+            self.parent._text_dragging = False
 
     # ROI move
     def _on_press(self, caller, event):
         if self._dragging_stats:
+            return
+        if self.squareActor is None:
             return
         x, y = self.interactor.GetEventPosition()
         self._picker.Pick(x, y, 0, self.renderer)
@@ -1194,47 +1312,78 @@ class SquareRoiWidget(QtCore.QObject):
             self._drag_offset = (cx - wx, cy - wy)
 
     def _on_drag(self, caller, event):
+        # if ROI deleted, stop handling drag
+        if self.squareSrc is None or self.squareActor is None or not self.handles:
+            self._dragging_center = False
+            return
         if not self._dragging_center:
             return
         x, y = self.interactor.GetEventPosition()
         wx, wy, _ = self._get_world_point(x, y)
         dx, dy = self._drag_offset
         self._last_center = (wx + dx, wy + dy, self._last_center[2])
-        self._update_plane(); self._update_handles(); self._update_stats(); self.renWin.Render()
+        self._update_plane()
+        self._update_handles()
+        self._update_stats()
+        self.renWin.Render()
 
     def _on_release(self, caller, event):
         self._dragging_center = False
-        self.parent._text_dragging = False
+        if hasattr(self.parent, "_text_dragging"):
+            self.parent._text_dragging = False
 
     def _get_world_point(self, x, y):
-        self.renderer.SetDisplayPoint(x, y, 0); self.renderer.DisplayToWorld()
+        self.renderer.SetDisplayPoint(x, y, 0)
+        self.renderer.DisplayToWorld()
         wp = self.renderer.GetWorldPoint()
         if wp[3] != 0:
             return (wp[0] / wp[3], wp[1] / wp[3], wp[2] / wp[3])
         return (wp[0], wp[1], wp[2])
 
     def _update_plane(self):
-        cx, cy, cz = self._last_center; rx, ry = self._last_rx, self._last_ry
+        if self.squareSrc is None:
+            return
+        cx, cy, cz = self._last_center
+        rx, ry = self._last_rx, self._last_ry
         self.squareSrc.SetOrigin(cx - rx, cy - ry, cz)
         self.squareSrc.SetPoint1(cx + rx, cy - ry, cz)
         self.squareSrc.SetPoint2(cx - rx, cy + ry, cz)
         self.squareSrc.Update()
 
     def _on_handle_move(self, name):
+        # ignore stray events after delete
+        if self.squareSrc is None or not self.handles:
+            return
+        if name not in self.handles:
+            return
         cx, cy, cz = self._last_center
         ex, ey, _ = self.handles[name].GetRepresentation().GetWorldPosition()
         if name in ('north', 'south'):
             self._last_ry = abs(ey - cy)
         else:
             self._last_rx = abs(ex - cx)
-        self._update_plane(); self._update_handles(); self._update_stats(); self.renWin.Render()
+        self._update_plane()
+        self._update_handles()
+        self._update_stats()
+        self.renWin.Render()
 
     def _update_handles(self):
-        cx, cy, cz = self._last_center; rx, ry = self._last_rx, self._last_ry
-        positions = {'north': (cx, cy + ry, cz), 'south': (cx, cy - ry, cz),
-                     'east': (cx + rx, cy, cz),  'west': (cx - rx, cy, cz)}
+        # if ROI deleted or handles cleared or partial, do nothing
+        if not self.handles:
+            return
+        cx, cy, cz = self._last_center
+        rx, ry = self._last_rx, self._last_ry
+        positions = {
+            'north': (cx, cy + ry, cz),
+            'south': (cx, cy - ry, cz),
+            'east':  (cx + rx, cy, cz),
+            'west':  (cx - rx, cy, cz)
+        }
         for n, p in positions.items():
-            self.handles[n].GetRepresentation().SetWorldPosition(p)
+            h = self.handles.get(n)
+            if h is None:
+                continue
+            h.GetRepresentation().SetWorldPosition(p)
 
     def _update_stats(self):
         rx, ry = self._last_rx, self._last_ry
@@ -1266,7 +1415,8 @@ class SquareRoiWidget(QtCore.QObject):
             else:
                 px = (ox - self.parent.Im_Offset[idx, 1]) / self.parent.pixel_spac[idx, 1]
                 py = (oy - self.parent.Im_Offset[idx, 2]) / self.parent.slice_thick[idx]
-            px = int(np.clip(round(px), 0, w - 1)); py = int(np.clip(round(py), 0, h - 1))
+            px = int(np.clip(round(px), 0, w - 1))
+            py = int(np.clip(round(py), 0, h - 1))
 
             rpx = int(round(rx / self.parent.pixel_spac[idx, 0]))
             rpy = int(round(ry / self.parent.pixel_spac[idx, 1]))
@@ -1291,7 +1441,8 @@ class SquareRoiWidget(QtCore.QObject):
         self.squareActor.SetVisibility(self.is_visible)
         for h in self.handles.values():
             h.On() if self.is_visible else h.Off()
-        self.statsActor.SetVisibility(self.is_visible)
+        if self.statsActor:
+            self.statsActor.SetVisibility(self.is_visible)
         self.renWin.Render()
 
     def delete(self):

@@ -175,7 +175,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.image           = None            # Initialize the attribute to store DICOM data
         self.IrIS_data       = None            # Initialize the attribute to store IrIS data
         self.STL_data        = None            # Initialize the attribute to store STL data
-        self.IrIS_corr       = {}              # Initialize the attribute to store IrIS correction data
+        self.IrIS_corr    = {}              # Initialize the attribute to store IrIS correction data
         self.current_slice_index = [-1,-1,-1]  # axial, sagital and coronal slices
         #
         # information about dwell positions and dwell times
