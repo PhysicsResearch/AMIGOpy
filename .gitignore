@@ -4,3 +4,4 @@ energiesMevion.mat
 *.gz
 site/
 dist/
+phantom_operation.json
