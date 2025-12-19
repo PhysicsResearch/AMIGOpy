@@ -8,6 +8,7 @@ from matplotlib.figure import Figure
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
+import json
 from PySide6.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
 from PySide6.QtCore import QThread, QUrl
 from datetime import datetime
@@ -18,28 +19,62 @@ UPDATE_INTERVAL = 0.05    # seconds between polls
 def set_fcn_MoVeTab_changed(self):
     # Connect the currentChanged signal to the onTabChanged slot
     self.BrCv_PhOperWidget.currentChanged.connect(lambda: onTabChanged(self))
+    self.tabWidget_BrCv.currentChanged.connect(lambda: onTabChanged(self))
 
+
+def read_update_config(self):
+    contents = {}
+    if os.path.exists(r'phantom_operation.json'):
+        with open(r'phantom_operation.json', 'r') as f:
+            contents = json.load(f)
+
+    if hasattr(self, 'duet_ip'):
+        contents['duet_ip'] = self.duet_ip
+    if hasattr(self, 'gcode_folder'):
+        contents['gcode_folder'] = self.gcode_folder
+
+    with open(r'phantom_operation.json', 'w') as f:
+        json.dump(contents, f)
 
 def onTabChanged(self):
-    if self.BrCv_PhOperWidget.currentIndex() == 1:
-        self.MoVeSpeedFactor.setValue(100)
-        self.MoVeSpeedFactor.valueChanged.connect(lambda: set_GCODE_speed(self))
-        init_MoVeTab(self)
-    if self.BrCv_PhOperWidget.currentIndex() == 0:
-        exportMoVeData(self)
+    if self.tabWidget_BrCv.currentIndex() == 3:
+        if self.BrCv_PhOperWidget.currentIndex() == 0:
+            if os.path.exists(r'phantom_operation.json'):
+                with open(r'phantom_operation.json', 'r') as f:
+                    contents = json.load(f)
+                    if 'duet_ip' in contents:
+                        self.duet_ip = contents['duet_ip']
+                        setDuetIP(self, config=True)
+                    if 'gcode_folder' in contents and os.path.exists(contents['gcode_folder']):
+                        self.gcode_folder = contents['gcode_folder']
+                        defineInputFolder(self, config=True)
+        if self.BrCv_PhOperWidget.currentIndex() == 1:
+            self.MoVeSpeedFactor.setValue(100)
+            self.MoVeSpeedFactor.valueChanged.connect(lambda: set_GCODE_speed(self))
+            init_MoVeTab(self)
+        if self.BrCv_PhOperWidget.currentIndex() == 0:
+            exportMoVeData(self)
 
 
-def setDuetIP(self):
-    self.duet_ip = self.DuetIPAddress.text()
+def setDuetIP(self, config=False):
+    if not config:
+        self.duet_ip = self.DuetIPAddress.text()
+        read_update_config(self)
+    else:
+        self.DuetIPAddress.setText(self.duet_ip)
+
     self.DuetControlView.setUrl(QUrl(self.duet_ip))
     self.DuetControlView.reload()
     self.DuetControlView.setUrl(QUrl())
 
 
-def defineInputFolder(self):
-    options = QFileDialog.Options()
-    folder = QFileDialog.getExistingDirectory(self, options=options)
-    self.PhOperFolder.setText(folder)
+def defineInputFolder(self, config=False):
+    if not config:
+        options = QFileDialog.Options()
+        folder = QFileDialog.getExistingDirectory(self, options=options)
+        self.gcode_folder = folder
+        read_update_config(self)
+    self.PhOperFolder.setText(self.gcode_folder)
 
 
 def get_curr_file(self, init=True):
