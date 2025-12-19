@@ -277,7 +277,7 @@ def createCurve(self):
         amplitude = float(self.tableViewEditParams.item(row, 0).text()) 
         cycle_time_s = float(self.tableViewEditParams.item(row, 1).text()) 
         # Possibility to add variability to amplitude and cycle time by adding * np.random.uniform(0.9, 1.1)
-        
+
         num_steps = int((cycle_time_s * 1e3) // step)
         cycle_time_ms = int((num_steps - 1) * step)
         cycle_time_s = cycle_time_ms / 1e3
@@ -292,7 +292,7 @@ def createCurve(self):
         elif cv_type == "Cosine^6":
             y = amplitude * np.sin(x * np.pi / cycle_time_s) ** 6
 
-        timestamps = t if row == 0 else timestamps = t + dataframe.loc[len(dataframe)-1, "timestamp"] + step
+        timestamps = t if row == 0 else t + dataframe.loc[len(dataframe)-1, "timestamp"] + step
 
         df_cycle = pd.DataFrame({"timestamp": timestamps, "amplitude": y})
         df_cycle["instance"] = row

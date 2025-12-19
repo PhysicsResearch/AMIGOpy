@@ -4817,169 +4817,6 @@ class Ui_AMIGOpy(object):
         self.gridLayout_10.addWidget(self.tabWidget_5, 0, 1, 1, 1)
 
         self.tabModules.addTab(self.IrIS_tab, "")
-        self.tab_27 = QWidget()
-        self.tab_27.setObjectName(u"tab_27")
-        self.gridLayout_29 = QGridLayout(self.tab_27)
-        self.gridLayout_29.setObjectName(u"gridLayout_29")
-        self.LoadCSVView = QPushButton(self.tab_27)
-        self.LoadCSVView.setObjectName(u"LoadCSVView")
-        self.LoadCSVView.setFont(font1)
-
-        self.gridLayout_29.addWidget(self.LoadCSVView, 1, 4, 1, 1)
-
-        self.lineEdit_14 = QLineEdit(self.tab_27)
-        self.lineEdit_14.setObjectName(u"lineEdit_14")
-        self.lineEdit_14.setEnabled(False)
-        self.lineEdit_14.setFont(font)
-
-        self.gridLayout_29.addWidget(self.lineEdit_14, 4, 4, 1, 1)
-
-        self.gcode_f_name = QLineEdit(self.tab_27)
-        self.gcode_f_name.setObjectName(u"gcode_f_name")
-
-        self.gridLayout_29.addWidget(self.gcode_f_name, 6, 1, 1, 2)
-
-        self.CSVDeli_Sel = QComboBox(self.tab_27)
-        self.CSVDeli_Sel.setObjectName(u"CSVDeli_Sel")
-
-        self.gridLayout_29.addWidget(self.CSVDeli_Sel, 3, 7, 1, 3)
-
-        self.CSV_Oper_Value = QDoubleSpinBox(self.tab_27)
-        self.CSV_Oper_Value.setObjectName(u"CSV_Oper_Value")
-        self.CSV_Oper_Value.setMinimum(-9999999999.000000000000000)
-        self.CSV_Oper_Value.setMaximum(99990000.000000000000000)
-
-        self.gridLayout_29.addWidget(self.CSV_Oper_Value, 2, 1, 1, 1)
-
-        self.PlotCSVView = QPushButton(self.tab_27)
-        self.PlotCSVView.setObjectName(u"PlotCSVView")
-        self.PlotCSVView.setFont(font1)
-
-        self.gridLayout_29.addWidget(self.PlotCSVView, 1, 7, 1, 2)
-
-        self.lineEdit_16 = QLineEdit(self.tab_27)
-        self.lineEdit_16.setObjectName(u"lineEdit_16")
-        self.lineEdit_16.setEnabled(False)
-        self.lineEdit_16.setFont(font)
-
-        self.gridLayout_29.addWidget(self.lineEdit_16, 2, 4, 1, 1)
-
-        self.line_24 = QFrame(self.tab_27)
-        self.line_24.setObjectName(u"line_24")
-        self.line_24.setFrameShape(QFrame.Shape.HLine)
-        self.line_24.setFrameShadow(QFrame.Shadow.Sunken)
-
-        self.gridLayout_29.addWidget(self.line_24, 3, 1, 1, 2)
-
-        self.cvs_add_plot = QCheckBox(self.tab_27)
-        self.cvs_add_plot.setObjectName(u"cvs_add_plot")
-
-        self.gridLayout_29.addWidget(self.cvs_add_plot, 1, 9, 1, 1)
-
-        self.exp_csv_2_gcode = QPushButton(self.tab_27)
-        self.exp_csv_2_gcode.setObjectName(u"exp_csv_2_gcode")
-        self.exp_csv_2_gcode.setFont(font)
-
-        self.gridLayout_29.addWidget(self.exp_csv_2_gcode, 4, 1, 1, 1)
-
-        self.verticalSpacer_5 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-        self.gridLayout_29.addItem(self.verticalSpacer_5, 8, 5, 1, 1)
-
-        self.lineEdit_17 = QLineEdit(self.tab_27)
-        self.lineEdit_17.setObjectName(u"lineEdit_17")
-        self.lineEdit_17.setEnabled(False)
-        self.lineEdit_17.setFont(font)
-
-        self.gridLayout_29.addWidget(self.lineEdit_17, 2, 8, 1, 1)
-
-        self.CSV_X_plot = QComboBox(self.tab_27)
-        self.CSV_X_plot.setObjectName(u"CSV_X_plot")
-
-        self.gridLayout_29.addWidget(self.CSV_X_plot, 4, 7, 1, 3)
-
-        self.csvTable = QTableWidget(self.tab_27)
-        self.csvTable.setObjectName(u"csvTable")
-
-        self.gridLayout_29.addWidget(self.csvTable, 0, 0, 1, 8)
-
-        self.CSV_Oper_Box = QComboBox(self.tab_27)
-        self.CSV_Oper_Box.setObjectName(u"CSV_Oper_Box")
-
-        self.gridLayout_29.addWidget(self.CSV_Oper_Box, 1, 1, 1, 2)
-
-        self.CSVLineSkip = QSpinBox(self.tab_27)
-        self.CSVLineSkip.setObjectName(u"CSVLineSkip")
-
-        self.gridLayout_29.addWidget(self.CSVLineSkip, 2, 7, 1, 1)
-
-        self.lineEdit_13 = QLineEdit(self.tab_27)
-        self.lineEdit_13.setObjectName(u"lineEdit_13")
-        self.lineEdit_13.setEnabled(False)
-        self.lineEdit_13.setFont(font)
-
-        self.gridLayout_29.addWidget(self.lineEdit_13, 3, 4, 1, 1)
-
-        self.line_23 = QFrame(self.tab_27)
-        self.line_23.setObjectName(u"line_23")
-        self.line_23.setFrameShape(QFrame.Shape.VLine)
-        self.line_23.setFrameShadow(QFrame.Shadow.Sunken)
-
-        self.gridLayout_29.addWidget(self.line_23, 1, 3, 6, 1)
-
-        self.CSVLinHeader = QSpinBox(self.tab_27)
-        self.CSVLinHeader.setObjectName(u"CSVLinHeader")
-
-        self.gridLayout_29.addWidget(self.CSVLinHeader, 2, 9, 1, 1)
-
-        self.CSV_Oper_Apply = QPushButton(self.tab_27)
-        self.CSV_Oper_Apply.setObjectName(u"CSV_Oper_Apply")
-        self.CSV_Oper_Apply.setFont(font)
-
-        self.gridLayout_29.addWidget(self.CSV_Oper_Apply, 2, 2, 1, 1)
-
-        self.gcode_col = QSpinBox(self.tab_27)
-        self.gcode_col.setObjectName(u"gcode_col")
-        self.gcode_col.setMinimum(2)
-
-        self.gridLayout_29.addWidget(self.gcode_col, 4, 2, 1, 1)
-
-        self.CSVViewText = QTextEdit(self.tab_27)
-        self.CSVViewText.setObjectName(u"CSVViewText")
-        self.CSVViewText.setFont(font2)
-
-        self.gridLayout_29.addWidget(self.CSVViewText, 0, 8, 1, 2)
-
-        self.CVS_Ax_View = QWidget(self.tab_27)
-        self.CVS_Ax_View.setObjectName(u"CVS_Ax_View")
-
-        self.gridLayout_29.addWidget(self.CVS_Ax_View, 7, 4, 2, 6)
-
-        self.lineEdit_4 = QLineEdit(self.tab_27)
-        self.lineEdit_4.setObjectName(u"lineEdit_4")
-        self.lineEdit_4.setEnabled(False)
-
-        self.gridLayout_29.addWidget(self.lineEdit_4, 5, 1, 1, 1)
-
-        self.gcode_cycles = QSpinBox(self.tab_27)
-        self.gcode_cycles.setObjectName(u"gcode_cycles")
-        self.gcode_cycles.setMinimum(1)
-
-        self.gridLayout_29.addWidget(self.gcode_cycles, 5, 2, 1, 1)
-
-        self.lineEdit_15 = QLineEdit(self.tab_27)
-        self.lineEdit_15.setObjectName(u"lineEdit_15")
-        self.lineEdit_15.setEnabled(False)
-        self.lineEdit_15.setFont(font)
-
-        self.gridLayout_29.addWidget(self.lineEdit_15, 5, 4, 1, 1)
-
-        self.CSV_Y_plot = QComboBox(self.tab_27)
-        self.CSV_Y_plot.setObjectName(u"CSV_Y_plot")
-
-        self.gridLayout_29.addWidget(self.CSV_Y_plot, 5, 7, 1, 3)
-
-        self.tabModules.addTab(self.tab_27, "")
         self.tab_BrCv = QWidget()
         self.tab_BrCv.setObjectName(u"tab_BrCv")
         self.gridLayout_BrCv = QGridLayout(self.tab_BrCv)
@@ -5897,7 +5734,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg.setObjectName(u"toolBox_seg")
         self.seg_manual_contour = QWidget()
         self.seg_manual_contour.setObjectName(u"seg_manual_contour")
-        self.seg_manual_contour.setGeometry(QRect(0, 0, 254, 129))
+        self.seg_manual_contour.setGeometry(QRect(0, 0, 252, 130))
         self.gridLayout_60 = QGridLayout(self.seg_manual_contour)
         self.gridLayout_60.setObjectName(u"gridLayout_60")
         self.undoSegText = QLineEdit(self.seg_manual_contour)
@@ -5977,7 +5814,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg.addItem(self.seg_manual_contour, u"Manual contouring && edits")
         self.page_thresholding = QWidget()
         self.page_thresholding.setObjectName(u"page_thresholding")
-        self.page_thresholding.setGeometry(QRect(0, 0, 174, 106))
+        self.page_thresholding.setGeometry(QRect(0, 0, 175, 108))
         self.gridLayout_70 = QGridLayout(self.page_thresholding)
         self.gridLayout_70.setObjectName(u"gridLayout_70")
         self.indexMinThreshSeg = QSpinBox(self.page_thresholding)
@@ -6022,7 +5859,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg.addItem(self.page_thresholding, u"Thresholding")
         self.morph_oper = QWidget()
         self.morph_oper.setObjectName(u"morph_oper")
-        self.morph_oper.setGeometry(QRect(0, 0, 242, 165))
+        self.morph_oper.setGeometry(QRect(0, 0, 243, 168))
         self.gridLayout_79 = QGridLayout(self.morph_oper)
         self.gridLayout_79.setObjectName(u"gridLayout_79")
         self.lineEdit_70 = QLineEdit(self.morph_oper)
@@ -6100,7 +5937,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg.addItem(self.morph_oper, u"Morphological operations")
         self.page = QWidget()
         self.page.setObjectName(u"page")
-        self.page.setGeometry(QRect(0, 0, 228, 134))
+        self.page.setGeometry(QRect(0, 0, 226, 134))
         self.gridLayout_61 = QGridLayout(self.page)
         self.gridLayout_61.setObjectName(u"gridLayout_61")
         self.calcSegStatsButton = QPushButton(self.page)
@@ -6723,27 +6560,6 @@ class Ui_AMIGOpy(object):
         self.tabWidget_5.setTabText(self.tabWidget_5.indexOf(self.tab_16), QCoreApplication.translate("AMIGOpy", u"Evaluation", None))
         self.tabWidget_5.setTabText(self.tabWidget_5.indexOf(self.tab_25), QCoreApplication.translate("AMIGOpy", u"Advanced", None))
         self.tabModules.setTabText(self.tabModules.indexOf(self.IrIS_tab), QCoreApplication.translate("AMIGOpy", u"IrIS", None))
-        self.LoadCSVView.setText(QCoreApplication.translate("AMIGOpy", u"Load File", None))
-        self.lineEdit_14.setText(QCoreApplication.translate("AMIGOpy", u"X - Axes", None))
-        self.gcode_f_name.setText(QCoreApplication.translate("AMIGOpy", u"GCODE_FILE_Name", None))
-        self.PlotCSVView.setText(QCoreApplication.translate("AMIGOpy", u"Plot", None))
-        self.lineEdit_16.setText(QCoreApplication.translate("AMIGOpy", u"Lines to skip", None))
-        self.cvs_add_plot.setText(QCoreApplication.translate("AMIGOpy", u"Hold Plot", None))
-        self.exp_csv_2_gcode.setText(QCoreApplication.translate("AMIGOpy", u"Exp. GCODE", None))
-        self.lineEdit_17.setText(QCoreApplication.translate("AMIGOpy", u"Header line", None))
-        self.lineEdit_13.setText(QCoreApplication.translate("AMIGOpy", u"Delimitation", None))
-        self.CSV_Oper_Apply.setText(QCoreApplication.translate("AMIGOpy", u"Apply", None))
-        self.CSVViewText.setHtml(QCoreApplication.translate("AMIGOpy", u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"hr { height: 1px; border-width: 0; }\n"
-"li.unchecked::marker { content: \"\\2610\"; }\n"
-"li.checked::marker { content: \"\\2612\"; }\n"
-"</style></head><body style=\" font-family:'Segoe UI'; font-size:12pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'MS Shell Dlg 2'; font-size:7.8pt;\"><br /></p></body></html>", None))
-        self.lineEdit_4.setText(QCoreApplication.translate("AMIGOpy", u"Cycles", None))
-        self.lineEdit_15.setText(QCoreApplication.translate("AMIGOpy", u"Y - Axes", None))
-        self.tabModules.setTabText(self.tabModules.indexOf(self.tab_27), QCoreApplication.translate("AMIGOpy", u"CSV Files", None))
         self.groupBox_BrCv_importCSV.setTitle(QCoreApplication.translate("AMIGOpy", u"Import CSV/VXP", None))
         self.lineEdit_BrCv_5.setText(QCoreApplication.translate("AMIGOpy", u"Delimiter", None))
         self.lineEdit_BrCv_6.setText(QCoreApplication.translate("AMIGOpy", u"Lines to skip", None))
