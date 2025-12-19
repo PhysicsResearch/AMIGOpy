@@ -5,7 +5,7 @@ import numpy as np
 import vtk
 from fcn_load.populate_med_image_list import populate_medical_image_tree
 import fcn_load.load_dcm
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
 import SimpleITK as sitk

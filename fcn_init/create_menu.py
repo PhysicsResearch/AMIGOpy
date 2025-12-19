@@ -1,5 +1,7 @@
-from PyQt5.QtWidgets import QMenuBar, QAction, QActionGroup
-from PyQt5.QtGui import QFont
+from PySide6.QtWidgets import QMenuBar
+from PySide6.QtGui import QAction, QActionGroup
+from PySide6.QtGui import QFont
+
 from fcn_load.read_IrIS import load_IrIS_folder
 from fcn_load.load_dcm  import load_all_dcm
 from fcn_load.save_load import load_amigo_bundle, save_amigo_bundle
@@ -13,6 +15,8 @@ from fcn_load.load_STL import load_stl_files
 from fcn_load.load_OBJ import load_obj_files
 from fcn_load.load_nifti import load_nifti_files
 from fcn_load.load_mha import load_mha_files
+from fcn_load.load_npy import load_npy_files
+from fcn_load.load_tiff_similar import load_tiff_files, load_png_files, load_jpeg_files, load_bmp_files  
 from fcn_autocont.segmentator_calls import open_segmentator_tab
 from functools import partial
 
@@ -37,7 +41,7 @@ def initializeMenuBar(self):
     # open
     openMenu = fileMenu.addMenu("Open")
     # Add items 
-    items = ["DICOM", "NIfTI","AMIGOpy","MHA","STL","Obj","3mf", "Tiff", "EGSPhant","IrIS", "MCNPinp", "MCNPout"]
+    items = ["DICOM", "NIfTI","AMIGOpy","MHA","npy","STL","Obj","3mf", "Tiff", "EGSPhant","IrIS", "MCNPinp", "MCNPout"]
     for item in items:
         action = QAction(item, self)
         # Connect the Folder action to the load_dcm function
@@ -52,19 +56,19 @@ def initializeMenuBar(self):
             action.setShortcut("Ctrl+A") 
         if item == "MHA":
             action.triggered.connect(lambda: load_mha_files(self))
-            action.setShortcut("Ctrl+A") 
+        if item == "npy":
+            action.triggered.connect(lambda: load_npy_files(self))
         if item == "STL":
-            action.triggered.connect(lambda: load_stl_files(self))
-            action.setShortcut("Ctrl+S")    
+            action.triggered.connect(lambda: load_stl_files(self)) 
         if item == "Obj":
-            action.triggered.connect(lambda: load_obj_files(self))
-            action.setShortcut("Ctrl+O")    
+            action.triggered.connect(lambda: load_obj_files(self))  
         if item == "3mf":
-            action.triggered.connect(lambda: load_3mf(self))
-            action.setShortcut("Ctrl+3+D")    
+            action.triggered.connect(lambda: load_3mf(self)) 
         if item == "NIfTI":
             action.triggered.connect(lambda: load_nifti_files(self))
             action.setShortcut("Ctrl+N")    
+        if item == "Tiff":
+            action.triggered.connect(lambda: load_tiff_files(self))
         openMenu.addAction(action)
 
     ViewMenu      = self.menuBar().addMenu("View")

@@ -5,7 +5,7 @@ from pydicom.dataset import Dataset
 from pydicom.sequence import Sequence
 from pydicom.multival import MultiValue
 
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
     QTreeWidget,
@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QMessageBox
 )
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
 
 # ------------------------------------------------------------
 # 1) Helper function to convert scalar values into short strings

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from PyQt5.QtWidgets import QFileDialog, QTableWidgetItem
+from PySide6.QtWidgets import QFileDialog, QTableWidgetItem
 
 def openCSVFile_BrCv(self):
         options = QFileDialog.Options()

@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QProgressDialog, QMessageBox
-from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt
+from PySide6.QtWidgets import QProgressDialog, QMessageBox
+from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt
 import vtk
 import numpy as np
 import math
@@ -13,7 +13,7 @@ def displayaxial(self, Im = None):
         self.display_data is None or
         len(self.display_data) == 0):
         return   
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
 
     if idx not in self.display_data:
         QMessageBox.warning(None, "Warning", "No image data was found.")
@@ -675,7 +675,7 @@ def displaycoronal(self, Im = None):
         self.display_data is None or
         len(self.display_data) == 0):
         return   
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
 
     if idx not in self.display_data:
         QMessageBox.warning(None, "Warning", "No image data was found.")
@@ -1351,7 +1351,7 @@ def displaysagittal(self,Im = None):
         len(self.display_data) == 0):
         return                    # nothing loaded → ignore the call
 
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     if idx not in self.display_data:
         QMessageBox.warning(None, "Warning", "No image data was found.")
         return
@@ -1998,7 +1998,7 @@ def display_brachy_channel_overlay_sa(self):
 
 
 def update_layer_view(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     tabName = self.tabModules.tabText(self.tabModules.currentIndex())
     self.layerTab[tabName] = idx
     if self.tabModules.tabText(self.tabModules.currentIndex()) != "segmentation":

@@ -2,19 +2,10 @@ import vtk
 import numpy as np
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from vtkmodules.all import  vtkAxesActor, vtkOrientationMarkerWidget, vtkTransform
-from PyQt5.QtWidgets import QVBoxLayout
-from PyQt5 import QtWidgets
+from PySide6.QtWidgets import QVBoxLayout
+from PySide6 import QtWidgets
 from fcn_display.mouse_move_slicechanges import onMouseMoveCoronal, onMouseMoveSagittal, onMouseMoveAxial, left_button_pressaxial_event, left_button_releaseaxial_event
 
-
-def populate_layer_list(self):
-    # List of operations
-    layer = ["0","1","2"]
-    self.active_layer = self.findChild(QtWidgets.QComboBox, 'Layer_selection')
-    # Populate the QComboBox
-    self.active_layer.addItems(layer)
-    # You can also connect the selection change event to a function
-    #self.active_layer.currentIndexChanged.connect(lambda index: on_operation_selected(self, index))
 
 def    init_axial_image_Actor(self):
     #
@@ -58,7 +49,6 @@ def    init_coronal_image_Actor(self):
   
 
 def setup_vtk_comp(self):
-    populate_layer_list(self)
     # Initialize VTK components - View section - Axial - Sagittal and Coronal
     vtk_layoutAxial = QVBoxLayout()
     self.vtkWidgetAxial = QVTKRenderWindowInteractor()

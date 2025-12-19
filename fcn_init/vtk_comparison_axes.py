@@ -1,8 +1,8 @@
 import vtk
 import numpy as np
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from PyQt5.QtWidgets import QVBoxLayout, QInputDialog
-from PyQt5 import QtWidgets
+from PySide6.QtWidgets import QVBoxLayout, QInputDialog
+from PySide6 import QtWidgets
 # from fcn_display.mouse_move_slicechanges import onMouseMoveCoronal, onMouseMoveSagittal, onMouseMoveAxial, left_button_pressaxial_event, left_button_releaseaxial_event
 from fcn_display.comp_mouse_fcn import left_button_presscomp_event, left_button_releasecomp_event, on_scroll_backwardcomp, on_scroll_forwardcomp, onMouseMovecomp
 from fcn_display.comp_link_zoom       import toggle_camera_linking
@@ -12,11 +12,13 @@ from fcn_display.display_images_comp  import sliderCompareView_change
 
 def create_vtk_elements_comp(self):
     # 
-    cols, ok1 = QInputDialog.getInt(self, "Input Collumn", "Enter N collumns (max 4):", min=1, max=4, step=1)
+    cols, ok1 = QInputDialog.getInt(self, "Input Column",
+                                "Enter N columns (max 4):",
+                                value=1, minValue=1, maxValue=4, step=1)
     if not ok1:
         return  # User cancelled or closed the dialog
     # 
-    rows, ok2 = QInputDialog.getInt(self, "Input Rows", "Enter N rows (max 3):", min=1, max=3, step=1)
+    rows, ok2 = QInputDialog.getInt(self, "Input Rows", "Enter N rows (max 3):", value=1, minValue=1, maxValue=3, step=1)
     if not ok2:
         return  # User cancelled or closed the dialog
     

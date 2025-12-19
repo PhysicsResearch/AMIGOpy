@@ -1,7 +1,6 @@
 import numpy as np
 from fcn_load.load_dcm import populate_medical_image_tree
-import tkinter as tk
-from tkinter import simpledialog
+from PySide6.QtWidgets import QInputDialog
 import copy
 import pydicom
 from pydicom.dataset import Dataset
@@ -9,11 +8,14 @@ from pydicom.dataelem import DataElement
 
 
 def shift_and_split_3D_matrix(self):
-    root = tk.Tk()
-    root.withdraw()  # Hide the root window
-    intervals = simpledialog.askinteger("Input", "Enter number of intervals:")
-    root.destroy()
-    if intervals is None:
+    # Ask for number of intervals using Qt
+    intervals, ok = QInputDialog.getInt(
+        self,                       # parent (your QMainWindow/QWidget)
+        "Input",
+        "Enter number of intervals:",
+        value=2, min=1, max=1000, step=1
+    )
+    if not ok:
         raise ValueError("No valid number of intervals provided")
 
     # Retrieve the original data

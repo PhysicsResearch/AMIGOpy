@@ -1,5 +1,5 @@
 import os
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
 from fcn_load.drop_folder_files_options import FolderDropArea, FolderDropTreeView
 
 def initialize_drop_fcn(self):

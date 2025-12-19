@@ -6,10 +6,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.animation import FuncAnimation
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
-from PyQt5.QtCore import QThread, QUrl
+from PySide6.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
+from PySide6.QtCore import QThread, QUrl
 from datetime import datetime
 
 WINDOW_DURATION = 10     # seconds to show on the plot
@@ -25,6 +25,8 @@ def onTabChanged(self):
         self.MoVeSpeedFactor.setValue(100)
         self.MoVeSpeedFactor.valueChanged.connect(lambda: set_GCODE_speed(self))
         init_MoVeTab(self)
+    if self.BrCv_PhOperWidget.currentIndex() == 0:
+        exportMoVeData(self)
 
 
 def setDuetIP(self):
@@ -103,6 +105,7 @@ def init_MoVeTab(self):
         return
     
     self.acq_timestamps = self.orig_data.loc[(self.orig_data["acq"] == 1), "timestamp"].tolist()
+    self.ampl_scaling_MoVe = self.orig_data["amplitude"].min() + self.orig_data["amplitude"].max()
     self.MoVeOffsetSlider.setRange(-200, 200)
 
     self.t0 = time.time() 
@@ -133,7 +136,6 @@ def init_MoVeTab(self):
 
     # Start MoVe data thread
     self.ani = FuncAnimation(self.fig_MoVe, lambda frame: update_MoVeData(self), interval=50)
-    plt.show()
     # self.move_thread = MoVeThread(self)
     # self.move_thread.start()
 
@@ -164,7 +166,7 @@ def get_duet_status(self):
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
-            x = data['coords']['xyz'][0]
+            x = data['coords']['xyz'][0] * -1 + self.ampl_scaling_MoVe
             geiger = data['sensors']['probeValue']
             t = time.time() - self.t0 + self.tprint
             return t, x, geiger
@@ -189,7 +191,7 @@ def pause_continue_GCODE(self, pause=True):
 
 
 def update_MoVeData(self):
-    try:
+    # try:
         t, x, geiger = get_duet_status(self)
         if t is None:
             return
@@ -235,8 +237,8 @@ def update_MoVeData(self):
         self.MoVeData['acq'].append(0)
         self.MoVeData['geiger'].append(geiger)
         plot_MoVeData(self)
-    except:
-        return
+    # except:
+    #     return
     
 
 def calc_diff(self):

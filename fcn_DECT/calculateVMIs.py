@@ -2,7 +2,7 @@ import numpy as np
 import copy
 from fcn_load.populate_med_image_list import populate_medical_image_tree
 from pydicom.dataelem import DataElement
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 
 def calculate_VMI(self):

@@ -4,7 +4,7 @@ import vtk
 from fcn_load.populate_med_image_list import populate_medical_image_tree
 import fcn_load.load_dcm
 from copy import deepcopy
-from PyQt5.QtWidgets import QMessageBox, QTableWidgetItem,QTableWidgetItem
+from PySide6.QtWidgets import QMessageBox, QTableWidgetItem,QTableWidgetItem
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
 from fcn_dosecalculations.general_fcn import scale_dose_to_CT

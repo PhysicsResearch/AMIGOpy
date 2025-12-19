@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QApplication, QMessageBox
+from PySide6.QtWidgets import QVBoxLayout, QApplication, QMessageBox
 
 # Plot I-values
 def plot_I_value_points(self):

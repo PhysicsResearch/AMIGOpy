@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 from fcn_load.load_dcm   import populate_medical_image_tree
 from fcn_load.read_IrIS  import populate_IrIS_tree
 import numpy as np

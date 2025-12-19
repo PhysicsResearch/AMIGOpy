@@ -3,7 +3,7 @@ import numpy as np
 from scipy.ndimage import rotate, shift
 from scipy.spatial.transform import Rotation as R
 from fcn_load.populate_med_image_list import populate_medical_image_tree
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 def calculate_TG43_plan_dose(self):
     # if the TG43 parameters are not initialized, call the function to do so

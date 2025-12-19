@@ -2,42 +2,42 @@ import vtk
 
 
 def set_color_map_gray(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 0
     set_color_map(self)
 
 def set_color_map_bone(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 1
     set_color_map(self)
      
 def set_color_map_hot(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 2
     set_color_map(self)
      
 def set_color_map_cold(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 3
     set_color_map(self)
      
 def set_color_map_jet(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 4
     set_color_map(self)
      
 def set_color_map_viridis(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 5
     set_color_map(self)
     
 def set_color_map_coolwarm(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 6
     set_color_map(self)
      
 def set_color_map_rainbow(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 7
     set_color_map(self)
 
@@ -64,7 +64,7 @@ def apply_colormap_to_actor(imageActor, colorTransferFunction=None):
 def set_color_map(self):
     if self.DataType == "IrIS":
         return
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     windowLevel = self.windowLevelAxial[idx].GetLevel()
     windowWidth = self.windowLevelAxial[idx].GetWindow()
     scalar_range = [windowLevel - windowWidth/2, windowLevel + windowWidth/2]

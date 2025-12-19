@@ -29,7 +29,7 @@ def on_scroll_forwardcomp(self, caller, event):
 
 
 def onMouseMovecomp(self, caller, event):
-    layer = self.layer_selection_box.currentIndex()
+    layer = self.layer_selected.currentIndex()
     for Ax_idx in range (0,self.Comp_im_idx.maximum()+1):
         if not ((Ax_idx, layer) in self.display_comp_data and int(self.current_AxComp_slice_index[Ax_idx, layer]) in self.display_comp_data[Ax_idx, layer]):
             continue

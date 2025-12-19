@@ -1,7 +1,7 @@
 import os
 import SimpleITK as sitk
 import numpy as np
-from PyQt5.QtWidgets import QFileDialog
+from PySide6.QtWidgets import QFileDialog
 from pathlib import Path
 
 NIFTI_EXTS = ('.nii', '.nii.gz')

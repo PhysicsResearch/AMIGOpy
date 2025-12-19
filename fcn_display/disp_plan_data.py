@@ -1,14 +1,14 @@
 import numpy as np
 import csv
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QFileDialog, QTableWidgetItem, QMessageBox
-from PyQt5.QtGui import QColor
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QFileDialog, QTableWidgetItem, QMessageBox
+from PySide6.QtGui import QColor
 import sys
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication, QWidget, QTableWidget, QVBoxLayout, QPushButton, QSpinBox, QLabel, QMessageBox
 )
-from PyQt5.QtGui import QColor, QFont
-from PyQt5.QtCore import Qt
+from PySide6.QtGui import QColor, QFont
+from PySide6.QtCore import Qt
 from matplotlib.figure import Figure
 import matplotlib.colors as mcolors
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas

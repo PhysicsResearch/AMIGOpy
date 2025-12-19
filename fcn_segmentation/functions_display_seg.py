@@ -162,7 +162,7 @@ def left_button_releaseseg_event(self, obj, event):
     
     
 def onMouseMoveSeg(self, caller, event):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     if self.current_seg_slice_index[idx]==-1:
         return
     if self.display_data_seg[idx].ndim==2:
@@ -172,7 +172,7 @@ def onMouseMoveSeg(self, caller, event):
     # Get previous event position
     x0, y0 = caller.GetLastEventPosition()
     #
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     #
     if self.LeftButtonSegDown:
         current_window = self.windowLevelSeg[idx].GetWindow()
@@ -262,7 +262,7 @@ def onMouseMoveSeg(self, caller, event):
     
 
 def change_sliceSeg(self, delta):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     # Modify the current slice index
     self.current_seg_slice_index[idx] += delta
     # Ensure slice index is within bounds
@@ -285,7 +285,7 @@ def change_sliceSeg(self, delta):
     
     
 def displayseg(self, Im = None):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
 
     if self.segSelectView.currentText() == "Axial":
         for i in range(len(self.dataImporterSeg)):
@@ -448,7 +448,7 @@ def disp_structure_overlay_seg(self):
     
 
 def update_seg_image(self, Im = None):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     #
     if self.segSelectView.currentText() == "Axial":
         for i in range(len(self.dataImporterSeg)):

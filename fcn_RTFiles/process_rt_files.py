@@ -6,20 +6,20 @@ from fcn_load.populate_med_image_list import populate_medical_image_tree
 from fcn_RTFiles.process_mevion import read_proton_plan
 
 
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QCheckBox, QLabel, QPushButton, QHBoxLayout,
     QVBoxLayout, QColorDialog, QDoubleSpinBox, QListWidgetItem,
 )
-from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt
+from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt
 
 
 
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QCheckBox, QLabel, QPushButton, QDoubleSpinBox, QColorDialog
 )
-from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt
+from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt
 
 class set_struct_table(QWidget):
     """

@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QFileDialog, QMessageBox
-from PyQt5.QtGui import QColor
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QFileDialog, QMessageBox
+from PySide6.QtGui import QColor
 import pandas as pd
 import os
 import numpy as np
@@ -148,6 +148,16 @@ def export_roi_circ_values_to_csv(self):
     options |= QFileDialog.DontUseNativeDialog
     folder = QFileDialog.getExistingDirectory(self, "Select Folder", options=options)
 
+    if self.exportVoxValsROI.isChecked():
+        voxels_data = c_roi_getvoxels(self)
+        df = pd.DataFrame({k:pd.Series(v) for k,v in voxels_data.items()})
+        file_path = f"{folder}/roi_circles_voxels_values.csv"
+        try:
+            df.to_csv(file_path, index=False)
+        except:
+            QMessageBox.warning(None, "Warning", f"Could not write to {file_path}. Please close the file if it is open in another program.")
+            return
+
     if folder:
         # Prepare data for CSV
         if self.table_roi_c_values.columnCount() == 4:
@@ -169,7 +179,11 @@ def export_roi_circ_values_to_csv(self):
             file_path = f"{folder}/roi_circles_values.csv"
     
             # Save DataFrame to CSV
-            df.to_csv(file_path, index=False, header=False)
+            try:
+                df.to_csv(file_path, index=False)
+            except:
+                QMessageBox.warning(None, "Warning", f"Could not write to {file_path}. Please close the file if it is open in another program.")
+                return
         else:
             data = {"Mean": {}, "STD": {}}
             for i in range(self.table_roi_c_values.columnCount() // 4):
@@ -197,16 +211,14 @@ def export_roi_circ_values_to_csv(self):
                 df = pd.DataFrame(data[k])
                 
                 # Define the file path
-                file_path = f"{folder}/roi_circles_values.xlsx"
-                with pd.ExcelWriter(file_path, mode=write_mode) as writer:  
-                    df.to_excel(writer, sheet_name=k, index=False)
-                write_mode = "a"
+                file_path = f"{folder}/roi_circles_values_{k}.csv"
+                try:
+                    df.to_csv(file_path, index=False, header=False)
+                except:
+                    QMessageBox.warning(None, "Warning", f"Could not write to {file_path}. Please close the file if it is open in another program.")
+                    return
 
 
-
-        print(f"Table exported to {file_path}")
-        
-        
 def import_roi_circ_table(self):
     # Temporarily disconnect the itemChanged signal to improve performance
     # self.table_circ_roi.blockSignals(True)
@@ -233,11 +245,77 @@ def import_roi_circ_table(self):
         print(f"Table populated from {file_name}")
     # Restore connection
     # self.table_circ_roi.blockSignals(False)
+
+def c_roi_getvoxels(self):
+        # Check if the checkbox is checked - All imges within modality or single series
+    if getattr(self, 'DataType', None) not in ["DICOM", "Nifti"]:
+        QMessageBox.warning(None, "Warning", "No DICOM/NIfTI data was found")
+        return
+    if self.checkBox_circ_roi_data_01.isChecked():
+        series_list = self.medical_image[self.patientID][self.studyID][self.modality]
+    else:
+        series_list = [self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]]
+
+    if self.checkBox_circ_roi_data_01.isChecked() and self.holdOnROI.isChecked():
+        QMessageBox.warning(None, "Warning", "The 'All image series' and 'Hold on' options cannot be used at the same time")
+        return
+    
+    voxels_data = {}
+    skip = False
+    
+    for i, series_data in enumerate(series_list):
+        reference_image = series_data['3DMatrix']
+        series_number = series_data['SeriesNumber']
+        
+        for row in range(self.table_circ_roi.rowCount()):
+            try:
+                item_x = self.table_circ_roi.item(row, 0)
+                item_y = self.table_circ_roi.item(row, 1)
+                item_radius = self.table_circ_roi.item(row, 2)
+                sli_ini = self.table_circ_roi.item(row, 3)
+                sli_fin = self.table_circ_roi.item(row, 4)
+    
+                if item_x is None or item_y is None or item_radius is None or sli_ini is None or sli_fin is None:
+                    print(f'Skipping row {row} due to missing data')
+                    continue
+
+                center_x = float(item_x.text())
+                center_y = float(item_y.text())
+                radius = float(item_radius.text())
+                slice_ini = int(float(sli_ini.text()))
+                slice_fin = int(float(sli_fin.text()))
+    
+                # Create a mask for the ROI
+                mask = np.zeros(reference_image.shape, dtype=bool)
+                for z in range(slice_ini, slice_fin + 1):
+                    y, x = np.ogrid[-center_y:reference_image.shape[1] - center_y, -center_x:reference_image.shape[2] - center_x]
+                    try:
+                        mask[z] = x*x + y*y <= radius*radius
+                    except:
+                        QMessageBox.warning(None, "Warning", f"Slice index {z} is out of bounds for the image with shape {reference_image.shape}")
+                        skip = True
+                        break
+            
+                if skip: 
+                    break
+                # Apply the mask to the reference image
+                masked_data = reference_image[mask]
+                voxels_data[f'Series_{series_number}_ROI_{row}'] = masked_data.flatten()
+    
+            except ValueError:
+                print(f'Skipping row {row} due to invalid data')
+                continue
+
+    return voxels_data
+
     
 def c_roi_getdata(self):
     # Check if the checkbox is checked - All imges within modality or single series
     if getattr(self, 'DataType', None) not in ["DICOM", "Nifti"]:
         QMessageBox.warning(None, "Warning", "No DICOM/NIfTI data was found")
+        return
+    if self.patientID is None or self.studyID is None or self.modality is None:
+        QMessageBox.warning(None, "Warning", "Please select a image volume first")
         return
     if self.checkBox_circ_roi_data_01.isChecked():
         series_list = self.medical_image[self.patientID][self.studyID][self.modality]
