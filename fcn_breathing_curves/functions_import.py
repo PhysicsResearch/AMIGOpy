@@ -1,30 +1,37 @@
 import pandas as pd
 import numpy as np
-from PySide6.QtWidgets import QFileDialog, QTableWidgetItem
+from PySide6.QtWidgets import QFileDialog, QTableWidgetItem, QMessageBox
+
+###########################################
+##### IMPORT AND PROCESSING FUNCTIONS #####
+###########################################
 
 def openCSVFile_BrCv(self):
+        """Function connected to the IMPORT button
+        - previewFile: displays the raw contents of the selected file in TXT format
+        - processVXP/CSV: imports the selected file as pandas.DataFrame"""
+
         options = QFileDialog.Options()
         fileName, _ = QFileDialog.getOpenFileName(self, "Open CSV and VXP File", "", "CSV Files (*.csv *.vxp);;All Files (*)", options=options)
         if fileName:
-            if fileName.lower().endswith('.vxp'):
-                previewVXP(self, fileName)
-                processVXP(self, fileName)
-            else:
-                previewCSV(self,fileName)
-                processCSV(self,fileName)
+            previewFile(self, fileName)
+            processFile(self, fileName)
 
 
-def previewVXP(self, filePath):
+
+def previewFile(self, filePath):
+    # Display raw text contents from VXP
     try:
         with open(filePath, 'r') as file:
             # Read the next 100 lines and add line numbers
             lines = []
             for i in range(1, 101):
                 line = file.readline()
-                if '[Data]' in line:
-                    self.lineSkipCSV_BrCv.setValue(i)  # Set the line number containing data
-                if 'Data_layout' in line:
-                    self.lineHeadCSV_BrCv.setValue(i)  # Set the line number containing header
+                if filePath.endswith('vxp'):
+                    if '[Data]' in line:
+                        self.lineSkipCSV_BrCv.setValue(i)  # Set the line number containing data
+                    if 'Data_layout' in line:
+                        self.lineHeadCSV_BrCv.setValue(i)  # Set the line number containing header
                 if not line:
                     break
                 lines.append(f"{i}: {line}")
@@ -32,27 +39,13 @@ def previewVXP(self, filePath):
             preview = ''.join(lines)
         self.textViewCSV_BrCv.setPlainText(preview)
     except Exception as e:
-        self.textViewCSV_BrCv.setPlainText(f'Error reading file: {e}')
+        self.textViewCSV_BrCv.setPlainText(f'Error reading file: {e}')       
 
 
-def previewCSV(self, filePath):
-    try:
-        with open(filePath, 'r') as file:
-            # Read the next 100 lines and add line numbers
-            lines = []
-            for i in range(1, 101):
-                line = file.readline()
-                if not line:
-                    break
-                lines.append(f"{i}: {line}")
 
-            preview = ''.join(lines)
-        self.textViewCSV_BrCv.setPlainText(preview)
-    except Exception as e:
-        self.textViewCSV_BrCv.setPlainText(f'Error reading file: {e}')
-
-
-def processVXP(self, filePath):
+def processFile(self, filePath):
+    """Function to process the CSV/VXP file selected by the user
+    - user-defined parameters in UI: seperator, skip_lines, header_line, flip_curve"""
     separator   = self.csv_sep_list_BrCv.currentText()
     skip_lines  = int(self.lineSkipCSV_BrCv.value())
     header_line = int(self.lineHeadCSV_BrCv.value())-1
@@ -79,6 +72,9 @@ def processVXP(self, filePath):
         dataframe = pd.read_csv(filePath, sep=separator, skiprows=skip_lines, header=None)
         dataframe.columns = header_param
 
+        if 'timestamp' not in dataframe.columns or 'amplitude' not in dataframe.columns:
+            QMessageBox.warning(None, "Warning", "The file does not contain columns named\n'timestamp' and/or 'amplitude'.")
+
         # Ensure 'timestamp' is the first column
         if 'timestamp' in dataframe.columns:
             cols = dataframe.columns.tolist()
@@ -100,80 +96,26 @@ def processVXP(self, filePath):
         if self.flipCSV_BrCv.isChecked():
             dataframe["amplitude"] = dataframe["amplitude"] * -1
 
+        # Remove emptry rows and trailing rows with amplitude = zero (no measurement)
+        dataframe = dataframe.dropna(axis=1, how='all')
+        dataframe = dataframe[dataframe.loc[::-1, 'amplitude'].ne(0).cummax()]
+
         # Add additional information
         self.curve_origin = "measured"
-        dataframe = dataframe[dataframe.loc[::-1, 'amplitude'].ne(0).cummax()]
         dataframe = addColumns(self, dataframe)
-        
-        # Update the combo boxes for x and y axis selection
-        self.plotXAxis_BrCv.clear()
-        self.plotYAxis_BrCv.clear()
-        self.plotXAxis_BrCv.addItems(dataframe.columns)
-        self.plotYAxis_BrCv.addItems(dataframe.columns)
-
-        if hasattr(self, 'lower_bound'):
-            del self.lower_bound
-        if hasattr(self, 'upper_bound'):
-            del self.upper_bound
 
         # Display the data in the QTableWidget
         loadTable(self, dataframe, header_line)
 
     except pd.errors.ParserError as e:
-        print(f"Error parsing CSV file: {e}")
-        # Handle the error, e.g., by logging or showing a message to the user
-
-    
-def processCSV(self, filePath):
-    separator   = self.csv_sep_list_BrCv.currentText()
-    skip_lines  = int(self.lineSkipCSV_BrCv.value())
-    header_line = int(self.lineHeadCSV_BrCv.value())-1
-    # Determine the header parameter for pandas read_csv
-    header_param = header_line if header_line >= 0 else None
-    
-    # Load the CSV file into a DataFrame
-    try:
-        dataframe = pd.read_csv(filePath, sep=separator, skiprows=skip_lines, header=header_param)
-        # Remove columns that are completely NaN
-        dataframe = dataframe.dropna(axis=1, how='all')
+        # Handle the error, by showing a message to the user
+        QMessageBox.warning(None, "Warning", f"Error parsing file: \n{e}.")
         
-        if 'timestamp' not in dataframe.columns or 'amplitude' not in dataframe.columns:
-            return
-        # 
-        # If no header, set default column names
-        if header_line == -1:
-            dataframe.columns = [f'C{i+1}' for i in range(dataframe.shape[1])]
-
-        # Flip amplitude if needed
-        if self.flipCSV_BrCv.isChecked():
-            dataframe["amplitude"] = dataframe["amplitude"] * -1
-
-        # Add additional information
-        self.curve_origin = "measured"
-        dataframe = addColumns(self, dataframe)
-        
-        # Update the combo boxes for x and y axis selection
-        self.plotXAxis_BrCv.clear()
-        self.plotYAxis_BrCv.clear()
-        self.plotXAxis_BrCv.addItems(dataframe.columns)
-        self.plotYAxis_BrCv.addItems(dataframe.columns)
-
-        if hasattr(self, 'lower_bound'):
-            del self.lower_bound
-        if hasattr(self, 'upper_bound'):
-            del self.upper_bound
-
-        # Display the data in the QTableWidget
-        loadTable(self,dataframe, header_line)
-    except pd.errors.ParserError as e:
-        print(f"Error parsing CSV file: {e}")
-        # Handle the error, e.g., by logging or showing a message to the user
 
 
 def addColumns(self, dataframe):
-
-    # Remove trailing rows with only zero amplitude
-    # dataframe = dataframe[dataframe.loc[::-1, 'amplitude'].ne(0).cummax()]
+    """Function to add additional data to the dataframe, such as 
+    time (in s), local maxima/minima, velocity/gradients"""
 
     # Interpolate amplitude values equal to 0
     if self.curve_origin == "measured":
@@ -181,12 +123,13 @@ def addColumns(self, dataframe):
         dataframe["amplitude"] = dataframe["amplitude"].interpolate(method='linear', limit_direction='forward')
 
     # Add column with time in seconds
-    dataframe["time"] = pd.to_timedelta(dataframe["timestamp"], unit=self.timeUnitCSV_BrCv.currentText())
-    dataframe["time"] = dataframe["time"].dt.total_seconds()
-    time_step = dataframe.loc[1, "time"] - dataframe.loc[0, "time"]
+    if 'time' not in dataframe.columns:
+        dataframe["time"] = pd.to_timedelta(dataframe["timestamp"], unit=self.timeUnitCSV_BrCv.currentText())
+        dataframe["time"] = dataframe["time"].dt.total_seconds()
+        time_step = dataframe.loc[1, "time"] - dataframe.loc[0, "time"]
 
     # Add local maxima and minima
-    if "mark" in dataframe.columns and self.curve_origin == "measured":
+    if "mark" in dataframe.columns and self.curve_origin == "measured" and 'P_min' not in dataframe.columns['mark']:
         df_copy = dataframe.copy()
         df_copy['mark'] = df_copy['mark'].astype(str)
 
@@ -205,11 +148,14 @@ def addColumns(self, dataframe):
             dataframe.loc[idxs[i+1]-1, "mark"] = "E"
 
     # Calculate speed and acceleration
-    dataframe = calcGrad(self, dataframe)
+    if 'velocity' not in dataframe.columns or 'speed' not in dataframe.columns \
+    or 'accel' not in dataframe.colums:
+        dataframe = calcGrad(self, dataframe)
 
     # If phase information in the CSV/VXP file create separate id per cycle
     # (instance already created in createCv function)
-    if "mark" in dataframe.columns:
+    if self.curve_origin == 'measured' and 'instance' not in dataframe.columns \
+    and "mark" in dataframe.columns:
         dataframe["instance"] = 0
 
         idxs = dataframe[dataframe["mark"] == "Z"].index
@@ -224,7 +170,7 @@ def addColumns(self, dataframe):
             if k == len(idxs) - 1:
                 dataframe.loc[idx:len(dataframe), "instance"] = k + 1
 
-    if "instance" in dataframe.columns:
+    if "instance" in dataframe.columns and 'cycle time' not in dataframe.columns:
         dataframe["cycle time"] = 0
         for i in range(1, len(dataframe)):
             if dataframe.loc[i, "instance"] > dataframe.loc[i-1, "instance"]:
@@ -236,6 +182,7 @@ def addColumns(self, dataframe):
 
 
 def loadTable(self, dataframe, header_line):
+    """Function to populate the table view widget"""
     # Clear the table before populating it
     self.tableViewCSV_BrCv.clear()
     self.tableViewCSV_BrCv.setRowCount(dataframe.shape[0])
@@ -251,15 +198,28 @@ def loadTable(self, dataframe, header_line):
     for row in range(dataframe.shape[0]):
         for col in range(dataframe.shape[1]):
             self.tableViewCSV_BrCv.setItem(row, col, QTableWidgetItem(str(dataframe.iat[row, col])))
-            
+
+    # Clear and re-initialize variables       
     if hasattr(self, "dfEdit_BrCv"):
         delattr(self, "dfEdit_BrCv")
+
+    # Update the combo boxes for x and y axis selection
+    self.plotXAxis_BrCv.clear()
+    self.plotYAxis_BrCv.clear()
+    self.plotXAxis_BrCv.addItems(dataframe.columns)
+    self.plotYAxis_BrCv.addItems(dataframe.columns)
+
+    if hasattr(self, 'lower_bound'):
+        del self.lower_bound
+    if hasattr(self, 'upper_bound'):
+        del self.upper_bound
         
     self.BrCvTab_index = 0
 
 
 def calcGrad(self, df):
-    # Convert the time column to TimedeltaIndex for resampling
+    """Calculate the velocity, speed and acceleration based on the time and amplitude columns.
+    Not used yet, but can be used to flag speed exceeding phantom capabilities."""
 
     col = "amplitude"
     # Calculate average speed
@@ -277,8 +237,13 @@ def calcGrad(self, df):
 
     return df
 
+################################################
+##### FUNCTIONS TO CREATE ANALYTICAL CURVE #####
+################################################
 
 def setParams(self):
+    """Populates the tableView with the user-defined parameters for the
+    analytical curve to be generated."""
     num_cycles = self.createCvNumCycl.value()
     amplitude = self.createCvAmpl.value()
     cycle_time = self.createCvCyclTime.value()
@@ -297,15 +262,22 @@ def setParams(self):
 
 
 def createCurve(self):
+    """Function to create analytical curve based on user-defined parameters in UI"""
+    # Initialize parameters
+    self.curve_origin = "created"
+    self.textViewCSV_BrCv.clear()
+
+    # Retrieve user-defined parameters
     cv_type = self.cvType.currentText()
     num_cycles = self.createCvNumCycl.value()
     freq = self.createCvFreq.value()
-
-    step = 1e3 / freq      # ms
+    step = 1e3 / freq      # in [ms]
 
     for row in range(num_cycles):
-        amplitude = float(self.tableViewEditParams.item(row, 0).text()) #* np.random.uniform(0.9, 1.1)
-        cycle_time_s = float(self.tableViewEditParams.item(row, 1).text()) #* np.random.uniform(0.9, 1.1)
+        amplitude = float(self.tableViewEditParams.item(row, 0).text()) 
+        cycle_time_s = float(self.tableViewEditParams.item(row, 1).text()) 
+        # Possibility to add variability to amplitude and cycle time by adding * np.random.uniform(0.9, 1.1)
+        
         num_steps = int((cycle_time_s * 1e3) // step)
         cycle_time_ms = int((num_steps - 1) * step)
         cycle_time_s = cycle_time_ms / 1e3
@@ -320,10 +292,7 @@ def createCurve(self):
         elif cv_type == "Cosine^6":
             y = amplitude * np.sin(x * np.pi / cycle_time_s) ** 6
 
-        if row == 0:
-            timestamps = t
-        else:
-            timestamps = t + dataframe.loc[len(dataframe)-1, "timestamp"] + step
+        timestamps = t if row == 0 else timestamps = t + dataframe.loc[len(dataframe)-1, "timestamp"] + step
 
         df_cycle = pd.DataFrame({"timestamp": timestamps, "amplitude": y})
         df_cycle["instance"] = row
@@ -332,25 +301,8 @@ def createCurve(self):
         df_cycle.loc[0, "mark"] = "P_min"
         df_cycle.loc[len(df_cycle)-1, "mark"] = "E"
 
-        if row == 0:
-            dataframe = df_cycle.copy()
-        else:
-            dataframe = pd.concat([dataframe, df_cycle], ignore_index=True)
+        dataframe = df_cycle.copy() if row == 0 else pd.concat([dataframe, df_cycle], ignore_index=True)
 
-    self.curve_origin = "created"
     dataframe = addColumns(self, dataframe)
-    
-    # Update the combo boxes for x and y axis selection
-    self.plotXAxis_BrCv.clear()
-    self.plotYAxis_BrCv.clear()
-    self.plotXAxis_BrCv.addItems(dataframe.columns)
-    self.plotYAxis_BrCv.addItems(dataframe.columns)
-
-    if hasattr(self, 'lower_bound'):
-        del self.lower_bound
-    if hasattr(self, 'upper_bound'):
-        del self.upper_bound
-
-    self.textViewCSV_BrCv.clear()
     loadTable(self, dataframe, 4)
 
