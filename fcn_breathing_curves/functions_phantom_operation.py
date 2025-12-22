@@ -52,8 +52,8 @@ def onTabChanged(self):
             self.MoVeSpeedFactor.setValue(100)
             self.MoVeSpeedFactor.valueChanged.connect(lambda: set_GCODE_speed(self))
             init_MoVeTab(self)
-        if self.BrCv_PhOperWidget.currentIndex() == 0:
-            exportMoVeData(self)
+    if self.tabWidget_BrCv.currentIndex() != 3:
+        exportMoVeData(self)
 
 
 def setDuetIP(self, config=False):
@@ -151,6 +151,14 @@ def init_MoVeTab(self):
     self.x_buffer = deque(maxlen=max_points)
 
     self.fig_MoVe = Figure()  # Create a figure for the first time
+    self.ax_MoVe = self.fig_MoVe.gca()
+    self.line1, = self.ax_MoVe.plot([], [])
+    self.line2, = self.ax_MoVe.plot([], [], color='orange')
+    self.line3, = self.ax_MoVe.plot([], [], color='wheat')
+    self.ax_MoVe.set_xlabel("Time (s)")
+    self.ax_MoVe.set_ylabel("Position (mm)")
+    self.ax_MoVe.set_ylim(min(self.orig_data['amplitude']), max(self.orig_data['amplitude']))
+
     self.MoVeCanvas = FigureCanvas(self.fig_MoVe)
     self.MoVeCanvas.setStyleSheet("background-color:Transparent;")
 
@@ -170,9 +178,8 @@ def init_MoVeTab(self):
     plt.tight_layout()
 
     # Start MoVe data thread
-    self.ani = FuncAnimation(self.fig_MoVe, lambda frame: update_MoVeData(self), interval=50)
-    # self.move_thread = MoVeThread(self)
-    # self.move_thread.start()
+    self.move_thread = MoVeThread(self)
+    self.move_thread.start()
 
 
 class MoVeThread(QThread):
@@ -201,10 +208,22 @@ def get_duet_status(self):
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
+            if data['status'] == 'S' and not hasattr(self, 'pause'):
+                self.pause = ('print', time.time())
+                return None, None, None
+            
             x = data['coords']['xyz'][0] * -1 + self.ampl_scaling_MoVe
             geiger = data['sensors']['probeValue']
             t = time.time() - self.t0 + self.tprint
-            return t, x, geiger
+            
+            if data['status'] == 'P':
+                if hasattr(self, 'pause') and self.pause[0] == 'print':
+                    self.t0 += (time.time() - self.pause[1])
+                    t       -= (time.time() - self.pause[1])
+                    delattr(self, 'pause')
+                return t, x, geiger
+            else:
+                return None, None, None
         else:
             print(f"Error: {response.status_code}")
             return None, None, None
@@ -226,54 +245,54 @@ def pause_continue_GCODE(self, pause=True):
 
 
 def update_MoVeData(self):
-    # try:
-        t, x, geiger = get_duet_status(self)
-        if t is None:
-            return
-        
-        if len(self.acq_timestamps) > 0 and \
-            t > self.acq_timestamps[0] - self.MoVeOffsetSlider.value() * UPDATE_INTERVAL:
-            self.acq_timestamps.pop(0)
+    t, x, geiger = get_duet_status(self)
+    if t is None:
+        return
+    
+    if len(self.acq_timestamps) > 0 and \
+        t > self.acq_timestamps[0] - self.MoVeOffsetSlider.value() * UPDATE_INTERVAL:
+        self.acq_timestamps.pop(0)
 
-            if self.stop_until_radiation.isChecked():
-                # Pause if not paused yet
-                if not hasattr(self, 'pause'):
-                    pause_continue_GCODE(self)
-                    self.pause = time.time()
-                    return
-            
-        if self.stop_until_radiation.isChecked() and hasattr(self, 'pause'):
-            # Continue if paused and radiation detected
-            if hasattr(self, 'pause') and geiger > 0:
-                    self.t0 += (time.time() - self.pause)
-                    t       -= (time.time() - self.pause)
-                    pause_continue_GCODE(self, False)
-                    delattr(self, 'pause')
-                    self.MoVeData['t'].append(t)
-                    self.MoVeData['x'].append(x)
-                    self.MoVeData['acq'].append(1)
-                    self.MoVeData['geiger'].append(1000)
-                    return
-            else:  
+        if self.stop_until_radiation.isChecked():
+            # Pause if not paused yet
+            if not hasattr(self, 'pause'):
+                pause_continue_GCODE(self)
+                self.pause = ('geiger', time.time())
                 return
-        if hasattr(self, 'pause') and not self.stop_until_radiation.isChecked():
-            pause_continue_GCODE(self, False)
-            delattr(self, 'pause')
-            
-        if not self.MoVeAutoControl.isChecked():
-            self.MoVeUserSetSpeed = self.MoVeSpeedFactor.value()
-        if self.MoVeAutoControl.isChecked() and len(self.time_buffer) > 10:
-            calc_diff(self)
+        
+    if self.stop_until_radiation.isChecked() and hasattr(self, 'pause') \
+        and self.pause[0] == 'geiger':
+        # Continue if paused and radiation detected
+        if hasattr(self, 'pause') and geiger > 0:
+                self.t0 += (time.time() - self.pause[1])
+                t       -= (time.time() - self.pause[1])
+                pause_continue_GCODE(self, False)
+                delattr(self, 'pause')
+                self.MoVeData['t'].append(t)
+                self.MoVeData['x'].append(x)
+                self.MoVeData['acq'].append(1)
+                self.MoVeData['geiger'].append(1000)
+                return
+        else:  
+            return
+    if hasattr(self, 'pause') and not self.stop_until_radiation.isChecked() \
+        and self.pause[0] == 'geiger':
+        pause_continue_GCODE(self, False)
+        delattr(self, 'pause')
+        
+    if not self.MoVeAutoControl.isChecked():
+        self.MoVeUserSetSpeed = self.MoVeSpeedFactor.value()
+    if self.MoVeAutoControl.isChecked() and len(self.time_buffer) > 10:
+        calc_diff(self)
 
-        self.time_buffer.append(t)
-        self.x_buffer.append(x)
-        self.MoVeData['t'].append(t)
-        self.MoVeData['x'].append(x)
-        self.MoVeData['acq'].append(0)
-        self.MoVeData['geiger'].append(geiger)
-        plot_MoVeData(self)
-    # except:
-    #     return
+    self.time_buffer.append(t)
+    self.x_buffer.append(x)
+    self.MoVeData['t'].append(t)
+    self.MoVeData['x'].append(x)
+    self.MoVeData['acq'].append(0)
+    self.MoVeData['geiger'].append(geiger)
+    plot_MoVeData(self)
+
     
 
 def calc_diff(self):
@@ -327,6 +346,8 @@ def exportMoVeData(self):
     
     if not hasattr(self, 'MoVeData'):
         return
+    
+    stop_threads(self)
 
     formatted_time = datetime.now().strftime("%Y%m%d_%H%M%S") 
     filepath = os.path.join(csv_root, filename.replace(".gcode", f"_MoVe_{formatted_time}.csv"))
@@ -335,11 +356,8 @@ def exportMoVeData(self):
 
     
 def plot_MoVeData(self):
-    ax = self.fig_MoVe.gca()
-    ax.clear()
-
     # Plot measured signal from buffer
-    ax.plot(self.time_buffer, self.x_buffer)
+    self.line1.set_data(self.time_buffer, self.x_buffer)
 
     # Plot past planned signal from csv data
     t0, t1 = min(self.time_buffer), max(self.time_buffer) 
@@ -347,13 +365,13 @@ def plot_MoVeData(self):
     df_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset)]
     t_roi = df_roi["timestamp"] - t_offset
     x_roi = df_roi["amplitude"]
-    ax.plot(t_roi, x_roi, color="pink")
+    self.line2.set_data(t_roi, x_roi)
 
     # Plot planned signal ahead of current time
     df_roi = self.orig_data.loc[(self.orig_data["timestamp"] > t1 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset + 10)]
     t_roi = df_roi["timestamp"] - t_offset
     x_roi = df_roi["amplitude"]
-    ax.plot(t_roi, x_roi, linestyle="--", color="pink")
+    self.line3.set_data(t_roi, x_roi)
 
     # Plot timestamps and window of acquisition regions-of-interest
     acq_timestamps = self.orig_data.loc[(self.orig_data["acq"] == 1) & \
@@ -361,27 +379,29 @@ def plot_MoVeData(self):
                                         (self.orig_data["timestamp"] <= t1 + t_offset + 10 + self.MoVeSystemLatency.value()), 
                                         "timestamp"] - t_offset
 
-    ax.vlines(acq_timestamps, 0, 20, color="red")
-    ax.vlines(acq_timestamps - self.MoVeSystemLatency.value(), 0, 20, color="green")
-    for t_acq in acq_timestamps:
-        ax.axvspan(xmin=t_acq, xmax=t_acq + 6, color="lightblue") 
+    if hasattr(self, 'vlines1'):
+        for vline in self.vlines1:
+            vline.remove()
+    self.vlines1 = [self.ax_MoVe.vlines(acq_timestamps, 0, 40, color="red")]
+
+    if hasattr(self, 'axvspans'):
+        for span in self.axvspans:
+            span.remove()
+    self.axvspans = [self.ax_MoVe.axvspan(xmin=t_acq, xmax=t_acq + 6, color="lightblue") for t_acq in acq_timestamps ]
 
     # Plot timestamps of start of copies
     copy_timestamps = self.orig_data.loc[(self.orig_data["start"] == 1) & \
                                          (self.orig_data["timestamp"] >= t0 + t_offset) & \
                                          (self.orig_data["timestamp"] <= t1 + t_offset + 10), 
                                          "timestamp"] - t_offset
-    ax.vlines(copy_timestamps, 0, 20, color="blue")
-    ax.vlines(copy_timestamps - self.MoVeSystemLatency.value(), 0, 20, color="green")
+    if hasattr(self, 'vlines2'):
+        for vline in self.vlines2:
+            vline.remove()
+    self.vlines2 = [self.ax_MoVe.vlines(copy_timestamps, 0, 40, color="red")]
 
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Position (mm)")
-    ax.set_xlim(min(self.time_buffer), max(self.time_buffer)+10)
-
+    self.ax_MoVe.set_xlim(min(self.time_buffer), max(self.time_buffer)+10)
     self.MoVeCanvas.draw()
 
     # Stop MoVe if end of curve is reached
     if self.orig_data['timestamp'].max() < t1 + t_offset:
         exportMoVeData(self)
-        self.ani.event_source.stop()
-        
