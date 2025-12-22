@@ -126,10 +126,12 @@ def addColumns(self, dataframe):
     if 'time' not in dataframe.columns:
         dataframe["time"] = pd.to_timedelta(dataframe["timestamp"], unit=self.timeUnitCSV_BrCv.currentText())
         dataframe["time"] = dataframe["time"].dt.total_seconds()
-        time_step = dataframe.loc[1, "time"] - dataframe.loc[0, "time"]
+    time_step = dataframe.loc[1, "time"] - dataframe.loc[0, "time"]
 
     # Add local maxima and minima
-    if "mark" in dataframe.columns and self.curve_origin == "measured" and 'P_min' not in dataframe.columns['mark']:
+    if "mark" in dataframe.columns and self.curve_origin == "measured":
+        init = False if 'P_min' in dataframe['mark'].unique() else True
+        
         df_copy = dataframe.copy()
         df_copy['mark'] = df_copy['mark'].astype(str)
 
@@ -147,28 +149,25 @@ def addColumns(self, dataframe):
             dataframe.loc[min_idx, "mark"] = "P_min"
             dataframe.loc[idxs[i+1]-1, "mark"] = "E"
 
+        if not init:
+            dataframe.loc[len(dataframe)-1, "mark"] = "E"
+
     # Calculate speed and acceleration
     if 'velocity' not in dataframe.columns or 'speed' not in dataframe.columns \
-    or 'accel' not in dataframe.colums:
+    or 'accel' not in dataframe.columns:
         dataframe = calcGrad(self, dataframe)
 
     # If phase information in the CSV/VXP file create separate id per cycle
     # (instance already created in createCv function)
     if self.curve_origin == 'measured' and 'instance' not in dataframe.columns \
     and "mark" in dataframe.columns:
-        dataframe["instance"] = 0
+        dataframe["instance"] = np.nan
 
         idxs = dataframe[dataframe["mark"] == "Z"].index
         for k, idx in enumerate(idxs):
-            if k == 0:
-                start = 0
-                end = idx
-            else:
-                start = idxs[k - 1]
-                end = idx
-            dataframe.loc[start:end, "instance"] = k
-            if k == len(idxs) - 1:
-                dataframe.loc[idx:len(dataframe), "instance"] = k + 1
+            start = idxs[k - 1]
+            end = idx
+            dataframe.loc[start:end-1, "instance"] = k
 
     if "instance" in dataframe.columns and 'cycle time' not in dataframe.columns:
         dataframe["cycle time"] = 0
@@ -206,8 +205,8 @@ def loadTable(self, dataframe, header_line):
     # Update the combo boxes for x and y axis selection
     self.plotXAxis_BrCv.clear()
     self.plotYAxis_BrCv.clear()
-    self.plotXAxis_BrCv.addItems(dataframe.columns)
-    self.plotYAxis_BrCv.addItems(dataframe.columns)
+    self.plotXAxis_BrCv.addItems(['timestamp', 'time', 'cycle time', 'velocity'])
+    self.plotYAxis_BrCv.addItems(['amplitude', 'velocity', 'speed'])
 
     if hasattr(self, 'lower_bound'):
         del self.lower_bound

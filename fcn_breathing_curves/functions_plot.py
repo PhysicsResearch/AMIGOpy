@@ -114,17 +114,10 @@ def plotViewData_BrCv_plot(self):
         x_data = df[x_col]
         y_data = df[y_col]
     elif x_col in ["phase", "cycle time"] and y_col == "amplitude" and i_index is not None:
-        g = df.groupby('instance').cumcount()
-        x_data = (df.set_index(['instance', g])
-                 .unstack(fill_value=np.nan)
-                 .stack().groupby(level=0)[x_col]
-                 .apply(lambda x: x.values.tolist())
-                 .tolist())
-        y_data = (df.set_index(['instance', g])
-                 .unstack(fill_value=np.nan)
-                 .stack().groupby(level=0)[y_col]
-                 .apply(lambda x: x.values.tolist())
-                 .tolist())
+        df_filtered = df.dropna(subset=['instance'])
+        grouped = df_filtered.groupby('instance')
+        x_data = grouped[x_col].apply(list).tolist()
+        y_data = grouped[y_col].apply(list).tolist()    
     else:
         return
 
@@ -255,9 +248,9 @@ def calcStats(self):
             if var == 'amplitude':
                 amplitudes = []
                 for i in self.peak_data['instance'].unique():
-                    if (self.valley_data['instance'] == i).sum() > 0:
-                        high = float(self.peak_data.loc[self.peak_data['instance']==i, var].values)
-                        low  = float(self.valley_data.loc[self.valley_data['instance']==i, var].values)
+                    if i in self.valley_data['instance'].unique():
+                        high = float(self.peak_data[self.peak_data['instance']==i][var].values)
+                        low  = float(self.valley_data[self.valley_data['instance']==i][var].values)
                         amplitudes.append(float(high - low))
                 data = pd.DataFrame(amplitudes, columns=['amplitude'])
             elif var == 'speed':
@@ -273,7 +266,6 @@ def calcStats(self):
             q1              = np.nanpercentile(data, 25)
             q3              = np.nanpercentile(data, 75)
             stats["iqr"] = float(q3 - q1)
-            print(stats)
 
         elif "instance" not in df.columns and var in ["amplitude", "speed"]:
             stats["max"] = df[var].max()

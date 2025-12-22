@@ -7,10 +7,12 @@ Created on Thu Mar 27 14:40:30 2025
 import os
 import numpy as np
 import pandas as pd
+from scipy.signal import detrend
+from scipy.ndimage import uniform_filter1d, median_filter
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from PySide6.QtWidgets import QVBoxLayout, QFileDialog
+from PySide6.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
 from fcn_breathing_curves.functions_import import addColumns
 
 
@@ -102,24 +104,14 @@ def clipCycles(self):
         Ouput:
             - df without non-complete cycles at the beginning/end"""
     
-    
     if "instance" in self.dfEdit_BrCv.columns:
         # This function is only executed if instance information is available
         # Otherwise return original dataframe
         df = self.dfEdit_BrCv
-        min_, max_ = int(df["instance"].min()), int(df["instance"].max())
-        for i in range(min_, max_):
-            if ((df[df["instance"] == i]["mark"] == "P_min").sum() == 0) or \
-                ((df[df["instance"] == i]["mark"] == "Z").sum() == 0):
-                min_ = i + 1
-                break
+        min_idx = df[df['mark'] == 'Z'].index[0]
+        max_idx = df[df['mark'] == 'E'].index[-1]
 
-        for i in range(max_, min_, -1):
-            if ((df[df["instance"] == i]["mark"] == "E").sum() == 0):
-                max_ = i - 1
-                break
-
-        df = df[(df["instance"] >= min_) & (df["instance"] <= max_)]
+        df = df.iloc[min_idx:max_idx+1]
         df.loc[:, "timestamp"] -= df["timestamp"].min()
         df.loc[:, "time"] -= df["time"].min()
         df.loc[:, "instance"] -= df["instance"].min()
@@ -354,7 +346,7 @@ def smoothAmpl(self):
     if self.smooth_method_BrCv.currentText() == "Fourier":
         threshold = self.fourier_cutoffs[self.threshFourierSlider.value()]
         fourier = np.fft.rfft(self.dfEdit_BrCv["amplitude"])
-        frequencies = np.fft.rfftfreq(self.dfEdit_BrCv["amplitude"].size, d=self.dfEdit_BrCv["timestamp"].diff().iloc[1])#20e-3/self.dfEdit_BrCv["amplitude"].size)
+        frequencies = np.fft.rfftfreq(self.dfEdit_BrCv["amplitude"].size, d=self.dfEdit_BrCv["timestamp"].diff().iloc[1])
         fourier[frequencies > threshold] = 0
         smooth_signal = np.fft.irfft(fourier, n=self.dfEdit_BrCv["amplitude"].size)
         self.dfEdit_BrCv["amplitude"] = smooth_signal
@@ -376,6 +368,11 @@ def applyOperations(self):
     """
     
     self.dfEdit_BrCv_copy = self.dfEdit_BrCv.copy()
+
+    if self.detrend_BrCv.isChecked():
+        min_ = self.dfEdit_BrCv['amplitude'].min()
+        self.dfEdit_BrCv['amplitude'] = detrend(self.dfEdit_BrCv['amplitude'])
+        self.dfEdit_BrCv['amplitude'] = self.dfEdit_BrCv['amplitude'] - self.dfEdit_BrCv['amplitude'].min() + min_
     
     if self.scaleAmpl_BrCv.value() != 1:
         scaleAmpl(self)
@@ -397,7 +394,7 @@ def applyOperations(self):
         setMinZero(self)
         
     setMaxThresh(self)
-    
+
     # Calculate additional columns for the edited dataframe
     self.dfEdit_BrCv = addColumns(self, self.dfEdit_BrCv)
 
@@ -433,12 +430,6 @@ def copyCurve(self):
     """
     
     df = self.dfEdit_BrCv
-    min_ = df['amplitude'].min()
-
-    if self.detrend_BrCv.isChecked():
-        from scipy.signal import detrend
-        df['amplitude'] = detrend(df['amplitude'])
-        df['amplitude'] = df['amplitude'] - df['amplitude'].min() + min_
 
     N = self.copyCurve_BrCv.value()
     timestep = df.iloc[1]["timestamp"] - df.iloc[0]["timestamp"]
@@ -495,11 +486,16 @@ def exportData(self):
     folder = QFileDialog.getExistingDirectory(self, options=options)
     # Save the DataFrame to a CSV file in the selected folder
     fileName = os.path.join(folder, self.editExportFile_BrCv.text()+".csv")
-    self.dfEdit_BrCv.to_csv(fileName)
+    try:
+        self.dfEdit_BrCv.to_csv(fileName)
+    except:
+        QMessageBox.warning(None, "Warning", "Data could not be stored.\nMaybe the file is still open?")
+        return
+    
     # Reset the dataframe to one copy
     undoOperations(self)
-    
-from scipy.ndimage import uniform_filter1d, median_filter
+
+
     
 def exportGCODE(self):
     # Prompt user to select a folder
@@ -514,10 +510,9 @@ def exportGCODE(self):
     
     # Copy the fragment N times and extract timestamp and amplitude data
     copyCurve(self)
+
     df = self.dfEdit_BrCv[["timestamp", "amplitude"]]
-    if "acq" not in self.dfEdit_BrCv.columns:
-        self.dfEdit_BrCv["acq"] = np.nan
-    
+
     # Convert the time column to TimedeltaIndex for resampling
     time_col = df.columns[0]
     df[time_col] = pd.to_timedelta(df[time_col], unit=self.timeUnitCSV_BrCv.currentText())
@@ -543,13 +538,14 @@ def exportGCODE(self):
         df.reset_index(inplace=True)
 
     df.rename(columns={'index': time_col}, inplace=True)
-    
+
     # Calculate velocity and acceleration for each column
     results = pd.DataFrame()
     results[time_col] = df[time_col].dt.total_seconds()
     axis_labels = ['X', 'Y', 'Z']  # Define axis labels
 
-    if self.dfEdit_BrCv["acq"].sum() > 0:
+    # Add acquisition timestamps closest to interpolated timepoints
+    if "acq" in self.dfEdit_BrCv and self.dfEdit_BrCv["acq"].sum() > 0:
         timestamps = self.dfEdit_BrCv.loc[self.dfEdit_BrCv["acq"] == 1, "time"]
         for t in timestamps:
             closest_t = (df[time_col].dt.total_seconds() - t).abs().idxmin()
@@ -557,12 +553,13 @@ def exportGCODE(self):
     else:
         df["acq"] = np.nan
 
+    # Add breathing curve start timestamps to closest interpolated timepoints
     timestamps = self.dfEdit_BrCv.loc[self.dfEdit_BrCv["start"] == 1, "time"]
     for t in timestamps:
         closest_t = (df[time_col].dt.total_seconds() - t).abs().idxmin()
         df.loc[closest_t, "start"] = 1 
 
-    # Write G-code file
+    # Add random fluctuation to avoid zero values being skipped
     col = 'amplitude'
     df["diff"] = df[col].diff().shift(-1)
     for i in range(len(df[col]) - 1):
@@ -570,36 +567,31 @@ def exportGCODE(self):
             df.loc[i, col] += np.random.choice([1, 1], 1) * np.random.choice(list(range(1, 1000)), 1) * 1e-5
     results[col] = df[col]
 
-    # Calculate average speed
+    # Calculate velocity, speed and acceleration
     vel = df[col].diff().shift(-1) / df[time_col].diff().shift(-1).dt.total_seconds()
     vel.iloc[-1] = vel.iloc[-2]  # Copy the second last value to the last element
-    
-    # Calculate speed in mm/min
-    speed = abs(vel) * 60
-    
-    # Calculate acceleration
-    accel = vel.diff() / df[time_col].diff().dt.total_seconds()
+    speed = abs(vel) * 60 # in mm/min
+    accel = vel.diff() / df[time_col].diff().dt.total_seconds() 
     accel.iloc[-1] = accel.iloc[-2]  # Copy the second last value to the last element
 
-    # Store & save results for real-time verification
     results[f'{col}_vel'] = vel
     results[f'{col}_speed'] = speed 
     results[f'{col}_accel'] = accel
-    if 'acq' in df.columns:
-        results["acq"] = df["acq"]
-    else:
-        results["acq"] = 0
+    
+    results["acq"] = df["acq"] if 'acq' in df.columns else 0
     results["start"] = df["start"]
 
-    try:
+    try: # save results to csv
         results.to_csv(file_path, index=False, mode='w')
     except:
+        QMessageBox.warning(None, "Warning", "Real-time verification data could not be stored.\nMaybe the file is still open?")
         return
 
     # Set recalculated velocity and speed after resampling
     df[f'{col}_vel'] = vel
     df[f'{col}_speed'] = speed
     
+    # Remove timepoints with low speed, might smoothen phantom execution
     if self.compress_speed_BrCv.value() > 0:
         df['keep'] = False
 
@@ -619,40 +611,35 @@ def exportGCODE(self):
         df = df[df['keep']].copy()
         df.drop(columns='keep', inplace=True)
 
-        # Calculate average speed
+        # Calculate velocity, speed
         vel = df[col].diff().shift(-1) / df[time_col].diff().shift(-1).dt.total_seconds()
         vel.iloc[-1] = vel.iloc[-2]  # Copy the second last value to the last element
-
-        # Calculate speed in mm/min
         speed = abs(vel) * 60
 
         df[f'{col}_vel'] = vel
         df[f'{col}_speed'] = speed
 
-    gcode_file_path = os.path.join(folder_path, file_name + ".gcode")
+    # Create G-code lines and write to file
     gcode_lines = ["G90"]  # Initialize G-code lines with absolute positioning command
-    max_, min_ = df[df.columns[1]].max(), df[df.columns[1]].min()
-    # Write G-code file
+    max_min = df[df.columns[1]].max() + df[df.columns[1]].min()
+    
     for i, row in df.iterrows():
         if i == 0:
-            speed = 1000  # Set to default speed for fast initialization
+            speed = 1000  # Set default speed for fast initialization
         else:
-            # Calculate speed in mm per minute
-            speed = row[f'{df.columns[1]}_speed'] * np.sqrt(len(axis_labels))
-        # Prepare G-code line
-        gcode_line = f"G0 F{speed:.6f}"
+            speed = row[f'{df.columns[1]}_speed'] * np.sqrt(len(axis_labels)) # speed in mm/min
+        
+        gcode_line = f"G0 F{speed:.6f}" # Prepare G-code line
         for j, col in enumerate(axis_labels):
-            if j < len(axis_labels):
-                if col == 'Z':
-                    gcode_line += f" {axis_labels[j]}{row[f'{df.columns[1]}']:.6f}"  # X, Y, Z, U, W
-                else:
-                    gcode_line += f" {axis_labels[j]}{row[f'{df.columns[1]}'] * -1 + max_ + min_:.6f}"  # X, Y, Z, U, W
+            if col == 'Z':
+                Z = row[f'{df.columns[1]}']
+                gcode_line += f" {axis_labels[j]}{Z:.6f}"  
             else:
-                gcode_line += f" {chr(85 + j)}{row[f'{df.columns[1]}']:.6f}"  # Continue with U, V, W, etc. if more than 5 columns
+                X = -row[f'{df.columns[1]}'] + max_min # Invert input for X, Y (compression)
+                gcode_line += f" {axis_labels[j]}{X:.6f}"  
         gcode_lines.append(gcode_line)
 
-    # Write G-code lines to the file
-    with open(gcode_file_path, 'w') as gcode_file:
+    with open(file_path.replace('csv', 'gcode'), 'w') as gcode_file:
         gcode_file.write('\n'.join(gcode_lines))
 
     # Set the DataFrame back to non-interpolated state
@@ -663,27 +650,28 @@ def exportGCODE(self):
 ### PLOTTING ###
 ################
 def onclick(self, event):
-    """Function to handle mouse click events on the plot"""
+    """Function to handle mouse click events on the plot
+    Used to set/delete acquisition timestamps for triggered imaging."""
     x_col = self.editXAxis_BrCv.currentText()
     if event.button == 1:  # Left click
+        # Retrieve the x-position of click and set acquisition to closest timestamp 
         if "acq" not in self.dfEdit_BrCv.columns:
             self.dfEdit_BrCv["acq"] = np.nan
         x = event.xdata
         self.dfEdit_BrCv.loc[(self.dfEdit_BrCv[x_col] - x).abs().idxmin(), "acq"] = 1
     elif event.button == 3:  # Right click
+        # Retrieve the x-position of click and delete acquisition closest to timestamp
         x = event.xdata
         if "acq" in self.dfEdit_BrCv.columns and self.dfEdit_BrCv["acq"].sum() > 0:
             delete_idx = (self.dfEdit_BrCv.loc[self.dfEdit_BrCv["acq"] == 1, x_col] - x).abs().idxmin()
             self.dfEdit_BrCv.loc[delete_idx, "acq"] = np.nan
+    # Update plot
     plotViewData_BrCv_edit(self)
 
 
 def plotViewData_BrCv_edit(self, df=None):
-    
-    try:
-        x_col = self.editXAxis_BrCv.currentText()
-    except:
-        return
+    """Function to plot the edited breathing curve real-time."""
+    x_col = self.editXAxis_BrCv.currentText()
     y_col = "amplitude"
     
     self.lower_bound = self.editXMinSlider_BrCv.value()
@@ -697,9 +685,11 @@ def plotViewData_BrCv_edit(self, df=None):
         df = self.dfEdit_BrCv
     else:
         return
+    
+    df_window = df[(df[x_col] >= self.lower_bound) & (df[x_col] <= self.upper_bound)]
 
-    x_data = df[x_col][(df[x_col] >= self.lower_bound) & (df[x_col] <= self.upper_bound)]
-    y_data = df[y_col][(df[x_col] >= self.lower_bound) & (df[x_col] <= self.upper_bound)]
+    x_data = df_window[x_col]
+    y_data = df_window[y_col]
 
     self.plot_fig = Figure()  # Create a figure for the first time
     ax = self.plot_fig.add_subplot(111) 
@@ -710,25 +700,23 @@ def plotViewData_BrCv_edit(self, df=None):
     
     # Customize text and axes properties
     ax.tick_params(colors='white', labelsize=self.selected_font_size-2)  # White ticks with larger text
-    ax.xaxis.label.set_color('white')
-    ax.yaxis.label.set_color('white')
-    ax.spines['bottom'].set_color('white')
-    ax.spines['top'].set_color('white')
-    ax.spines['left'].set_color('white')
-    ax.spines['right'].set_color('white')
+    ax.xaxis.label.set_color('white'); ax.yaxis.label.set_color('white')
+    ax.spines['bottom'].set_color('white'); ax.spines['top'].set_color('white')
+    ax.spines['left'].set_color('white'); ax.spines['right'].set_color('white')
 
     # Plot the data
     ax.set_xlim(np.min(x_data), np.max(x_data))
     ax.plot(x_data, y_data, label=f'{x_col} vs {y_col}')
-    if "acq" in self.dfEdit_BrCv.columns and self.dfEdit_BrCv["acq"].sum() > 0:
-        x_acq = self.dfEdit_BrCv.loc[self.dfEdit_BrCv["acq"] == 1, x_col]
+    # Plot acquisition timestamps within window
+    if "acq" in df_window and df_window["acq"].sum() > 0:
+        x_acq = df_window[self.dfEdit_BrCv["acq"] == 1, x_col]
         for x in x_acq:
-            if x > np.min(x_data) and x < np.max(x_data):
-                ax.axvline(x, color='red', label="Acquisition Timestamps")
-                if x_col == "timestamp":
-                    ax.fill_between(x=[x, x + 6000], y1=np.min(y_data), y2=np.max(y_data), facecolor="pink", alpha=0.5)
-                else:
-                    ax.fill_between(x=[x, x + 6], y1=np.min(y_data), y2=np.max(y_data), facecolor="pink", alpha=0.5)
+            ax.axvline(x, color='red', label="Acquisition Timestamps")
+            # Plot the 6-second HS-CBCT acquisition window
+            if x_col == "timestamp":
+                ax.fill_between(x=[x, x + 6000], y1=np.min(y_data), y2=np.max(y_data), facecolor="pink", alpha=0.5)
+            else:
+                ax.fill_between(x=[x, x + 6], y1=np.min(y_data), y2=np.max(y_data), facecolor="pink", alpha=0.5)
 
     ax.set_xlabel(x_col, fontsize=self.selected_font_size)
     ax.set_ylabel(y_col, fontsize=self.selected_font_size)
@@ -754,4 +742,3 @@ def plotViewData_BrCv_edit(self, df=None):
     container.layout().addWidget(canvas)
     canvas.draw()
     
-     
