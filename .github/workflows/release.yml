@@ -1,67 +1,278 @@
-name: Release AMIGOpy
+name: Build AMIGOpy and Release
 
-# Trigger the workflow manually OR by pushing a Git tag (e.g., v1.0.0)
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Release version (e.g., v1.2.0)'
+      app_version:
+        description: "Release version, e.g. 0.5"
         required: true
-  push:
-    tags:
-      - 'v*'  # Trigger on any tag that starts with 'v'
-      
+        default: "0.5"
+
 permissions:
-  contents: write  
-  
+  contents: write
+
 jobs:
-  release:
+  build-amigopy:
     runs-on: windows-latest
 
+    env:
+      KMP_DUPLICATE_LIB_OK: "TRUE"
+      PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
+      QT_PLUGIN_PATH: ""
+      QT_QPA_PLATFORM_PLUGIN_PATH: ""
+      NUITKA_CACHE_DIR: ${{ github.workspace }}\.nuitka-cache
+
     steps:
-      - name: Checkout code
+      - name: Checkout main
         uses: actions/checkout@v4
-
-      - name: Install Miniconda
-        uses: conda-incubator/setup-miniconda@v3
         with:
-          miniconda-version: "latest"
-          python-version: "3.11"
-          environment-file: amigo.yml
-          activate-environment: amigo
+          ref: main
 
-      - name: Run PyInstaller
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Cache Nuitka cache
+        uses: actions/cache@v4
+        with:
+          path: .nuitka-cache
+          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', '.github/workflows/build-amigopy.yml') }}
+          restore-keys: ${{ runner.os }}-nuitka-
+
+      - name: Build with Nuitka
+        shell: powershell
+        env:
+          PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
+          QT_PLUGIN_PATH: ""
+          QT_QPA_PLATFORM_PLUGIN_PATH: ""
+          MPLBACKEND: "Agg"
+        run: |
+          python -m venv venv-build
+          $venvScripts = "$(Resolve-Path .\venv-build\Scripts)"
+
+          $oldPath = $env:Path
+          $env:Path = "$venvScripts;$env:SystemRoot\system32;$env:SystemRoot"
+
+          python -m pip install --upgrade pip wheel setuptools
+
+          pip install `
+            "PySide6==6.7.3" `
+            "PySide6-Addons==6.7.3" `
+            "PySide6-Essentials==6.7.3" `
+            "shiboken6==6.7.3"
+
+          pip install "numpy==1.26.*" "scipy==1.12.*"
+          pip install pillow pydicom
+          pip install "scikit-image==0.22.*" "nibabel==5.*" "SimpleITK==2.5.*"
+          pip install "opencv-python-headless==4.10.*"
+
+          pip install "qdarkstyle>=3.1" "qstylizer>=0.2.2"
+          pip install "vtk==9.3.1"
+          pip install "matplotlib==3.8.*"
+
+          pip install "requests>=2.31" certifi
+          pip install "joblib>=1.3,<2"
+          pip install "openpyxl>=3.1"
+
+          pip install "pandas==2.2.*"
+          pip install "numexpr>=2.10,<3"
+          pip install "pyarrow==14.*"
+
+          pip install "nuitka>=2.2" ordered-set zstandard
+
+          python -c "import PySide6.QtCore as QC; from PySide6 import QtWebEngineCore as QW; print('PySide6:', QC.__file__); print('QtWebEngineCore:', QW.__file__)"
+
+          $vtkSrc = python -c "import os, vtkmodules; print(os.path.dirname(vtkmodules.__file__))"
+          $vtkSrc = ($vtkSrc.Trim() -replace '\\','/')
+          $vtkDataArg = "--include-data-dir=$vtkSrc=vtkmodules"
+
+          $qtBase = python -c "import os, PySide6; print(os.path.join(os.path.dirname(PySide6.__file__),'Qt'))"
+          $qtBase = ($qtBase.Trim() -replace '\\','/')
+          $qtRes  = "$qtBase/resources"
+          $qtTr   = "$qtBase/translations"
+          $qtExec = "$qtBase/libexec"
+
+          $qtArgs = @()
+          if (Test-Path $qtRes)  { $qtArgs += "--include-data-dir=$qtRes=PySide6/Qt/resources" }
+          if (Test-Path $qtTr)   { $qtArgs += "--include-data-dir=$qtTr=PySide6/Qt/translations" }
+          if (Test-Path $qtExec) { $qtArgs += "--include-data-dir=$qtExec=PySide6/Qt/libexec" }
+
+          $args = @(
+            "Launch_ImGUI.py",
+            "--standalone",
+            "--remove-output",
+            "--output-dir=dist\AMIGOpy",
+            "--enable-plugin=pyside6",
+            "--include-qt-plugins=platforms,imageformats,styles",
+            "--windows-console-mode=force",
+            "---report=dist\AMIGOpy\build_report.html".Replace("---","--"),
+            "--assume-yes-for-downloads",
+
+            "--include-package=pydicom",
+            "--include-package-data=pydicom",
+            "--include-package=PIL",
+            "--include-package=numpy",
+            "--include-package=scipy",
+            "--include-package=skimage",
+            "--include-package-data=skimage",
+            "--include-package=nibabel",
+            "--include-package=SimpleITK",
+            "--include-package=cv2",
+            "--include-package=vtkmodules",
+            "--include-package=vtkmodules.qt",
+            "--include-package=qdarkstyle",
+            "--include-package-data=qdarkstyle",
+            "--include-package=qstylizer",
+            "--include-package=matplotlib",
+            "--include-package-data=matplotlib",
+            "--include-package=requests",
+            "--include-package-data=certifi",
+            "--include-package=joblib",
+            "--include-package=openpyxl",
+            "--include-package-data=openpyxl",
+            "--include-package=pandas",
+            "--include-package-data=pandas",
+            "--include-package=numexpr",
+            "--include-package=pyarrow",
+            "--include-package-data=pyarrow",
+
+            "--nofollow-import-to=totalsegmentator",
+            "--nofollow-import-to=torch",
+            "--nofollow-import-to=torchvision",
+            "--nofollow-import-to=monai",
+            "--nofollow-import-to=nnunet",
+            "--nofollow-import-to=nnunetv2",
+            "--nofollow-import-to=einops",
+            "--nofollow-import-to=tqdm",
+            "--nofollow-import-to=fastapi",
+            "--nofollow-import-to=starlette",
+            "--nofollow-import-to=uvicorn",
+            "--nofollow-import-to=pydantic",
+
+            "--include-data-files=icons\ruler.png=icons\ruler.png",
+            "--include-data-files=icons\dcm_insp.png=icons\dcm_insp.png",
+            "--include-data-files=icons\brush.png=icons\brush.png",
+            "--include-data-files=icons\eraser.png=icons\eraser.png",
+            "--include-data-files=icons\layout.png=icons\layout.png",
+            "--include-data-files=icons\roi_point.png=icons\roi_point.png",
+            "--include-data-files=icons\roi_circle.png=icons\roi_circle.png",
+            "--include-data-files=icons\roi_ellipse.png=icons\roi_ellipse.png",
+            "--include-data-files=icons\roi_square.png=icons\roi_square.png",
+            "--include-data-files=icons\undo.png=icons\undo.png",
+
+            "--include-data-dir=fcn_ctcal\ct_cal_curves=fcn_ctcal\ct_cal_curves",
+            "--include-data-files=fcn_materialassignment\materials_db.csv=fcn_materialassignment\materials_db.csv"
+          )
+
+          $args += $vtkDataArg
+          $args += $qtArgs
+
+          $oldQtConf = $env:PYSIDE_DISABLE_INTERNAL_QT_CONF
+          $env:PYSIDE_DISABLE_INTERNAL_QT_CONF = ""
+
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          python -m nuitka @args
+
+          $env:PYSIDE_DISABLE_INTERNAL_QT_CONF = $oldQtConf
+          $env:Path = $oldPath
+
+      - name: Flatten Nuitka dist into dist\AMIGOpy
         shell: powershell
         run: |
-          pyinstaller Launch_ImGUI.spec
+          $root = "dist\AMIGOpy"
+          $src  = Join-Path $root "Launch_ImGUI.dist"
 
-      - name: Install Inno Setup
-        run: choco install innosetup -y
+          if (!(Test-Path $src)) {
+            throw "Expected $src not found"
+          }
 
-      - name: Build Windows installer
-        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" compile.iss'
+          Copy-Item -Path "$src\*" -Destination $root -Recurse -Force
+          Remove-Item -Path $src -Recurse -Force
 
-      - name: Upload unsigned installer artifact
-        id: upload_unsigned
+      - name: Verify dist contents
+        shell: powershell
+        run: |
+          if (-not (Test-Path "dist\AMIGOpy\Launch_ImGUI.exe")) {
+            throw "Launch_ImGUI.exe missing"
+          }
+
+          Get-ChildItem -Recurse dist\AMIGOpy |
+            Select-Object -First 40 |
+            Format-List -Property FullName,Length
+
+      - name: Zip portable build
+        shell: powershell
+        run: |
+          Compress-Archive `
+            -Path "dist/AMIGOpy/*" `
+            -DestinationPath "AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}.zip" `
+            -Force
+
+      - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-installer
-          path: Output/mysetup.exe
+          name: AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}
+          path: AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}.zip
+          if-no-files-found: error
+          overwrite: true
 
-      - name: Sign Windows installer with SignPath
-        uses: signpath/github-action-submit-signing-request@v1.1
+      - name: Ensure Inno Setup is installed
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+
+          if (!(Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+
+            if (!(Test-Path $iscc)) {
+              $isccAlt = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+
+              if (Test-Path $isccAlt) {
+                $iscc = $isccAlt
+              } else {
+                throw "ISCC.exe not found after install."
+              }
+            }
+          }
+
+          try {
+            & $iscc /? | Out-Null
+          } catch {
+            Write-Host "ISCC present; ignoring non-zero help exit."
+          }
+
+          $global:LASTEXITCODE = 0
+
+      - name: Build AMIGOpy installer
+        shell: powershell
+        run: |
+          $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+
+          if (!(Test-Path $iscc)) {
+            $iscc = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+          }
+
+          & $iscc AMIGOpy.iss
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
         with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
-          signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
-          github-artifact-id: ${{ steps.upload_unsigned.outputs.artifact-id }}
-          wait-for-completion: true
-          output-artifact-directory: signed
+          name: AMIGOpy-Installer-unsigned-v${{ github.event.inputs.app_version }}
+          path: Output/AMIGOpy-Setup*.exe
+          if-no-files-found: error
+          overwrite: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.version || github.ref_name }}
-          name: AMIGOpy ${{ github.event.inputs.version || github.ref_name }}
-          files: signed/mysetup.exe
+          tag_name: v${{ github.event.inputs.app_version }}
+          name: AMIGOpy v${{ github.event.inputs.app_version }}
+          draft: false
+          prerelease: false
+          files: |
+            AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}.zip
+            Output/AMIGOpy-Setup*.exe
