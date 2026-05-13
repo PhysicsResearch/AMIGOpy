@@ -1,8 +1,6 @@
-name: Build AMIGOpy (GUI + CPU worker) — unsigned
+name: Build AMIGOpy and Release
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
       app_version:
@@ -15,73 +13,155 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  KMP_DUPLICATE_LIB_OK: "TRUE"
 
 jobs:
   build-amigopy:
     runs-on: windows-latest
-    env:
-      KMP_DUPLICATE_LIB_OK: "TRUE"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
 
-      - name: Setup Miniconda (builder env)
+      - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
-          miniconda-version: "latest"
-          python-version: "3.11"
-          environment-file: amigo.yml     # your heavy env
-          activate-environment: amigo
           auto-update-conda: true
-          channels: conda-forge,defaults
+          python-version: 3.12
+          activate-environment: amigo
+          auto-activate-base: false
+          channels: conda-forge
 
-      - name: Add Graphviz to PATH (conda)
-        shell: powershell
-        run: echo "$env:CONDA_PREFIX\Library\bin" >> $env:GITHUB_PATH
-
-      - name: Upgrade pip tooling
-        shell: powershell
-        run: python -m pip install --upgrade pip wheel setuptools
-
-      # ---- Pin Torch CPU (no CUDA wheels) ----
-      - name: Install PyTorch CPU wheels
+      - name: Install dependencies
         shell: powershell
         run: |
+          conda activate amigo
+
           python -m pip install --upgrade pip
-          python -m pip install --index-url https://download.pytorch.org/whl/cpu `
-            "torch==2.4.1+cpu" "torchvision==0.19.1+cpu" "torchaudio==2.4.1+cpu"
-            
-      - name: Install scikit-learn for worker
-        shell: powershell
-        run: python -m pip install "scikit-learn>=1.3,<1.6"
 
-      - name: Ensure PyInstaller
-        shell: powershell
-        run: pip install pyinstaller
+          # IMPORTANT for PyInstaller
+          pip install "setuptools<81"
 
-      - name: Build combined dist (GUI + CPU worker)
+          pip install `
+            pyinstaller `
+            pillow `
+            pydicom `
+            numpy==1.26.* `
+            scipy==1.12.* `
+            scikit-image==0.22.* `
+            nibabel==5.* `
+            SimpleITK==2.5.* `
+            opencv-python-headless==4.10.* `
+            qdarkstyle `
+            qstylizer `
+            vtk==9.3.1 `
+            matplotlib==3.8.* `
+            requests `
+            certifi `
+            joblib `
+            openpyxl `
+            pandas==2.2.* `
+            numexpr `
+            pyarrow==14.* `
+            PySide6==6.7.3 `
+            PySide6-Addons==6.7.3 `
+            PySide6-Essentials==6.7.3 `
+            shiboken6==6.7.3
+
+      - name: Verify QtWebEngine
         shell: powershell
-        run: pyinstaller amigopy.spec --clean
+        run: |
+          conda activate amigo
+
+          python -c "import PySide6.QtCore as QC; from PySide6 import QtWebEngineCore as QW; print('PySide6:', QC.__file__); print('QtWebEngineCore:', QW.__file__)"
+
+      - name: Build with PyInstaller
+        shell: powershell
+        env:
+          MPLBACKEND: "Agg"
+          QT_PLUGIN_PATH: ""
+          QT_QPA_PLATFORM_PLUGIN_PATH: ""
+        run: |
+          conda activate amigo
+
+          pyinstaller amigopy.spec --clean
 
       - name: Verify dist contents
         shell: powershell
         run: |
-          if (-not (Test-Path "dist\AMIGOpy\Launch_ImGUI.exe")) { throw "Launch_ImGUI.exe missing" }
-          if (-not (Test-Path "dist\AMIGOpy\segmentator_worker.exe")) { throw "segmentator_worker.exe missing" }
-          Get-ChildItem -Recurse dist\AMIGOpy | Select-Object -First 40 | Format-List -Property FullName,Length
+          if (-not (Test-Path "dist\Launch_ImGUI.exe")) {
+            throw "Launch_ImGUI.exe missing"
+          }
 
-      - name: Install Inno Setup
+          Get-ChildItem -Recurse dist |
+            Select-Object -First 40 |
+            Format-List -Property FullName,Length
+
+      - name: Zip portable build
         shell: powershell
-        run: choco install innosetup -y
+        run: |
+          Compress-Archive `
+            -Path "dist/*" `
+            -DestinationPath "AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}.zip" `
+            -Force
 
-      - name: Build AMIGOpy installer
-        shell: powershell
-        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" AMIGOpy.iss'
-
-      - name: Upload installer (unsigned)
+      - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AMIGOpy-Installer-unsigned
-          path: Output/AMIGOpy-Setup.exe
+          name: AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}
+          path: AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}.zip
           if-no-files-found: error
           overwrite: true
+
+      - name: Ensure Inno Setup is installed
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+
+          if (!(Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+
+            if (!(Test-Path $iscc)) {
+              $isccAlt = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+
+              if (Test-Path $isccAlt) {
+                $iscc = $isccAlt
+              } else {
+                throw "ISCC.exe not found after install."
+              }
+            }
+          }
+
+      - name: Build installer
+        shell: powershell
+        run: |
+          $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+
+          if (!(Test-Path $iscc)) {
+            $iscc = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+          }
+
+          & $iscc AMIGOpy.iss
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AMIGOpy-Installer-v${{ github.event.inputs.app_version }}
+          path: Output/AMIGOpy-Setup*.exe
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.app_version }}
+          name: AMIGOpy v${{ github.event.inputs.app_version }}
+          draft: false
+          prerelease: false
+          files: |
+            AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}.zip
+            Output/AMIGOpy-Setup*.exe
