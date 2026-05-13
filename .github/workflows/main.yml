@@ -4,6 +4,17 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      app_version:
+        description: "Release version, e.g. 1.0.0"
+        required: true
+        default: "1.0.0"
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-amigopy:
