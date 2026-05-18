@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PySide6.QtWidgets import QFileDialog, QMessageBox
 import pandas as pd
 from fcn_DECT.constants import ATOMIC_NUMBER_TO_SYMBOL
 import csv 

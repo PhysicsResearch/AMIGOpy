@@ -12,7 +12,7 @@ def onMouseMoveAxial(self, caller, event):
         self.display_data is None or
         len(self.display_data) == 0):
         return   
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     
     if self.current_axial_slice_index[idx]==-1:
         return
@@ -89,7 +89,7 @@ def onMouseMoveAxial(self, caller, event):
 #        self.textActorAxialRuller.SetInput(f"({p1[0]:.0f}, {p1[1]:.0f})\n\n({p2[0]:.0f}, {p2[1]:.0f})\n\n{distance:.2f} px\n\n{d_mm:.2f} mm")
         
     if self.LeftButtonAxialDown == True and self.LeftButtonRuler == False and self._text_dragging == False:
-        idx = self.layer_selection_box.currentIndex()
+        idx = self.layer_selected.currentIndex()
         current_window = self.windowLevelAxial[idx].GetWindow()
         current_level  = self.windowLevelAxial[idx].GetLevel()
         if -0.001<current_level<0.001:
@@ -140,7 +140,7 @@ def onMouseMoveSagittal(self, caller, event):
         self.display_data is None or
         len(self.display_data) == 0):
         return   
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     if self.current_axial_slice_index[idx]==-1:
         return
     if self.display_data[idx].ndim==2:
@@ -150,7 +150,7 @@ def onMouseMoveSagittal(self, caller, event):
     
     # Get previous event position
     x0, y0 = caller.GetLastEventPosition()
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     if self.LeftButtonSagittalDown == True and self.LeftButtonRuler == False and self._text_dragging == False:
         current_window = self.windowLevelSagittal[idx].GetWindow()
         current_level  = self.windowLevelSagittal[idx].GetLevel()
@@ -218,7 +218,7 @@ def onMouseMoveCoronal(self, caller, event):
         self.display_data is None or
         len(self.display_data) == 0):
         return   
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     if self.current_axial_slice_index[idx]==-1:
         return
     if self.display_data[idx].ndim==2:
@@ -228,7 +228,7 @@ def onMouseMoveCoronal(self, caller, event):
     # Get previous event position
     x0, y0 = caller.GetLastEventPosition()
     #
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     #
     if self.LeftButtonCoronalDown == True and self.LeftButtonRuler == False and self._text_dragging == False:
         current_window = self.windowLevelCoronal[idx].GetWindow()
@@ -296,7 +296,7 @@ def change_sliceAxial(self, delta):
         self.display_data is None or
         len(self.display_data) == 0):
         return   
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     # Modify the current slice index
     self.current_axial_slice_index[idx] += delta
     # Ensure slice index is within bounds
@@ -321,7 +321,7 @@ def change_sliceSagittal(self, delta):
         self.display_data is None or
         len(self.display_data) == 0):
         return   
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     # Modify the current slice index
     self.current_sagittal_slice_index[idx] += delta
     # Ensure slice index is within bounds
@@ -342,7 +342,7 @@ def change_sliceCoronal(self, delta):
         self.display_data is None or
         len(self.display_data) == 0):
         return   
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     # Modify the current slice index
     self.current_coronal_slice_index[idx] += delta
     # Ensure slice index is within bounds

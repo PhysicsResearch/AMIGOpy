@@ -1,14 +1,14 @@
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox, QWidget
+from PySide6.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox, QWidget
 import matplotlib.pyplot as plt
 import math
 import pandas as pd
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView
+from PySide6.QtWidgets import QTableWidgetItem, QHeaderView
 from scipy.signal import find_peaks
-from PyQt5.QtCore import QModelIndex, Qt, QItemSelectionModel
-from PyQt5.QtGui import QStandardItemModel
+from PySide6.QtCore import QModelIndex, Qt, QItemSelectionModel
+from PySide6.QtGui import QStandardItemModel
 from fcn_display.Data_tree_general import on_DataTreeView_clicked
 from fcn_IrIS.plot_IrIS_profiles   import plot_IrIS_eval, create_and_embed_plot
 from fcn_IrIS.source_activity_time import calculate_time_from_ref, time_since_calibration, calculate_current_activity

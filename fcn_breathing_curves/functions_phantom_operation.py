@@ -6,41 +6,127 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.animation import FuncAnimation
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
-from PyQt5 import QtCore
+import json
+from PySide6.QtWidgets import QVBoxLayout, QFileDialog, QMessageBox
+from PySide6.QtCore import QThread, QUrl
+from datetime import datetime
 
-UPDATE_INTERVAL = 0.1    # seconds between polls
 WINDOW_DURATION = 10     # seconds to show on the plot
+UPDATE_INTERVAL = 0.05    # seconds between polls
 
 def set_fcn_MoVeTab_changed(self):
     # Connect the currentChanged signal to the onTabChanged slot
     self.BrCv_PhOperWidget.currentChanged.connect(lambda: onTabChanged(self))
+    self.tabWidget_BrCv.currentChanged.connect(lambda: onTabChanged(self))
 
+
+def read_update_config(self):
+    contents = {}
+    if os.path.exists(r'phantom_operation.json'):
+        with open(r'phantom_operation.json', 'r') as f:
+            contents = json.load(f)
+
+    if hasattr(self, 'duet_ip'):
+        contents['duet_ip'] = self.duet_ip
+    if hasattr(self, 'gcode_folder'):
+        contents['gcode_folder'] = self.gcode_folder
+
+    with open(r'phantom_operation.json', 'w') as f:
+        json.dump(contents, f)
 
 def onTabChanged(self):
-    if self.BrCv_PhOperWidget.currentIndex() == 1:
-        self.MoVeSpeedFactor.setValue(100)
-        self.MoVeSpeedFactor.valueChanged.connect(lambda: set_GCODE_speed(self))
-        init_MoVeTab(self)
+    if self.tabWidget_BrCv.currentIndex() == 3:
+        if self.BrCv_PhOperWidget.currentIndex() == 0:
+            if os.path.exists(r'phantom_operation.json'):
+                with open(r'phantom_operation.json', 'r') as f:
+                    contents = json.load(f)
+                    if 'duet_ip' in contents:
+                        self.duet_ip = contents['duet_ip']
+                        setDuetIP(self, config=True)
+                    if 'gcode_folder' in contents and os.path.exists(contents['gcode_folder']):
+                        self.gcode_folder = contents['gcode_folder']
+                        defineInputFolder(self, config=True)
+        if self.BrCv_PhOperWidget.currentIndex() == 1:
+            self.MoVeSpeedFactor.setValue(100)
+            self.MoVeSpeedFactor.valueChanged.connect(lambda: set_GCODE_speed(self))
+            init_MoVeTab(self)
+    if self.tabWidget_BrCv.currentIndex() != 3:
+        exportMoVeData(self)
 
 
-def setDuetIP(self):
-    self.duet_ip = self.DuetIPAddress.text()
+def setDuetIP(self, config=False):
+    if not config:
+        self.duet_ip = self.DuetIPAddress.text()
+        read_update_config(self)
+    else:
+        self.DuetIPAddress.setText(self.duet_ip)
+
+    self.DuetControlView.setUrl(QUrl(self.duet_ip))
+    self.DuetControlView.reload()
+    self.DuetControlView.setUrl(QUrl())
 
 
-def defineInputFolder(self):
-    options = QFileDialog.Options()
-    folder = QFileDialog.getExistingDirectory(self, options=options)
-    self.PhOperFolder.setText(folder)
+def defineInputFolder(self, config=False):
+    if not config:
+        options = QFileDialog.Options()
+        folder = QFileDialog.getExistingDirectory(self, options=options)
+        self.gcode_folder = folder
+        read_update_config(self)
+    self.PhOperFolder.setText(self.gcode_folder)
 
 
-def set_GCODE_speed(self):
-    speed_factor = self.MoVeSpeedFactor.value()
-    url = f'http://{self.duet_ip}/rr_gcode'
-    code = f"M220 S{speed_factor}"
-    r = requests.get(url, {'gcode': code})
+def get_curr_file(self, init=True):
+    # Get the filename of the GCODE currently being executed on Duet
+    try:
+        url = f'http://{self.duet_ip}/rr_fileinfo'
+        response = requests.get(url, timeout=3)
+        if response.status_code == 200:
+            data = response.json()
+            if data['err'] == 1:
+                QMessageBox.warning(None, "Warning", "Duet could not be reached.")
+                return None
+            filepath = data['fileName']
+            if init == True:
+                self.tprint = data['printDuration']
+            _, filename = os.path.split(filepath)
+            return filename
+    except:
+        QMessageBox.warning(None, "Warning", "Duet could not be reached.")
+        return None       
+
+
+def import_planned_curve(self, filename):
+    # Import the reference curve from a CSV file corresponding to the GCODE being executed
+    csv_root = self.PhOperFolder.text()
+    if not os.path.exists(csv_root):
+        self.orig_data = None
+        QMessageBox.warning(None, "Warning", "No valid input folder was provided.")
+        return
+    filepath = os.path.join(csv_root, filename.replace("gcode", "csv"))
+    if not os.path.exists(filepath):
+        self.orig_data = None
+        QMessageBox.warning(None, "Warning", "The input folder does not contain a csv file corresponding to the GCODE being executed.")
+        return
+    self.orig_data = pd.read_csv(filepath)
+
+
+def set_GCODE_speed(self, sf=None):
+    # Send a GCODE command to adjust the speed factor on Duet
+    if self.MoVeAutoControl.isChecked() and sf is None:
+        return
+    if sf is None:
+        speed_factor = self.MoVeSpeedFactor.value()
+    else:
+        speed_factor = sf
+        self.MoVeSpeedFactor.setValue(int(speed_factor))
+    try:
+        url = f'http://{self.duet_ip}/rr_gcode'
+        code = f"M220 S{speed_factor}"
+        requests.get(url, {'gcode': code})
+    except Exception as e:
+        print(f"Exception while sending GCODE: {e}")
 
 
 def init_MoVeTab(self):
@@ -48,23 +134,31 @@ def init_MoVeTab(self):
     filename = get_curr_file(self)
     if filename is None:
         return
+    
     import_planned_curve(self, filename)
     if self.orig_data is None:
         return
-
-    self.MoVeOffsetSlider.setRange(-150, 150)
+    
+    self.acq_timestamps = self.orig_data.loc[(self.orig_data["acq"] == 1), "timestamp"].tolist()
+    self.ampl_scaling_MoVe = self.orig_data["amplitude"].min() + self.orig_data["amplitude"].max()
+    self.MoVeOffsetSlider.setRange(-200, 200)
 
     self.t0 = time.time() 
-    # self.MoVeData = []
+    self.MoVeData = {'t': [], 'x': [], 'acq': [], 'geiger': []}
 
     max_points = int(WINDOW_DURATION / UPDATE_INTERVAL)
     self.time_buffer = deque(maxlen=max_points)
     self.x_buffer = deque(maxlen=max_points)
-    self.y_buffer = deque(maxlen=max_points)
-    self.z_buffer = deque(maxlen=max_points)
-    self.speed_buffer = deque(maxlen=max_points)
 
     self.fig_MoVe = Figure()  # Create a figure for the first time
+    self.ax_MoVe = self.fig_MoVe.gca()
+    self.line1, = self.ax_MoVe.plot([], [])
+    self.line2, = self.ax_MoVe.plot([], [], color='orange')
+    self.line3, = self.ax_MoVe.plot([], [], color='wheat')
+    self.ax_MoVe.set_xlabel("Time (s)")
+    self.ax_MoVe.set_ylabel("Position (mm)")
+    self.ax_MoVe.set_ylim(min(self.orig_data['amplitude']), max(self.orig_data['amplitude']))
+
     self.MoVeCanvas = FigureCanvas(self.fig_MoVe)
     self.MoVeCanvas.setStyleSheet("background-color:Transparent;")
 
@@ -81,105 +175,233 @@ def init_MoVeTab(self):
                 child.widget().deleteLater()
 
     layout.addWidget(self.MoVeCanvas)
-
-    self.ani = FuncAnimation(self.fig_MoVe, lambda i: update_MoVeData(self), interval=UPDATE_INTERVAL * 1000)
     plt.tight_layout()
-    # plt.show()
+
+    # Start MoVe data thread
+    self.move_thread = MoVeThread(self)
+    self.move_thread.start()
 
 
-def get_curr_file(self):
-    url = f'http://{self.duet_ip}/rr_fileinfo'
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        if data['err'] == 1:
-            return None
-        filepath = data['fileName']
-        self.tprint = data['printDuration']
-        _, filename = os.path.split(filepath)
-        return filename
-    else:
-        QMessageBox.warning(None, "Warning", "No valid Duet IP provided.")
-        return None
+class MoVeThread(QThread):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.running = True
+        self.parent = parent
 
+    def run(self):
+        interval = 0.05  # 50 ms
+        while self.running:
+            start_time = time.time()
+            update_MoVeData(self.parent)
+            elapsed = time.time() - start_time
+            sleep_time = max(0, interval - elapsed)
+            time.sleep(sleep_time)
 
-
-
-
-def import_planned_curve(self, filename):
-    csv_root = self.PhOperFolder.text()
-    if not os.path.exists(csv_root):
-        self.orig_data = None
-        QMessageBox.warning(None, "Warning", "No valid input folder was provided.")
-        return
-    filepath = os.path.join(csv_root, filename.replace("gcode", "csv"))
-    if not os.path.exists(filepath):
-        self.orig_data = None
-        QMessageBox.warning(None, "Warning", "The input folder does not contain a csv file corresponding to the GCODE being executed.")
-        return
-    self.orig_data = pd.read_csv(filepath)
+    def stop(self):
+        self.running = False
+        self.wait()
 
 
 def get_duet_status(self):
-    url = f'http://{self.duet_ip}/rr_status?type=3'
     try:
+        url = f'http://{self.duet_ip}/rr_status?type=3'
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
-            x, y, z = data['coords']['xyz']
-            speed = data['speeds']['requested']
-            top_speed = data['speeds']['top']
+            if data['status'] == 'S' and not hasattr(self, 'pause'):
+                self.pause = ('print', time.time())
+                return None, None, None
+            
+            x = data['coords']['xyz'][0] * -1 + self.ampl_scaling_MoVe
+            geiger = data['sensors']['probeValue']
             t = time.time() - self.t0 + self.tprint
-            return t, x, y, z, speed, top_speed
+            
+            if data['status'] == 'P':
+                if hasattr(self, 'pause') and self.pause[0] == 'print':
+                    self.t0 += (time.time() - self.pause[1])
+                    t       -= (time.time() - self.pause[1])
+                    delattr(self, 'pause')
+                return t, x, geiger
+            else:
+                return None, None, None
         else:
             print(f"Error: {response.status_code}")
+            return None, None, None
     except Exception as e:
-        print(f"Exception: {e}")
+        print(f"Exception while retrieving DUET data: {e}")
+        return None, None, None
+
+
+def pause_continue_GCODE(self, pause=True):
+    # Send a GCODE command to pause the current print on Duet
+    try:
+        code = "M25" if pause else "M24"
+        url = f'http://{self.duet_ip}/rr_gcode'
+        response = requests.get(url, {'gcode': code})
+        if response.status_code != 200:
+            print(f"Error pausing GCODE: {response.status_code}")
+    except Exception as e:
+        print(f"Exception while pausing GCODE: {e}")
 
 
 def update_MoVeData(self):
-    try:
-        t, x, y, z, speed, top_speed = get_duet_status(self)
+    t, x, geiger = get_duet_status(self)
+    if t is None:
+        return
+    
+    if len(self.acq_timestamps) > 0 and \
+        t > self.acq_timestamps[0] - self.MoVeOffsetSlider.value() * UPDATE_INTERVAL:
+        self.acq_timestamps.pop(0)
 
-        self.time_buffer.append(t)
-        self.x_buffer.append(x)
-        self.y_buffer.append(y)
-        self.z_buffer.append(z)  # Example: Z position
-        self.speed_buffer.append((speed * 60 == 1200) * 5)
-        # self.MoVeData.append([t, x, y, z, speed, top_speed])
-        plot_MoVeData(self)
-    except:
+        if self.stop_until_radiation.isChecked():
+            # Pause if not paused yet
+            if not hasattr(self, 'pause'):
+                pause_continue_GCODE(self)
+                self.pause = ('geiger', time.time())
+                return
+        
+    if self.stop_until_radiation.isChecked() and hasattr(self, 'pause') \
+        and self.pause[0] == 'geiger':
+        # Continue if paused and radiation detected
+        if hasattr(self, 'pause') and geiger > 0:
+                self.t0 += (time.time() - self.pause[1])
+                t       -= (time.time() - self.pause[1])
+                pause_continue_GCODE(self, False)
+                delattr(self, 'pause')
+                self.MoVeData['t'].append(t)
+                self.MoVeData['x'].append(x)
+                self.MoVeData['acq'].append(1)
+                self.MoVeData['geiger'].append(1000)
+                return
+        else:  
+            return
+    if hasattr(self, 'pause') and not self.stop_until_radiation.isChecked() \
+        and self.pause[0] == 'geiger':
+        pause_continue_GCODE(self, False)
+        delattr(self, 'pause')
+        
+    if not self.MoVeAutoControl.isChecked():
+        self.MoVeUserSetSpeed = self.MoVeSpeedFactor.value()
+    if self.MoVeAutoControl.isChecked() and len(self.time_buffer) > 10:
+        calc_diff(self)
+
+    self.time_buffer.append(t)
+    self.x_buffer.append(x)
+    self.MoVeData['t'].append(t)
+    self.MoVeData['x'].append(x)
+    self.MoVeData['acq'].append(0)
+    self.MoVeData['geiger'].append(geiger)
+    plot_MoVeData(self)
+
+    
+
+def calc_diff(self):
+    # Get the last time and position from the buffers
+    t = self.time_buffer[-1]
+    x_meas = self.x_buffer[-1]
+
+    t_offset = self.MoVeOffsetSlider.value() * UPDATE_INTERVAL
+    t0, t1 = t - 1.5, t + 1.5
+
+    df_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset)]
+    t_roi = df_roi["timestamp"] - t_offset
+    x_planned = df_roi["amplitude"]
+
+    # Calculate t_offset with minimum amplitude differences
+    ampl_diff = x_planned - x_meas
+    idx = ampl_diff.abs().idxmin()
+    t_diff = t - t_roi[idx]
+
+    # Calculate the speed factor adjustment, relative to user defined default 
+    sf = self.MoVeUserSetSpeed * (t_diff * np.median(self.MoVeData['x']) / 35 + 1)
+
+    # Clip between 90 - 120% to avoid explosive speed changes
+    sf = np.clip(sf, 0.9 * self.MoVeUserSetSpeed, 1.2 * self.MoVeUserSetSpeed)
+
+    # Set adjusted GCODE speed factor
+    set_GCODE_speed(self, sf)
+
+
+def setAcqStart(self):
+    # Set the start of an acquisition
+    self.MoVeData['acq'][-1] = 1
+    QMessageBox.information(None, "Info", f"MoVe Acquistion time stamp added")
+
+
+def stop_threads(self):
+    # Set the threads to stop when MoVe is finished
+    if hasattr(self, "move_thread") and self.move_thread.isRunning():
+        self.move_thread.stop()
+
+
+def exportMoVeData(self):
+    # Export the MoVe data to a CSV file
+    csv_root = self.PhOperFolder.text()
+    if not os.path.exists(csv_root):
         return
 
+    filename = get_curr_file(self, init=False)
+    if filename is None:
+        return
+    
+    if not hasattr(self, 'MoVeData'):
+        return
+    
+    stop_threads(self)
 
+    formatted_time = datetime.now().strftime("%Y%m%d_%H%M%S") 
+    filepath = os.path.join(csv_root, filename.replace(".gcode", f"_MoVe_{formatted_time}.csv"))
+    df = pd.DataFrame(self.MoVeData)
+    df.to_csv(filepath, index=False)
+
+    
 def plot_MoVeData(self):
-    ax = self.fig_MoVe.gca()
-    # ax1 = ax.twinx()
+    # Plot measured signal from buffer
+    self.line1.set_data(self.time_buffer, self.x_buffer)
 
-    ax.clear()
-    ax.plot(self.time_buffer, self.x_buffer, label="x")
-    ax.plot(self.time_buffer, self.y_buffer, label="y")
-    ax.plot(self.time_buffer, self.z_buffer, label="z")
-    ax.plot(self.time_buffer, self.speed_buffer, label="speed check", color="r")
-
-    # plot original data
+    # Plot past planned signal from csv data
     t0, t1 = min(self.time_buffer), max(self.time_buffer) 
     t_offset = self.MoVeOffsetSlider.value() * UPDATE_INTERVAL
-    t_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "timestamp"] - t_offset
-    x_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset), "amplitude"]
-    ax.plot(t_roi, x_roi, label="og", color="pink")
+    df_roi = self.orig_data.loc[(self.orig_data["timestamp"] >= t0 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset)]
+    t_roi = df_roi["timestamp"] - t_offset
+    x_roi = df_roi["amplitude"]
+    self.line2.set_data(t_roi, x_roi)
 
-    t_offset = self.MoVeOffsetSlider.value() * UPDATE_INTERVAL
-    t_roi = self.orig_data.loc[(self.orig_data["timestamp"] > t1 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset + 10), "timestamp"] - t_offset
-    x_roi = self.orig_data.loc[(self.orig_data["timestamp"] > t1 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset + 10), "amplitude"]
-    ax.plot(t_roi, x_roi, linestyle="--", color="pink")
+    # Plot planned signal ahead of current time
+    df_roi = self.orig_data.loc[(self.orig_data["timestamp"] > t1 + t_offset) & (self.orig_data["timestamp"] <= t1 + t_offset + 10)]
+    t_roi = df_roi["timestamp"] - t_offset
+    x_roi = df_roi["amplitude"]
+    self.line3.set_data(t_roi, x_roi)
 
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Position (mm)")
-    ax.legend()
+    # Plot timestamps and window of acquisition regions-of-interest
+    acq_timestamps = self.orig_data.loc[(self.orig_data["acq"] == 1) & \
+                                        (self.orig_data["timestamp"] >= t0 + t_offset) & \
+                                        (self.orig_data["timestamp"] <= t1 + t_offset + 10 + self.MoVeSystemLatency.value()), 
+                                        "timestamp"] - t_offset
 
-    # ax1.clear()
-    # print(len(self.speed_buffer))
-    # ax1.plot(self.time_buffer, self.speed_buffer, "r-")
+    if hasattr(self, 'vlines1'):
+        for vline in self.vlines1:
+            vline.remove()
+    self.vlines1 = [self.ax_MoVe.vlines(acq_timestamps, 0, 40, color="red")]
 
+    if hasattr(self, 'axvspans'):
+        for span in self.axvspans:
+            span.remove()
+    self.axvspans = [self.ax_MoVe.axvspan(xmin=t_acq, xmax=t_acq + 6, color="lightblue") for t_acq in acq_timestamps ]
+
+    # Plot timestamps of start of copies
+    copy_timestamps = self.orig_data.loc[(self.orig_data["start"] == 1) & \
+                                         (self.orig_data["timestamp"] >= t0 + t_offset) & \
+                                         (self.orig_data["timestamp"] <= t1 + t_offset + 10), 
+                                         "timestamp"] - t_offset
+    if hasattr(self, 'vlines2'):
+        for vline in self.vlines2:
+            vline.remove()
+    self.vlines2 = [self.ax_MoVe.vlines(copy_timestamps, 0, 40, color="red")]
+
+    self.ax_MoVe.set_xlim(min(self.time_buffer), max(self.time_buffer)+10)
     self.MoVeCanvas.draw()
+
+    # Stop MoVe if end of curve is reached
+    if self.orig_data['timestamp'].max() < t1 + t_offset:
+        exportMoVeData(self)

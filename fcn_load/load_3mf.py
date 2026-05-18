@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
+from PySide6.QtWidgets import QFileDialog, QMessageBox, QApplication
 import trimesh
 import numpy as np
 from pathlib import Path

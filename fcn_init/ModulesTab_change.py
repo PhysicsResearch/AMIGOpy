@@ -8,7 +8,7 @@ def onTabChanged(self):
     # 'index' is the index of the new current tab.
     tabName = self.tabModules.tabText(self.tabModules.currentIndex())
     #
-    self.layer_selection_box.setCurrentIndex(self.layerTab[tabName])
+    self.layer_selected.setCurrentIndex(self.layerTab[tabName])
     self.Layer_0_alpha_spin.setValue(self.transTab[tabName][0])
     self.Layer_1_alpha_spin.setValue(self.transTab[tabName][1])
     self.Layer_2_alpha_spin.setValue(self.transTab[tabName][2])

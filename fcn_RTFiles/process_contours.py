@@ -2,14 +2,14 @@ import numpy as np
 from skimage.draw import polygon
 from skimage.measure import find_contours
 from fcn_load.populate_med_image_list import populate_medical_image_tree
-from PyQt5.QtWidgets import QMessageBox, QDialog
+from PySide6.QtWidgets import QMessageBox, QDialog
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
 import vtk
 
 
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, Qt
-from PyQt5.QtWidgets import QProgressDialog, QMessageBox
+from PySide6.QtCore import QObject, QThread, Signal, Qt
+from PySide6.QtWidgets import QProgressDialog, QMessageBox
 from fcn_materialassignment.material_map import update_mat_struct_list
 from fcn_init.datatree_selection_box import SeriesPickerDialog
 
@@ -56,10 +56,10 @@ def find_matching_series(self, Ref):
     return matches
 
 class ContourWorker(QObject):
-    progress = pyqtSignal(int)
-    message  = pyqtSignal(str)
-    finished = pyqtSignal()
-    canceled = pyqtSignal()
+    progress = Signal(int)
+    message  = Signal(str)
+    finished = Signal()
+    canceled = Signal()
 
     def __init__(self, parent, data_dict, target_series_dict,
                  structures_keys, structures_names,

@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QHeaderView
+from PySide6.QtWidgets import QHeaderView
 from fcn_processing.roi_circle import on_roitable_item_changed
-from PyQt5.QtWidgets import QHeaderView, QAbstractItemView
+from PySide6.QtWidgets import QHeaderView, QAbstractItemView
 from fcn_ctcal.ct_cal import init_ct_cal_table
 from fcn_materialassignment.material_assignment_properties import create_dataframe_materials,update_mat_properties_table,update_mat_table_style
 

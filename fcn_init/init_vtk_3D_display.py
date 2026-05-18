@@ -1,6 +1,6 @@
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 import vtkmodules.all as vtk
-from PyQt5.QtWidgets import QVBoxLayout
+from PySide6.QtWidgets import QVBoxLayout
 
 def init_vtk3d_widget(self, placeholder_widget):
     """

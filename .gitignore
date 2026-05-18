@@ -2,3 +2,6 @@
 energiesMevion.mat
 .vscode/
 *.gz
+site/
+dist/
+phantom_operation.json

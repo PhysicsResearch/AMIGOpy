@@ -3,8 +3,8 @@ import sys
 import csv
 import numpy as np
 import pandas as pd
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, QMessageBox
-from PyQt5.QtGui import QColor, QBrush
+from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, QMessageBox
+from PySide6.QtGui import QColor, QBrush
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
 from scipy.optimize import minimize

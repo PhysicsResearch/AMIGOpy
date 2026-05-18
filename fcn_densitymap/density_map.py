@@ -1,11 +1,11 @@
 import numpy as np
 import vtk
 from copy import deepcopy
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QFileDialog, QTextEdit, QVBoxLayout, 
     QWidget, QLineEdit, QLabel, QComboBox, QCheckBox, QTableWidget, QTableWidgetItem,QHeaderView, QInputDialog, QMessageBox)
 
-from PyQt5.QtCore import Qt  # Import Qt to use Qt.ItemIsEditable flag
+from PySide6.QtCore import Qt  # Import Qt to use Qt.ItemIsEditable flag
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar

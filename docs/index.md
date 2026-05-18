@@ -1,16 +1,16 @@
-# AMIGOpy 🚀
+# AMIGOpy 
 
-## Welcome to the AMIGOpy Documentation 👋
+## Welcome to the AMIGOpy Documentation 
 
 This site documents the **AMIGOpy** software, including its main functionalities, coding standards, and development roadmap.
 
-> **Note for developers** 🧑‍💻  
+> **Note for developers**   
 > This documentation includes **in-depth details** about the source code, architecture, and contribution guidelines.  
 > **Regular users** should focus on the pages describing the **main features**, **user guides**, and **roadmap** — no need to dive into implementation details unless you're contributing.
 
 ---
 
-## 🧩 Overview
+##  Overview
 
 **AMIGOpy** is a medical imaging toolkit designed to support **radiotherapy research** and **clinical workflows**.
 
@@ -30,7 +30,7 @@ It provides tools for:
 
 ---
 
-## 📚 Documentation Structure
+##  Documentation Structure
 
 ### **1. Installation**
 See [Installation](installation.md)  
@@ -54,19 +54,3 @@ An overview of **variable naming conventions**, **data structures**, and **core 
 
 ---
 
-### **4. Contributing**
-See [Contributing Guide](contributing.md)  
-Everything you need to know to:
-
-- Create issues
-- Submit pull requests
-- Follow the coding standards
-- Join the development roadmap
-
----
-
-## 🛠️ Next Steps
-
-- Check out the [Installation Guide](installation.md) to get started.
-- Browse the [User Guide](usage/gui.md) for the main features.
-- Read the [Roadmap](dev/changelog.md) to see what's coming next.

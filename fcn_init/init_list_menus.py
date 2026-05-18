@@ -1,10 +1,11 @@
-from PyQt5 import QtWidgets
+from PySide6 import QtWidgets
 from fcn_processing.Im_process_list   import on_operation_selected
 from fcn_DECT.DECT_table_disp import on_DECT_list_selection_changed
 from fcn_display.disp_plan_data import update_disp_brachy_plan
 from fcn_display.display_images import update_layer_view
 from fcn_ctcal.ct_cal import update_ct_cal_view,load_ct_cal_curve,update_ct_cal_table
 from fcn_materialassignment.material_map import on_material_change
+from fcn_dosecalculations.eqd2_conversion import on_struct_list_change
 import os
 import sys
 
@@ -27,9 +28,9 @@ def populate_list_menus(self):
 
     # Populate selection box
     Layers = ["0", "1", "2", "3"]
-    self.layer_selection_box = self.findChild(QtWidgets.QComboBox, 'Layer_selection')
-    self.layer_selection_box.addItems(Layers)   
-    self.layer_selection_box.currentIndexChanged.connect(lambda: update_layer_view(self))
+    self.layer_selected = self.findChild(QtWidgets.QComboBox, 'Layer_sel')
+    self.layer_selected.addItems(Layers)   
+    self.layer_selected.currentIndexChanged.connect(lambda: update_layer_view(self))
 
     # List of operations
     operations = ["none","Invert Image", "Average", "Sum","Crop","Normalize", "Threshold", "Denoise Gaussian","Denoise Median","Denoise Percentile",
@@ -41,20 +42,6 @@ def populate_list_menus(self):
     self.process_list.addItems(operations)
     # You can also connect the selection change event to a function
     self.process_list.currentIndexChanged.connect(lambda index: on_operation_selected(self, index))
-    
-    # CSV explore
-    Separators = [",", ";", "\\t", " ", "|"]
-    # Get the QComboBox by its name
-    self.csv_sep_list = self.findChild(QtWidgets.QComboBox, 'CSVDeli_Sel')
-    # Populate the QComboBox
-    self.csv_sep_list.addItems(Separators)
-    # List of operations
-    operations_csv = ["Swap","Copy","Add Column","Add/Subtract", "Multiply", "Divide","Log","Exp.","Up.Thresh","Lw.Thresh"]
-    # Get the QComboBox by its name
-    self.operation_list_csv = self.findChild(QtWidgets.QComboBox, 'CSV_Oper_Box')
-    # Populate the QComboBox
-    self.operation_list_csv .addItems(operations_csv)
-    
 
     # Breathing curves
     Separators = [",", ";", "\\t", " ", "|"]
@@ -71,7 +58,14 @@ def populate_list_menus(self):
     
     self.editXAxis_list_BrCv = self.findChild(QtWidgets.QComboBox, 'editXAxis_BrCv')
     self.editXAxis_list_BrCv.addItems(["timestamp", "time"])
+
+    self.smooth_method_BrCv = self.findChild(QtWidgets.QComboBox, 'smooth_method_BrCv')
+    self.smooth_method_BrCv.addItems(["Fourier", "Uniform", "Median"])
     
+    self.fourier_cutoffs = [(x*y) for y in [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1] for x in list(range(1, 10))] 
+    self.threshFourierSlider.setMinimum(0)
+    self.threshFourierSlider.setMaximum(len(self.fourier_cutoffs) - 1)
+    self.threshFourierSlider.setValue(26)
     
     # Segmentation
     views = ["Axial", "Coronal", "Sagittal"]
@@ -176,6 +170,7 @@ def populate_list_menus(self):
     #Eqd2
     self.dose_list.addItems(['None'])
     self.eqd2_struct_list.addItems(['None'])
+    self.eqd2_struct_list.currentTextChanged.connect(lambda: on_struct_list_change(self))
     
 
     #Ct calibration

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
+from PySide6.QtWidgets import QTableWidgetItem, QMessageBox
 import csv, math
 from fcn_DECT.constants import ATOMIC_NUMBER_TO_SYMBOL
 

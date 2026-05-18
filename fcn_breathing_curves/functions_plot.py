@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from PyQt5.QtWidgets import QVBoxLayout, QTableWidgetItem, QFileDialog
+from PySide6.QtWidgets import QVBoxLayout, QTableWidgetItem, QFileDialog
 
 
 def getColumnIndexByName(self, column_name):
@@ -114,17 +114,10 @@ def plotViewData_BrCv_plot(self):
         x_data = df[x_col]
         y_data = df[y_col]
     elif x_col in ["phase", "cycle time"] and y_col == "amplitude" and i_index is not None:
-        g = df.groupby('instance').cumcount()
-        x_data = (df.set_index(['instance', g])
-                 .unstack(fill_value=np.nan)
-                 .stack().groupby(level=0)[x_col]
-                 .apply(lambda x: x.values.tolist())
-                 .tolist())
-        y_data = (df.set_index(['instance', g])
-                 .unstack(fill_value=np.nan)
-                 .stack().groupby(level=0)[y_col]
-                 .apply(lambda x: x.values.tolist())
-                 .tolist())
+        df_filtered = df.dropna(subset=['instance'])
+        grouped = df_filtered.groupby('instance')
+        x_data = grouped[x_col].apply(list).tolist()
+        y_data = grouped[y_col].apply(list).tolist()    
     else:
         return
 
@@ -158,15 +151,39 @@ def plotViewData_BrCv_plot(self):
         for x, y in zip(x_data, y_data):
             ax.plot(x, y)
 
-    ax.set_xlabel(x_col, fontsize=self.selected_font_size)
-    ax.set_ylabel(y_col, fontsize=self.selected_font_size)
+    from PySide6 import QtWidgets
+    self.plotPeaksBrCv = QtWidgets.QCheckBox(self.smoothing_BrCv)
+    self.plotPeaksBrCv.setChecked(False)
+    self.plotPeaksBrCv.setObjectName("plotPeaksBrCv")
+    if 'mark' in self.dfEdit_BrCv.columns and self.plotXAxis_BrCv.currentText() in ['timestamp', 'time'] \
+        and self.plotPeaks_BrCv.isChecked():
+        time_col = self.plotXAxis_BrCv.currentText()
+        z_marks = self.dfEdit_BrCv.loc[self.dfEdit_BrCv['mark'] == 'Z']
+        ax.scatter(z_marks[time_col], z_marks['amplitude'],
+                color='#bc80bd', marker='*', s=25, label='Peak')
+        ax.vlines(z_marks[time_col], ymin=0, ymax=z_marks['amplitude'],
+                colors='#bc80bd', linewidth=1.5)
+
+    # Set x_col as xlabel
+    if x_col == 'time':
+        ax.set_xlabel('Time (s)', fontsize=self.selected_font_size)
+    elif x_col == 'timestamp':
+        ax.set_xlabel('Time (ms)', fontsize=self.selected_font_size)
+    else:
+        ax.set_xlabel(x_col, fontsize=self.selected_font_size)
+
+    # Set y_col as ylabel
+    if y_col == 'amplitude':
+        ax.set_ylabel('Amplitude (mm)', fontsize=self.selected_font_size)
+    else:
+        ax.set_ylabel(y_col, fontsize=self.selected_font_size)
         
     if self.selected_background == "Transparent":
-        self.plot_fig.suptitle(f"{x_col} vs {y_col}", 
+        self.plot_fig.suptitle(self.plotTitle_BrCv.text(), 
                                fontsize=self.selected_font_size + 4,
                                color="white")
     else:
-        self.plot_fig.suptitle(f"{x_col} vs {y_col}", 
+        self.plot_fig.suptitle(self.plotTitle_BrCv.text(), 
                                fontsize=self.selected_font_size + 4)
     
     if self.selected_legend_on_off == "On":
@@ -207,37 +224,50 @@ def exportPlot(self):
 
 
 def calcStats(self):
+    if not hasattr(self, 'dfEdit_BrCv'):
+        return
+    
+    df = self.dfEdit_BrCv
+    df = addColumns(self, df) 
 
-    data = {}
-    cols = ["timestamp", "amplitude", "instance", "speed", "cycle time"]
-    for col in range(self.tableViewCSV_BrCv.columnCount()):
-        column_name = self.tableViewCSV_BrCv.horizontalHeaderItem(col).text()
-        if column_name in cols:
-            data[column_name] = []
-            for row in range(self.tableViewCSV_BrCv.rowCount()):
-                item = self.tableViewCSV_BrCv.item(row, col)
-                if item:
-                    data[column_name].append(float(item.text()))
+    cols = ["timestamp", "amplitude", "instance", "speed", "time"]
+    df = df[cols]
+    if 'mark' in self.dfEdit_BrCv:
+        self.peak_data = self.dfEdit_BrCv[self.dfEdit_BrCv['mark'] == 'Z']
+        self.valley_data = self.dfEdit_BrCv[self.dfEdit_BrCv['mark'] == 'P_min']
+    else:
+        if hasattr(self, 'peak_data'):
+            delattr(self, 'peak_data')
 
-    # Convert data to DataFrame
-    df = pd.DataFrame(data)
-
-    for var in ["amplitude", "cycle time", "speed"]:
+    for var in ["amplitude", "time", "speed"]:
         if var not in df.columns:
             continue
-        if "instance" in df.columns:
-            stats = {}
-            stats["min"] = df.groupby("instance").max()[var].min()
-            stats["max"] = df.groupby("instance").max()[var].max()
-            stats["mean"] = df.groupby("instance").max()[var].mean()
-            stats["std"] = df.groupby("instance").max()[var].std()
-            stats["median"] = df.groupby("instance").max()[var].median()
-            Q1 = df.groupby("instance").max()[var].quantile(0.25)
-            Q3 = df.groupby("instance").max()[var].quantile(0.75)
-            stats["iqr"] = Q3 - Q1
+        stats = {}
+
+        if hasattr(self, 'peak_data'):
+            if var == 'amplitude':
+                amplitudes = []
+                for i in self.peak_data['instance'].unique():
+                    if i in self.valley_data['instance'].unique():
+                        high = float(self.peak_data[self.peak_data['instance']==i][var].values)
+                        low  = float(self.valley_data[self.valley_data['instance']==i][var].values)
+                        amplitudes.append(float(high - low))
+                data = pd.DataFrame(amplitudes, columns=['amplitude'])
+            elif var == 'speed':
+                data = self.dfEdit_BrCv[var].dropna()
+            elif var == 'time':
+                data = self.peak_data[var].diff().dropna()
+
+            stats["min"]    = float(data.min(skipna=True))
+            stats["max"]    = float(data.max(skipna=True))
+            stats["mean"]   = float(data.mean(skipna=True))
+            stats["median"] = float(data.median(skipna=True))
+            stats["std"]    = float(data.std(skipna=True))
+            q1              = np.nanpercentile(data, 25)
+            q3              = np.nanpercentile(data, 75)
+            stats["iqr"] = float(q3 - q1)
 
         elif "instance" not in df.columns and var in ["amplitude", "speed"]:
-            stats = {}
             stats["max"] = df[var].max()
 
         if var == "amplitude":
@@ -249,7 +279,7 @@ def calcStats(self):
             for i, metric in enumerate(stats):
                 self.tableViewAmplStats.setItem(i, 0, QTableWidgetItem("{:.4f}".format(stats[metric])))
 
-        elif var == "cycle time":
+        elif var == "time":
             self.tableViewCyclStats.clear()
             self.tableViewCyclStats.setColumnCount(1)
             self.tableViewCyclStats.setHorizontalHeaderLabels(['cycle time'])

@@ -9,7 +9,7 @@ import csv
 import os
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QFileDialog, QTextEdit, QVBoxLayout, QFileDialog,
     QWidget, QLineEdit, QLabel, QComboBox, QCheckBox, QTableWidget, QTableWidgetItem, QMessageBox)
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas

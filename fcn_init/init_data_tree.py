@@ -1,5 +1,5 @@
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMenu, QDialog, QMessageBox
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QMenu, QDialog, QMessageBox
 from fcn_display.Data_tree_general import on_DataTreeView_clicked
 from fcn_export.export_dcm import export_dicom_series
 from fcn_export.export_nii import export_nifti

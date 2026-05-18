@@ -15,8 +15,8 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import (
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QCheckBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QGroupBox, QScrollArea, QGridLayout,
     QDoubleSpinBox, QComboBox, QMessageBox, QSplitter, QSizePolicy, QProgressBar
@@ -205,8 +205,8 @@ MR_QUICK = {
 # ---------------------------------------------------------------------------
 
 class SegmentatorWindow(QWidget):
-    runSegRequested = pyqtSignal(list, dict)
-    stopRequested   = pyqtSignal()
+    runSegRequested = Signal(list, dict)
+    stopRequested   = Signal()
 
     def __init__(self, parent=None, medical_image=None, excluded_modalities=None, data_provider=None):
         super().__init__(None)

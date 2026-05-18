@@ -1,10 +1,10 @@
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PySide6.QtWidgets import QFileDialog, QMessageBox
 import vtk
 from vtkmodules.util.numpy_support import vtk_to_numpy
 import numpy as np
 from pathlib import Path
 from fcn_load.populate_stl_list import populate_stl_tree
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 
 def load_obj_files(self, file_names=None):
     """

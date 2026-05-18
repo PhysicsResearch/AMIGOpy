@@ -1,8 +1,8 @@
 import os
-from PyQt5.QtWidgets import QAction
-from PyQt5.QtCore import Qt,  QSize
-from PyQt5.QtGui import   QIcon, QFont
-from PyQt5.QtWidgets import QToolButton, QToolTip
+from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt,  QSize
+from PySide6.QtGui import   QIcon, QFont
+from PySide6.QtWidgets import QToolButton, QToolTip
 from fcn_display.ruller import RulerWidget
 from fcn_display.dicom_info import open_dicom_tag_viewer
 from fcn_display.circ_ell_roi import CircleRoiWidget, EllipsoidRoiWidget, SquareRoiWidget, PointRoiWidget
@@ -464,24 +464,9 @@ def add_square(self):
 
 def remove_squares(self):
     """Hide, remove and delete *all* existing square ROIs."""
-    for roi in getattr(self, 'squares', []):
-        # 1) hide it if it’s visible
-        if getattr(roi, 'is_visible', False):
-            roi.toggle()
+    for roi in list(getattr(self, 'squares', [])):
+        roi.delete()      # let the widget clean itself up properly
 
-        # 2) remove the square actor itself
-        if hasattr(roi, 'squareActor') and roi.squareActor:
-            roi.renderer.RemoveActor(roi.squareActor)
-
-        # 3) remove its stats‐text actor
-        if hasattr(roi, 'statsActor') and roi.statsActor:
-            roi.renderer.RemoveActor(roi.statsActor)
-
-        # 4) turn off all the handle‐widgets
-        for handle in roi.handles.values():
-            handle.Off()
-
-    # 5) clear the list
     self.squares.clear()
 
     # 6) re‐render each view

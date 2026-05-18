@@ -57,7 +57,7 @@ self.medical_image[patientID][studyID][modality][series_index]
    - **`3DMatrix`** → a NumPy 3D array storing the full volumetric dataset
 
 ### **3. Series Add-ons**
-   - **`structures`** → ROI masks and contours
+   - **`structures`** → ROI masks and contours - [Structures within image series](Structures.md) 
    - **`density_maps`** → HU → density conversions for dose calculation
    - **`material_maps`** → tissue/material assignments for Monte Carlo simulation
 

@@ -22,9 +22,9 @@ from __future__ import annotations
 
 from typing import List, Dict, Any, Optional
 
-import sip
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject, pyqtSlot
-from PyQt5.QtWidgets import QTableWidgetItem, QProgressBar
+import shiboken6
+from PySide6.QtCore import Qt, QThread, Signal, QObject, Slot
+from PySide6.QtWidgets import QTableWidgetItem, QProgressBar
 
 from fcn_autocont.segmentator_ui import SegmentatorWindow
 from .segmentator_vendored import run_totalseg_for_series
@@ -125,10 +125,10 @@ def _set_row_state(win: SegmentatorWindow, row: int, state: str, msg: str = ""):
 # ----------------------- batch worker thread ----------------------
 
 class _SegBatchWorker(QObject):
-    series_started = pyqtSignal(int)                 # row
-    series_finished = pyqtSignal(int, bool, str)     # row, ok, message
-    cancelled_rows = pyqtSignal(list)                # rows list to mark 'Stopped'
-    all_done = pyqtSignal()
+    series_started = Signal(int)                 # row
+    series_finished = Signal(int, bool, str)     # row, ok, message
+    cancelled_rows = Signal(list)                # rows list to mark 'Stopped'
+    all_done = Signal()
 
     def __init__(self, owner, series_list: List[Dict[str, Any]], params: Dict[str, Any], parent=None):
         super().__init__(parent)
@@ -140,7 +140,7 @@ class _SegBatchWorker(QObject):
         segwin = getattr(self._owner, "segwin", None) or self._owner
         return bool(getattr(segwin, "_seg_cancel", False))
 
-    @pyqtSlot()
+    @Slot()
     def run(self):
         # Build ordered list of rows matching the selected series
         ordered_rows: List[int] = []
@@ -278,12 +278,12 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
             self.win = w
             self.thread: Optional[QThread] = None
 
-        @pyqtSlot(int)
+        @Slot(int)
         def on_series_started(self, row: int):
             self.win._current_row = row
             _set_row_state(self.win, row, "running")
 
-        @pyqtSlot(int, bool, str)
+        @Slot(int, bool, str)
         def on_series_finished(self, row: int, ok: bool, msg: str):
             if hasattr(self.win, "_batch_rows") and row in self.win._batch_rows:
                 self.win._batch_rows.discard(row)
@@ -293,14 +293,14 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
                 _set_row_state(self.win, row, "done" if ok else "failed", msg or "")
             self.win._current_row = None
 
-        @pyqtSlot(list)
+        @Slot(list)
         def on_cancelled_rows(self, rows: List[int]):
             for r in rows:
                 if hasattr(self.win, "_batch_rows") and r in self.win._batch_rows:
                     _set_row_state(self.win, r, "stopped")
                     self.win._batch_rows.discard(r)
 
-        @pyqtSlot()
+        @Slot()
         def on_all_done(self):
             # Any leftover queued rows become Stopped/Failed accordingly
             for r in list(getattr(self.win, "_batch_rows", set())):
@@ -321,7 +321,7 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
             self.win._seg_worker_thread = None
             self.win._seg_worker = None
 
-        @pyqtSlot()
+        @Slot()
         def on_thread_finished(self):
             # Fallback cleanup in case all_done didn't fire
             _set_controls_busy(self.win, False)
@@ -365,7 +365,7 @@ def open_segmentator_tab(self):
     # Reuse existing window if alive
     if getattr(self, "segwin", None) is not None:
         try:
-            if not sip.isdeleted(self.segwin) and self.segwin.isVisible():
+            if not shiboken6.isValid(self.segwin) and self.segwin.isVisible():
                 self.segwin.raise_()
                 self.segwin.activateWindow()
                 return

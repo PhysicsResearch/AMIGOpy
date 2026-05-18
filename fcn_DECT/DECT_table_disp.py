@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets     import  QTableWidgetItem, QMessageBox
-from PyQt5.QtCore        import Qt
-from PyQt5.QtGui         import QColor, QBrush
+from PySide6.QtWidgets     import  QTableWidgetItem, QMessageBox
+from PySide6.QtCore        import Qt
+from PySide6.QtGui         import QColor, QBrush
 from fcn_DECT.load_mat_info       import create_dataframe
 from fcn_DECT.calc_ref_parameters import calculate_mat_par
 from fcn_DECT.constants import ATOMIC_NUMBER_TO_SYMBOL

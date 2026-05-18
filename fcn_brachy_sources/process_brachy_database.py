@@ -4,9 +4,9 @@ import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvas, NavigationToolbar2QT as NavigationToolbar
 from fcn_brachy_sources.calculate_TG43_ref_matrix import calculate_dose_reference_matrix
-from PyQt5.QtWidgets import QVBoxLayout, QMessageBox, QTableWidgetItem, QFileDialog
-from PyQt5.QtGui import QColor, QBrush
-from PyQt5.QtCore import Qt 
+from PySide6.QtWidgets import QVBoxLayout, QMessageBox, QTableWidgetItem, QFileDialog
+from PySide6.QtGui import QColor, QBrush
+from PySide6.QtCore import Qt 
 
 def on_brachy_load_sources(self):
     """
@@ -398,7 +398,7 @@ def plot_brachy_ani(self):
         self.plot_ani_toolbar = NavigationToolbar(self.plot_ani_canvas, self)
         
         # Create or update the container's layout.
-        from PyQt5.QtWidgets import QVBoxLayout
+        from PySide6.QtWidgets import QVBoxLayout
         if container.layout() is None:
             layout = QVBoxLayout(container)
             container.setLayout(layout)
@@ -442,7 +442,7 @@ def plot_brachy_ani(self):
     # so the table column index for the selected anisotropy is (currentIndex + 1).
     selected_index = self.Brachy_ani_dist_list.currentIndex()
     if selected_index < 0:
-        from PyQt5.QtWidgets import QMessageBox
+        from PySide6.QtWidgets import QMessageBox
         QMessageBox.warning(self, "Selection Missing", "No anisotropy data column selected.")
         return
     y_col_index = selected_index + 1
@@ -466,7 +466,7 @@ def plot_brachy_ani(self):
         y_data.append(y_val)
     
     if not x_data or not y_data:
-        from PyQt5.QtWidgets import QMessageBox
+        from PySide6.QtWidgets import QMessageBox
         QMessageBox.warning(self, "Data Error", "No valid anisotropy data available for plotting.")
         return
     

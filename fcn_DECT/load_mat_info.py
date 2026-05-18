@@ -1,7 +1,9 @@
 # 
+import os
 import pandas as pd
-import tkinter as tk
-from tkinter import filedialog, messagebox
+from PySide6.QtWidgets import (
+    QFileDialog, QMessageBox, QApplication, QWidget
+)
 
 
 ATOMIC_NUMBER_TO_SYMBOL = {
@@ -19,17 +21,35 @@ ATOMIC_NUMBER_TO_SYMBOL = {
     111: 'Rg', 112: 'Cn', 113: 'Nh', 114: 'Fl', 115: 'Mc', 116: 'Lv', 117: 'Ts', 118: 'Og'
 }
 
-def create_dataframe(self):
-    # Open file dialog to select a CSV file
-    root = tk.Tk()
-    root.withdraw()  # Preventing the root window from appearing
-    filename = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")]) 
-    # Check if a file was selected
+def _qt_warn(parent: QWidget | None, title: str, text: str) -> None:
+    QMessageBox.warning(parent, title, text)
+
+def _ensure_app():
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])  # minimal app for standalone use
+    return app
+
+def create_dataframe(self=None, parent: QWidget | None = None):
+    """
+    Opens a Qt file dialog to pick a CSV and parses it into a DataFrame.
+    If `self` has `mat_table_label`, the first '#...' header line is shown there.
+    """
+    _ensure_app()
+
+    # File dialog (CSV)
+    start_dir = os.getcwd()
+    filename, _ = QFileDialog.getOpenFileName(
+        parent,
+        "Select materials CSV",
+        start_dir,
+        "CSV files (*.csv);;All files (*.*)"
+    )
+
     if not filename:
-        # Show a warning message if no file was selected
-        messagebox.showwarning("File Selection", "No file was selected or the operation was cancelled.")
+        _qt_warn(parent, "File Selection", "No file was selected or the operation was cancelled.")
         return None
-    #
+
     data = []
     additional_tags = ['Den', 'RED', 'Zeff','Iv', 'SPR','HUlow','HUhigh']
     all_columns = set(additional_tags)

@@ -3,10 +3,10 @@
 from fcn_DECT.constants import ATOMIC_NUMBER_TO_SYMBOL
 import pandas as pd
 import numpy as np
-from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
+from PySide6.QtWidgets import QTableWidgetItem, QMessageBox
 import csv, math
-from PyQt5.QtGui         import QColor, QBrush
-from PyQt5.QtCore        import Qt
+from PySide6.QtGui         import QColor, QBrush
+from PySide6.QtCore        import Qt
 from fcn_materialassignment.material_map import update_material_list,check_mat2HU,check_struct2mat
 import sys, os
 

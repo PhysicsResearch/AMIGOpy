@@ -85,3 +85,4 @@ def update_dose_matrix(
     -----
     Persist changes with `pydicom.dcmwrite` after this call.
     """
+```

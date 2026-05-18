@@ -2,48 +2,48 @@ import vtk
 
 
 def set_color_map_gray(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 0
     set_color_map(self)
 
 def set_color_map_bone(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 1
     set_color_map(self)
      
 def set_color_map_hot(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 2
     set_color_map(self)
      
 def set_color_map_cold(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 3
     set_color_map(self)
      
 def set_color_map_jet(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 4
     set_color_map(self)
      
 def set_color_map_viridis(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 5
     set_color_map(self)
     
 def set_color_map_coolwarm(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 6
     set_color_map(self)
      
 def set_color_map_rainbow(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     self.CmapIDX[idx] = 7
     set_color_map(self)
 
 
 def create_lookup_table_with_transparency(self, windowLevel, windowWidth,CmapIDX):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     #
     lut         = vtk.vtkLookupTable()
     windowWidth = windowWidth
@@ -65,7 +65,7 @@ def create_lookup_table_with_transparency(self, windowLevel, windowWidth,CmapIDX
 def set_color_map(self):
     # if self.DataType == "IrIS":
     #     return
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     # Get window level and width from axial view
     windowLevel = self.windowLevelAxial[idx].GetLevel()
     windowWidth = self.windowLevelAxial[idx].GetWindow()
@@ -76,7 +76,7 @@ def set_color_map(self):
     render_views(self)
 
 def apply_custom_colormap(self, lut):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     views = {'Axial': self.imageActorAxial[idx], 'Sagittal': self.imageActorSagittal[idx], 'Coronal': self.imageActorCoronal[idx]}
     windowLevels = {'Axial': self.dataImporterAxial[idx], 'Sagittal': self.dataImporterSagittal[idx], 'Coronal': self.dataImporterCoronal[idx]}
     # Apply the provided custom LUT to all image actors

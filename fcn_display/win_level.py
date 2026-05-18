@@ -1,13 +1,13 @@
 from fcn_display.display_images   import displayaxial, displaycoronal, displaysagittal
 from fcn_display.display_images_seg import disp_seg_image_slice
 from fcn_display.display_images_IrISeval import disp_eval_iris_slice
-from PyQt5.QtWidgets import QInputDialog
+from PySide6.QtWidgets import QInputDialog
 import numpy as np
 from fcn_display.colormap_set import set_color_map
 
 
 def window_auto(self):
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     data = self.display_data.get(idx)
     if data is None or (hasattr(data, 'size') and data.size == 0):
         return
@@ -25,7 +25,7 @@ def set_window(self,Window,Level):
     # check which tab is selecgted to apply it to the correct axes
     currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
     #
-    layer          = self.layer_selection_box.currentIndex()
+    layer          = self.layer_selected.currentIndex()
     if currentTabText == "View":
         data           = self.display_data.get(layer)
         if data is None or (hasattr(data, 'size') and data.size == 0):

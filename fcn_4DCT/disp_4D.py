@@ -1,7 +1,7 @@
 import numpy as np
 import time
 from fcn_display.display_images  import displayaxial, displaycoronal, displaysagittal
-from PyQt5.QtCore import QTimer
+from PySide6.QtCore import QTimer
 
 def play_4D_sequence(self):
     # Initialize an empty list to hold (index, sequence_id) tuples
@@ -31,7 +31,7 @@ def play_4D_sequence(self):
             checked_items.append((index, sequence_id))
     
     # Sort the list based on the sequence_id
-    idx = self.layer_selection_box.currentIndex()
+    idx = self.layer_selected.currentIndex()
     checked_items.sort(key=lambda x: x[1])
 
     # Initialize a counter for iterations and checked items

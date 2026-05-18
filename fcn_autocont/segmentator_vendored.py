@@ -13,8 +13,8 @@ sys.modules.setdefault("statistics", _stdlib_statistics)
 
 # Optional Qt (for warnings shown on the GUI thread only)
 try:
-    from PyQt5.QtWidgets import QMessageBox, QApplication
-    from PyQt5.QtCore import QThread
+    from PySide6.QtWidgets import QMessageBox, QApplication
+    from PySide6.QtCore import QThread
 except Exception:
     QMessageBox = None
     QApplication = None

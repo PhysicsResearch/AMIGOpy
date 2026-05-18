@@ -1,9 +1,7 @@
 import numpy as np
 import os
-import tkinter as tk
-from tkinter import filedialog
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PySide6.QtWidgets import QApplication, QFileDialog
+from PySide6.QtGui import QStandardItemModel, QStandardItem
 from fcn_load.populate_med_image_list import _get_or_create_parent_item
 from concurrent.futures import ProcessPoolExecutor
 from skimage.measure import block_reduce
@@ -167,9 +165,11 @@ def read_IrIS_quick(self, files):
     return IrIS_results
 
 def select_folder_and_read_files(self):
-    root = tk.Tk()
-    root.withdraw()  
-    folder_selected = filedialog.askdirectory()
+    # Qt QFileDialog ---
+    folder_selected = QFileDialog.getExistingDirectory(self, "Select IrIS root folder")
+    if not folder_selected:
+        print("No folder selected.")
+        return {}
     start_time = time.time()
     # number of files to skip at the beggining and totla number of files to read per folder
     skip_files = self.Skip_IrIS_Files.value()  # Get value from the Skip_IrIS_Files SpinBox

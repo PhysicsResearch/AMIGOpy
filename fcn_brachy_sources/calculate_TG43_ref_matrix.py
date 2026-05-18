@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import  QMessageBox
+from PySide6.QtWidgets import  QMessageBox
 import os
 import numpy as np
 import pandas as pd
@@ -13,7 +13,7 @@ def calculate_dose_reference_matrix(self):
     Stores result in self.TG43.activesource.DoseMatrix (cGy/h).
     """
     import numpy as np
-    from PyQt5.QtWidgets import QMessageBox
+    from PySide6.QtWidgets import QMessageBox
 
     src = self.TG43.activesource
 

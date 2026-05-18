@@ -3,7 +3,7 @@ def sliderIrISeval_change(self):
 
 
 def disp_eval_iris_slice(self):
-    # layer  = int(self.layer_selection_box.currentIndex())
+    # layer  = int(self.layer_selected.currentIndex())
     for layer in range(len(self.dataImporterIrEval)): 
         if self.slice_thick[layer] ==0:
             continue

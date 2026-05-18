@@ -1,6 +1,6 @@
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QTableWidgetItem, QPushButton, QCheckBox, QSpinBox, QColorDialog, QDoubleSpinBox
-from PyQt5.QtGui import QColor
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QTableWidgetItem, QPushButton, QCheckBox, QSpinBox, QColorDialog, QDoubleSpinBox, QAbstractItemView, QHeaderView
+from PySide6.QtGui import QColor
 
 def init_STL_Surface_table(self):
     self._STL_Surface_table.setColumnCount(16)
@@ -18,8 +18,17 @@ def init_STL_Surface_table(self):
         "Reset S",           # 14
         "Delete"             # 15 ← LAST COLUMN
     ])
-    self._STL_Surface_table.setEditTriggers(self._STL_Surface_table.NoEditTriggers)
-    self._STL_Surface_table.setSelectionBehavior(self._STL_Surface_table.SelectRows)
+    # Qt6 scoped enums (class-level, not instance-level)
+    self._STL_Surface_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+    self._STL_Surface_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+    self._STL_Surface_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+
+    # (optional) nicer sizing
+    hh = self._STL_Surface_table.horizontalHeader()
+    vh = self._STL_Surface_table.verticalHeader()
+    hh.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+    hh.setStretchLastSection(True)
+    vh.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
 
 
 def add_stl_to_table(self, name,

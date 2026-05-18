@@ -1,8 +1,8 @@
 import vtk
 import numpy as np
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from PyQt5.QtWidgets import QVBoxLayout
-from PyQt5 import QtWidgets
+from PySide6.QtWidgets import QVBoxLayout
+from PySide6 import QtWidgets
 from fcn_display.win_level import set_window
 from fcn_display.display_images_IrISeval  import sliderIrISeval_change
 from fcn_IrIS.FindDwell_IrIS  import process_frames, save_eval_to_csv, find_pks_dw, update_selection_tree, average_dw, average_frames_within_dw

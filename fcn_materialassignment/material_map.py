@@ -7,12 +7,12 @@ Created on Tue Jul  1 12:01:02 2025
 
 import pandas as pd
 import numpy as np
-from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
+from PySide6.QtWidgets import QTableWidgetItem, QMessageBox
 import csv, math
-from PyQt5.QtGui         import QColor, QBrush
-from PyQt5.QtCore        import Qt
+from PySide6.QtGui         import QColor, QBrush
+from PySide6.QtCore        import Qt
 from fcn_load.populate_med_image_list import populate_medical_image_tree
-from PyQt5.QtWidgets import QInputDialog, QMessageBox
+from PySide6.QtWidgets import QInputDialog, QMessageBox
 
 def update_material_list(self):
     

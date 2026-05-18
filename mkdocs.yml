@@ -12,6 +12,8 @@ theme:
     - navigation.sections
     - navigation.top
     - navigation.expand        # keep sections expanded by default
+    - toc.integrate            # <-- moves page ToC into the left nav
+    - toc.follow               # highlights section you’re reading
     - content.code.copy
     - search.highlight
     - search.suggest
@@ -37,12 +39,15 @@ theme:
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Usage:
-      - GUI: usage/gui.md
-      - API: usage/api.md
-  - Development:
-      - Contributing: dev/contributing.md
-      - Changelog: dev/changelog.md
+  - Development: 
+      - Guidelines: DevGuidelines/Software-documentation-guidelines.md
+      - Variables & Structures: 
+        - Overview: dev/variables&structures/General_variable_descriptions.md
+        - Medical Images: 
+          - Image series: dev/variables&structures/MedicalImage_type.md
+          - Structures: dev/variables&structures/Structures.md
+  - About: dev/about.md
+  - Publications: dev/references.md
 
 markdown_extensions:
   - admonition

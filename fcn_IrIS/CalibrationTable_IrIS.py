@@ -1,7 +1,7 @@
 # calibration module functions
 import csv
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QFileDialog
-from PyQt5.QtGui import QColor, QBrush
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QFileDialog
+from PySide6.QtGui import QColor, QBrush
 import os
 
 

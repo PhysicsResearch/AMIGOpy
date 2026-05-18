@@ -1,5 +1,5 @@
 from fcn_IrIS.source_activity_time import update_reference_time_table
-from PyQt5.QtWidgets import QTableWidgetItem
+from PySide6.QtWidgets import QTableWidgetItem
 import os
 import csv
 

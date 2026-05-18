@@ -8,13 +8,13 @@ from fcn_load.populate_med_image_list import populate_medical_image_tree
 from fcn_display.disp_data_type import adjust_data_type_seg_input
 from fcn_display.display_images_seg import disp_seg_image_slice
 
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import (
+from PySide6 import QtCore
+from PySide6.QtWidgets import (
     QWidget, QCheckBox, QLabel, QPushButton, QHBoxLayout, QMessageBox,
     QVBoxLayout, QColorDialog, QDoubleSpinBox, QListWidgetItem, QFileDialog, QTableWidgetItem
 )
-from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt, QTimer
+from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt, QTimer
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas

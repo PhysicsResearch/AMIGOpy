@@ -8,7 +8,7 @@ import math
 
 def set_3DViewer_data(self, hierarchy,hierarchy_indices):
     modality  = hierarchy[3].replace("Modality: ", "")     
-    idx       = self.layer_selection_box.currentIndex()
+    idx       = self.layer_selected.currentIndex()
     #
     current3Dview_TabText = self.tabWidget_3Dview.tabText(self.tabWidget_3Dview.currentIndex())
     if current3Dview_TabText != "Structures":

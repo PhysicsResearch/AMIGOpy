@@ -1,13 +1,13 @@
 import vtk
-from PyQt5.QtWidgets import QApplication, QPushButton, QWidget, QVBoxLayout, QAction, QShortcut
-from PyQt5 import QtWidgets  # Import the correct module for QMessageBox
-from PyQt5.QtGui import QKeySequence
-from PyQt5.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QPushButton, QWidget, QVBoxLayout
+from PySide6.QtGui import QAction, QShortcut
+from PySide6 import QtWidgets  # Import the correct module for QMessageBox
+from PySide6.QtGui import QKeySequence
+from PySide6.QtCore import Qt
 from fcn_init.vtk_comparison_axes     import create_vtk_elements_comp
 from fcn_IrIS.FindDwell_IrIS import add_row_dw_table, remove_row_dw_table
 from fcn_processing.Im_process_list import image_processing_undo, run_image_processing
 from fcn_processing.split_dcm_series import shift_and_split_3D_matrix
-from fcn_csv_explorer.general_functions_csv_exp import openCSVFile_exp,plotCSV_ViewData, CSV_apply_oper,exp_csv2_gcode
 from fcn_processing.roi_circle import (toggle_rois, roi_c_add_row, roi_c_remove_row, export_roi_circ_table_to_csv, import_roi_circ_table, 
                                        c_roi_getdata, export_roi_circ_values_to_csv)
 from fcn_IrIS.Load_CorrectionFrames import load_offset_IrIS, load_CorrectionFrame_IrIS
@@ -31,8 +31,8 @@ from fcn_RTFiles.process_contours import create_contour_masks
 from fcn_breathing_curves.functions_import import openCSVFile_BrCv, setParams, createCurve
 from fcn_breathing_curves.functions_plot import calcStats, plotViewData_BrCv_plot, exportPlot
 from fcn_breathing_curves.functions_edit import applyOperations, undoOperations, exportData, plotViewData_BrCv_edit, cropRange_BrCv_edit, exportGCODE#, cropCurve_BrCv_edit
-from fcn_breathing_curves.functions_phantom_operation import setDuetIP, defineInputFolder
-from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, update_doses_list, update_structure_list, eqd2_calc
+from fcn_breathing_curves.functions_phantom_operation import setDuetIP, defineInputFolder, setAcqStart, exportMoVeData
+from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, create_ab_matrix, eqd2_calc
 from fcn_segmentation.functions_segmentation import (threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc, 
                                                      DeleteSeg, undo_brush_seg, apply_morph_oper, undo_morph_oper)
 from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes,add_row_to_ct_table, export_ct_cal_to_csv
@@ -42,6 +42,9 @@ from fcn_3Dview.volume_3d_viewer import play_4D_sequence_3D
 from fcn_materialassignment.material_assignment_properties import add_mat_row,del_mat_row,add_element,del_element,save_mat_db,undo_changes
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
 from fcn_materialassignment.material_map import mat2HU,del_mat2HU,generate_mat_map,delete_mat_map,struct2mat,del_stuct2mat,update_mat_struct_list
+from fcn_3DPrinting.material_selection import calculate_red_settings
+from fcn_3DPrinting import handlers as hdl
+from fcn_reg.rigid_reg_manual import update_translation_x, update_translation_y, update_translation_z, update_rotation_x, update_rotation_y, update_rotation_z, set_transformation_step, apply_trasnformation
 
 
 def initialize_software_buttons(self):
@@ -85,6 +88,10 @@ def initialize_software_buttons(self):
     self.loadDuetPage.setStyleSheet("background-color: blue; color:white")
     self.definePhOperFolder.clicked.connect(lambda: defineInputFolder(self))
     self.definePhOperFolder.setStyleSheet("background-color: blue; color:white")
+    self.MoVeAcqStart.clicked.connect(lambda: setAcqStart(self))
+    self.MoVeAcqStart.setStyleSheet("background-color: green; color:white")
+    self.exportDataMoVe.clicked.connect(lambda: exportMoVeData(self))
+    self.exportDataMoVe.setStyleSheet("background-color: green; color:white")
 
     # Segmentation
     self.applyThreshSeg.clicked.connect(lambda: threshSeg(self))
@@ -116,16 +123,6 @@ def initialize_software_buttons(self):
     self.IrIS_Load_Offset.setStyleSheet("background-color: red; color: white;")
     self.IrIS_Load_CorrectionFrame.clicked.connect(lambda: load_CorrectionFrame_IrIS(self))
     self.IrIS_Load_CorrectionFrame.setStyleSheet("background-color: red; color: white;")
-    
-    # CSV explore
-    self.LoadCSVView.clicked.connect(lambda: openCSVFile_exp(self))
-    self.LoadCSVView.setStyleSheet("background-color: green; color: white;")
-    self.PlotCSVView.clicked.connect(lambda: plotCSV_ViewData(self))
-    self.PlotCSVView.setStyleSheet("background-color: blue; color: white;")
-    self.CSV_Oper_Apply.clicked.connect(lambda: CSV_apply_oper(self))
-    self.CSV_Oper_Apply.setStyleSheet("background-color: blue; color: white;")
-    self.exp_csv_2_gcode.clicked.connect(lambda: exp_csv2_gcode(self))
-    self.exp_csv_2_gcode.setStyleSheet("background-color: blue; color: white;")
     
     #  create vtk comp axes -buttom
     self.but_create_comp_axes.clicked.connect(lambda: create_vtk_elements_comp(self))
@@ -221,6 +218,18 @@ def initialize_software_buttons(self):
     self.CreateMask_Structures.clicked.connect(lambda: create_contour_masks(self))  # create mask
     self.CreateMask_Structures.setStyleSheet("background-color: blue; color: white;")
 
+    # Image registrations
+    self.Reg_manual_Tx.valueChanged.connect(lambda: update_translation_x(self))
+    self.Reg_manual_Ty.valueChanged.connect(lambda: update_translation_y(self))
+    self.Reg_manual_Tz.valueChanged.connect(lambda: update_translation_z(self))
+    self.Reg_manual_Rot_X.valueChanged.connect(lambda: update_rotation_x(self))
+    self.Reg_manual_Rot_Y.valueChanged.connect(lambda: update_rotation_y(self))
+    self.Reg_manual_Rot_Z.valueChanged.connect(lambda: update_rotation_z(self))
+    self.Manual_reg_step.valueChanged.connect(lambda: set_transformation_step(self))
+    #
+    self.apply_Im_transformation.clicked.connect(lambda: apply_trasnformation(self))
+    self.apply_Im_transformation.setStyleSheet("background-color: blue; color: white;")
+    
     # -----------------------------------------
     # Plan
     # ------------------------------------------
@@ -266,6 +275,7 @@ def initialize_software_buttons(self):
     self.delete_from_ab_list.clicked.connect(lambda: delete_ab(self))
     
     self.calc_eqd2_2.clicked.connect(lambda: eqd2_calc(self))
+    self.ab_matrix.clicked.connect(lambda: create_ab_matrix(self))
 
     #CT CALIBRATION--------------------------------------------------------------------------
     self.load_ct_cal.clicked.connect(lambda: load_ct_cal_curve(self))
@@ -297,6 +307,13 @@ def initialize_software_buttons(self):
     self.remove_mat_from_struct.clicked.connect(lambda: del_stuct2mat(self))
     self.update_mat_struct_list.clicked.connect(lambda: update_mat_struct_list(self))
     
+    # 3D Printing buttons connect
+    # setStyleSheet("background-color: green; color: white;")
+    self.import_reference_btn.clicked.connect(lambda: hdl.import_reference_file(self))
+    self.import_tested_filaments_btn.clicked.connect(lambda: hdl.load_gammex_file(self))
+    self.load_cal_btn.clicked.connect(lambda: hdl.load_cal_file(self))
+    self.show_filaments_button.clicked.connect(lambda: hdl.show_best_matching_filaments(self))
+    self.RED_calc_button.clicked.connect(lambda: hdl.calculate_red(self))
 
 
  
@@ -318,6 +335,9 @@ def initialize_software_buttons(self):
     self.exp_csv_roi_c_values.setStyleSheet("background-color: blue; color: white;")
     
     
+
+
+
 def on_display_dw_overlay_clicked(self):
     """
     Slot called when the display_dw_overlay checkbox is clicked.
