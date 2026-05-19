@@ -1,29 +1,35 @@
-name: Build AMIGOpy — unsigned (GUI only)
+name: Build AMIGOpy development branch for testing no release
 
 on:
-  push:
-    branches: [ Main ]
   workflow_dispatch:
     inputs:
       app_version:
-        description: "Installer version (optional)"
+        description: "Development compiling test"
         required: false
         default: ""
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-amigopy:
     runs-on: windows-latest
+
     env:
       KMP_DUPLICATE_LIB_OK: "TRUE"
-      # Guard against stray Qt discovery at runtime; we will clear it for compile
       PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
       QT_PLUGIN_PATH: ""
       QT_QPA_PLATFORM_PLUGIN_PATH: ""
       NUITKA_CACHE_DIR: ${{ github.workspace }}\.nuitka-cache
 
     steps:
-      - name: Checkout
+      - name: Checkout main
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -35,71 +41,67 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .nuitka-cache
-          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', '.github/workflows/build-amigopy.yml') }}
+          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', '.github/workflows/build-amigopy-release.yml') }}
           restore-keys: ${{ runner.os }}-nuitka-
 
-      - name: Build with Nuitka (GUI only, isolated venv)
+      - name: Build with Nuitka
         shell: powershell
         env:
-          # We'll clear this before compiling so Nuitka can discover Qt paths
           PYSIDE_DISABLE_INTERNAL_QT_CONF: "1"
           QT_PLUGIN_PATH: ""
           QT_QPA_PLATFORM_PLUGIN_PATH: ""
           MPLBACKEND: "Agg"
         run: |
-          # 1) Clean venv
           python -m venv venv-build
           $venvScripts = "$(Resolve-Path .\venv-build\Scripts)"
-          # 2) Use only the venv on PATH
+
           $oldPath = $env:Path
           $env:Path = "$venvScripts;$env:SystemRoot\system32;$env:SystemRoot"
-          # 3) Install runtime deps (Py 3.12 compatible)
+
           python -m pip install --upgrade pip wheel setuptools
-          # PySide6 stack (+Addons/Essentials for WebEngine)
+
           pip install `
             "PySide6==6.7.3" `
             "PySide6-Addons==6.7.3" `
             "PySide6-Essentials==6.7.3" `
             "shiboken6==6.7.3"
-          # Imaging / array stack
+
           pip install "numpy==1.26.*" "scipy==1.12.*"
           pip install pillow pydicom
           pip install "scikit-image==0.22.*" "nibabel==5.*" "SimpleITK==2.5.*"
           pip install "opencv-python-headless==4.10.*"
-          # Styling + visualization
+
           pip install "qdarkstyle>=3.1" "qstylizer>=0.2.2"
           pip install "vtk==9.3.1"
           pip install "matplotlib==3.8.*"
-          # Networking
+
           pip install "requests>=2.31" certifi
-          # Serialization/utilities used by your code
           pip install "joblib>=1.3,<2"
           pip install "openpyxl>=3.1"
-          # Data stack
+
           pip install "pandas==2.2.*"
           pip install "numexpr>=2.10,<3"
-          pip install "pyarrow==14.*"
-          # Builder
+          pip install "pyarrow==14.*" "zstandard>=0.22"
+
           pip install "nuitka>=2.2" ordered-set zstandard
 
-          # 4) Sanity check (QtWebEngine present)
           python -c "import PySide6.QtCore as QC; from PySide6 import QtWebEngineCore as QW; print('PySide6:', QC.__file__); print('QtWebEngineCore:', QW.__file__)"
-          # 4.1) Resolve VTK data dir
+
           $vtkSrc = python -c "import os, vtkmodules; print(os.path.dirname(vtkmodules.__file__))"
           $vtkSrc = ($vtkSrc.Trim() -replace '\\','/')
           $vtkDataArg = "--include-data-dir=$vtkSrc=vtkmodules"
-          # 4.2) Detect QtWebEngine resources/libexec and include them (fallback if plugin can’t find them)
+
           $qtBase = python -c "import os, PySide6; print(os.path.join(os.path.dirname(PySide6.__file__),'Qt'))"
           $qtBase = ($qtBase.Trim() -replace '\\','/')
           $qtRes  = "$qtBase/resources"
           $qtTr   = "$qtBase/translations"
           $qtExec = "$qtBase/libexec"
+
           $qtArgs = @()
           if (Test-Path $qtRes)  { $qtArgs += "--include-data-dir=$qtRes=PySide6/Qt/resources" }
           if (Test-Path $qtTr)   { $qtArgs += "--include-data-dir=$qtTr=PySide6/Qt/translations" }
           if (Test-Path $qtExec) { $qtArgs += "--include-data-dir=$qtExec=PySide6/Qt/libexec" }
 
-          # 5) Build args
           $args = @(
             "Launch_ImGUI.py",
             "--standalone",
@@ -114,40 +116,31 @@ jobs:
             "--include-package=pydicom",
             "--include-package-data=pydicom",
             "--include-package=PIL",
-
             "--include-package=numpy",
             "--include-package=scipy",
-
             "--include-package=skimage",
             "--include-package-data=skimage",
-
             "--include-package=nibabel",
             "--include-package=SimpleITK",
             "--include-package=cv2",
-
             "--include-package=vtkmodules",
             "--include-package=vtkmodules.qt",
-
             "--include-package=qdarkstyle",
             "--include-package-data=qdarkstyle",
             "--include-package=qstylizer",
-
             "--include-package=matplotlib",
             "--include-package-data=matplotlib",
-
             "--include-package=requests",
             "--include-package-data=certifi",
-
             "--include-package=joblib",
             "--include-package=openpyxl",
             "--include-package-data=openpyxl",
-
             "--include-package=pandas",
             "--include-package-data=pandas",
-
             "--include-package=numexpr",
             "--include-package=pyarrow",
             "--include-package-data=pyarrow",
+            "--include-package=zstandard",
 
             "--nofollow-import-to=totalsegmentator",
             "--nofollow-import-to=torch",
@@ -172,23 +165,20 @@ jobs:
             "--include-data-files=icons\roi_ellipse.png=icons\roi_ellipse.png",
             "--include-data-files=icons\roi_square.png=icons\roi_square.png",
             "--include-data-files=icons\undo.png=icons\undo.png",
+
             "--include-data-dir=fcn_ctcal\ct_cal_curves=fcn_ctcal\ct_cal_curves",
             "--include-data-files=fcn_materialassignment\materials_db.csv=fcn_materialassignment\materials_db.csv"
           )
 
-          # Insert dynamic includes
           $args += $vtkDataArg
           $args += $qtArgs
 
-          # 6) VERY IMPORTANT: let Nuitka read Qt’s internal qt.conf during compile
           $oldQtConf = $env:PYSIDE_DISABLE_INTERNAL_QT_CONF
           $env:PYSIDE_DISABLE_INTERNAL_QT_CONF = ""
 
-          # 7) Compile
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           python -m nuitka @args
 
-          # 8) Restore env + PATH
           $env:PYSIDE_DISABLE_INTERNAL_QT_CONF = $oldQtConf
           $env:Path = $oldPath
 
@@ -197,55 +187,85 @@ jobs:
         run: |
           $root = "dist\AMIGOpy"
           $src  = Join-Path $root "Launch_ImGUI.dist"
-          if (!(Test-Path $src)) { throw "Expected $src not found" }
+
+          if (!(Test-Path $src)) {
+            throw "Expected $src not found"
+          }
+
           Copy-Item -Path "$src\*" -Destination $root -Recurse -Force
           Remove-Item -Path $src -Recurse -Force
 
-      - name: Verify dist contents (GUI only)
+      - name: Verify dist contents
         shell: powershell
         run: |
-          if (-not (Test-Path "dist\AMIGOpy\Launch_ImGUI.exe")) { throw "Launch_ImGUI.exe missing" }
-          Get-ChildItem -Recurse dist\AMIGOpy | Select-Object -First 40 | Format-List -Property FullName,Length
+          if (-not (Test-Path "dist\AMIGOpy\Launch_ImGUI.exe")) {
+            throw "Launch_ImGUI.exe missing"
+          }
+
+          Get-ChildItem -Recurse dist\AMIGOpy |
+            Select-Object -First 40 |
+            Format-List -Property FullName,Length
 
       - name: Zip portable build
         shell: powershell
         run: |
-          Compress-Archive -Path "dist/AMIGOpy/*" -DestinationPath "AMIGOpy-win-portable.zip" -Force
+          Compress-Archive `
+            -Path "dist/AMIGOpy/*" `
+            -DestinationPath "AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}.zip" `
+            -Force
 
       - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AMIGOpy-win-portable
-          path: AMIGOpy-win-portable.zip
+          name: AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}
+          path: AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}.zip
           if-no-files-found: error
           overwrite: true
 
-      - name: Ensure Inno Setup (ISCC) is installed
+      - name: Ensure Inno Setup is installed
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
+
           $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+
           if (!(Test-Path $iscc)) {
             choco install innosetup -y --no-progress
+
             if (!(Test-Path $iscc)) {
               $isccAlt = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
-              if (Test-Path $isccAlt) { $iscc = $isccAlt } else { throw "ISCC.exe not found after install." }
+
+              if (Test-Path $isccAlt) {
+                $iscc = $isccAlt
+              } else {
+                throw "ISCC.exe not found after install."
+              }
             }
           }
-          try { & $iscc /? | Out-Null } catch { Write-Host "ISCC present; ignoring non-zero help exit." }
+
+          try {
+            & $iscc /? | Out-Null
+          } catch {
+            Write-Host "ISCC present; ignoring non-zero help exit."
+          }
+
           $global:LASTEXITCODE = 0
 
       - name: Build AMIGOpy installer
         shell: powershell
         run: |
           $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          if (!(Test-Path $iscc)) { $iscc = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe" }
+
+          if (!(Test-Path $iscc)) {
+            $iscc = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+          }
+
           & $iscc AMIGOpy.iss
 
-      - name: Upload installer (unsigned)
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AMIGOpy-Installer-unsigned
+          name: AMIGOpy-Installer-unsigned-v${{ github.event.inputs.app_version }}
           path: Output/AMIGOpy-Setup*.exe
           if-no-files-found: error
           overwrite: true
