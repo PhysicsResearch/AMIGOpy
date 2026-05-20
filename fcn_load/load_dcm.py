@@ -33,7 +33,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
         )
         
         
-        if (modality != 'CT' and modality != 'MR' and modality != 'RTDOSE' and modality != 'RTPLAN'
+        if (modality != 'RTIMAGE' and modality != 'CT' and modality != 'MR' and modality != 'RTDOSE' and modality != 'RTPLAN'
             and modality != 'RTSTRUCT'):
             #
             non_im_files.append(file_info)
@@ -45,7 +45,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
         study_data    = patient_data.setdefault(study_id, {})
         modality_data = study_data.setdefault(modality, [])
         
-        if (modality == 'CT' or modality == 'MR' or modality== 'RTDOSE'):
+        if (modality == 'RTIMAGE' or modality == 'CT' or modality == 'MR' or modality== 'RTDOSE'):
             
             image = dicom_file.pixel_array
             #
@@ -75,6 +75,44 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                     'SeriesNumber': series_number,
                     'metadata': {
                         'PixelSpacing': getattr(dicom_file, "PixelSpacing", 1),
+                        'SliceThickness': sli_thick,
+                        'LUTExplanation': LUTExplanation,
+                        'LUTLabel': LUTLabel,
+                        'ImageOrientationPatient': getattr(dicom_file, "ImageOrientationPatient", "N/A"),
+                        'ImagePositionPatient': getattr(dicom_file, "ImagePositionPatient", [0,0,0]),
+                        'RescaleSlope': getattr(dicom_file, "RescaleSlope", "N/A"),
+                        'RescaleIntercept': getattr(dicom_file, "RescaleIntercept", "N/A"),
+                        'WindowWidth': getattr(dicom_file, "WindowWidth", "N/A"),
+                        'WindowCenter': getattr(dicom_file, "WindowCenter", "N/A"),
+                        'SeriesDescription':getattr(dicom_file, "SeriesDescription", ''),
+                        'StudyDescription': getattr(dicom_file, "StudyDescription", ''),
+                        'ImageComments': getattr(dicom_file, "ImageComments", ''),
+                        'DoseGridScaling': getattr(dicom_file, "DoseGridScaling", "N/A"),
+                        'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),
+                        'PatientPosition': getattr(dicom_file, "PatientPosition", "N/A"),
+                        'DataType': 'DICOM',
+                        'Modality': modality,
+                        'DCM_Info': Header,
+
+                        # Useful extras
+                        'size': None,
+                        'Nifiti_info': None,         # original NIfTI fields
+                        'OriginalFilePath': None,    # for traceability - used with Nifti 
+                    },
+                    'images': {},
+                    'ImagePositionPatients': [],
+                    'SliceImageComments':{},
+                    'AM_name': None,  # name defined (auto) in populate tree function 
+                    'US_name': None,  # name that could be defined by the user in the interface (manual)
+                }
+            if (modality == 'RTIMAGE'):
+                # RTIMAGE files can have different tags for pixel spacing and slice thickness, depending on the software that created them.
+                # It also includes table position and other info not yet handled by MAIGO but that should be included here in the futrue
+                Header = Header = pydicom.dcmread(file_path,stop_before_pixels=True)
+                existing_series_data = {
+                    'SeriesNumber': series_number,
+                    'metadata': {
+                        'PixelSpacing': getattr(dicom_file, "ImagePlanePixelSpacing", 1),
                         'SliceThickness': sli_thick,
                         'LUTExplanation': LUTExplanation,
                         'LUTLabel': LUTLabel,
@@ -159,7 +197,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                 
             modality_data.append(existing_series_data)
         
-        if modality == 'CT' or modality == 'MR':
+        if modality == 'RTIMAGE' or modality == 'CT' or modality == 'MR':
             existing_series_data['images'][instance_number] = {
                 'ImageData': image,
                 'ImagePositionPatient': image_position_patient,
@@ -225,6 +263,15 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                             series_data['metadata']['ImagePositionPatient']=sorted_image_data[0][1]['ImagePositionPatient']
                         series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
                         #
+                    elif modality == 'RTIMAGE':
+                        sorted_comments = sorted(series_data['SliceImageComments'].items(), key=lambda x: x[0])
+                        # Extract only the values from the sorted list of tuples
+                        series_data['SliceImageComments'] = [comment for _, comment in sorted_comments]
+                        sorted_image_data = sorted(series_data['images'].items(), key=lambda x: x[0])
+                        series_data['3DMatrix'] = np.stack([item[1]['ImageData'] for item in sorted_image_data], axis=0)
+                        series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
+                        #
+                        series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
                     elif modality == 'MR':
                         sorted_comments = sorted(series_data['SliceImageComments'].items(), key=lambda x: x[0])
                         # Extract only the values from the sorted list of tuples
@@ -290,7 +337,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                          series_data['3DMatrix'] = (series_data['3DMatrix']/1000)+1
                          series_data['metadata']['WindowWidth'] = 0.5
                          series_data['metadata']['WindowCenter']= 1.0  
-                    elif (modality != 'RTDOSE' and '3DMatrix' in series_data and series_data['3DMatrix'] is not None) :
+                    elif (modality != 'RTDOSE' and modality != 'RTIMAGE' and '3DMatrix' in series_data and series_data['3DMatrix'] is not None) :
                          series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.int16)
     #
     # 
