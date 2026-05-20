@@ -43,14 +43,38 @@ Source: "AMBpy.ico";                    DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]
 ; -------- File association for .dcm to open with AMIGOpy GUI ----------
+
+; Register AMIGOpy as an option for .dcm files
 Root: HKCR; Subkey: ".dcm\OpenWithProgids"; ValueType: string; ValueName: "AMIGOpy.dcm"; ValueData: ""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "AMIGOpydcm"; ValueType: string; ValueName: ""; ValueData: "AMIGOpy.dcm"; Flags: uninsdeletekey
-Root: HKCR; Subkey: "AMIGOpydcm\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\AMBpy.ico"""
-Root: HKCR; Subkey: "AMIGOpydcm\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Launch_ImGUI.exe"" ""%1"""
+
+; Define the AMIGOpy.dcm ProgID
+Root: HKCR; Subkey: "AMIGOpy.dcm"; ValueType: string; ValueName: ""; ValueData: "DICOM file"; Flags: uninsdeletekey
+
+; Icon for associated DICOM files
+Root: HKCR; Subkey: "AMIGOpy.dcm\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\AMBpy.ico"""
+
+; Open command
+Root: HKCR; Subkey: "AMIGOpy.dcm\shell\open"; ValueType: string; ValueName: ""; ValueData: "Open with AMIGOpy"
+Root: HKCR; Subkey: "AMIGOpy.dcm\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Launch_ImGUI.exe"" ""%1"""
+
+; Make AMIGOpy appear in Windows "Open with"
+Root: HKCR; Subkey: "Applications\Launch_ImGUI.exe"; ValueType: string; ValueName: ""; ValueData: "AMIGOpy"; Flags: uninsdeletekey
 Root: HKCR; Subkey: "Applications\Launch_ImGUI.exe\SupportedTypes"; ValueType: string; ValueName: ".dcm"; ValueData: ""
+
+; Right-click menu directly on .dcm files
+Root: HKCR; Subkey: "SystemFileAssociations\.dcm\shell\OpenWithAMIGOpy"; ValueType: string; ValueName: ""; ValueData: "Open with AMIGOpy"; Flags: uninsdeletekey
+Root: HKCR; Subkey: "SystemFileAssociations\.dcm\shell\OpenWithAMIGOpy"; ValueType: string; ValueName: "Icon"; ValueData: """{app}\AMBpy.ico"""
+Root: HKCR; Subkey: "SystemFileAssociations\.dcm\shell\OpenWithAMIGOpy\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Launch_ImGUI.exe"" ""%1"""
+
 ; Right-click "Open with AMIGOpy" on folders
-Root: HKCR; Subkey: "Directory\shell\OpenWithAMIGOpy"; ValueType: string; ValueName: ""; ValueData: "Open with AMIGOpy"; Flags: createvalueifdoesntexist
+Root: HKCR; Subkey: "Directory\shell\OpenWithAMIGOpy"; ValueType: string; ValueName: ""; ValueData: "Open with AMIGOpy"; Flags: uninsdeletekey
+Root: HKCR; Subkey: "Directory\shell\OpenWithAMIGOpy"; ValueType: string; ValueName: "Icon"; ValueData: """{app}\AMBpy.ico"""
 Root: HKCR; Subkey: "Directory\shell\OpenWithAMIGOpy\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Launch_ImGUI.exe"" ""%1"""
+
+; Right-click on folder background
+Root: HKCR; Subkey: "Directory\Background\shell\OpenWithAMIGOpy"; ValueType: string; ValueName: ""; ValueData: "Open with AMIGOpy"; Flags: uninsdeletekey
+Root: HKCR; Subkey: "Directory\Background\shell\OpenWithAMIGOpy"; ValueType: string; ValueName: "Icon"; ValueData: """{app}\AMBpy.ico"""
+Root: HKCR; Subkey: "Directory\Background\shell\OpenWithAMIGOpy\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Launch_ImGUI.exe"" ""%V"""
 
 ; -------- Segmentator worker discovery + environment variables ----------
 ; Path to the worker exe for external tools (compat with prior API script)
