@@ -83,4 +83,8 @@ def initialize_software_tables(self):
     self.mat_to_struct_tab.setColumnCount(3)
     self.mat_to_struct_tab.setHorizontalHeaderLabels(['Structure', 'Material', 'ID '])
 
+    from fcn_display.disp_plan_data import on_brachy_table_item_changed
+    self.brachy_table_01.itemChanged.connect(lambda item: on_brachy_table_item_changed(self, self.brachy_table_01, item))
+    self.brachy_table_02.itemChanged.connect(lambda item: on_brachy_table_item_changed(self, self.brachy_table_02, item))
+
 

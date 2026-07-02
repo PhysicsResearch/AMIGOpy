@@ -371,7 +371,8 @@ def on_display_dw_overlay_clicked(self):
     for actor in self.channel_actors_sa:
         renderer_sa.RemoveActor(actor)
     self.channel_actors_sa.clear()
-    #    #
+    
+
     displayaxial(self)
     displaysagittal(self)
     displaycoronal(self)

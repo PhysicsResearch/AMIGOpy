@@ -22,16 +22,32 @@ def displayaxial(self, Im = None):
     for i in range(len(self.dataImporterAxial)):
 
         # Add or update circular ROIs in the 4th layer
-        if i == 3 and self.checkBox_circ_roi_data_2.isChecked():
-                renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+        if i == 3:
+            renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+            if self.checkBox_circ_roi_data_2.isChecked():
                 for actor in self.circle_actors_ax:
                     renderer.RemoveActor(actor)
                 self.circle_actors_ax.clear()
                 # self.vtkWidgetAxial.GetRenderWindow().Render() 
                 disp_roi_axial(self)
-        if i == 3 and  self.display_dw_overlay.isChecked():
-            # Check if the required fields exist in medical_image
+
+            selected_dw_ch = getattr(self, 'brachy_dw_ch_box_01', None)
+            is_ref_points_mode = (selected_dw_ch and selected_dw_ch.currentText() == "Ref. Points")
+            
+            if is_ref_points_mode:
+                display_ref_points_ax(self)
+            else:
+                if hasattr(self, 'ref_point_actors_ax'):
+                    for actor in self.ref_point_actors_ax:
+                        renderer.RemoveActor(actor)
+                    self.ref_point_actors_ax.clear()
+            
+            if self.display_dw_overlay.isChecked() and not is_ref_points_mode:
                 display_dwell_positions_ax(self)
+            else:
+                for actor in self.dwell_actors_ax:
+                    renderer.RemoveActor(actor)
+                self.dwell_actors_ax.clear()
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in medical_image
                 display_brachy_channel_overlay_ax(self)
@@ -684,16 +700,32 @@ def displaycoronal(self, Im = None):
         return
     for i in range(len(self.dataImporterCoronal)):
         # Add or update circular ROIs in the 4th layer
-        if i == 3 and self.checkBox_circ_roi_data_2.isChecked():
+        if i == 3:
             renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
-            for actor in self.circle_actors_co:
-                renderer.RemoveActor(actor)
-            self.circle_actors_co.clear()
-            # self.vtkWidgetAxial.GetRenderWindow().Render() 
-            disp_roi_coronal(self)
-        if i == 3 and  self.display_dw_overlay.isChecked():
-            # Check if the required fields exist in medical_image
+            if self.checkBox_circ_roi_data_2.isChecked():
+                for actor in self.circle_actors_co:
+                    renderer.RemoveActor(actor)
+                self.circle_actors_co.clear()
+                # self.vtkWidgetAxial.GetRenderWindow().Render() 
+                disp_roi_coronal(self)
+
+            selected_dw_ch = getattr(self, 'brachy_dw_ch_box_01', None)
+            is_ref_points_mode = (selected_dw_ch and selected_dw_ch.currentText() == "Ref. Points")
+            
+            if is_ref_points_mode:
+                display_ref_points_co(self)
+            else:
+                if hasattr(self, 'ref_point_actors_co'):
+                    for actor in self.ref_point_actors_co:
+                        renderer.RemoveActor(actor)
+                    self.ref_point_actors_co.clear()
+            
+            if self.display_dw_overlay.isChecked() and not is_ref_points_mode:
                 display_dwell_positions_co(self)
+            else:
+                for actor in self.dwell_actors_co:
+                    renderer.RemoveActor(actor)
+                self.dwell_actors_co.clear()
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in medical_image
                 display_brachy_channel_overlay_co(self)
@@ -1360,17 +1392,32 @@ def displaysagittal(self,Im = None):
         return
     for i in range(len(self.dataImporterSagittal)):
         
-        # Add or update circular ROIs in the 4th layer
-        if i == 3 and self.checkBox_circ_roi_data_2.isChecked():
+        if i == 3:
             renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
-            for actor in self.circle_actors_sa:
-                renderer.RemoveActor(actor)
-            self.circle_actors_sa.clear()
-            # self.vtkWidgetAxial.GetRenderWindow().Render() 
-            disp_roi_sagittal(self)
-        if i == 3 and  self.display_dw_overlay.isChecked():
-            # Check if the required fields exist in medical_image
+            if self.checkBox_circ_roi_data_2.isChecked():
+                for actor in self.circle_actors_sa:
+                    renderer.RemoveActor(actor)
+                self.circle_actors_sa.clear()
+                # self.vtkWidgetAxial.GetRenderWindow().Render() 
+                disp_roi_sagittal(self)
+
+            selected_dw_ch = getattr(self, 'brachy_dw_ch_box_01', None)
+            is_ref_points_mode = (selected_dw_ch and selected_dw_ch.currentText() == "Ref. Points")
+            
+            if is_ref_points_mode:
+                display_ref_points_sa(self)
+            else:
+                if hasattr(self, 'ref_point_actors_sa'):
+                    for actor in self.ref_point_actors_sa:
+                        renderer.RemoveActor(actor)
+                    self.ref_point_actors_sa.clear()
+            
+            if self.display_dw_overlay.isChecked() and not is_ref_points_mode:
                 display_dwell_positions_sa(self)
+            else:
+                for actor in self.dwell_actors_sa:
+                    renderer.RemoveActor(actor)
+                self.dwell_actors_sa.clear()
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in medical_image
                 display_brachy_channel_overlay_sa(self)    
@@ -2034,5 +2081,176 @@ def update_layer_view(self):
             self.SagittalSlider.setValue(Sa_s)
             self.CoronalSlider.setValue(Co_s)
             #
+
+
+def create_cross_actor(x_c, y_c, z_c, size, color, thickness=2.0):
+    """
+    Creates a VTK actor representing a 2D cross centered at (x_c, y_c, z_c).
+    """
+    line1 = vtk.vtkLineSource()
+    line1.SetPoint1(x_c - size, y_c, z_c)
+    line1.SetPoint2(x_c + size, y_c, z_c)
+    
+    line2 = vtk.vtkLineSource()
+    line2.SetPoint1(x_c, y_c - size, z_c)
+    line2.SetPoint2(x_c, y_c + size, z_c)
+    
+    append = vtk.vtkAppendPolyData()
+    append.AddInputConnection(line1.GetOutputPort())
+    append.AddInputConnection(line2.GetOutputPort())
+    
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputConnection(append.GetOutputPort())
+    
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(*color)
+    actor.GetProperty().SetLineWidth(thickness)
+    
+    return actor
+
+
+def display_ref_points_ax(self):
+    renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    if not hasattr(self, 'ref_point_actors_ax'):
+        self.ref_point_actors_ax = []
+    for actor in self.ref_point_actors_ax:
+        renderer.RemoveActor(actor)
+    self.ref_point_actors_ax.clear()
+
+    try:
+        meta = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
+        ref_points = meta.get('Plan_Dose_References', [])
+    except KeyError:
+        return
+
+    if not ref_points:
+        return
+
+    point_size = self.dw_ch_point_size.value() / 1.5 if hasattr(self, 'dw_ch_point_size') else 3.0
+    cross_size = point_size * 1.5
+
+    Ref_z = self.current_axial_slice_index[0] * self.slice_thick[0] + self.Im_Offset[0, 2]
+    z_tolerance = self.slice_thick[0] / 2
+
+    for pt in ref_points:
+        if not pt.get('Visible', False):
+            continue
+        coords = pt.get('DoseReferencePointCoordinates')
+        if not isinstance(coords, list) or len(coords) < 3:
+            continue
+        
+        pt_x, pt_y, pt_z = coords[0], coords[1], coords[2]
+        
+        x_pixel = pt_x - self.Im_PatPosition[0, 0]
+        y_pixel = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (pt_y - self.Im_PatPosition[0, 1])
+        z_phys = pt_z - self.Im_PatPosition[0, 2]
+        
+        if Ref_z - z_tolerance <= z_phys <= Ref_z + z_tolerance:
+            color = (1.0, 0.6, 0.6)  # Light red
+        else:
+            color = (1.0, 0.0, 0.0)  # Red
+            
+        actor = create_cross_actor(x_pixel, y_pixel, 0.5, cross_size, color)
+        renderer.AddActor(actor)
+        self.ref_point_actors_ax.append(actor)
+
+    self.vtkWidgetAxial.GetRenderWindow().Render()
+
+
+def display_ref_points_co(self):
+    renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    if not hasattr(self, 'ref_point_actors_co'):
+        self.ref_point_actors_co = []
+    for actor in self.ref_point_actors_co:
+        renderer.RemoveActor(actor)
+    self.ref_point_actors_co.clear()
+
+    try:
+        meta = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
+        ref_points = meta.get('Plan_Dose_References', [])
+    except KeyError:
+        return
+
+    if not ref_points:
+        return
+
+    point_size = self.dw_ch_point_size.value() / 1.5 if hasattr(self, 'dw_ch_point_size') else 3.0
+    cross_size = point_size * 1.5
+
+    Ref_z = self.current_coronal_slice_index[0] * self.pixel_spac[0, 1]
+    z_tolerance = self.pixel_spac[0, 1] / 2
+
+    for pt in ref_points:
+        if not pt.get('Visible', False):
+            continue
+        coords = pt.get('DoseReferencePointCoordinates')
+        if not isinstance(coords, list) or len(coords) < 3:
+            continue
+        
+        pt_x, pt_y, pt_z = coords[0], coords[1], coords[2]
+        
+        x_pixel = pt_x - self.Im_PatPosition[0, 0]
+        z_coronal = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (pt_y - self.Im_PatPosition[0, 1])
+        y_pixel = pt_z - self.Im_PatPosition[0, 2]
+        
+        if Ref_z - z_tolerance <= z_coronal <= Ref_z + z_tolerance:
+            color = (1.0, 0.6, 0.6)  # Light red
+        else:
+            color = (1.0, 0.0, 0.0)  # Red
+            
+        actor = create_cross_actor(x_pixel, y_pixel, 0.5, cross_size, color)
+        renderer.AddActor(actor)
+        self.ref_point_actors_co.append(actor)
+
+    self.vtkWidgetCoronal.GetRenderWindow().Render()
+
+
+def display_ref_points_sa(self):
+    renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    if not hasattr(self, 'ref_point_actors_sa'):
+        self.ref_point_actors_sa = []
+    for actor in self.ref_point_actors_sa:
+        renderer.RemoveActor(actor)
+    self.ref_point_actors_sa.clear()
+
+    try:
+        meta = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
+        ref_points = meta.get('Plan_Dose_References', [])
+    except KeyError:
+        return
+
+    if not ref_points:
+        return
+
+    point_size = self.dw_ch_point_size.value() / 1.5 if hasattr(self, 'dw_ch_point_size') else 3.0
+    cross_size = point_size * 1.5
+
+    Ref_z = self.current_sagittal_slice_index[0] * self.pixel_spac[0, 0]
+    z_tolerance = self.pixel_spac[0, 0] / 2
+
+    for pt in ref_points:
+        if not pt.get('Visible', False):
+            continue
+        coords = pt.get('DoseReferencePointCoordinates')
+        if not isinstance(coords, list) or len(coords) < 3:
+            continue
+        
+        pt_x, pt_y, pt_z = coords[0], coords[1], coords[2]
+        
+        z_sagittal = pt_x - self.Im_PatPosition[0, 0]
+        x_pixel = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (pt_y - self.Im_PatPosition[0, 1])
+        y_pixel = pt_z - self.Im_PatPosition[0, 2]
+        
+        if Ref_z - z_tolerance <= z_sagittal <= Ref_z + z_tolerance:
+            color = (1.0, 0.6, 0.6)  # Light red
+        else:
+            color = (1.0, 0.0, 0.0)  # Red
+            
+        actor = create_cross_actor(x_pixel, y_pixel, 0.5, cross_size, color)
+        renderer.AddActor(actor)
+        self.ref_point_actors_sa.append(actor)
+
+    self.vtkWidgetSagittal.GetRenderWindow().Render()
 
 

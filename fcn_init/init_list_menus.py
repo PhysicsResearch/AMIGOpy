@@ -127,7 +127,7 @@ def populate_list_menus(self):
     #
     # Brachy channel or dwell view
     # 
-    methods = ["Dwells", "Channels"]
+    methods = ["Dwells", "Channels", "Ref. Points"]
     # Get the QComboBox by its name
     self.brachy_dw_ch_box_01 = self.findChild(QtWidgets.QComboBox, 'brachy_combobox_01')
     self.brachy_dw_ch_box_02 = self.findChild(QtWidgets.QComboBox, 'brachy_combobox_02')

@@ -514,6 +514,41 @@ def read_brachy_plan(plan,ref_str,structured_data):
         structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['Plan_Brachy_Channels'] = channel_info
         structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['ReferenceAirKermaRate']= structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['SourceSequence'][0]['ReferenceAirKermaRate']
 
+    # Extract reference dose points (DoseReferenceSequence)
+    dose_ref_info = []
+    metadata = structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']
+    dose_ref_seq = metadata.get('DoseReferenceSequence')
+    if dose_ref_seq is None:
+        dicom_file = metadata.get('DCM_Info')
+        if dicom_file is not None:
+            dose_ref_seq = getattr(dicom_file, 'DoseReferenceSequence', [])
+        else:
+            dose_ref_seq = []
+
+    for item in dose_ref_seq:
+        coords = item.get('DoseReferencePointCoordinates', 'N/A')
+        if coords != 'N/A' and coords is not None:
+            try:
+                coords = list(coords)
+            except TypeError:
+                pass
+        
+        dose_ref_data = {
+            'DoseReferenceNumber': item.get('DoseReferenceNumber', 'N/A'),
+            'DoseReferenceStructureType': item.get('DoseReferenceStructureType', 'N/A'),
+            'DoseReferenceDescription': item.get('DoseReferenceDescription', 'N/A'),
+            'DoseReference Description': item.get('DoseReferenceDescription', 'N/A'),
+            'DoseReferenceType': item.get('DoseReferenceType', 'N/A'),
+            'TargetPrescriptionDose': item.get('TargetPrescriptionDose', 'N/A'),
+            'TargedPrescritionDose': item.get('TargetPrescriptionDose', 'N/A'),
+            'DoseReferencePointCoordinates': coords
+        }
+        dose_ref_info.append(dose_ref_data)
+        
+    metadata['Plan_Dose_References'] = dose_ref_info
+
+
+
 
 
         

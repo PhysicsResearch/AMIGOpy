@@ -1,11 +1,12 @@
 import numpy as np
 import csv
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFileDialog, QTableWidgetItem, QMessageBox
+from PySide6.QtWidgets import QFileDialog, QTableWidgetItem, QMessageBox, QInputDialog
 from PySide6.QtGui import QColor
 import sys
 from PySide6.QtWidgets import (
-    QApplication, QWidget, QTableWidget, QVBoxLayout, QPushButton, QSpinBox, QLabel, QMessageBox
+    QApplication, QWidget, QTableWidget, QVBoxLayout, QPushButton, QSpinBox, QLabel, QMessageBox,
+    QCheckBox, QHBoxLayout
 )
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtCore import Qt
@@ -43,16 +44,11 @@ def update_disp_brachy_plan(self):
         QMessageBox.warning(self, "Warning", "No plan loaded.")
         return
 
+    metadata = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']
     try:
-        channels = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels']
-    except (KeyError, IndexError):
+        channels = metadata['Plan_Brachy_Channels']
+    except KeyError:
         QMessageBox.warning(self, "Warning", "Plan data is missing or corrupted.")
-        return
-
-    try:
-        current_ch = channels[self.brachy_spinBox_01.value() - 1]
-    except IndexError:
-        QMessageBox.warning(self, "Warning", "Invalid channel selected.")
         return
 
     # Clear and set up table
@@ -61,17 +57,82 @@ def update_disp_brachy_plan(self):
 
     selected_dw_ch = self.brachy_combobox_01.currentText()
 
-    if selected_dw_ch == "Dwells": 
-        populate_brachy_table(self, current_ch.get('DwellInfo'))
+    ref_points = metadata.get('Plan_Dose_References', [])
+    if selected_dw_ch == "Ref. Points":
+        if not ref_points:
+            ref_points = [{
+                'DoseReferenceNumber': 1,
+                'DoseReferenceStructureType': 'COORDINATE',
+                'DoseReferenceDescription': 'Point 1',
+                'DoseReferenceDescription ': 'Point 1',
+                'DoseReferenceType': 'POINT',
+                'TargetPrescriptionDose': 'N/A',
+                'TargedPrescritionDose': 'N/A',
+                'DoseReferencePointCoordinates': ['N/A', 'N/A', 'N/A'],
+                'Visible': False
+            }]
+            metadata['Plan_Dose_References'] = ref_points
+        rtdose_list = self.medical_image[self.patientID_plan][self.studyID_plan].get('RTDOSE', [])
+        selected_rtdose = None
+        if len(rtdose_list) == 1:
+            selected_rtdose = rtdose_list[0]
+        elif len(rtdose_list) > 1:
+            items = []
+            for idx, s in enumerate(rtdose_list):
+                desc = s.get('metadata', {}).get('SeriesDescription', '')
+                num = s.get('SeriesNumber', idx + 1)
+                items.append(f"Series {num}: {desc}" if desc else f"Series {num}")
+            
+            selected_item, ok = QInputDialog.getItem(
+                self, 
+                "Select RT Dose", 
+                "Multiple RT Dose series found. Please select one to use for dose calculation:", 
+                items, 
+                0, 
+                False
+            )
+            if ok and selected_item:
+                idx = items.index(selected_item)
+                selected_rtdose = rtdose_list[idx]
+
+        self.selected_rtdose_ref = selected_rtdose
+        populate_brachy_table(self, ref_points)
+        
+        if selected_rtdose is not None:
+            calculate_ref_points_dose(self, selected_rtdose)
     else:
-        populate_brachy_table(self, current_ch.get('ChPos'))
+        try:
+            current_ch = channels[self.brachy_spinBox_01.value() - 1]
+        except IndexError:
+            QMessageBox.warning(self, "Warning", "Invalid channel selected.")
+            return
+
+        if selected_dw_ch == "Dwells": 
+            populate_brachy_table(self, current_ch.get('DwellInfo'))
+        else:
+            populate_brachy_table(self, current_ch.get('ChPos'))
 
     # Display air kerma strength
-    AirKerma = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['ReferenceAirKermaRate']
-    self.brachy_plan_Ac.setText(str(AirKerma.value))
+    AirKerma = metadata.get('ReferenceAirKermaRate')
+    if AirKerma is not None:
+        val = getattr(AirKerma, 'value', AirKerma)
+        self.brachy_plan_Ac.setText(str(val))
+    else:
+        self.brachy_plan_Ac.setText("N/A")
+
     apply_alternating_row_colors(self)
-    plot_brachy_dwell_channels(self)
-    calculate_total_time(self)
+
+    if selected_dw_ch != "Ref. Points":
+        plot_brachy_dwell_channels(self)
+        calculate_total_time(self)
+    else:
+        self.brachy_total_time.setText("N/A")
+        self.brachy_ch_time.setText("N/A")
+
+    from fcn_display.display_images import displayaxial, displaysagittal, displaycoronal
+    displayaxial(self)
+    displaysagittal(self)
+    displaycoronal(self)
     
 
 def calculate_total_time(self):
@@ -130,13 +191,19 @@ def clear_brachy_table(self):
     """
     Clears all existing rows and columns from the brachy_table_01.
     """
-    self.brachy_table_01.clear()           # Clears the table content but retains headers
-    self.brachy_table_01.setRowCount(0)    # Removes all rows
-    self.brachy_table_01.setColumnCount(0) # Removes all columns
-    #
-    self.brachy_table_02.clear()   # Clears the table content but retains headers
-    self.brachy_table_02.setRowCount(0)    # Removes all rows
-    self.brachy_table_02.setColumnCount(0) # Removes all columns
+    self.brachy_table_01.blockSignals(True)
+    self.brachy_table_02.blockSignals(True)
+    try:
+        self.brachy_table_01.clear()           # Clears the table content but retains headers
+        self.brachy_table_01.setRowCount(0)    # Removes all rows
+        self.brachy_table_01.setColumnCount(0) # Removes all columns
+        #
+        self.brachy_table_02.clear()   # Clears the table content but retains headers
+        self.brachy_table_02.setRowCount(0)    # Removes all rows
+        self.brachy_table_02.setColumnCount(0) # Removes all columns
+    finally:
+        self.brachy_table_01.blockSignals(False)
+        self.brachy_table_02.blockSignals(False)
     
 def setup_brachy_table_headers(self):
     """
@@ -145,6 +212,10 @@ def setup_brachy_table_headers(self):
     selected_dw_ch = self.brachy_combobox_01.currentText()
     if selected_dw_ch == "Dwells": 
         headers = ["IDX", "Rel. Pos (mm)", "Time (s)", "X (mm)", "Y (mm)", "Z(mm)", "Ux", "Uy", "Uz"]
+    elif selected_dw_ch == "Channels":
+        headers = ["X (mm)", "Y (mm)", "Z(mm)"]
+    elif selected_dw_ch == "Ref. Points":
+        headers = ["Ref. Num", "Structure Type", "Description", "Type", "Target Dose", "X (mm)", "Y (mm)", "Z (mm)", "Dose (cGy)", "Visible", "Go to Pt", "Get Slice Pt", "Delete"]
     else:
         headers = ["X (mm)", "Y (mm)", "Z(mm)"]
     
@@ -162,39 +233,371 @@ def setup_brachy_table_headers(self):
 
 
     
-def populate_brachy_table(self, dwell_info):
+def populate_brachy_table(self, table_info):
     """
-    Populates brachy_table_01 with data from dwell_info.
+    Populates brachy_table_01 with data from table_info.
 
-    :param dwell_info: NumPy array with shape (n, 9)
+    :param table_info: NumPy array with shape (n, 9) or list of dicts
     """
     
-    
-    num_rows = dwell_info.shape[0]
-    num_columns = dwell_info.shape[1]
-    
-    # Set the number of rows and columns
-    self.brachy_table_01.setRowCount(num_rows)
-    self.brachy_table_01.setColumnCount(num_columns)
-    #
-    self.brachy_table_02.setRowCount(num_rows)
-    self.brachy_table_02.setColumnCount(num_columns)
-    
-    # Populate the table
-    for row in range(num_rows):
-        for col in range(num_columns):
-            # Assuming all data is numerical; adjust if data types vary
-            item = QTableWidgetItem(str(dwell_info[row, col]))
-            item.setTextAlignment(Qt.AlignCenter)  # Optional: Center-align the text
-            self.brachy_table_01.setItem(row, col, item)
-            #
-            item2 = QTableWidgetItem(str(dwell_info[row, col]))
-            item2.setTextAlignment(Qt.AlignCenter)  # Optional: Center-align the text
-            self.brachy_table_02.setItem(row, col, item2)
+    self.brachy_table_01.blockSignals(True)
+    self.brachy_table_02.blockSignals(True)
+    try:
+        if isinstance(table_info, list):
+            num_rows = len(table_info)
+            num_columns = 13  # Ref. Num, Structure Type, Description, Type, Target Dose, X, Y, Z, Dose (cGy), Visible, Go To, Get Plane, Delete/ADD
+            
+            # Set row count to num_rows + 1 for the extra "ADD" button row
+            self.brachy_table_01.setRowCount(num_rows + 1)
+            self.brachy_table_01.setColumnCount(num_columns)
+            self.brachy_table_02.setRowCount(num_rows + 1)
+            self.brachy_table_02.setColumnCount(num_columns)
 
-    # Optional: Resize columns to fit content
-    self.brachy_table_01.resizeColumnsToContents()
-    self.brachy_table_02.resizeColumnsToContents()
+            def trigger_go_to_pt(row_idx):
+                if not hasattr(self, 'patientID_plan') or not self.patientID_plan:
+                    return
+                metadata = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']
+                ref_points = metadata.get('Plan_Dose_References', [])
+                if row_idx >= len(ref_points):
+                    return
+                coords = ref_points[row_idx].get('DoseReferencePointCoordinates')
+                if not isinstance(coords, list) or len(coords) < 3:
+                    return
+                
+                pt_x, pt_y, pt_z = coords[0], coords[1], coords[2]
+                if pt_x == 'N/A' or pt_y == 'N/A' or pt_z == 'N/A':
+                    return
+                    
+                idx = self.layer_selected.currentIndex()
+                if idx not in self.display_data:
+                    return
+                    
+                from fcn_display.mouse_move_slicechanges import change_sliceAxial, change_sliceSagittal, change_sliceCoronal
+                
+                # Axial slice index calculation:
+                z_val = pt_z - self.Im_PatPosition[idx, 2] - self.Im_Offset[idx, 2]
+                axial_index = int(round(z_val / self.slice_thick[idx]))
+                axial_index = max(0, min(axial_index, self.display_data[idx].shape[0] - 1))
+                self.current_axial_slice_index[idx] = axial_index
+                
+                # Coronal slice index calculation:
+                coronal_space_z = (self.display_data[idx].shape[1] * self.pixel_spac[idx, 0]) - (pt_y - self.Im_PatPosition[idx, 1])
+                coronal_index = int(round(coronal_space_z / self.pixel_spac[idx, 1]))
+                coronal_index = max(0, min(coronal_index, self.display_data[idx].shape[1] - 1))
+                self.current_coronal_slice_index[idx] = coronal_index
+                
+                # Sagittal slice index calculation:
+                sagittal_space_z = pt_x - self.Im_PatPosition[idx, 0]
+                sagittal_index = int(round(sagittal_space_z / self.pixel_spac[idx, 0]))
+                sagittal_index = max(0, min(sagittal_index, self.display_data[idx].shape[2] - 1))
+                self.current_sagittal_slice_index[idx] = sagittal_index
+                
+                change_sliceAxial(self, 0)
+                change_sliceCoronal(self, 0)
+                change_sliceSagittal(self, 0)
+
+            def trigger_get_slice_pt(row_idx):
+                if not hasattr(self, 'patientID_plan') or not self.patientID_plan:
+                    return
+                idx = self.layer_selected.currentIndex()
+                if idx not in self.display_data:
+                    return
+                    
+                # Get current slices
+                axial_index = self.current_axial_slice_index[idx]
+                coronal_index = self.current_coronal_slice_index[idx]
+                sagittal_index = self.current_sagittal_slice_index[idx]
+                
+                # Reverse calculation to physical space
+                pt_z = axial_index * self.slice_thick[idx] + self.Im_Offset[idx, 2] + self.Im_PatPosition[idx, 2]
+                pt_x = sagittal_index * self.pixel_spac[idx, 0] + self.Im_PatPosition[idx, 0]
+                pt_y = (self.display_data[idx].shape[1] * self.pixel_spac[idx, 0]) - (coronal_index * self.pixel_spac[idx, 1]) + self.Im_PatPosition[idx, 1]
+                
+                pt_x = float(f"{pt_x:.2f}")
+                pt_y = float(f"{pt_y:.2f}")
+                pt_z = float(f"{pt_z:.2f}")
+                
+                # Update metadata
+                metadata = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']
+                ref_points = metadata.get('Plan_Dose_References', [])
+                if row_idx >= len(ref_points):
+                    return
+                ref_points[row_idx]['DoseReferencePointCoordinates'] = [pt_x, pt_y, pt_z]
+                
+                # Update table items (block signals)
+                self.brachy_table_01.blockSignals(True)
+                self.brachy_table_02.blockSignals(True)
+                try:
+                    for table in (self.brachy_table_01, self.brachy_table_02):
+                        item_x = QTableWidgetItem(str(pt_x))
+                        item_x.setTextAlignment(Qt.AlignCenter)
+                        table.setItem(row_idx, 5, item_x)
+                        
+                        item_y = QTableWidgetItem(str(pt_z))
+                        item_y.setTextAlignment(Qt.AlignCenter)
+                        table.setItem(row_idx, 6, item_y)
+                        
+                        item_z = QTableWidgetItem(str(pt_y))
+                        item_z.setTextAlignment(Qt.AlignCenter)
+                        table.setItem(row_idx, 7, item_z)
+                        
+                    # Recalculate dose if active RTDOSE exists
+                    dose_str = 'N/A'
+                    if hasattr(self, 'selected_rtdose_ref') and self.selected_rtdose_ref is not None:
+                        dose_matrix = self.selected_rtdose_ref.get('3DMatrix')
+                        meta = self.selected_rtdose_ref.get('metadata', {})
+                        if dose_matrix is not None and isinstance(dose_matrix, np.ndarray):
+                            origin = meta.get('ImagePositionPatient', [0.0, 0.0, 0.0])
+                            x0, y0, z0 = origin[0], origin[1], origin[2]
+                            
+                            spacing = meta.get('PixelSpacing', [1.0, 1.0])
+                            dx, dy = spacing[0], spacing[1]
+                            dz = meta.get('SliceThickness', 1.0)
+                            
+                            Nz, Ny, Nx = dose_matrix.shape
+                            
+                            dicom_file = meta.get('DCM_Info')
+                            grid_offset = getattr(dicom_file, 'GridFrameOffsetVector', None)
+                            if grid_offset is not None:
+                                z_grid = np.array([z0 + float(offset) for offset in grid_offset])
+                            else:
+                                z_grid = z0 + np.arange(Nz) * dz
+                                
+                            dose_matrix_work = np.flip(dose_matrix, axis=1)
+                            y_grid = y0 + np.arange(Ny) * dy
+                            x_grid = x0 + np.arange(Nx) * dx
+                            
+                            if len(z_grid) > 1 and z_grid[1] < z_grid[0]:
+                                z_grid = z_grid[::-1]
+                                dose_matrix_work = np.flip(dose_matrix_work, axis=0)
+                                
+                            if len(x_grid) > 1 and x_grid[1] < x_grid[0]:
+                                x_grid = x_grid[::-1]
+                                dose_matrix_work = np.flip(dose_matrix_work, axis=2)
+                                
+                            from scipy.interpolate import RegularGridInterpolator
+                            interp = RegularGridInterpolator((z_grid, y_grid, x_grid), dose_matrix_work, bounds_error=False, fill_value=0.0)
+                            
+                            dose_Gy = float(interp([pt_z, pt_y, pt_x])[0])
+                            dose_cGy = dose_Gy * 100.0
+                            dose_str = f"{dose_cGy:.2f}"
+                            
+                    for table in (self.brachy_table_01, self.brachy_table_02):
+                        d_item = QTableWidgetItem(dose_str)
+                        d_item.setTextAlignment(Qt.AlignCenter)
+                        table.setItem(row_idx, 8, d_item)
+                finally:
+                    self.brachy_table_01.blockSignals(False)
+                    self.brachy_table_02.blockSignals(False)
+                    
+                # Trigger display updates to refresh marker positions
+                from fcn_display.display_images import displayaxial, displaysagittal, displaycoronal
+                displayaxial(self)
+                displaysagittal(self)
+                displaycoronal(self)
+
+            def trigger_add_pt():
+                if not hasattr(self, 'patientID_plan') or not self.patientID_plan:
+                    return
+                metadata = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']
+                ref_points = metadata.get('Plan_Dose_References', [])
+                new_num = len(ref_points) + 1
+                new_pt = {
+                    'DoseReferenceNumber': new_num,
+                    'DoseReferenceStructureType': 'COORDINATE',
+                    'DoseReferenceDescription': f'Point {new_num}',
+                    'DoseReferenceDescription ': f'Point {new_num}',
+                    'DoseReferenceType': 'POINT',
+                    'TargetPrescriptionDose': 'N/A',
+                    'TargedPrescritionDose': 'N/A',
+                    'DoseReferencePointCoordinates': ['N/A', 'N/A', 'N/A'],
+                    'Visible': False
+                }
+                ref_points.append(new_pt)
+                populate_brachy_table(self, ref_points)
+                if hasattr(self, 'selected_rtdose_ref') and self.selected_rtdose_ref is not None:
+                    calculate_ref_points_dose(self, self.selected_rtdose_ref)
+
+            def trigger_delete_pt(row_idx):
+                if not hasattr(self, 'patientID_plan') or not self.patientID_plan:
+                    return
+                metadata = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']
+                ref_points = metadata.get('Plan_Dose_References', [])
+                if row_idx < len(ref_points):
+                    ref_points.pop(row_idx)
+                    populate_brachy_table(self, ref_points)
+                    if hasattr(self, 'selected_rtdose_ref') and self.selected_rtdose_ref is not None:
+                        calculate_ref_points_dose(self, self.selected_rtdose_ref)
+                        
+                    from fcn_display.display_images import displayaxial, displaysagittal, displaycoronal
+                    displayaxial(self)
+                    displaysagittal(self)
+                    displaycoronal(self)
+            
+            for row, data_dict in enumerate(table_info):
+                coords = data_dict.get('DoseReferencePointCoordinates', ['N/A', 'N/A', 'N/A'])
+                if not isinstance(coords, list) or len(coords) < 3:
+                    coords = ['N/A', 'N/A', 'N/A']
+                
+                row_values = [
+                    data_dict.get('DoseReferenceNumber', 'N/A'),
+                    data_dict.get('DoseReferenceStructureType', 'N/A'),
+                    data_dict.get('DoseReferenceDescription', 'N/A'),
+                    data_dict.get('DoseReferenceType', 'N/A'),
+                    data_dict.get('TargetPrescriptionDose', 'N/A'),
+                    coords[0],
+                    coords[2],
+                    coords[1],
+                    'N/A'  # Dose (cGy) default
+                ]
+                
+                for col, val in enumerate(row_values):
+                    item = QTableWidgetItem(str(val))
+                    item.setTextAlignment(Qt.AlignCenter)
+                    self.brachy_table_01.setItem(row, col, item)
+                    
+                    item2 = QTableWidgetItem(str(val))
+                    item2.setTextAlignment(Qt.AlignCenter)
+                    self.brachy_table_02.setItem(row, col, item2)
+
+                # Add checkbox in the last column as an always-visible QCheckBox widget centered in the cell
+                checkbox1 = QCheckBox()
+                checkbox1.setChecked(data_dict.get('Visible', False))
+                layout1 = QHBoxLayout()
+                layout1.addWidget(checkbox1)
+                layout1.setAlignment(Qt.AlignCenter)
+                layout1.setContentsMargins(0, 0, 0, 0)
+                container1 = QWidget()
+                container1.setLayout(layout1)
+                self.brachy_table_01.setCellWidget(row, 9, container1)
+                
+                checkbox2 = QCheckBox()
+                checkbox2.setChecked(data_dict.get('Visible', False))
+                layout2 = QHBoxLayout()
+                layout2.addWidget(checkbox2)
+                layout2.setAlignment(Qt.AlignCenter)
+                layout2.setContentsMargins(0, 0, 0, 0)
+                container2 = QWidget()
+                container2.setLayout(layout2)
+                self.brachy_table_02.setCellWidget(row, 9, container2)
+
+                # Add QPushButton widgets for Go To and Get Slice actions
+                # Table 1:
+                btn_goto1 = QPushButton("Go")
+                btn_goto1.clicked.connect(lambda _, r=row: trigger_go_to_pt(r))
+                btn_goto1.setStyleSheet("QPushButton { background-color: #1c5fa8; color: white; border: 1px solid #104277; margin: 1px; padding: 2px; border-radius: 3px; font-weight: bold; } QPushButton:hover { background-color: #2475cf; }")
+                self.brachy_table_01.setCellWidget(row, 10, btn_goto1)
+
+                btn_get1 = QPushButton("Get Plane")
+                btn_get1.clicked.connect(lambda _, r=row: trigger_get_slice_pt(r))
+                btn_get1.setStyleSheet("QPushButton { background-color: #a82e2e; color: white; border: 1px solid #751e1e; margin: 1px; padding: 2px; border-radius: 3px; font-weight: bold; } QPushButton:hover { background-color: #cf3c3c; }")
+                self.brachy_table_01.setCellWidget(row, 11, btn_get1)
+
+                # Table 2:
+                btn_goto2 = QPushButton("Go")
+                btn_goto2.clicked.connect(lambda _, r=row: trigger_go_to_pt(r))
+                btn_goto2.setStyleSheet("QPushButton { background-color: #1c5fa8; color: white; border: 1px solid #104277; margin: 1px; padding: 2px; border-radius: 3px; font-weight: bold; } QPushButton:hover { background-color: #2475cf; }")
+                self.brachy_table_02.setCellWidget(row, 10, btn_goto2)
+
+                btn_get2 = QPushButton("Get Plane")
+                btn_get2.clicked.connect(lambda _, r=row: trigger_get_slice_pt(r))
+                btn_get2.setStyleSheet("QPushButton { background-color: #a82e2e; color: white; border: 1px solid #751e1e; margin: 1px; padding: 2px; border-radius: 3px; font-weight: bold; } QPushButton:hover { background-color: #cf3c3c; }")
+                self.brachy_table_02.setCellWidget(row, 11, btn_get2)
+
+                # Add Delete button in column index 12
+                btn_delete1 = QPushButton("Delete")
+                btn_delete1.setStyleSheet("QPushButton { background-color: black; color: red; border: 1px solid red; margin: 1px; padding: 2px; border-radius: 3px; font-weight: bold; } QPushButton:hover { background-color: #330000; }")
+                btn_delete1.clicked.connect(lambda _, r=row: trigger_delete_pt(r))
+                self.brachy_table_01.setCellWidget(row, 12, btn_delete1)
+
+                btn_delete2 = QPushButton("Delete")
+                btn_delete2.setStyleSheet("QPushButton { background-color: black; color: red; border: 1px solid red; margin: 1px; padding: 2px; border-radius: 3px; font-weight: bold; } QPushButton:hover { background-color: #330000; }")
+                btn_delete2.clicked.connect(lambda _, r=row: trigger_delete_pt(r))
+                self.brachy_table_02.setCellWidget(row, 12, btn_delete2)
+
+                # Connect state change to persist visibility selection and update VTK overlays
+                def make_toggle_handler(cb1, cb2, pt_dict):
+                    def handler(state):
+                        is_checked = (state == 2 or state == True) # Qt.Checked is 2
+                        pt_dict['Visible'] = is_checked
+                        
+                        # Sync check state
+                        cb1.blockSignals(True)
+                        cb1.setChecked(is_checked)
+                        cb1.blockSignals(False)
+                        
+                        cb2.blockSignals(True)
+                        cb2.setChecked(is_checked)
+                        cb2.blockSignals(False)
+                        
+                        # Refresh overlays on all slice views
+                        from fcn_display.display_images import displayaxial, displaysagittal, displaycoronal
+                        displayaxial(self)
+                        displaysagittal(self)
+                        displaycoronal(self)
+                    return handler
+                
+                checkbox1.stateChanged.connect(make_toggle_handler(checkbox1, checkbox2, data_dict))
+                checkbox2.stateChanged.connect(make_toggle_handler(checkbox1, checkbox2, data_dict))
+
+            # Set empty items for columns 0 to 11 in the last row to look clean
+            for col in range(12):
+                item1 = QTableWidgetItem("")
+                item1.setFlags(Qt.NoItemFlags)
+                self.brachy_table_01.setItem(num_rows, col, item1)
+                
+                item2 = QTableWidgetItem("")
+                item2.setFlags(Qt.NoItemFlags)
+                self.brachy_table_02.setItem(num_rows, col, item2)
+                
+            # Table 1 ADD button in the last row, last column:
+            btn_add1 = QPushButton("ADD")
+            btn_add1.setStyleSheet("QPushButton { background-color: #28a745; color: white; border: 1px solid #1e7e34; margin: 1px; padding: 2px; border-radius: 3px; font-weight: bold; } QPushButton:hover { background-color: #218838; }")
+            btn_add1.clicked.connect(lambda: trigger_add_pt())
+            self.brachy_table_01.setCellWidget(num_rows, 12, btn_add1)
+            
+            # Table 2 ADD button in the last row, last column:
+            btn_add2 = QPushButton("ADD")
+            btn_add2.setStyleSheet("QPushButton { background-color: #28a745; color: white; border: 1px solid #1e7e34; margin: 1px; padding: 2px; border-radius: 3px; font-weight: bold; } QPushButton:hover { background-color: #218838; }")
+            btn_add2.clicked.connect(lambda: trigger_add_pt())
+            self.brachy_table_02.setCellWidget(num_rows, 12, btn_add2)
+        else:
+            num_rows = table_info.shape[0] if table_info is not None else 0
+            num_columns = table_info.shape[1] if table_info is not None else 0
+            
+            self.brachy_table_01.setRowCount(num_rows)
+            self.brachy_table_01.setColumnCount(num_columns)
+            self.brachy_table_02.setRowCount(num_rows)
+            self.brachy_table_02.setColumnCount(num_columns)
+            
+            selected_dw_ch = self.brachy_combobox_01.currentText()
+            for row in range(num_rows):
+                for col in range(num_columns):
+                    val = table_info[row, col]
+                    if selected_dw_ch == "Dwells":
+                        if col == 4:
+                            val = table_info[row, 5]
+                        elif col == 5:
+                            val = table_info[row, 4]
+                    elif selected_dw_ch == "Channels":
+                        if col == 1:
+                            val = table_info[row, 2]
+                        elif col == 2:
+                            val = table_info[row, 1]
+                            
+                    item = QTableWidgetItem(str(val))
+                    item.setTextAlignment(Qt.AlignCenter)
+                    self.brachy_table_01.setItem(row, col, item)
+                    
+                    item2 = QTableWidgetItem(str(val))
+                    item2.setTextAlignment(Qt.AlignCenter)
+                    self.brachy_table_02.setItem(row, col, item2)
+
+        self.brachy_table_01.resizeColumnsToContents()
+        self.brachy_table_02.resizeColumnsToContents()
+    finally:
+        self.brachy_table_01.blockSignals(False)
+        self.brachy_table_02.blockSignals(False)
 
 def apply_alternating_row_colors(self):
     """
@@ -536,3 +939,219 @@ def export_all_brachy_channels_to_csv(self):
         QMessageBox.information(self, "Export Complete", f"Data exported successfully to:\n{file_path}")
     except Exception as e:
         QMessageBox.critical(self, "Export Error", f"An error occurred:\n{str(e)}")
+
+
+def calculate_ref_points_dose(self, rtdose_series):
+    """
+    Calculates the dose at each reference point in the table line-by-line using
+    tri-linear interpolation on the RTDOSE matrix.
+    """
+    try:
+        dose_matrix = rtdose_series.get('3DMatrix')
+        meta = rtdose_series.get('metadata', {})
+        if dose_matrix is None or not isinstance(dose_matrix, np.ndarray):
+            return
+        
+        origin = meta.get('ImagePositionPatient', [0.0, 0.0, 0.0])
+        x0, y0, z0 = origin[0], origin[1], origin[2]
+        
+        spacing = meta.get('PixelSpacing', [1.0, 1.0])
+        dx, dy = spacing[0], spacing[1]
+        dz = meta.get('SliceThickness', 1.0)
+        
+        Nz, Ny, Nx = dose_matrix.shape
+        
+        # Check GridFrameOffsetVector from DCM_Info
+        dicom_file = meta.get('DCM_Info')
+        grid_offset = getattr(dicom_file, 'GridFrameOffsetVector', None)
+        if grid_offset is not None:
+            z_grid = np.array([z0 + float(offset) for offset in grid_offset])
+        else:
+            z_grid = z0 + np.arange(Nz) * dz
+            
+        # Since dose_matrix in load_dcm.py was Y-flipped, flip it back to have Y-coordinates increasing:
+        dose_matrix_work = np.flip(dose_matrix, axis=1)
+        y_grid = y0 + np.arange(Ny) * dy
+        x_grid = x0 + np.arange(Nx) * dx
+        
+        # Ensure z_grid is increasing
+        if len(z_grid) > 1 and z_grid[1] < z_grid[0]:
+            z_grid = z_grid[::-1]
+            dose_matrix_work = np.flip(dose_matrix_work, axis=0)
+            
+        # Ensure x_grid is increasing
+        if len(x_grid) > 1 and x_grid[1] < x_grid[0]:
+            x_grid = x_grid[::-1]
+            dose_matrix_work = np.flip(dose_matrix_work, axis=2)
+            
+        from scipy.interpolate import RegularGridInterpolator
+        interp = RegularGridInterpolator((z_grid, y_grid, x_grid), dose_matrix_work, bounds_error=False, fill_value=0.0)
+        
+        # Loop over only actual reference point rows (excluding the last ADD button row if present)
+        metadata = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']
+        ref_points = metadata.get('Plan_Dose_References', [])
+        num_rows = len(ref_points)
+        for row in range(num_rows):
+            # Coordinates are in columns 5, 6, 7 (X, Y, Z)
+            item_x = self.brachy_table_01.item(row, 5)
+            item_y = self.brachy_table_01.item(row, 6)
+            item_z = self.brachy_table_01.item(row, 7)
+            
+            if item_x and item_y and item_z:
+                val_x = item_x.text()
+                val_y = item_y.text()
+                val_z = item_z.text()
+                
+                if val_x != 'N/A' and val_y != 'N/A' and val_z != 'N/A':
+                    try:
+                        # Table X is physical X, Table Y is physical Z, Table Z is physical Y
+                        x_phys = float(val_x)
+                        y_phys = float(val_z)
+                        z_phys = float(val_y)
+                        
+                        # Interpolate dose (Gy) and convert to cGy
+                        dose_Gy = float(interp([z_phys, y_phys, x_phys])[0])
+                        dose_cGy = dose_Gy * 100.0
+                        
+                        dose_str = f"{dose_cGy:.2f}"
+                        
+                        # Update brachy_table_01
+                        d_item1 = QTableWidgetItem(dose_str)
+                        d_item1.setTextAlignment(Qt.AlignCenter)
+                        self.brachy_table_01.setItem(row, 8, d_item1)
+                        
+                        # Update brachy_table_02
+                        d_item2 = QTableWidgetItem(dose_str)
+                        d_item2.setTextAlignment(Qt.AlignCenter)
+                        self.brachy_table_02.setItem(row, 8, d_item2)
+                    except Exception as e:
+                        print(f"Error calculating dose at row {row}: {e}")
+    except Exception as e:
+        print(f"Error setting up dose calculation: {e}")
+
+
+def on_brachy_table_item_changed(self, table, item):
+    """
+    Called when a cell in brachy_table_01 or brachy_table_02 is modified.
+    If the modified cell is one of the coordinates (X, Y, Z at cols 5, 6, 7)
+    during 'Ref. Points' mode, it adjusts the active metadata coordinate value
+    and triggers a recalculation of the dose point at index 8.
+    """
+    if not hasattr(self, 'patientID_plan') or not self.patientID_plan:
+        return
+        
+    selected_dw_ch = self.brachy_combobox_01.currentText()
+    if selected_dw_ch != "Ref. Points":
+        return
+        
+    row = item.row()
+    col = item.column()
+    
+    # We only care about X, Y, Z coordinates (cols 5, 6, 7)
+    if col not in (5, 6, 7):
+        return
+        
+    # Get metadata
+    metadata = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']
+    ref_points = metadata.get('Plan_Dose_References', [])
+    if row >= len(ref_points):
+        return
+        
+    other_table = self.brachy_table_02 if table is self.brachy_table_01 else self.brachy_table_01
+    
+    # Temporarily block signals to prevent recursive update loops
+    other_table.blockSignals(True)
+    table.blockSignals(True)
+    try:
+        # Synchronize value change to the other table
+        other_item = other_table.item(row, col)
+        if other_item:
+            other_item.setText(item.text())
+        else:
+            other_item = QTableWidgetItem(item.text())
+            other_item.setTextAlignment(Qt.AlignCenter)
+            other_table.setItem(row, col, other_item)
+            
+        # Extract the X, Y, Z values from columns 5, 6, 7
+        item_x = table.item(row, 5)
+        item_y = table.item(row, 6)
+        item_z = table.item(row, 7)
+        
+        if item_x and item_y and item_z:
+            val_x = item_x.text().strip()
+            val_y = item_y.text().strip()
+            val_z = item_z.text().strip()
+            
+            if val_x != 'N/A' and val_y != 'N/A' and val_z != 'N/A' and val_x != '' and val_y != '' and val_z != '':
+                try:
+                    # Table X is physical X, Table Y is physical Z, Table Z is physical Y
+                    x = float(val_x) # physical X
+                    y = float(val_z) # physical Y
+                    z = float(val_y) # physical Z
+                    
+                    # Update coordinates in metadata
+                    ref_points[row]['DoseReferencePointCoordinates'] = [x, y, z]
+                    
+                    # Recalculate dose if active RTDOSE exists
+                    dose_str = 'N/A'
+                    if hasattr(self, 'selected_rtdose_ref') and self.selected_rtdose_ref is not None:
+                        dose_matrix = self.selected_rtdose_ref.get('3DMatrix')
+                        meta = self.selected_rtdose_ref.get('metadata', {})
+                        if dose_matrix is not None and isinstance(dose_matrix, np.ndarray):
+                            origin = meta.get('ImagePositionPatient', [0.0, 0.0, 0.0])
+                            x0, y0, z0 = origin[0], origin[1], origin[2]
+                            
+                            spacing = meta.get('PixelSpacing', [1.0, 1.0])
+                            dx, dy = spacing[0], spacing[1]
+                            dz = meta.get('SliceThickness', 1.0)
+                            
+                            Nz, Ny, Nx = dose_matrix.shape
+                            
+                            dicom_file = meta.get('DCM_Info')
+                            grid_offset = getattr(dicom_file, 'GridFrameOffsetVector', None)
+                            if grid_offset is not None:
+                                z_grid = np.array([z0 + float(offset) for offset in grid_offset])
+                            else:
+                                z_grid = z0 + np.arange(Nz) * dz
+                                
+                            dose_matrix_work = np.flip(dose_matrix, axis=1)
+                            y_grid = y0 + np.arange(Ny) * dy
+                            x_grid = x0 + np.arange(Nx) * dx
+                            
+                            if len(z_grid) > 1 and z_grid[1] < z_grid[0]:
+                                z_grid = z_grid[::-1]
+                                dose_matrix_work = np.flip(dose_matrix_work, axis=0)
+                                
+                            if len(x_grid) > 1 and x_grid[1] < x_grid[0]:
+                                x_grid = x_grid[::-1]
+                                dose_matrix_work = np.flip(dose_matrix_work, axis=2)
+                                
+                            from scipy.interpolate import RegularGridInterpolator
+                            interp = RegularGridInterpolator((z_grid, y_grid, x_grid), dose_matrix_work, bounds_error=False, fill_value=0.0)
+                            
+                            dose_Gy = float(interp([z, y, x])[0])
+                            dose_cGy = dose_Gy * 100.0
+                            dose_str = f"{dose_cGy:.2f}"
+                            
+                    # Update column 8 (Dose (cGy))
+                    d_item1 = QTableWidgetItem(dose_str)
+                    d_item1.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 8, d_item1)
+                    
+                    d_item2 = QTableWidgetItem(dose_str)
+                    d_item2.setTextAlignment(Qt.AlignCenter)
+                    other_table.setItem(row, 8, d_item2)
+
+                    # Update VTK marker positions on image views
+                    from fcn_display.display_images import displayaxial, displaysagittal, displaycoronal
+                    displayaxial(self)
+                    displaysagittal(self)
+                    displaycoronal(self)
+                    
+                except ValueError as e:
+                    print(f"Non-numeric coordinates: {e}")
+                except Exception as e:
+                    print(f"Error on coordinate recalculation: {e}")
+    finally:
+        other_table.blockSignals(False)
+        table.blockSignals(False)
