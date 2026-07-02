@@ -2081,6 +2081,12 @@ def update_layer_view(self):
             self.SagittalSlider.setValue(Sa_s)
             self.CoronalSlider.setValue(Co_s)
             #
+            from fcn_init.view_hist import set_vtk_histogran_fig
+            if idx in self.display_data and self.display_data[idx] is not None:
+                try:
+                    set_vtk_histogran_fig(self)
+                except Exception as e:
+                    print(f"Error updating histogram: {e}")
 
 
 def create_cross_actor(x_c, y_c, z_c, size, color, thickness=2.0):

@@ -72,6 +72,9 @@ def set_window(self,Window,Level):
         self.windowLevelSeg[layer].SetLevel(Level)
         self.textActorSeg[1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
         disp_seg_image_slice(self)
+
+    from fcn_init.view_hist import update_histogram_wl_lines
+    update_histogram_wl_lines(self, Window, Level)
             
             
 
@@ -122,11 +125,11 @@ def window_IrIS_4(self):
     
 def window_custom(self):
     # Ask for Window value
-    Window, ok1 = QInputDialog.getInt(self, "Input Window", "Enter Window value:", min=0, max=1000000, step=1)
+    Window, ok1 = QInputDialog.getInt(self, "Input Window", "Enter Window value:", 0, 0, 1000000, 1)
     if not ok1:
         return  # User cancelled or closed the dialog
     # Ask for Level value
-    Level, ok2 = QInputDialog.getInt(self, "Input Level", "Enter Level value:", min=-1000000, max=1000000, step=1)
+    Level, ok2 = QInputDialog.getInt(self, "Input Level", "Enter Level value:", 0, -1000000, 1000000, 1)
     if not ok2:
         return  # User cancelled or closed the dialog
     set_window(self,Window,Level)

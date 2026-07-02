@@ -122,6 +122,18 @@ def set_vtk_histogran_fig(self):
         dmin, dmax = lo_all, hi_all
     margin = 0.01 * (dmax - dmin if dmax > dmin else (hi_all - lo_all))
     x_lo = max(lo_all, dmin - margin); x_hi = min(hi_all, dmax + margin)
+    
+    # Adjust to include current window level bounds so bars are always visible
+    if hasattr(self, 'windowLevelAxial') and idx in self.windowLevelAxial:
+        Window = self.windowLevelAxial[idx].GetWindow()
+        Level  = self.windowLevelAxial[idx].GetLevel()
+    else:
+        Window = 2000.0
+        Level = 0.0
+    low_x = Level - Window / 2.0
+    high_x = Level + Window / 2.0
+    x_lo = min(x_lo, low_x - 100.0)
+    x_hi = max(x_hi, high_x + 100.0)
 
     # Histogram + smoothing
     counts, edges = np.histogram(data, bins=512, range=(x_lo, x_hi))
@@ -149,4 +161,142 @@ def set_vtk_histogran_fig(self):
     ax.set_ylim(0, max(1.0, float(smooth.max())) * 1.05)
 
     self.fig_Hist_01.subplots_adjust(left=0.06, right=0.99, top=0.95, bottom=0.20)
+
+    # Draw vertical lines for window level
+    idx = self.layer_selected.currentIndex()
+    if hasattr(self, 'windowLevelAxial') and idx in self.windowLevelAxial:
+        Window = self.windowLevelAxial[idx].GetWindow()
+        Level  = self.windowLevelAxial[idx].GetLevel()
+    else:
+        Window = 2000.0
+        Level = 0.0
+
+    update_histogram_wl_lines(self, Window, Level)
+    init_histogram_interaction(self)
+
+
+def update_histogram_wl_lines(self, Window, Level):
+    if not hasattr(self, 'ax_Hist_01') or not hasattr(self, 'canvas_Hist_01'):
+        return
+        
+    low_x = Level - Window / 2.0
+    high_x = Level + Window / 2.0
+    
+    # Adjust axes limits dynamically if the lines go outside current xlim
+    xlim = self.ax_Hist_01.get_xlim()
+    new_xlim = list(xlim)
+    changed = False
+    if low_x < xlim[0]:
+        new_xlim[0] = low_x - 50.0
+        changed = True
+    if high_x > xlim[1]:
+        new_xlim[1] = high_x + 50.0
+        changed = True
+        
+    if changed:
+        self.ax_Hist_01.set_xlim(new_xlim[0], new_xlim[1])
+        
+    # Check if we have the lines already on the axes
+    lines_exist = True
+    for attr in ('_vline_low', '_vline_high', '_vline_center'):
+        if not hasattr(self, attr) or getattr(self, attr) not in self.ax_Hist_01.lines:
+            lines_exist = False
+            break
+            
+    if lines_exist:
+        self._vline_low.set_xdata([low_x, low_x])
+        self._vline_high.set_xdata([high_x, high_x])
+        self._vline_center.set_xdata([Level, Level])
+    else:
+        self._vline_low = self.ax_Hist_01.axvline(low_x, color='red', linestyle='--', linewidth=1.5, alpha=0.8)
+        self._vline_high = self.ax_Hist_01.axvline(high_x, color='red', linestyle='--', linewidth=1.5, alpha=0.8)
+        self._vline_center = self.ax_Hist_01.axvline(Level, color='yellow', linestyle=':', linewidth=1.0, alpha=0.6)
+        
     self.canvas_Hist_01.draw_idle()
+
+
+def init_histogram_interaction(self):
+    if hasattr(self, '_hist_interaction_connected') and self._hist_interaction_connected:
+        return
+        
+    self._dragging_line = None
+    self._hist_interaction_connected = True
+    
+    def on_press(event):
+        if event.inaxes != self.ax_Hist_01:
+            return
+        if event.button != 1:  # Left click only
+            return
+            
+        # Get click x coordinate
+        click_x = event.xdata
+        if click_x is None:
+            return
+            
+        xlim = self.ax_Hist_01.get_xlim()
+        tol = 0.02 * (xlim[1] - xlim[0])
+        
+        idx = self.layer_selected.currentIndex()
+        if hasattr(self, 'windowLevelAxial') and idx in self.windowLevelAxial:
+            Window = self.windowLevelAxial[idx].GetWindow()
+            Level  = self.windowLevelAxial[idx].GetLevel()
+        else:
+            Window = 2000.0
+            Level = 0.0
+            
+        low_x = Level - Window / 2.0
+        high_x = Level + Window / 2.0
+        
+        dists = {
+            'low': abs(click_x - low_x),
+            'high': abs(click_x - high_x),
+            'center': abs(click_x - Level)
+        }
+        
+        closest = min(dists, key=dists.get)
+        if dists[closest] <= tol:
+            self._dragging_line = closest
+            self._drag_start_low = low_x
+            self._drag_start_high = high_x
+            self._drag_start_center = Level
+            
+    def on_motion(event):
+        if self._dragging_line is None or event.inaxes != self.ax_Hist_01:
+            return
+        new_x = event.xdata
+        if new_x is None:
+            return
+            
+        new_x = max(-1024.0, min(new_x, 3072.0))
+        
+        from fcn_display.win_level import set_window
+        
+        if self._dragging_line == 'low':
+            high_x = self._drag_start_high
+            low_x = new_x
+            if low_x >= high_x:
+                low_x = high_x - 1.0
+            new_W = high_x - low_x
+            new_L = (high_x + low_x) / 2.0
+            set_window(self, new_W, new_L)
+            
+        elif self._dragging_line == 'high':
+            low_x = self._drag_start_low
+            high_x = new_x
+            if high_x <= low_x:
+                high_x = low_x + 1.0
+            new_W = high_x - low_x
+            new_L = (high_x + low_x) / 2.0
+            set_window(self, new_W, new_L)
+            
+        elif self._dragging_line == 'center':
+            new_L = new_x
+            new_W = self._drag_start_high - self._drag_start_low
+            set_window(self, new_W, new_L)
+            
+    def on_release(event):
+        self._dragging_line = None
+        
+    self.canvas_Hist_01.mpl_connect('button_press_event', on_press)
+    self.canvas_Hist_01.mpl_connect('motion_notify_event', on_motion)
+    self.canvas_Hist_01.mpl_connect('button_release_event', on_release)

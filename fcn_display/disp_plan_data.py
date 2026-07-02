@@ -579,6 +579,14 @@ def populate_brachy_table(self, table_info):
                             val = table_info[row, 5]
                         elif col == 5:
                             val = table_info[row, 4]
+                        
+                        try:
+                            if col in (3, 4, 5):
+                                val = f"{float(val):.2f}"
+                            elif col in (6, 7, 8):
+                                val = f"{float(val):.4f}"
+                        except ValueError:
+                            pass
                     elif selected_dw_ch == "Channels":
                         if col == 1:
                             val = table_info[row, 2]
