@@ -147,14 +147,28 @@ def initialize_software_buttons(self):
     self.gridLayout_16.addWidget(self.combo_grid_presets, 3, 7, 1, 1)
     self.combo_grid_presets.currentIndexChanged.connect(lambda idx: on_grid_preset_changed(self, idx))
 
-    # Link Colormap checkbox
+    # Sync Checkboxes (Colormaps and Contours) in Column 2
     from fcn_display.colormap_set import on_link_colormap_changed
+    from fcn_display.display_images_comp import on_link_contours_changed
+    
+    self.comp_sync_layout = QtWidgets.QHBoxLayout()
+    self.comp_sync_layout.setContentsMargins(0, 0, 0, 0)
+    
     self.Comp_linkColormaps = QtWidgets.QCheckBox(self.im_compare_tab)
     self.Comp_linkColormaps.setObjectName("Comp_linkColormaps")
     self.Comp_linkColormaps.setText("Link colormap")
     self.Comp_linkColormaps.setChecked(True)
-    self.gridLayout_16.addWidget(self.Comp_linkColormaps, 3, 1, 1, 1)
+    self.comp_sync_layout.addWidget(self.Comp_linkColormaps)
     self.Comp_linkColormaps.stateChanged.connect(lambda: on_link_colormap_changed(self))
+    
+    self.Comp_linkContours = QtWidgets.QCheckBox(self.im_compare_tab)
+    self.Comp_linkContours.setObjectName("Comp_linkContours")
+    self.Comp_linkContours.setText("Link contours")
+    self.Comp_linkContours.setChecked(True)
+    self.comp_sync_layout.addWidget(self.Comp_linkContours)
+    self.Comp_linkContours.stateChanged.connect(lambda: on_link_contours_changed(self))
+    
+    self.gridLayout_16.addLayout(self.comp_sync_layout, 3, 2, 1, 1)
 
     from fcn_display.display_images_comp import change_comp_view_orientation, sync_comp_dropdown_to_viewport
     self.Comp_view_sel_box.currentIndexChanged.connect(lambda idx: change_comp_view_orientation(self, idx))

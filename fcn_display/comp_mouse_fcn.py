@@ -83,6 +83,8 @@ def onMouseMovecomp(self, caller, event):
         image_coords = image_data.GetPoint(image_id)
         # adjust coordinates to account for pixel size and offset
         spacing = self.dataImporterAxComp[Ax_idx, layer].GetDataSpacing()
+        if spacing[0] == 0 or spacing[1] == 0:
+            continue
         image_coord_vox    = list(image_coords)
         image_coord_vox[0] = int(image_coord_vox[0]/spacing[0])
         image_coord_vox[1] = int(image_coord_vox[1]/spacing[1])

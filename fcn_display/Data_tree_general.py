@@ -454,6 +454,55 @@ def on_DataTreeView_clicked(self,index):
             #                
                 
             elif currentTabText == "Compare":
+                # Check if clicked on a structure or structures parent node
+                if len(hierarchy) >= 6 and hierarchy[5] == "Structures":
+                    patientID = hierarchy[1].replace("PatientID: ", "")
+                    studyID   = hierarchy[2].replace("StudyID: ", "")
+                    modality  = hierarchy[3].replace("Modality: ", "")
+                    series_index = hierarchy_indices[4].row()
+
+                    # Active axes index
+                    Ax_idx = self.Comp_im_idx.value()
+                    if Ax_idx == -1:
+                        QMessageBox.warning(self, "Warning", "Create the comparison axes first (bottom-right button)")
+                        return
+
+                    # Verify if the original image is displayed on the active axes
+                    loaded_on_active = False
+                    if hasattr(self, 'comp_series_keys'):
+                        for l_idx in range(4):
+                            if self.comp_series_keys.get((Ax_idx, l_idx)) == (patientID, studyID, modality, series_index):
+                                loaded_on_active = True
+                                break
+
+                    if not loaded_on_active:
+                        QMessageBox.warning(self, "Warning", "The images corresponding to the contours are not being displayed on the active axes.")
+                        return
+                    
+                    try:
+                        series_dict = self.medical_image[patientID][studyID][modality][series_index]
+                    except KeyError:
+                        return
+                        
+                    # If they clicked a specific structure child, make it visible automatically!
+                    if len(hierarchy) == 7:
+                        struct_name = hierarchy[6]
+                        names = series_dict.get('structures_names', [])
+                        if struct_name in names:
+                            s_idx = names.index(struct_name)
+                            view_flags = series_dict.setdefault('structures_view', [0] * len(names))
+                            if len(view_flags) < len(names):
+                                view_flags += [0] * (len(names) - len(view_flags))
+                            view_flags[s_idx] = 1
+                            
+                    from fcn_display.display_images_comp import CompareStructuresDialog
+                    dialog = CompareStructuresDialog(self, series_dict, (patientID, studyID, modality, series_index), self)
+                    dialog.exec()
+                    
+                    # Re-render to show updated contours
+                    disp_comp_image_slice(self)
+                    return
+
                 #
                 # Current view
                 Ax_idx = self.Comp_im_idx.value()
@@ -463,6 +512,9 @@ def on_DataTreeView_clicked(self,index):
                 # layer
                 #
                 self.display_comp_data[Ax_idx, idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+                if not hasattr(self, 'comp_series_keys'):
+                    self.comp_series_keys = {}
+                self.comp_series_keys[Ax_idx, idx] = (self.patientID, self.studyID, self.modality, self.series_index)
                 adjust_data_type_comp_input(self,Ax_idx,idx)
 
                 self.current_AxComp_slice_index[Ax_idx,idx]   = int(self.display_comp_data[Ax_idx, idx].shape[0]/2)
