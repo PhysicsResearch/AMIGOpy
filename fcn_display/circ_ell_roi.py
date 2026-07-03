@@ -119,6 +119,15 @@ class PointRoiWidget(QtCore.QObject):
             return
 
     def delete(self):
+        _group_id = getattr(self, 'group_id', None)
+        if _group_id is not None and not getattr(self.parent, '_syncing_tool', False):
+            self.parent._syncing_tool = True
+            try:
+                for other in list(getattr(self.parent, 'points', [])):
+                    if other is not self and getattr(other, 'group_id', None) == _group_id:
+                        other.delete()
+            finally:
+                self.parent._syncing_tool = False
         # reset any internal flags that could affect interaction
         self._dragging_stats = False
         if hasattr(self.parent, "_text_dragging"):
@@ -242,6 +251,31 @@ class PointRoiWidget(QtCore.QObject):
         self._update_stats()
         self.renWin.Render()
 
+        # Link tools synchronization
+        app = self.parent
+        _is_comp = self.vtkWidget in getattr(app, 'vtkWidgetsComp', [])
+        _group_id = getattr(self, 'group_id', None)
+        if (_is_comp
+                and getattr(app, 'Comp_linkTools', None)
+                and app.Comp_linkTools.isChecked()
+                and self in getattr(app, 'points', [])
+                and _group_id is not None):
+            if not getattr(app, '_syncing_tool', False):
+                app._syncing_tool = True
+                try:
+                    for other in getattr(app, 'points', []):
+                        if (other is not self
+                                and other.is_visible
+                                and getattr(other, 'group_id', None) == _group_id
+                                and other.vtkWidget is not self.vtkWidget):
+                            other.handleWidget.GetRepresentation().SetWorldPosition(new_pt)
+                            other._last_point = new_pt
+                            other._update_cross()
+                            other._update_stats()
+                            other.renWin.Render()
+                finally:
+                    app._syncing_tool = False
+
     def _update_cross(self):
         if len(self.crossSources) < 2:
             return
@@ -259,7 +293,6 @@ class PointRoiWidget(QtCore.QObject):
         lines = [f"X={cx:.1f}  Y={cy:.1f}"]
         for idx, data in self.parent.display_data.items():
             if data is None or not hasattr(data, 'ndim'):
-                lines.append(f"Layer {idx}: ∅")
                 continue
             if data.ndim == 2:
                 slc = data
@@ -282,7 +315,7 @@ class PointRoiWidget(QtCore.QObject):
                 py = (cy - self.parent.Im_Offset[idx, 2]) / self.parent.slice_thick[idx]
             px = int(np.clip(round(px), 0, w - 1)); py = int(np.clip(round(py), 0, h - 1))
             val = slc[py, px]
-            lines.append(f"Layer {idx}: {val:.1f}")
+            lines.append(f"Layer {idx}: {int(val) if val == int(val) else round(val, 3)}")
         if self.statsActor:
             self.statsActor.SetInput("\n".join(lines))
             self.statsActor.Modified()
@@ -529,6 +562,31 @@ class CircleRoiWidget(QtCore.QObject):
         self._update_stats()
         self.renWin.Render()
 
+        # Link tools synchronization
+        app = self.parent
+        _is_comp = self.vtkWidget in getattr(app, 'vtkWidgetsComp', [])
+        _group_id = getattr(self, 'group_id', None)
+        if (_is_comp
+                and getattr(app, 'Comp_linkTools', None)
+                and app.Comp_linkTools.isChecked()
+                and self in getattr(app, 'circle', [])
+                and _group_id is not None):
+            if not getattr(app, '_syncing_tool', False):
+                app._syncing_tool = True
+                try:
+                    for other in getattr(app, 'circle', []):
+                        if (other is not self
+                                and other.is_visible
+                                and getattr(other, 'group_id', None) == _group_id
+                                and other.vtkWidget is not self.vtkWidget):
+                            other._last_center = self._last_center
+                            other.circleSrc.SetCenter(*self._last_center)
+                            other._update_handles()
+                            other._update_stats()
+                            other.renWin.Render()
+                finally:
+                    app._syncing_tool = False
+
     def _on_release(self, caller, event):
         self._dragging = False
         if hasattr(self.parent, "_text_dragging"):
@@ -548,6 +606,31 @@ class CircleRoiWidget(QtCore.QObject):
         self._update_handles()
         self._update_stats()
         self.renWin.Render()
+
+        # Link tools synchronization
+        app = self.parent
+        _is_comp = self.vtkWidget in getattr(app, 'vtkWidgetsComp', [])
+        _group_id = getattr(self, 'group_id', None)
+        if (_is_comp
+                and getattr(app, 'Comp_linkTools', None)
+                and app.Comp_linkTools.isChecked()
+                and self in getattr(app, 'circle', [])
+                and _group_id is not None):
+            if not getattr(app, '_syncing_tool', False):
+                app._syncing_tool = True
+                try:
+                    for other in getattr(app, 'circle', []):
+                        if (other is not self
+                                and other.is_visible
+                                and getattr(other, 'group_id', None) == _group_id
+                                and other.vtkWidget is not self.vtkWidget):
+                            other._last_radius = self._last_radius
+                            other.circleSrc.SetRadius(self._last_radius)
+                            other._update_handles()
+                            other._update_stats()
+                            other.renWin.Render()
+                finally:
+                    app._syncing_tool = False
 
     def _update_handles(self):
         if not self.handles:
@@ -580,7 +663,6 @@ class CircleRoiWidget(QtCore.QObject):
         lines = [f"R={r_mm:.1f} mm   A={area_mm2:.1f} mm²"]
         for idx, data in self.parent.display_data.items():
             if data is None or not hasattr(data, 'ndim'):
-                lines.append(f"Layer {idx}: ∅")
                 continue
             if data.ndim == 2:
                 slc = data
@@ -592,7 +674,6 @@ class CircleRoiWidget(QtCore.QObject):
                 else:
                     si = self.parent.current_sagittal_slice_index[idx]; slc = data[:, :, si]
             else:
-                lines.append(f"Layer {idx}: ∅")
                 continue
 
             h, w = slc.shape
@@ -614,7 +695,7 @@ class CircleRoiWidget(QtCore.QObject):
             vals = slc[mask]
             if vals.size:
                 μ, σ = vals.mean(), vals.std()
-                lines.append(f"Layer {idx}: Mean {μ:.1f} STD {σ:.1f}")
+                lines.append(f"Layer {idx}: Mean {int(μ) if μ == int(μ) else round(μ, 3)} STD {int(σ) if σ == int(σ) else round(σ, 3)}")
             else:
                 lines.append(f"Layer {idx}: ∅")
         if self.statsActor:
@@ -648,6 +729,15 @@ class CircleRoiWidget(QtCore.QObject):
         self.renWin.Render()
 
     def delete(self):
+        _group_id = getattr(self, 'group_id', None)
+        if _group_id is not None and not getattr(self.parent, '_syncing_tool', False):
+            self.parent._syncing_tool = True
+            try:
+                for other in list(getattr(self.parent, 'circle', [])):
+                    if other is not self and getattr(other, 'group_id', None) == _group_id:
+                        other.delete()
+            finally:
+                self.parent._syncing_tool = False
         # reset flags
         self._dragging = False
         self._dragging_stats = False
@@ -904,6 +994,31 @@ class EllipsoidRoiWidget(QtCore.QObject):
         self._update_stats()
         self.renWin.Render()
 
+        # Link tools synchronization
+        app = self.parent
+        _is_comp = self.vtkWidget in getattr(app, 'vtkWidgetsComp', [])
+        _group_id = getattr(self, 'group_id', None)
+        if (_is_comp
+                and getattr(app, 'Comp_linkTools', None)
+                and app.Comp_linkTools.isChecked()
+                and self in getattr(app, 'ellipses', [])
+                and _group_id is not None):
+            if not getattr(app, '_syncing_tool', False):
+                app._syncing_tool = True
+                try:
+                    for other in getattr(app, 'ellipses', []):
+                        if (other is not self
+                                and other.is_visible
+                                and getattr(other, 'group_id', None) == _group_id
+                                and other.vtkWidget is not self.vtkWidget):
+                            other._last_center = self._last_center
+                            other.actor.SetPosition(*self._last_center)
+                            other._update_handles()
+                            other._update_stats()
+                            other.renWin.Render()
+                finally:
+                    app._syncing_tool = False
+
     def _on_release(self, caller, event):
         self._dragging_center = False
         if hasattr(self.parent, "_text_dragging"):
@@ -925,6 +1040,33 @@ class EllipsoidRoiWidget(QtCore.QObject):
         self._update_handles()
         self._update_stats()
         self.renWin.Render()
+
+        # Link tools synchronization
+        app = self.parent
+        _is_comp = self.vtkWidget in getattr(app, 'vtkWidgetsComp', [])
+        _group_id = getattr(self, 'group_id', None)
+        if (_is_comp
+                and getattr(app, 'Comp_linkTools', None)
+                and app.Comp_linkTools.isChecked()
+                and self in getattr(app, 'ellipses', [])
+                and _group_id is not None):
+            if not getattr(app, '_syncing_tool', False):
+                app._syncing_tool = True
+                try:
+                    for other in getattr(app, 'ellipses', []):
+                        if (other is not self
+                                and other.is_visible
+                                and getattr(other, 'group_id', None) == _group_id
+                                and other.vtkWidget is not self.vtkWidget):
+                            other._last_rx = self._last_rx
+                            other._last_ry = self._last_ry
+                            other.actor.SetScale(self._last_rx, self._last_ry, 1)
+                            other.actor.SetPosition(cx, cy, cz)
+                            other._update_handles()
+                            other._update_stats()
+                            other.renWin.Render()
+                finally:
+                    app._syncing_tool = False
 
     def _update_handles(self):
         if not self.handles:
@@ -951,7 +1093,6 @@ class EllipsoidRoiWidget(QtCore.QObject):
         lines = [f"Rx={rx:.1f} mm   Ry={ry:.1f} mm   A={area:.1f} mm²"]
         for idx, data in self.parent.display_data.items():
             if data is None or not hasattr(data, 'ndim'):
-                lines.append(f"Layer {idx}: ∅")
                 continue
             if data.ndim == 2:
                 slc = data
@@ -981,7 +1122,7 @@ class EllipsoidRoiWidget(QtCore.QObject):
             vals = slc[mask]
             if vals.size:
                 μ, σ = vals.mean(), vals.std()
-                lines.append(f"Layer {idx}: Mean {μ:.1f} STD {σ:.1f}")
+                lines.append(f"Layer {idx}: Mean {int(μ) if μ == int(μ) else round(μ, 3)} STD {int(σ) if σ == int(σ) else round(σ, 3)}")
             else:
                 lines.append(f"Layer {idx}: ∅")
         if hasattr(self, 'statsActor') and self.statsActor:
@@ -1003,6 +1144,15 @@ class EllipsoidRoiWidget(QtCore.QObject):
         self.renWin.Render()
 
     def delete(self):
+        _group_id = getattr(self, 'group_id', None)
+        if _group_id is not None and not getattr(self.parent, '_syncing_tool', False):
+            self.parent._syncing_tool = True
+            try:
+                for other in list(getattr(self.parent, 'ellipses', [])):
+                    if other is not self and getattr(other, 'group_id', None) == _group_id:
+                        other.delete()
+            finally:
+                self.parent._syncing_tool = False
         # reset flags
         self._dragging_center = False
         self._dragging_stats  = False
@@ -1327,6 +1477,31 @@ class SquareRoiWidget(QtCore.QObject):
         self._update_stats()
         self.renWin.Render()
 
+        # Link tools synchronization
+        app = self.parent
+        _is_comp = self.vtkWidget in getattr(app, 'vtkWidgetsComp', [])
+        _group_id = getattr(self, 'group_id', None)
+        if (_is_comp
+                and getattr(app, 'Comp_linkTools', None)
+                and app.Comp_linkTools.isChecked()
+                and self in getattr(app, 'squares', [])
+                and _group_id is not None):
+            if not getattr(app, '_syncing_tool', False):
+                app._syncing_tool = True
+                try:
+                    for other in getattr(app, 'squares', []):
+                        if (other is not self
+                                and other.is_visible
+                                and getattr(other, 'group_id', None) == _group_id
+                                and other.vtkWidget is not self.vtkWidget):
+                            other._last_center = self._last_center
+                            other._update_plane()
+                            other._update_handles()
+                            other._update_stats()
+                            other.renWin.Render()
+                finally:
+                    app._syncing_tool = False
+
     def _on_release(self, caller, event):
         self._dragging_center = False
         if hasattr(self.parent, "_text_dragging"):
@@ -1367,6 +1542,32 @@ class SquareRoiWidget(QtCore.QObject):
         self._update_stats()
         self.renWin.Render()
 
+        # Link tools synchronization
+        app = self.parent
+        _is_comp = self.vtkWidget in getattr(app, 'vtkWidgetsComp', [])
+        _group_id = getattr(self, 'group_id', None)
+        if (_is_comp
+                and getattr(app, 'Comp_linkTools', None)
+                and app.Comp_linkTools.isChecked()
+                and self in getattr(app, 'squares', [])
+                and _group_id is not None):
+            if not getattr(app, '_syncing_tool', False):
+                app._syncing_tool = True
+                try:
+                    for other in getattr(app, 'squares', []):
+                        if (other is not self
+                                and other.is_visible
+                                and getattr(other, 'group_id', None) == _group_id
+                                and other.vtkWidget is not self.vtkWidget):
+                            other._last_rx = self._last_rx
+                            other._last_ry = self._last_ry
+                            other._update_plane()
+                            other._update_handles()
+                            other._update_stats()
+                            other.renWin.Render()
+                finally:
+                    app._syncing_tool = False
+
     def _update_handles(self):
         # if ROI deleted or handles cleared or partial, do nothing
         if not self.handles:
@@ -1391,7 +1592,6 @@ class SquareRoiWidget(QtCore.QObject):
         lines = [f"W={2*rx:.1f} H={2*ry:.1f} A={area:.1f} mm²"]
         for idx, data in self.parent.display_data.items():
             if data is None or not hasattr(data, 'ndim'):
-                lines.append(f"Layer {idx}: ∅")
                 continue
 
             if data.ndim == 2:
@@ -1425,7 +1625,7 @@ class SquareRoiWidget(QtCore.QObject):
             vals = slc[mask]
             if vals.size:
                 μ, σ = vals.mean(), vals.std()
-                lines.append(f"Layer {idx}: Mean {μ:.1f} STD {σ:.1f}")
+                lines.append(f"Layer {idx}: Mean {int(μ) if μ == int(μ) else round(μ, 3)} STD {int(σ) if σ == int(σ) else round(σ, 3)}")
             else:
                 lines.append(f"Layer {idx}: ∅")
 
@@ -1446,6 +1646,15 @@ class SquareRoiWidget(QtCore.QObject):
         self.renWin.Render()
 
     def delete(self):
+        _group_id = getattr(self, 'group_id', None)
+        if _group_id is not None and not getattr(self.parent, '_syncing_tool', False):
+            self.parent._syncing_tool = True
+            try:
+                for other in list(getattr(self.parent, 'squares', [])):
+                    if other is not self and getattr(other, 'group_id', None) == _group_id:
+                        other.delete()
+            finally:
+                self.parent._syncing_tool = False
         # reset flags
         self._dragging_center = False
         self._dragging_stats  = False

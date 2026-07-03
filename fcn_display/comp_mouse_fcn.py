@@ -44,72 +44,107 @@ def on_scroll_forwardcomp(self, caller, event):
 
 
 def onMouseMovecomp(self, caller, event):
-    layer = self.layer_selected.currentIndex()
-    for Ax_idx in range (0,self.Comp_im_idx.maximum()+1):
-        if (Ax_idx, layer) not in self.display_comp_data:
+    import numpy as np
+
+    # Guard: force-reset any stuck interactor style state (e.g. dolly/zoom
+    # left over from right-click context menus stealing Qt focus).
+    # The Compare tab handles all interactions via custom handlers, so the
+    # style should never be in any active state.
+    style = caller.GetInteractorStyle()
+    if style and style.GetState() != 0:
+        try:
+            style.StopState()
+        except Exception:
+            pass
+
+    active_layer = self.layer_selected.currentIndex()
+    x, y = caller.GetEventPosition()
+    
+    for Ax_idx in range(0, self.Comp_im_idx.maximum() + 1):
+        if (Ax_idx, active_layer) not in self.display_comp_data:
             continue
-        ori = int(self.im_ori_comp[Ax_idx])
-        axis = 2 if ori == 1 else (1 if ori == 2 else 0)
-        if not (0 <= int(self.current_AxComp_slice_index[Ax_idx, layer]) < self.display_comp_data[Ax_idx, layer].shape[axis]):
-            continue
-        # if self.current_axial_slice_index[idx]==-1:
-        #     return
-        if self.im_ori_comp[Ax_idx] ==0: #Axial
-            slice_data = self.display_comp_data[Ax_idx, layer][int(self.current_AxComp_slice_index[Ax_idx,layer]), :, :]
-        elif self.im_ori_comp[Ax_idx] ==1: #Sagittal 
-            slice_data = self.display_comp_data[Ax_idx, layer][:,:,int(self.current_AxComp_slice_index[Ax_idx,layer])]
-        elif self.im_ori_comp[Ax_idx] ==2: #Coronal
-            slice_data = self.display_comp_data[Ax_idx, layer][:,int(self.current_AxComp_slice_index[Ax_idx,layer]), :]
-        #    
-        # Get the position of the mouse
-        x, y = caller.GetEventPosition()
-        # Get previous event position
-        x0, y0 = caller.GetLastEventPosition()
-        # # # Initialize a point picker
+            
         picker = vtk.vtkPointPicker()
-        # Use the picker to get world coordinates
-        picker.Pick(x, y, 1, self.renAxComp[Ax_idx])   
+        picker.Pick(x, y, 1, self.renAxComp[Ax_idx])
         world_coordinates = picker.GetPickPosition()
-        #
-        # Adjust the picked world coordinates by the offset
-        offset = self.imageActorAxComp[Ax_idx,layer].GetPosition()
-        adjusted_world_coordinates = (world_coordinates[0] - offset[0], 
-                                      world_coordinates[1] - offset[1], 
-                                      world_coordinates[2] - offset[2])
-        # Get the image data from the image actor
-        image_data = self.imageActorAxComp[Ax_idx,layer].GetInput()
-        # Convert world coordinates to image coordinates
-        image_id = image_data.FindPoint(adjusted_world_coordinates)
-        image_coords = image_data.GetPoint(image_id)
-        # adjust coordinates to account for pixel size and offset
-        spacing = self.dataImporterAxComp[Ax_idx, layer].GetDataSpacing()
-        if spacing[0] == 0 or spacing[1] == 0:
-            continue
-        image_coord_vox    = list(image_coords)
-        image_coord_vox[0] = int(image_coord_vox[0]/spacing[0])
-        image_coord_vox[1] = int(image_coord_vox[1]/spacing[1])
-        # Make sure the image coordinates are within the image bounds
-        if 0 <= image_coord_vox[0] < slice_data.shape[1] and 0 <= image_coord_vox[1] < slice_data.shape[0]:
-            pixel_value = slice_data[image_coord_vox[1], image_coord_vox[0]]    
-            self.textActorAxCom[Ax_idx,2].SetInput(f"Slice:{self.current_AxComp_slice_index[Ax_idx,layer]}  ({image_coord_vox[0]},{image_coord_vox[1]}) {round(pixel_value,4):.4f}")
+        
+        active_coords_str = ""
+        layer_values = []
+        
+        for l_idx in range(4):
+            if (Ax_idx, l_idx) not in self.display_comp_data:
+                continue
+            
+            ori = int(self.im_ori_comp[Ax_idx])
+            axis = 2 if ori == 1 else (1 if ori == 2 else 0)
+            layer_slice_idx = int(self.current_AxComp_slice_index[Ax_idx, l_idx])
+            
+            if not (0 <= layer_slice_idx < self.display_comp_data[Ax_idx, l_idx].shape[axis]):
+                continue
+                
+            if ori == 0: # Axial
+                slice_data = self.display_comp_data[Ax_idx, l_idx][layer_slice_idx, :, :]
+            elif ori == 1: # Sagittal
+                slice_data = self.display_comp_data[Ax_idx, l_idx][:, :, layer_slice_idx]
+            else: # Coronal
+                slice_data = self.display_comp_data[Ax_idx, l_idx][:, layer_slice_idx, :]
+                
+            offset = self.imageActorAxComp[Ax_idx, l_idx].GetPosition()
+            adjusted_world = (
+                world_coordinates[0] - offset[0],
+                world_coordinates[1] - offset[1],
+                world_coordinates[2] - offset[2]
+            )
+            image_data = self.imageActorAxComp[Ax_idx, l_idx].GetInput()
+            image_id = image_data.FindPoint(adjusted_world)
+            if image_id < 0:
+                continue
+            image_coords = image_data.GetPoint(image_id)
+            spacing = self.dataImporterAxComp[Ax_idx, l_idx].GetDataSpacing()
+            if spacing[0] == 0 or spacing[1] == 0:
+                continue
+                
+            px = int(round(image_coords[0] / spacing[0]))
+            py = int(round(image_coords[1] / spacing[1]))
+            
+            if 0 <= px < slice_data.shape[1] and 0 <= py < slice_data.shape[0]:
+                val = slice_data[py, px]
+                # Format: if int, no decimal. If float, 3 decimals.
+                if isinstance(val, (int, np.integer)) or float(val).is_integer():
+                    val_str = f"{int(val)}"
+                else:
+                    val_str = f"{val:.3f}"
+                
+                layer_values.append(f"Layer{l_idx}: {val_str}")
+                
+                if l_idx == active_layer:
+                    active_coords_str = f"Slice:{layer_slice_idx}  ({px},{py})"
+        
+        if not active_coords_str:
+            active_coords_str = f"Slice:{int(self.current_AxComp_slice_index[Ax_idx, active_layer])}"
+            
+        if layer_values:
+            final_text = f"{active_coords_str}  {' '.join(layer_values)}"
         else:
-            self.textActorAxCom[Ax_idx,2].SetInput(f"Slice:{self.current_AxComp_slice_index[Ax_idx,layer]}")
-        #
-        if self.left_but_pressed[0] == 1:
-            current_window = self.windowLevelAxComp[self.left_but_pressed[1],layer].GetWindow()
-            current_level  = self.windowLevelAxComp[self.left_but_pressed[1],layer].GetLevel()
-            if current_level==0:
-                current_level=1
-            if current_window==0:
-                current_window=1
-            # Data can be in the range of 1 (RED and SPR) or 10 (Zeff)
-            # so the adjustment needs to be done in smaller increments in this region
-            DeltaW = (x-x0)*0.01*current_window
-            DeltaL = (y-y0)*0.01*current_level
+            final_text = active_coords_str
+            
+        self.textActorAxCom[Ax_idx, 2].SetInput(final_text)
+        
+        # Adjust Window/Level
+        if self.left_but_pressed[0] == 1 and getattr(self, '_text_dragging', False) == False:
+            x0, y0 = caller.GetLastEventPosition()
+            current_window = self.windowLevelAxComp[self.left_but_pressed[1], active_layer].GetWindow()
+            current_level  = self.windowLevelAxComp[self.left_but_pressed[1], active_layer].GetLevel()
+            if current_level == 0:
+                current_level = 1
+            if current_window == 0:
+                current_window = 1
+            DeltaW = (x - x0) * 0.01 * current_window
+            DeltaL = (y - y0) * 0.01 * current_level
             Window = current_window + DeltaW
-            Level  = current_level  + DeltaL
-            #    
-            set_window(self,Window,Level)
+            Level  = current_level + DeltaL
+               
+            set_window(self, Window, Level)
             set_color_map(self)
-        #
+            
         self.renAxComp[Ax_idx].GetRenderWindow().Render()

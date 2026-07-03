@@ -224,20 +224,40 @@ def on_cycle_view_button_clicked(self):
 
 def add_ruler(self):
     """Create & show a new ruler in the current view."""
-    ruler = RulerWidget(self.vtkWidgetAxial, self.renAxial, self, self.imageActorAxial[0])
-    ruler.toggle()            # show it immediately
-    self.rulers.append(ruler)
+    if not hasattr(self, 'rulers'):
+        self.rulers = []
 
-    ruler = RulerWidget(self.vtkWidgetCoronal, self.renCoronal, self, self.imageActorCoronal[0])
-    ruler.toggle()            # show it immediately
-    self.rulers.append(ruler)
+    currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
+    if currentTabText == "Compare":
+        Ax_idx = self.Comp_im_idx.value()
+        if Ax_idx == -1:
+            return
+        if hasattr(self, 'Comp_linkTools') and self.Comp_linkTools.isChecked():
+            import uuid
+            grp_id = uuid.uuid4().hex
+            for i in range(12):
+                if (i, 0) in self.display_comp_data:
+                    ruler = RulerWidget(self.vtkWidgetsComp[i], self.renAxComp[i], self, self.imageActorAxComp[i, 0])
+                    ruler.group_id = grp_id
+                    ruler.toggle()
+                    self.rulers.append(ruler)
+        else:
+            if (Ax_idx, 0) in self.display_comp_data:
+                ruler = RulerWidget(self.vtkWidgetsComp[Ax_idx], self.renAxComp[Ax_idx], self, self.imageActorAxComp[Ax_idx, 0])
+                ruler.toggle()
+                self.rulers.append(ruler)
+    else:
+        ruler = RulerWidget(self.vtkWidgetAxial, self.renAxial, self, self.imageActorAxial[0])
+        ruler.toggle()            # show it immediately
+        self.rulers.append(ruler)
 
-    ruler = RulerWidget(self.vtkWidgetSagittal, self.renSagittal, self, self.imageActorSagittal[0])
-    ruler.toggle()            # show it immediately
-    self.rulers.append(ruler)
+        ruler = RulerWidget(self.vtkWidgetCoronal, self.renCoronal, self, self.imageActorCoronal[0])
+        ruler.toggle()            # show it immediately
+        self.rulers.append(ruler)
 
-
-
+        ruler = RulerWidget(self.vtkWidgetSagittal, self.renSagittal, self, self.imageActorSagittal[0])
+        ruler.toggle()            # show it immediately
+        self.rulers.append(ruler)
 
 
 def remove_rulers(self):
@@ -261,6 +281,10 @@ def remove_rulers(self):
     # trigger a re-render on each view
     for w in (self.vtkWidgetAxial, self.vtkWidgetSagittal, self.vtkWidgetCoronal):
         w.GetRenderWindow().Render()
+    if hasattr(self, 'vtkWidgetsComp'):
+        for i in range(12):
+            if (i, 0) in self.display_comp_data:
+                self.vtkWidgetsComp[i].GetRenderWindow().Render()
 
 
 def add_point(self):
@@ -269,32 +293,64 @@ def add_point(self):
     if not hasattr(self, 'points'):
         self.points = []
 
-    # Axial
-    pt = PointRoiWidget(
-        self.vtkWidgetAxial, self.renAxial,
-        self, self.imageActorAxial[0],
-        orientation='axial'
-    )
-    pt.toggle()               # show it immediately
-    self.points.append(pt)
+    currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
+    if currentTabText == "Compare":
+        Ax_idx = self.Comp_im_idx.value()
+        if Ax_idx == -1:
+            return
+        if hasattr(self, 'Comp_linkTools') and self.Comp_linkTools.isChecked():
+            import uuid
+            grp_id = uuid.uuid4().hex
+            for i in range(12):
+                if (i, 0) in self.display_comp_data:
+                    ori = int(self.im_ori_comp[i])
+                    orientation_name = 'axial' if ori == 0 else ('sagittal' if ori == 1 else 'coronal')
+                    pt = PointRoiWidget(
+                        self.vtkWidgetsComp[i], self.renAxComp[i],
+                        self, self.imageActorAxComp[i, 0],
+                        orientation=orientation_name
+                    )
+                    pt.group_id = grp_id
+                    pt.toggle()
+                    self.points.append(pt)
+        else:
+            if (Ax_idx, 0) in self.display_comp_data:
+                ori = int(self.im_ori_comp[Ax_idx])
+                orientation_name = 'axial' if ori == 0 else ('sagittal' if ori == 1 else 'coronal')
+                pt = PointRoiWidget(
+                    self.vtkWidgetsComp[Ax_idx], self.renAxComp[Ax_idx],
+                    self, self.imageActorAxComp[Ax_idx, 0],
+                    orientation=orientation_name
+                )
+                pt.toggle()
+                self.points.append(pt)
+    else:
+        # Axial
+        pt = PointRoiWidget(
+            self.vtkWidgetAxial, self.renAxial,
+            self, self.imageActorAxial[0],
+            orientation='axial'
+        )
+        pt.toggle()               # show it immediately
+        self.points.append(pt)
 
-    # Coronal
-    pt = PointRoiWidget(
-        self.vtkWidgetCoronal, self.renCoronal,
-        self, self.imageActorCoronal[0],
-        orientation='coronal'
-    )
-    pt.toggle()
-    self.points.append(pt)
+        # Coronal
+        pt = PointRoiWidget(
+            self.vtkWidgetCoronal, self.renCoronal,
+            self, self.imageActorCoronal[0],
+            orientation='coronal'
+        )
+        pt.toggle()
+        self.points.append(pt)
 
-    # Sagittal
-    pt = PointRoiWidget(
-        self.vtkWidgetSagittal, self.renSagittal,
-        self, self.imageActorSagittal[0],
-        orientation='sagittal'
-    )
-    pt.toggle()
-    self.points.append(pt)
+        # Sagittal
+        pt = PointRoiWidget(
+            self.vtkWidgetSagittal, self.renSagittal,
+            self, self.imageActorSagittal[0],
+            orientation='sagittal'
+        )
+        pt.toggle()
+        self.points.append(pt)
 
 
 def remove_points(self):
@@ -324,27 +380,64 @@ def remove_points(self):
               self.vtkWidgetCoronal,
               self.vtkWidgetSagittal):
         w.GetRenderWindow().Render()
+    if hasattr(self, 'vtkWidgetsComp'):
+        for i in range(12):
+            if (i, 0) in self.display_comp_data:
+                self.vtkWidgetsComp[i].GetRenderWindow().Render()
 
 
 def add_circle(self):
-    """Create & show a new ruler in the current view."""
-    circle = CircleRoiWidget(self.vtkWidgetAxial, self.renAxial, self, self.imageActorAxial[0],'axial')
-    circle.toggle()            # show it immediately
-    self.circle.append(circle)
+    """Create & show a new circular ROI."""
+    if not hasattr(self, 'circle'):
+        self.circle = []
 
-    circle = CircleRoiWidget(self.vtkWidgetCoronal, self.renCoronal, self, self.imageActorCoronal[0], 'coronal')
-    circle.toggle()            # show it immediately
-    self.circle.append(circle)
+    currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
+    if currentTabText == "Compare":
+        Ax_idx = self.Comp_im_idx.value()
+        if Ax_idx == -1:
+            return
+        if hasattr(self, 'Comp_linkTools') and self.Comp_linkTools.isChecked():
+            import uuid
+            grp_id = uuid.uuid4().hex
+            for i in range(12):
+                if (i, 0) in self.display_comp_data:
+                    ori = int(self.im_ori_comp[i])
+                    orientation_name = 'axial' if ori == 0 else ('sagittal' if ori == 1 else 'coronal')
+                    circle = CircleRoiWidget(
+                        self.vtkWidgetsComp[i], self.renAxComp[i],
+                        self, self.imageActorAxComp[i, 0],
+                        orientation=orientation_name
+                    )
+                    circle.group_id = grp_id
+                    circle.toggle()
+                    self.circle.append(circle)
+        else:
+            if (Ax_idx, 0) in self.display_comp_data:
+                ori = int(self.im_ori_comp[Ax_idx])
+                orientation_name = 'axial' if ori == 0 else ('sagittal' if ori == 1 else 'coronal')
+                circle = CircleRoiWidget(
+                    self.vtkWidgetsComp[Ax_idx], self.renAxComp[Ax_idx],
+                    self, self.imageActorAxComp[Ax_idx, 0],
+                    orientation=orientation_name
+                )
+                circle.toggle()
+                self.circle.append(circle)
+    else:
+        circle = CircleRoiWidget(self.vtkWidgetAxial, self.renAxial, self, self.imageActorAxial[0],'axial')
+        circle.toggle()            # show it immediately
+        self.circle.append(circle)
 
-    circle = CircleRoiWidget(self.vtkWidgetSagittal, self.renSagittal, self, self.imageActorSagittal[0], 'sagittal')
-    circle.toggle()            # show it immediately
-    self.circle.append(circle)
+        circle = CircleRoiWidget(self.vtkWidgetCoronal, self.renCoronal, self, self.imageActorCoronal[0], 'coronal')
+        circle.toggle()            # show it immediately
+        self.circle.append(circle)
 
+        circle = CircleRoiWidget(self.vtkWidgetSagittal, self.renSagittal, self, self.imageActorSagittal[0], 'sagittal')
+        circle.toggle()            # show it immediately
+        self.circle.append(circle)
 
 
 def remove_circles(self):
     """Hide, fully remove and delete *all* existing circular ROIs."""
-    # if you stored them as self.circle = [CircleRoiWidget…]
     for roi in getattr(self, 'circle', []):
         # 1) hide it if it’s currently on-screen
         if roi.is_visible:
@@ -368,6 +461,11 @@ def remove_circles(self):
               self.vtkWidgetSagittal,
               self.vtkWidgetCoronal):
         w.GetRenderWindow().Render()
+    if hasattr(self, 'vtkWidgetsComp'):
+        for i in range(12):
+            if (i, 0) in self.display_comp_data:
+                self.vtkWidgetsComp[i].GetRenderWindow().Render()
+
 
 # Ellipse ----------------------------------
 def add_ellipse(self):
@@ -376,29 +474,61 @@ def add_ellipse(self):
     if not hasattr(self, 'ellipses'):
         self.ellipses = []
 
-    # Axial
-    e = EllipsoidRoiWidget(
-        self.vtkWidgetAxial, self.renAxial, self,
-        self.imageActorAxial[0], 'axial'
-    )
-    e.toggle()
-    self.ellipses.append(e)
+    currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
+    if currentTabText == "Compare":
+        Ax_idx = self.Comp_im_idx.value()
+        if Ax_idx == -1:
+            return
+        if hasattr(self, 'Comp_linkTools') and self.Comp_linkTools.isChecked():
+            import uuid
+            grp_id = uuid.uuid4().hex
+            for i in range(12):
+                if (i, 0) in self.display_comp_data:
+                    ori = int(self.im_ori_comp[i])
+                    orientation_name = 'axial' if ori == 0 else ('sagittal' if ori == 1 else 'coronal')
+                    e = EllipsoidRoiWidget(
+                        self.vtkWidgetsComp[i], self.renAxComp[i],
+                        self, self.imageActorAxComp[i, 0],
+                        orientation=orientation_name
+                    )
+                    e.group_id = grp_id
+                    e.toggle()
+                    self.ellipses.append(e)
+        else:
+            if (Ax_idx, 0) in self.display_comp_data:
+                ori = int(self.im_ori_comp[Ax_idx])
+                orientation_name = 'axial' if ori == 0 else ('sagittal' if ori == 1 else 'coronal')
+                e = EllipsoidRoiWidget(
+                    self.vtkWidgetsComp[Ax_idx], self.renAxComp[Ax_idx],
+                    self, self.imageActorAxComp[Ax_idx, 0],
+                    orientation=orientation_name
+                )
+                e.toggle()
+                self.ellipses.append(e)
+    else:
+        # Axial
+        e = EllipsoidRoiWidget(
+            self.vtkWidgetAxial, self.renAxial, self,
+            self.imageActorAxial[0], 'axial'
+        )
+        e.toggle()
+        self.ellipses.append(e)
 
-    # Coronal
-    e = EllipsoidRoiWidget(
-        self.vtkWidgetCoronal, self.renCoronal, self,
-        self.imageActorCoronal[0], 'coronal'
-    )
-    e.toggle()
-    self.ellipses.append(e)
+        # Coronal
+        e = EllipsoidRoiWidget(
+            self.vtkWidgetCoronal, self.renCoronal, self,
+            self.imageActorCoronal[0], 'coronal'
+        )
+        e.toggle()
+        self.ellipses.append(e)
 
-    # Sagittal
-    e = EllipsoidRoiWidget(
-        self.vtkWidgetSagittal, self.renSagittal, self,
-        self.imageActorSagittal[0], 'sagittal'
-    )
-    e.toggle()
-    self.ellipses.append(e)
+        # Sagittal
+        e = EllipsoidRoiWidget(
+            self.vtkWidgetSagittal, self.renSagittal, self,
+            self.imageActorSagittal[0], 'sagittal'
+        )
+        e.toggle()
+        self.ellipses.append(e)
 
 
 def remove_ellipses(self):
@@ -428,6 +558,11 @@ def remove_ellipses(self):
               self.vtkWidgetCoronal,
               self.vtkWidgetSagittal):
         w.GetRenderWindow().Render()
+    if hasattr(self, 'vtkWidgetsComp'):
+        for i in range(12):
+            if (i, 0) in self.display_comp_data:
+                self.vtkWidgetsComp[i].GetRenderWindow().Render()
+
 
 # ─── Square ROI ────────────────────────────────────────────────────────────
 
@@ -437,29 +572,61 @@ def add_square(self):
     if not hasattr(self, 'squares'):
         self.squares = []
 
-    # axial
-    sq = SquareRoiWidget(
-        self.vtkWidgetAxial, self.renAxial, self,
-        self.imageActorAxial[0], 'axial'
-    )
-    sq.toggle()
-    self.squares.append(sq)
+    currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
+    if currentTabText == "Compare":
+        Ax_idx = self.Comp_im_idx.value()
+        if Ax_idx == -1:
+            return
+        if hasattr(self, 'Comp_linkTools') and self.Comp_linkTools.isChecked():
+            import uuid
+            grp_id = uuid.uuid4().hex
+            for i in range(12):
+                if (i, 0) in self.display_comp_data:
+                    ori = int(self.im_ori_comp[i])
+                    orientation_name = 'axial' if ori == 0 else ('sagittal' if ori == 1 else 'coronal')
+                    sq = SquareRoiWidget(
+                        self.vtkWidgetsComp[i], self.renAxComp[i],
+                        self, self.imageActorAxComp[i, 0],
+                        orientation=orientation_name
+                    )
+                    sq.group_id = grp_id
+                    sq.toggle()
+                    self.squares.append(sq)
+        else:
+            if (Ax_idx, 0) in self.display_comp_data:
+                ori = int(self.im_ori_comp[Ax_idx])
+                orientation_name = 'axial' if ori == 0 else ('sagittal' if ori == 1 else 'coronal')
+                sq = SquareRoiWidget(
+                    self.vtkWidgetsComp[Ax_idx], self.renAxComp[Ax_idx],
+                    self, self.imageActorAxComp[Ax_idx, 0],
+                    orientation=orientation_name
+                )
+                sq.toggle()
+                self.squares.append(sq)
+    else:
+        # axial
+        sq = SquareRoiWidget(
+            self.vtkWidgetAxial, self.renAxial, self,
+            self.imageActorAxial[0], 'axial'
+        )
+        sq.toggle()
+        self.squares.append(sq)
 
-    # coronal
-    sq = SquareRoiWidget(
-        self.vtkWidgetCoronal, self.renCoronal, self,
-        self.imageActorCoronal[0], 'coronal'
-    )
-    sq.toggle()
-    self.squares.append(sq)
+        # coronal
+        sq = SquareRoiWidget(
+            self.vtkWidgetCoronal, self.renCoronal, self,
+            self.imageActorCoronal[0], 'coronal'
+        )
+        sq.toggle()
+        self.squares.append(sq)
 
-    # sagittal
-    sq = SquareRoiWidget(
-        self.vtkWidgetSagittal, self.renSagittal, self,
-        self.imageActorSagittal[0], 'sagittal'
-    )
-    sq.toggle()
-    self.squares.append(sq)
+        # sagittal
+        sq = SquareRoiWidget(
+            self.vtkWidgetSagittal, self.renSagittal, self,
+            self.imageActorSagittal[0], 'sagittal'
+        )
+        sq.toggle()
+        self.squares.append(sq)
 
 
 def remove_squares(self):
@@ -474,3 +641,7 @@ def remove_squares(self):
               self.vtkWidgetCoronal,
               self.vtkWidgetSagittal):
         w.GetRenderWindow().Render()
+    if hasattr(self, 'vtkWidgetsComp'):
+        for i in range(12):
+            if (i, 0) in self.display_comp_data:
+                self.vtkWidgetsComp[i].GetRenderWindow().Render()

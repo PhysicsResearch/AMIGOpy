@@ -41,7 +41,7 @@ class RulerWidget:
 
     def _setup_ruler(self):
         # only once, and only after images are loaded
-        if self.lineSource or not getattr(self.parent, 'display_data', None):
+        if self.lineSource or (not getattr(self.parent, 'display_data', None) and not getattr(self.parent, 'display_comp_data', None)):
             return
 
         # create line source & actor
@@ -81,6 +81,8 @@ class RulerWidget:
             handle.SetInteractor(self.interactor)
             handle.SetRepresentation(rep)
             handle.AddObserver('InteractionEvent', lambda w,e,i=idx: self._on_handle_move(i))
+            handle.AddObserver('StartInteractionEvent', lambda w,e: self._on_start_handle_interact())
+            handle.AddObserver('EndInteractionEvent', lambda w,e: self._on_end_handle_interact())
             handle.On()
             setattr(self, f'handle{idx}', handle)
 
@@ -147,6 +149,37 @@ class RulerWidget:
         getattr(self, f'actor{idx}').SetPosition(0, 0, 0)
         self._update_measure()
 
+        # Link tools synchronization
+        app = self.parent
+        _is_comp = self.vtkWidget in getattr(app, 'vtkWidgetsComp', [])
+        _group_id = getattr(self, 'group_id', None)
+        if (_is_comp
+                and getattr(app, 'Comp_linkTools', None)
+                and app.Comp_linkTools.isChecked()
+                and self in getattr(app, 'rulers', [])
+                and _group_id is not None):
+            if not getattr(app, '_syncing_tool', False):
+                app._syncing_tool = True
+                try:
+                    for other in getattr(app, 'rulers', []):
+                        if (other is not self
+                                and other.is_visible
+                                and getattr(other, 'group_id', None) == _group_id
+                                and other.vtkWidget is not self.vtkWidget):
+                            other_rep = getattr(other, f'handle{idx}').GetRepresentation()
+                            other_rep.SetWorldPosition(pos)
+                            if idx == 1:
+                                other.lineSource.SetPoint1(pos)
+                            else:
+                                other.lineSource.SetPoint2(pos)
+                            other.lineSource.Modified()
+                            getattr(other, f'poly{idx}').SetCenter(pos)
+                            getattr(other, f'actor{idx}').SetPosition(0, 0, 0)
+                            other._update_measure()
+                            other.renWin.Render()
+                finally:
+                    app._syncing_tool = False
+
     def _update_measure(self):
         p1 = self.lineSource.GetPoint1()
         p2 = self.lineSource.GetPoint2()
@@ -193,3 +226,9 @@ class RulerWidget:
             self.handle2.Off()
         self.is_visible = newVis
         self.vtkWidget.GetRenderWindow().Render()
+
+    def _on_start_handle_interact(self):
+        self.parent._text_dragging = True
+
+    def _on_end_handle_interact(self):
+        self.parent._text_dragging = False

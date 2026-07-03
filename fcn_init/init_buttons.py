@@ -167,6 +167,12 @@ def initialize_software_buttons(self):
     self.Comp_linkContours.setChecked(True)
     self.comp_sync_layout.addWidget(self.Comp_linkContours)
     self.Comp_linkContours.stateChanged.connect(lambda: on_link_contours_changed(self))
+
+    self.Comp_linkTools = QtWidgets.QCheckBox(self.im_compare_tab)
+    self.Comp_linkTools.setObjectName("Comp_linkTools")
+    self.Comp_linkTools.setText("Link tools")
+    self.Comp_linkTools.setChecked(True)
+    self.comp_sync_layout.addWidget(self.Comp_linkTools)
     
     self.gridLayout_16.addLayout(self.comp_sync_layout, 3, 2, 1, 1)
 

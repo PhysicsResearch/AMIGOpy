@@ -55,19 +55,25 @@ def get_folder_path_from_dialog():
 
 
 def get_all_files(path):
-    """Retrieve all DICOM, IMA, or files without extensions in a directory.
+    """Retrieve all DICOM, IMA, or files without extensions in a directory, or a single file if the path is a file.
     
     Args:
-    - path: Directory path to search for DICOM files.
+    - path: Directory or file path.
     
     Returns:
     - List of paths to relevant files.
     """
+    if os.path.isfile(path):
+        _, ext = os.path.splitext(path)
+        if ext.lower() in ('.dcm', '.ima') or not ext:
+            return [os.path.normpath(path)]
+        return []
+
     all_files = []
     for dirpath, _, filenames in os.walk(path):
         for filename in filenames:
             _, ext = os.path.splitext(filename)
-            if ext in ('.dcm', '.ima') or not ext:
+            if ext.lower() in ('.dcm', '.ima') or not ext:
                 all_files.append(os.path.normpath(os.path.join(dirpath, filename)))
     return all_files
 

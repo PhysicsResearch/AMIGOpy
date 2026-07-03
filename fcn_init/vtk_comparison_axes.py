@@ -10,6 +10,13 @@ from fcn_display.display_images_comp import disp_comp_image_slice
 from fcn_display.win_level import set_window
 from fcn_display.display_images_comp  import sliderCompareView_change
 
+# ---------------------------------------------------------------------------
+# Compare-tab viewports style. We use standard vtkInteractorStyleUser to avoid
+# default styles (zoom/dolly/WL) interfering with custom Compare tab events,
+# and to avoid Python subclassing virtual dispatch overhead during mouse events.
+# ---------------------------------------------------------------------------
+
+
 class GridDimensionsDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -95,7 +102,13 @@ def comp_link_winlev(self):
         disp_comp_image_slice(self)
 
 def setup_vtk_comp(self,N_im):
-    #
+    from fcn_init.set_menu_bar_icons import remove_rulers, remove_points, remove_circles, remove_ellipses, remove_squares
+    remove_rulers(self)
+    remove_points(self)
+    remove_circles(self)
+    remove_ellipses(self)
+    remove_squares(self)
+
     self.textActorAxCom ={}
     # # First, clean up previous instances if they exist
     # if hasattr(self, 'renAxComp') and self.renAxComp:
@@ -143,8 +156,9 @@ def setup_vtk_comp(self,N_im):
                 # Initialize and start VTK widget
                 vtkWidget.Initialize()
                 vtkWidget.Start()
-                # Optional: Set interaction style
-                imageStyle = vtk.vtkInteractorStyleImage()
+                # Use vtkInteractorStyleUser which has no default bindings
+                # to prevent built-in interactions from conflicting.
+                imageStyle = vtk.vtkInteractorStyleUser()
                 self.vtkWidgetsComp[i].SetInteractorStyle(imageStyle)
                 ren.GetActiveCamera().SetParallelProjection(1)
                 #
@@ -176,10 +190,25 @@ def setup_vtk_comp(self,N_im):
                 interactor_styleAxial.AddObserver("MouseWheelBackwardEvent", lambda caller, event: on_scroll_backwardcomp(self, caller, event))
                 interactor_styleAxial.AddObserver("LeftButtonReleaseEvent", lambda caller, event: left_button_releasecomp_event(self, caller, event))
                 interactor_styleAxial.AddObserver("LeftButtonPressEvent", lambda caller, event: left_button_presscomp_event(self, caller, event))
-                interactor_styleAxial.OnMouseWheelForward = lambda: None
-                interactor_styleAxial.OnMouseWheelBackward = lambda: None
-                interactor_styleAxial.OnLeftButtonDown = lambda: None
-                interactor_styleAxial.OnLeftButtonUp = lambda: None
+                #
+                # Priority -1: fires AFTER the style (priority 0) has processed
+                # RightButtonPressEvent and set state=DOLLY via C++ OnRightButtonDown.
+                # Immediately call StopState() to reset it back to 0.
+                # Note: priority +1 observers (_on_right_click) fire BEFORE the style,
+                # so any cleanup done there happens before DOLLY state is ever set.
+                def _clear_right_press_state(caller, event):
+                    sty = caller.GetInteractorStyle()
+                    if sty:
+                        try:
+                            sty.StopState()
+                        except Exception:
+                            pass
+                        try:
+                            sty.ReleaseFocus()
+                        except Exception:
+                            pass
+                iren = self.vtkWidgetsComp[i].GetRenderWindow().GetInteractor()
+                iren.AddObserver("RightButtonPressEvent", _clear_right_press_state, -1.0)
                 #
                 self.vtkWidgetsComp[i].AddObserver("LeftButtonPressEvent", lambda caller, event: left_button_presscomp_event(self, caller, event),0)
                 self.vtkWidgetsComp[i].AddObserver("LeftButtonReleaseEvent",lambda caller, event:left_button_releasecomp_event(self, caller, event),0)
@@ -187,7 +216,7 @@ def setup_vtk_comp(self,N_im):
                 self.vtkWidgetsComp[i].AddObserver("MouseWheelForwardEvent", lambda caller, event: on_scroll_forwardcomp(self, caller, event))
                 self.vtkWidgetsComp[i].AddObserver("MouseWheelBackwardEvent", lambda caller, event: on_scroll_backwardcomp(self, caller, event))
                 #
-                self.vtkWidgetsComp[i].GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event:onMouseMovecomp(self, caller, event))
+                iren.AddObserver("MouseMoveEvent",lambda caller, event:onMouseMovecomp(self, caller, event))
                 #
                 # Create text for annotation - lable-ID
                 self.textActorAxCom[i,0] = vtk.vtkTextActor()
