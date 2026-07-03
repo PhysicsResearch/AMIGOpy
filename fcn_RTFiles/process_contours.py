@@ -277,6 +277,9 @@ def build_contours_for_structure(mask_3d):
     return contours
 
 def create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, origin, pixel_spac):
+    import cv2
+    from collections import defaultdict
+
     mask_3d     = np.zeros(mask_shape, dtype=np.uint8)
     contour_seq = getattr(structure, 'ContourSequence', [])
     # Collect ALL original DICOM points in a list
@@ -292,7 +295,11 @@ def create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, or
     # flip coordinate to match Y 
     origin_y = -origin_y
 
+    origin_arr = np.array([origin_x, origin_y, origin_z], dtype=np.float32)
+    spacing_arr = np.array([x_spacing, y_spacing, z_spacing], dtype=np.float32)
 
+    # Group contour points by slice index
+    contours_by_slice = defaultdict(list)
 
     for contour in contour_seq:
         geom_type = getattr(contour, 'ContourGeometricType', '').upper()
@@ -303,14 +310,14 @@ def create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, or
         if len(contour_data) % 3 != 0:
             continue
 
-        points = np.array(contour_data).reshape(-1, 3)
+        points = np.array(contour_data, dtype=np.float32).reshape(-1, 3)
         # Append all points to the big list
-        all_original_points.append(points)
+        all_original_points.append(points.copy())
         # Need to flip y to match
         points[:, 1] = (mask_3d.shape[1] * pixel_spac[0, 0]) - points[:, 1]  # Y coordinate
 
-        indices_float = (points - np.array([origin_x, origin_y, origin_z])) / [x_spacing, y_spacing, z_spacing]
-        indices = indices_float.round().astype(int)
+        indices_float = (points - origin_arr) / spacing_arr
+        indices = np.round(indices_float).astype(np.int32)
 
         slice_idx = indices[0, 2]
         if slice_idx < 0 or slice_idx >= mask_shape[0]:
@@ -318,20 +325,26 @@ def create_3d_mask_for_structure_simple(self, structure, mask_shape, spacing, or
 
         x_coords = indices[:, 0]
         y_coords = indices[:, 1]
+        
+        pts = np.stack((x_coords, y_coords), axis=1)
+        contours_by_slice[slice_idx].append(pts)
 
-        rr, cc = polygon(y_coords, x_coords, shape=mask_shape[1:])
-        mask_3d[slice_idx, rr, cc] += 1
+    # Rasterize each slice's contours using OpenCV fillPoly and XOR for odd-even filling
+    for slice_idx, pts_list in contours_by_slice.items():
+        slice_mask = np.zeros(mask_shape[1:], dtype=np.uint8)
+        for pts in pts_list:
+            pts_cv = pts.reshape((-1, 1, 2)).astype(np.int32)
+            temp_mask = np.zeros(mask_shape[1:], dtype=np.uint8)
+            cv2.fillPoly(temp_mask, [pts_cv], 1)
+            slice_mask ^= temp_mask
+            
+        mask_3d[slice_idx] = slice_mask
 
     # Combine all to single [N, 3] array (if there were any contours)
     if all_original_points:
         all_original_points_array = np.vstack(all_original_points)
     else:
         all_original_points_array = np.empty((0, 3), dtype=float)
-
-
-    mask_3d = np.mod(mask_3d, 2).astype(np.uint8)
-
-
 
     return mask_3d, all_original_points_array
 
