@@ -125,8 +125,53 @@ def initialize_software_buttons(self):
     self.IrIS_Load_CorrectionFrame.setStyleSheet("background-color: red; color: white;")
     
     #  create vtk comp axes -buttom
+    from fcn_init.vtk_comparison_axes import on_grid_preset_changed
+    self.combo_grid_presets = QtWidgets.QComboBox(self.im_compare_tab)
+    self.combo_grid_presets.setObjectName("combo_grid_presets")
+    self.combo_grid_presets.addItems([
+        "Select Grid Preset",
+        "1 Row x 1 Col",
+        "1 Row x 2 Col",
+        "1 Row x 3 Col",
+        "1 Row x 4 Col",
+        "2 Rows x 1 Col",
+        "2 Rows x 2 Col",
+        "2 Rows x 3 Col",
+        "2 Rows x 4 Col",
+        "3 Rows x 1 Col",
+        "3 Rows x 2 Col",
+        "3 Rows x 3 Col",
+        "3 Rows x 4 Col"
+    ])
+    # Place it to the left of create button (replacing spacer in column 7)
+    self.gridLayout_16.addWidget(self.combo_grid_presets, 3, 7, 1, 1)
+    self.combo_grid_presets.currentIndexChanged.connect(lambda idx: on_grid_preset_changed(self, idx))
+
+    # Link Colormap checkbox
+    from fcn_display.colormap_set import on_link_colormap_changed
+    self.Comp_linkColormaps = QtWidgets.QCheckBox(self.im_compare_tab)
+    self.Comp_linkColormaps.setObjectName("Comp_linkColormaps")
+    self.Comp_linkColormaps.setText("Link colormap")
+    self.Comp_linkColormaps.setChecked(True)
+    self.gridLayout_16.addWidget(self.Comp_linkColormaps, 3, 1, 1, 1)
+    self.Comp_linkColormaps.stateChanged.connect(lambda: on_link_colormap_changed(self))
+
+    from fcn_display.display_images_comp import change_comp_view_orientation, sync_comp_dropdown_to_viewport
+    self.Comp_view_sel_box.currentIndexChanged.connect(lambda idx: change_comp_view_orientation(self, idx))
+    self.Comp_im_idx.valueChanged.connect(lambda idx: sync_comp_dropdown_to_viewport(self, idx))
+
     self.but_create_comp_axes.clicked.connect(lambda: create_vtk_elements_comp(self))
     self.but_create_comp_axes.setStyleSheet("background-color: blue; color: white;")
+
+    # Modeless comparison window level histogram popup button
+    from fcn_init.view_hist import open_compare_histogram
+    self.but_hist_comp = QtWidgets.QPushButton(self.im_compare_tab)
+    self.but_hist_comp.setObjectName("but_hist_comp")
+    self.but_hist_comp.setText("Histogram")
+    self.but_hist_comp.setStyleSheet("background-color: blue; color: white;")
+    # Place it to the right of Create button (column 9)
+    self.gridLayout_16.addWidget(self.but_hist_comp, 3, 9, 1, 1)
+    self.but_hist_comp.clicked.connect(lambda: open_compare_histogram(self))
 
     # 4D Display
     self.Play4D_Buttom.toggled.connect(lambda: play_4D_sequence(self))

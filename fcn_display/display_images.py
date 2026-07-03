@@ -2048,6 +2048,11 @@ def update_layer_view(self):
     idx = self.layer_selected.currentIndex()
     tabName = self.tabModules.tabText(self.tabModules.currentIndex())
     self.layerTab[tabName] = idx
+    if tabName == "Compare":
+        if hasattr(self, '_comp_hist_dialog') and self._comp_hist_dialog is not None and self._comp_hist_dialog.isVisible():
+            self._comp_hist_dialog.update_histogram()
+        return
+        
     if self.tabModules.tabText(self.tabModules.currentIndex()) != "segmentation":
         if self.slice_thick[idx] !=0:
             # Update the slider's value to match the current slice index

@@ -62,6 +62,47 @@ def create_lookup_table_with_transparency(self, windowLevel, windowWidth,CmapIDX
     lut.Build()
     return lut
 
+def apply_custom_colormap_comp(self):
+    if not hasattr(self, 'Comp_im_idx') or not hasattr(self, 'display_comp_data'):
+        return
+    layer = self.layer_selected.currentIndex()
+    
+    if not hasattr(self, 'CompCmapIDX'):
+        self.CompCmapIDX = {}
+        
+    for Ax_idx in range(0, self.Comp_im_idx.maximum() + 1):
+        if (Ax_idx, layer) not in self.display_comp_data:
+            continue
+            
+        cmap_idx = self.CompCmapIDX.get((Ax_idx, layer), self.CmapIDX[layer])
+        self.CompCmapIDX[Ax_idx, layer] = cmap_idx
+        
+        wl = self.windowLevelAxComp[Ax_idx, layer]
+        window = wl.GetWindow()
+        level = wl.GetLevel()
+        
+        if cmap_idx == 0:
+            self.windowLevelAxComp[Ax_idx, layer].SetInputConnection(self.dataImporterAxComp[Ax_idx, layer].GetOutputPort())
+            self.imageActorAxComp[Ax_idx, layer].GetMapper().SetInputConnection(self.windowLevelAxComp[Ax_idx, layer].GetOutputPort())
+        else:
+            lut = vtk.vtkLookupTable()
+            windowStart = level - (window / 2.0)
+            windowEnd = level + (window / 2.0)
+            lut.SetRange(windowStart, windowEnd)
+            lut.SetRampToLinear()
+            lut.SetNumberOfTableValues(256)
+            for i in range(256):
+                scalar_value = (i / 255.0) * (window) + windowStart
+                color = create_colormap(cmap_idx, [windowStart, windowEnd]).GetColor(scalar_value)
+                lut.SetTableValue(i, color[0], color[1], color[2], 1)
+            lut.Build()
+            
+            colorMapper = vtk.vtkImageMapToColors()
+            colorMapper.SetLookupTable(lut)
+            colorMapper.SetInputConnection(self.dataImporterAxComp[Ax_idx, layer].GetOutputPort())
+            self.imageActorAxComp[Ax_idx, layer].GetMapper().SetInputConnection(colorMapper.GetOutputPort())
+
+
 def set_color_map(self):
     # if self.DataType == "IrIS":
     #     return
@@ -72,8 +113,44 @@ def set_color_map(self):
     # For other indices, create and apply a custom LUT
     lut = create_lookup_table_with_transparency(self, windowLevel, windowWidth, self.CmapIDX)
     apply_custom_colormap(self,lut)
+    
+    # Update Compare colormap dictionary based on linkage checkbox
+    currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
+    if currentTabText == "Compare" and hasattr(self, 'Comp_linkColormaps'):
+        ref_idx = self.Comp_im_idx.value()
+        new_cmap = self.CmapIDX[idx]
+        if not hasattr(self, 'CompCmapIDX'):
+            self.CompCmapIDX = {}
+        if self.Comp_linkColormaps.isChecked():
+            for Ax_idx in range(0, self.Comp_im_idx.maximum() + 1):
+                self.CompCmapIDX[Ax_idx, idx] = new_cmap
+        else:
+            self.CompCmapIDX[ref_idx, idx] = new_cmap
+            
+    # Apply custom colormap to comparison views
+    apply_custom_colormap_comp(self)
     # Render the views to reflect the updated colormap
     render_views(self)
+    # Render comparison views too
+    if hasattr(self, 'renAxComp'):
+        for ren in self.renAxComp:
+            ren.GetRenderWindow().Render()
+
+
+def on_link_colormap_changed(self):
+    if not hasattr(self, 'Comp_linkColormaps'):
+        return
+    if self.Comp_linkColormaps.isChecked():
+        layer = self.layer_selected.currentIndex()
+        new_cmap = self.CmapIDX[layer]
+        if not hasattr(self, 'CompCmapIDX'):
+            self.CompCmapIDX = {}
+        for Ax_idx in range(0, self.Comp_im_idx.maximum() + 1):
+            self.CompCmapIDX[Ax_idx, layer] = new_cmap
+        apply_custom_colormap_comp(self)
+        if hasattr(self, 'renAxComp'):
+            for ren in self.renAxComp:
+                ren.GetRenderWindow().Render()
 
 def apply_custom_colormap(self, lut):
     idx = self.layer_selected.currentIndex()

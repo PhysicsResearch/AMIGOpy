@@ -10,36 +10,84 @@ from fcn_display.display_images_comp import disp_comp_image_slice
 from fcn_display.win_level import set_window
 from fcn_display.display_images_comp  import sliderCompareView_change
 
-def create_vtk_elements_comp(self):
-    # 
-    cols, ok1 = QInputDialog.getInt(self, "Input Column",
-                                "Enter N columns (max 4):",
-                                value=1, minValue=1, maxValue=4, step=1)
-    if not ok1:
-        return  # User cancelled or closed the dialog
-    # 
-    rows, ok2 = QInputDialog.getInt(self, "Input Rows", "Enter N rows (max 3):", value=1, minValue=1, maxValue=3, step=1)
-    if not ok2:
-        return  # User cancelled or closed the dialog
-    
-    #
-    N_im = cols*rows
-    #
-    self.Comp_im_idx.setMaximum(N_im-1)
+class GridDimensionsDialog(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Grid Dimensions")
+        self.setMinimumWidth(220)
+        
+        layout = QtWidgets.QFormLayout(self)
+        
+        self.rows_spin = QtWidgets.QSpinBox(self)
+        self.rows_spin.setRange(1, 3)
+        self.rows_spin.setValue(1)
+        
+        self.cols_spin = QtWidgets.QSpinBox(self)
+        self.cols_spin.setRange(1, 4)
+        self.cols_spin.setValue(2) # Default to 2 columns
+        
+        layout.addRow("Rows (1 - 3):", self.rows_spin)
+        layout.addRow("Columns (1 - 4):", self.cols_spin)
+        
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel,
+            self
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+        
+    def get_dimensions(self):
+        return self.rows_spin.value(), self.cols_spin.value()
+
+
+def build_comparison_grid(self, rows, cols):
+    N_im = cols * rows
+    self.Comp_im_idx.setMaximum(N_im - 1)
     self.Comp_im_idx.setValue(0)
     populate_view_list(self)
-    setup_vtk_comp(self,N_im)
+    setup_vtk_comp(self, N_im)
     rearrange_widgets_in_grid(self, rows, cols)
 
 
+def create_vtk_elements_comp(self):
+    dialog = GridDimensionsDialog(self)
+    if dialog.exec():
+        rows, cols = dialog.get_dimensions()
+        build_comparison_grid(self, rows, cols)
+
+
+def on_grid_preset_changed(self, index):
+    if index == 0:
+        return # Placeholder selected
+    combo = self.combo_grid_presets
+    text = combo.itemText(index)
+    
+    mapping = {
+        "1 Row x 1 Col": (1, 1),
+        "1 Row x 2 Col": (1, 2),
+        "1 Row x 3 Col": (1, 3),
+        "1 Row x 4 Col": (1, 4),
+        "2 Rows x 1 Col": (2, 1),
+        "2 Rows x 2 Col": (2, 2),
+        "2 Rows x 3 Col": (2, 3),
+        "2 Rows x 4 Col": (2, 4),
+        "3 Rows x 1 Col": (3, 1),
+        "3 Rows x 2 Col": (3, 2),
+        "3 Rows x 3 Col": (3, 3),
+        "3 Rows x 4 Col": (3, 4)
+    }
+    
+    if text in mapping:
+        rows, cols = mapping[text]
+        build_comparison_grid(self, rows, cols)
+
+
 def populate_view_list(self):
-    # List of operations
-    view = ["Axial","Sagittal","Coronal"]
-    self.view_sel_box = self.findChild(QtWidgets.QComboBox, 'Comp_view_sel_box')
-    # Populate the QComboBox
-    self.view_sel_box.addItems(view)
-    # You can also connect the selection change event to a function
-    #self.active_layer.currentIndexChanged.connect(lambda index: on_operation_selected(self, index))
+    self.Comp_view_sel_box.blockSignals(True)
+    self.Comp_view_sel_box.clear()
+    self.Comp_view_sel_box.addItems(["Axial", "Sagittal", "Coronal"])
+    self.Comp_view_sel_box.blockSignals(False)
 
 def comp_link_winlev(self):
     if self.link_win_lev.isChecked():

@@ -27,6 +27,44 @@ from vtkmodules.util.numpy_support import numpy_to_vtk
 from fcn_dosecalculations.eqd2_conversion import update_doses_list, update_structure_list
 
 
+def _compute_default_wl(vol, modality):
+    """
+    Compute a sensible initial Window/Level from the volume data
+    when DICOM tags (WindowWidth / WindowCenter) are absent.
+    Returns (Window, Level) as floats.
+    """
+    if vol is None or vol.size == 0:
+        return 100.0, 0.0
+
+    v_min  = float(np.nanmin(vol))
+    v_max  = float(np.nanmax(vol))
+    v_mean = float(np.nanmean(vol))
+    v_std  = float(np.nanstd(vol))
+
+    # --- RTDOSE: compute based on mean of values above 0 ---
+    if modality == 'RTDOSE':
+        active = vol[vol > 0.0] if vol is not None else np.array([])
+        if active.size > 0:
+            mean_active = float(np.nanmean(active))
+            return mean_active * 2.0, mean_active
+        if v_max > 0:
+            return v_max, v_max * 0.50
+        return 10.0, 5.0
+
+    # --- Binary mask (0/1 only) ---
+    if v_min >= 0 and v_max <= 1 + 1e-6:
+        uniq = np.unique(vol[~np.isnan(vol)])
+        if uniq.size <= 2 and all(np.isclose(u, 0.0, atol=1e-6) or np.isclose(u, 1.0, atol=1e-6) for u in uniq):
+            return 1.2, 0.5
+
+    # --- Generic fallback: data-adaptive (mean ± std) ---
+    if v_std > 0:
+        return 2.0 * v_std, v_mean
+
+    # constant image
+    return max(abs(v_mean) * 0.1, 1.0), v_mean
+
+
 def numpy_to_vtk_polydata(points, faces):
     polydata = vtk.vtkPolyData()
     vtk_points = vtk.vtkPoints()
@@ -252,8 +290,8 @@ def on_DataTreeView_clicked(self,index):
                 Level  = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['WindowCenter']
                 # For Window
                 if Window in ('N/A', None) or Level in ('N/A', None):
-                    Window = 100
-                    Level = 0
+                    vol = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index].get('3DMatrix')
+                    Window, Level = _compute_default_wl(vol, self.modality)
                 else:
                     if isinstance(Window, MultiValue):
                         Window = float(Window[0])
@@ -463,6 +501,8 @@ def on_DataTreeView_clicked(self,index):
                 #
                 # Add ID 
                 self.textActorAxCom[self.Comp_im_idx.value(),0].SetInput(f"{self.modality} / {hierarchy[4]}")
+                from fcn_display.colormap_set import apply_custom_colormap_comp
+                apply_custom_colormap_comp(self)
                 disp_comp_image_slice(self) 
                 #
                 Window = self.windowLevelSagittal[idx].GetWindow()
@@ -470,7 +510,11 @@ def on_DataTreeView_clicked(self,index):
                 self.textActorAxCom[Ax_idx,1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
                 layer = self.layer_selected.currentIndex()
                 for i in range (0,13):
-                    if not ((i, layer) in self.display_comp_data and int(self.current_AxComp_slice_index[i, layer]) in self.display_comp_data[i, layer]):
+                    if (i, layer) not in self.display_comp_data:
+                        continue
+                    ori = int(self.im_ori_comp[i])
+                    axis = 2 if ori == 1 else (1 if ori == 2 else 0)
+                    if not (0 <= int(self.current_AxComp_slice_index[i, layer]) < self.display_comp_data[i, layer].shape[axis]):
                         continue
                     self.renAxComp[i].ResetCamera()
                     self.renAxComp[i].GetRenderWindow().Render() 
@@ -801,7 +845,11 @@ def on_DataTreeView_clicked(self,index):
             set_window(self,Window,Level)  
             self.textActorAxCom[Ax_idx,1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
             for i in range (0,13):
-                if not ((i, idx) in self.display_comp_data and int(self.current_AxComp_slice_index[i, idx]) in self.display_comp_data[i, idx]):
+                if (i, idx) not in self.display_comp_data:
+                    continue
+                ori = int(self.im_ori_comp[i])
+                axis = 2 if ori == 1 else (1 if ori == 2 else 0)
+                if not (0 <= int(self.current_AxComp_slice_index[i, idx]) < self.display_comp_data[i, idx].shape[axis]):
                     continue
                 self.renAxComp[i].ResetCamera()
                 self.renAxComp[i].GetRenderWindow().Render() 

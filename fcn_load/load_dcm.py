@@ -293,9 +293,15 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
                         series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
                         series_data['3DMatrix'] = series_data['3DMatrix']*series_data['metadata']['DoseGridScaling']
-                        ref_value = np.max(series_data['3DMatrix']);
-                        series_data['metadata']['WindowWidth'] = ref_value*0.02
-                        series_data['metadata']['WindowCenter']= ref_value*0.80
+                        active_dose = series_data['3DMatrix'][series_data['3DMatrix'] > 0.0]
+                        if active_dose.size > 0:
+                            mean_active = float(np.mean(active_dose))
+                            series_data['metadata']['WindowWidth'] = mean_active * 2.0
+                            series_data['metadata']['WindowCenter']= mean_active
+                        else:
+                            ref_value = np.max(series_data['3DMatrix'])
+                            series_data['metadata']['WindowWidth'] = ref_value if ref_value > 0 else 10.0
+                            series_data['metadata']['WindowCenter']= ref_value * 0.5 if ref_value > 0 else 5.0
                     #
                     elif modality == 'RTPLAN':
                         # Store patient_id, study_id, modality, and other relevant data

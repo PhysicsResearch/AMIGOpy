@@ -490,9 +490,6 @@ def read_brachy_plan(plan,ref_str,structured_data):
                 print(f"Warning: No BRACHY_CHANNEL match for chan_idx {chan_idx}")
                 points_matrix = np.empty((0, 3), dtype=np.float32)
 
-                if not found_channel:
-                    print(f"No BRACHY_CHANNEL found matching chan_idx={chan_idx}. Using empty points_matrix.")
-
         info = {
             'ChannelNumber':             channel_item.get('ChannelNumber', 'N/A'),
             'ReferencedROINumber':       channel_item.get('ReferencedROINumber', 'N/A'),

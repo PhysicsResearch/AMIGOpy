@@ -145,11 +145,63 @@ def on_brachy_init_tg43(self):
 
 
 
+def _rotation_matrix_from_direction(cosX, cosY, cosZ):
+    """
+    Build a 3×3 rotation matrix that maps the reference axis [0, 0, 1]
+    to the source orientation unit vector [cosX, cosY, cosZ].
+
+    Uses Rodrigues' rotation formula:
+        R = I + [v]_x + [v]_x^2 * (1 / (1 + c))
+    where v = ref × target, c = ref · target.
+
+    Edge cases:
+        - If target ≈ [0, 0, 1]  → identity (no rotation needed)
+        - If target ≈ [0, 0, -1] → 180° rotation around X axis
+    """
+    ref = np.array([0.0, 0.0, 1.0])
+    tgt = np.array([cosX, cosY, cosZ], dtype=np.float64)
+    norm = np.linalg.norm(tgt)
+    if norm < 1e-12:
+        return np.eye(3)
+    tgt /= norm
+
+    c = np.dot(ref, tgt)
+
+    # Already aligned (within ~0.01°)
+    if c > 1.0 - 1e-8:
+        return np.eye(3)
+
+    # Anti-parallel: 180° rotation around the X axis
+    if c < -1.0 + 1e-8:
+        return np.diag([1.0, -1.0, -1.0])
+
+    v = np.cross(ref, tgt)  # rotation axis (un-normalised, |v| = sin(angle))
+
+    # Skew-symmetric cross-product matrix of v
+    vx = np.array([
+        [ 0.0, -v[2],  v[1]],
+        [ v[2],  0.0, -v[0]],
+        [-v[1],  v[0],  0.0]
+    ])
+
+    R = np.eye(3) + vx + vx @ vx * (1.0 / (1.0 + c))
+    return R
+
+
 def transform_and_sum_dose_matrix_centered_3D(
     dwells, reference_matrix_3d, ref_res_mm, output_margin_mm, output_res_mm
 ):
+    """
+    Accumulate TG-43 dose from all dwells into a single output volume.
+
+    For each dwell the reference dose matrix is rotated so that its
+    longitudinal axis (originally Z) aligns with the actual source
+    orientation given by the direction-cosine vector [cosX, cosY, cosZ].
+    """
+    from scipy.ndimage import affine_transform
+
     # 1) Center dwells on first dwell
-    offset = dwells[0, :3]
+    offset = dwells[0, :3].copy()
     dw = dwells.copy()
     dw[:, :3] -= offset
 
@@ -170,13 +222,44 @@ def transform_and_sum_dose_matrix_centered_3D(
     cx_ref = ref_nx // 2
     cy_ref = ref_ny // 2
     cz_ref = ref_nz // 2
+    ref_center = np.array([cz_ref, cy_ref, cx_ref], dtype=np.float64)
 
-    # 4) Loop dwells: translate + accumulate
+    # Pre-compute: ratio between reference and output resolution
+    scale = ref_res_mm / output_res_mm  # voxels-in-output per voxel-in-ref
+
+    # 4) Loop dwells: rotate, translate, accumulate
     for x_mm, y_mm, z_mm, cosX, cosY, cosZ, dwell_time in dw:
-        # if you eventually want rotations, you'd build them here.
-        # for now we skip rotations entirely:
-        # rotated = reference_matrix_3d.copy()
+        if dwell_time <= 0:
+            continue
 
+        # --- Build rotation matrix ---
+        R = _rotation_matrix_from_direction(cosX, cosY, cosZ)
+
+        # scipy affine_transform uses the INVERSE mapping:
+        #   output[o] = input[ R_inv @ (o - center) + center ]
+        # We need R_inv to map output voxel coords back to input voxel coords.
+        # The rotation matrix maps ref-axis→source-axis, so the inverse
+        # (transpose, since R is orthogonal) maps output coords back to ref coords.
+        R_inv = R.T  # inverse of the rotation
+
+        # For affine_transform: input[matrix @ output_coord + offset]
+        # We want rotation about the center of the reference volume:
+        #   input_coord = R_inv @ (output_coord - center) + center
+        #                = R_inv @ output_coord + (center - R_inv @ center)
+        aff_offset = ref_center - R_inv @ ref_center
+
+        # Apply the rotation to the reference matrix (around its own center)
+        rotated = affine_transform(
+            reference_matrix_3d.astype(np.float64),
+            R_inv,
+            offset=aff_offset,
+            output_shape=reference_matrix_3d.shape,
+            order=1,        # bilinear interpolation
+            mode='constant',
+            cval=0.0
+        ).astype(np.float32)
+
+        # --- Place rotated matrix into output grid ---
         # convert dwell (mm) → output grid voxel index
         i = int(np.round((z_mm - z_min) / output_res_mm))
         j = int(np.round((y_mm - y_min) / output_res_mm))
@@ -194,7 +277,7 @@ def transform_and_sum_dose_matrix_centered_3D(
         iz0, iy0, ix0 = max(0, z0), max(0, y0), max(0, x0)
         iz1, iy1, ix1 = min(nz, z1), min(ny, y1), min(nx, x1)
 
-        # corresponding region within the reference matrix
+        # corresponding region within the rotated reference matrix
         rz0 = iz0 - z0
         ry0 = iy0 - y0
         rx0 = ix0 - x0
@@ -202,17 +285,17 @@ def transform_and_sum_dose_matrix_centered_3D(
         ry1 = ry0 + (iy1 - iy0)
         rx1 = rx0 + (ix1 - ix0)
 
-        # accumulate (dose in cGy/h * time → cGy)
+        # accumulate (dose rate × time)
         out[iz0:iz1, iy0:iy1, ix0:ix1] += (
-            reference_matrix_3d[rz0:rz1, ry0:ry1, rx0:rx1]
+            rotated[rz0:rz1, ry0:ry1, rx0:rx1]
             * dwell_time
         )
 
     meta = {
-        'origin_mm': (x_min + offset[0],-y_max - offset[1], z_min + offset[2]),
+        'origin_mm': (x_min + offset[0], -y_max - offset[1], z_min + offset[2]),
         'pixel_spacing_mm': output_res_mm,
         'size_pixels': (nz, ny, nx),
-        'description': 'Accumulated 3D TG-43 dose (no rotation)'
+        'description': 'Accumulated 3D TG-43 dose (with source orientation)'
     }
 
     return out, meta

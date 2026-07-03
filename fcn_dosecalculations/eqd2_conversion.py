@@ -225,9 +225,15 @@ def generate_eqd2_dose(self):
             
                      eqd2_dose['3DMatrix']=dose_matrix_eqd2
                      eqd2_dose['metadata']['SeriesDescription']=f"EQD2_{dose['metadata']['SeriesDescription']}"
-                     ref_value = np.max(dose_matrix_eqd2)
-                     eqd2_dose['metadata']['WindowWidth'] = ref_value*0.02
-                     eqd2_dose['metadata']['WindowCenter']= ref_value*0.80
+                     active_dose = dose_matrix_eqd2[dose_matrix_eqd2 > 0.0]
+                     if active_dose.size > 0:
+                         mean_active = float(np.mean(active_dose))
+                         eqd2_dose['metadata']['WindowWidth'] = mean_active * 2.0
+                         eqd2_dose['metadata']['WindowCenter']= mean_active
+                     else:
+                         ref_value = np.max(dose_matrix_eqd2)
+                         eqd2_dose['metadata']['WindowWidth'] = ref_value if ref_value > 0 else 10.0
+                         eqd2_dose['metadata']['WindowCenter']= ref_value * 0.5 if ref_value > 0 else 5.0
                      eqd2_dose['metadata']['PixelSpacing']=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
                      eqd2_dose['metadata']['SliceThickness']=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
                      eqd2_dose['metadata']['ImagePositionPatient']=self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']

@@ -487,17 +487,6 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # keep tab/others hidden (already hidden above)
         self._max_axis = big_axis
 
-    def _resolve_names(axis: str):
-        names = _VIEW_ATTRS[axis]
-        if isinstance(names, dict):
-            pane = names["pane"]; vtk = names.get("vtk", pane); sl = names["slider"]; return pane, vtk, sl
-        elif len(names) == 3:
-            return names
-        elif len(names) == 2:
-            pane, sl = names; return pane, pane, sl
-        else:
-            raise ValueError(f"Bad mapping for {axis}: {names!r}")
-
     def _hook_vtk_dblclicks(self):
         for axis in _VIEW_ATTRS.keys():
             pane_name, _, _ = _resolve_names(axis)

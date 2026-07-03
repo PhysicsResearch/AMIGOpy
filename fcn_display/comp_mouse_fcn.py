@@ -10,6 +10,11 @@ def left_button_presscomp_event(self, caller, event):
         self.Comp_im_idx.setValue(Caller_id)
         self.left_but_pressed[0] = 1
         self.left_but_pressed[1] = Caller_id
+        # Sync dropdown
+        ori = int(self.im_ori_comp[Caller_id])
+        self.Comp_view_sel_box.blockSignals(True)
+        self.Comp_view_sel_box.setCurrentIndex(ori)
+        self.Comp_view_sel_box.blockSignals(False)
     
 def left_button_releasecomp_event(self, caller, event):
     self.left_but_pressed[0] = 0
@@ -19,19 +24,33 @@ def on_scroll_backwardcomp(self, caller, event):
     Caller_id = self.interactor_to_index.get(caller)
     if Caller_id is not None:
         self.Comp_im_idx.setValue(Caller_id)
+        # Sync dropdown
+        ori = int(self.im_ori_comp[Caller_id])
+        self.Comp_view_sel_box.blockSignals(True)
+        self.Comp_view_sel_box.setCurrentIndex(ori)
+        self.Comp_view_sel_box.blockSignals(False)
         self.SliderCompareView.setValue(self.SliderCompareView.value() -1) 
 
 def on_scroll_forwardcomp(self, caller, event):
     Caller_id = self.interactor_to_index.get(caller)
     if Caller_id is not None:
         self.Comp_im_idx.setValue(Caller_id)
+        # Sync dropdown
+        ori = int(self.im_ori_comp[Caller_id])
+        self.Comp_view_sel_box.blockSignals(True)
+        self.Comp_view_sel_box.setCurrentIndex(ori)
+        self.Comp_view_sel_box.blockSignals(False)
         self.SliderCompareView.setValue(self.SliderCompareView.value() +1) 
 
 
 def onMouseMovecomp(self, caller, event):
     layer = self.layer_selected.currentIndex()
     for Ax_idx in range (0,self.Comp_im_idx.maximum()+1):
-        if not ((Ax_idx, layer) in self.display_comp_data and int(self.current_AxComp_slice_index[Ax_idx, layer]) in self.display_comp_data[Ax_idx, layer]):
+        if (Ax_idx, layer) not in self.display_comp_data:
+            continue
+        ori = int(self.im_ori_comp[Ax_idx])
+        axis = 2 if ori == 1 else (1 if ori == 2 else 0)
+        if not (0 <= int(self.current_AxComp_slice_index[Ax_idx, layer]) < self.display_comp_data[Ax_idx, layer].shape[axis]):
             continue
         # if self.current_axial_slice_index[idx]==-1:
         #     return
@@ -67,13 +86,12 @@ def onMouseMovecomp(self, caller, event):
         image_coord_vox    = list(image_coords)
         image_coord_vox[0] = int(image_coord_vox[0]/spacing[0])
         image_coord_vox[1] = int(image_coord_vox[1]/spacing[1])
-        #
         # Make sure the image coordinates are within the image bounds
-        # if (0 <= image_coord_vox[0] < slice_data.shape[1] and
-        #         0 <= image_coord_vox[1] < slice_data.shape[0]) or self.selected_point is not None:
-        pixel_value = slice_data[image_coord_vox[1], image_coord_vox[0]]    
-        # 
-        self.textActorAxCom[Ax_idx,2].SetInput(f"Slice:{self.current_AxComp_slice_index[Ax_idx,layer]}  ({image_coord_vox[0]},{image_coord_vox[1]}) {round(pixel_value,4):.4f}")
+        if 0 <= image_coord_vox[0] < slice_data.shape[1] and 0 <= image_coord_vox[1] < slice_data.shape[0]:
+            pixel_value = slice_data[image_coord_vox[1], image_coord_vox[0]]    
+            self.textActorAxCom[Ax_idx,2].SetInput(f"Slice:{self.current_AxComp_slice_index[Ax_idx,layer]}  ({image_coord_vox[0]},{image_coord_vox[1]}) {round(pixel_value,4):.4f}")
+        else:
+            self.textActorAxCom[Ax_idx,2].SetInput(f"Slice:{self.current_AxComp_slice_index[Ax_idx,layer]}")
         #
         if self.left_but_pressed[0] == 1:
             current_window = self.windowLevelAxComp[self.left_but_pressed[1],layer].GetWindow()

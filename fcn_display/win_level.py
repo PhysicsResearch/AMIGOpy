@@ -61,11 +61,20 @@ def set_window(self,Window,Level):
                 r_1 = self.Comp_im_idx.value();
             r_2 = r_1+ 1
         for Ax_idx in range (r_1,r_2):
-            if not ((Ax_idx, layer) in self.display_comp_data and int(self.current_AxComp_slice_index[Ax_idx, layer]) in self.display_comp_data[Ax_idx, layer]):
+            if (Ax_idx, layer) not in self.display_comp_data:
+                continue
+            ori = int(self.im_ori_comp[Ax_idx])
+            axis = 2 if ori == 1 else (1 if ori == 2 else 0)
+            if not (0 <= int(self.current_AxComp_slice_index[Ax_idx, layer]) < self.display_comp_data[Ax_idx, layer].shape[axis]):
                 continue
             self.windowLevelAxComp[Ax_idx,layer].SetWindow(Window)
             self.windowLevelAxComp[Ax_idx,layer].SetLevel(Level)
-            self.textActorAxCom[Ax_idx,1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")     
+            self.textActorAxCom[Ax_idx,1].SetInput(f"L: {round(Level,2)}  W: {round(Window,2)}")
+        from fcn_display.colormap_set import apply_custom_colormap_comp
+        apply_custom_colormap_comp(self)
+        for Ax_idx in range(r_1, r_2):
+            if hasattr(self, 'renAxComp') and Ax_idx < len(self.renAxComp):
+                self.renAxComp[Ax_idx].GetRenderWindow().Render()     
     elif currentTabText == "Segmentation":
         self.seg_win_lev = [Window, Level]
         self.windowLevelSeg[layer].SetWindow(Window)

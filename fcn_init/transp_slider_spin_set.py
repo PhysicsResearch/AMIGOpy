@@ -46,10 +46,15 @@ def Layer_alpha_slider_set(self,layer):
         self._on_opacity_changed(self.LayerAlpha[layer], layer)
         #
     elif currentTabText == "Compare":
-        for i in range (0,self.Comp_im_idx.maximum()+1):
-            imageProperty = self.imageActorAxComp[i, layer].GetProperty()
+        ref_idx = self.Comp_im_idx.value()
+        if not hasattr(self, 'CompLayerAlpha'):
+            self.CompLayerAlpha = {}
+        self.CompLayerAlpha[ref_idx, layer] = self.LayerAlpha[layer]
+        
+        if hasattr(self, 'imageActorAxComp') and (ref_idx, layer) in self.imageActorAxComp:
+            imageProperty = self.imageActorAxComp[ref_idx, layer].GetProperty()
             imageProperty.SetOpacity(self.LayerAlpha[layer])
-            self.renAxComp[i].GetRenderWindow().Render()  
+            self.renAxComp[ref_idx].GetRenderWindow().Render()  
     elif currentTabText == "Segmentation":
         self.LayerAlpha[layer] = np.clip(self.LayerAlpha[layer], 0, 0.99)
         imageProperty = self.imageActorSeg[layer].GetProperty()
