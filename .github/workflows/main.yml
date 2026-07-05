@@ -81,7 +81,7 @@ jobs:
 
           pip install "pandas==2.2.*"
           pip install "numexpr>=2.10,<3"
-          pip install "pyarrow==14.*" "zstandard>=0.22"
+          pip install "zstandard>=0.22"
 
           pip install "nuitka>=2.2" ordered-set zstandard
 
@@ -138,8 +138,6 @@ jobs:
             "--include-package=pandas",
             "--include-package-data=pandas",
             "--include-package=numexpr",
-            "--include-package=pyarrow",
-            "--include-package-data=pyarrow",
             "--include-package=zstandard",
 
             "--nofollow-import-to=totalsegmentator",
