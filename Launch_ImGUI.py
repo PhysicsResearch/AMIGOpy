@@ -2,6 +2,9 @@ import os, sys, traceback, faulthandler
 faulthandler.enable()
 os.environ.setdefault("QT_OPENGL", "software")  # safer on RDP/VM
 
+# Force pyarrow to be treated as unavailable to prevent crashes from leftover files in dirty upgrades
+sys.modules['pyarrow'] = None
+
 from PySide6.QtCore import Qt, QCoreApplication
 from PySide6.QtGui import QSurfaceFormat, QIcon
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QToolBar
