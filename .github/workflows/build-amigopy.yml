@@ -26,8 +26,10 @@ jobs:
       NUITKA_CACHE_DIR: ${{ github.workspace }}\.nuitka-cache
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Development branch
         uses: actions/checkout@v4
+        with:
+          ref: Development
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -39,7 +41,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .nuitka-cache
-          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', '.github/workflows/build-amigopy-release.yml') }}
+          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', '.github/workflows/build-amigopy.yml') }}
           restore-keys: ${{ runner.os }}-nuitka-
 
       - name: Build with Nuitka

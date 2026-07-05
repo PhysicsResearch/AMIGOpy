@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .nuitka-cache
-          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', '.github/workflows/build-amigopy-release.yml') }}
+          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', '.github/workflows/main.yml') }}
           restore-keys: ${{ runner.os }}-nuitka-
 
       - name: Build with Nuitka
