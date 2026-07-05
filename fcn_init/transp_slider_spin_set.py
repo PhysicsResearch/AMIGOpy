@@ -43,7 +43,8 @@ def Layer_alpha_slider_set(self,layer):
         #
     elif currentTabText == "_3Dview":
         #
-        self._on_opacity_changed(self.LayerAlpha[layer], layer)
+        if hasattr(self, '_on_opacity_changed'):
+            self._on_opacity_changed(self.LayerAlpha[layer], layer)
         #
     elif currentTabText == "Compare":
         ref_idx = self.Comp_im_idx.value()
@@ -54,12 +55,15 @@ def Layer_alpha_slider_set(self,layer):
         if hasattr(self, 'imageActorAxComp') and (ref_idx, layer) in self.imageActorAxComp:
             imageProperty = self.imageActorAxComp[ref_idx, layer].GetProperty()
             imageProperty.SetOpacity(self.LayerAlpha[layer])
-            self.renAxComp[ref_idx].GetRenderWindow().Render()  
+            if hasattr(self, 'renAxComp') and len(self.renAxComp) > ref_idx and self.renAxComp[ref_idx]:
+                self.renAxComp[ref_idx].GetRenderWindow().Render()  
     elif currentTabText == "Segmentation":
         self.LayerAlpha[layer] = np.clip(self.LayerAlpha[layer], 0, 0.99)
-        imageProperty = self.imageActorSeg[layer].GetProperty()
-        imageProperty.SetOpacity(self.LayerAlpha[layer])
-        self.renSeg.GetRenderWindow().Render()
+        if hasattr(self, 'imageActorSeg') and layer in self.imageActorSeg:
+            imageProperty = self.imageActorSeg[layer].GetProperty()
+            imageProperty.SetOpacity(self.LayerAlpha[layer])
+            if hasattr(self, 'renSeg') and self.renSeg:
+                self.renSeg.GetRenderWindow().Render()
 
     
 def Layer_0_alpha_spinbox_set(self):

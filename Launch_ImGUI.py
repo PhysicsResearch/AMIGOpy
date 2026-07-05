@@ -26,21 +26,15 @@ import qdarkstyle
 from uiImGUI import Ui_AMIGOpy
 from fcn_load.sort_dcm import get_data_description
 from fcn_load.org_fol_dcm import organize_files_into_folders
-from fcn_breathing_curves.functions_plot import init_BrCv_plot, plotViewData_BrCv_plot
-from fcn_breathing_curves.functions_edit import initXRange, init_BrCv_edit, plotViewData_BrCv_edit
-from fcn_breathing_curves.functions_phantom_operation import set_fcn_MoVeTab_changed
 from fcn_display.mouse_move_slicechanges import change_sliceAxial, change_sliceSagittal, change_sliceCoronal
 from fcn_display.Data_tree_general import on_DataTreeView_clicked
 from fcn_init.create_menu import initializeMenuBar
 from fcn_init.vtk_comp import setup_vtk_comp
-from fcn_init.vtk_comp_seg import setup_vtk_seg
 from fcn_init.transp_slider_spin_set  import set_transp_slider_fcn
 from fcn_init.set_menu_bar_icons      import menu_bar_icon_actions
-from fcn_init.vtk_IrIS_eval_axes      import setup_vtk_IrISEval
 from fcn_display.display_images       import update_layer_view
 from fcn_display.display_images_seg   import update_seg_slider, disp_seg_image_slice
 from fcn_init.ModulesTab_change       import set_fcn_tabModules_changed
-from fcn_init.IrIS_cal_init           import init_cal_markers_IrIS
 from fcn_init.init_variables          import initialize_software_variables
 from fcn_init.init_tables             import initialize_software_tables
 from fcn_init.init_buttons            import initialize_software_buttons
@@ -48,16 +42,9 @@ from fcn_init.init_load_files         import load_Source_cal_csv_file
 from fcn_init.init_list_menus         import populate_list_menus
 from fcn_init.init_drop_options       import initialize_drop_fcn
 from fcn_load.load_dcm                import load_all_dcm
-from fcn_init.view_hist import init_histogram_ui
-from fcn_segmentation.functions_segmentation import plot_hist
-from fcn_init.init_vtk_3D_display     import init_vtk3d_widget
-
 
 from fcn_3Dview.volume_3d_viewer import VTK3DViewerMixin
-from fcn_3Dview.structures_3D_table import init_3D_Struct_table 
 from fcn_init.init_tool_tip import set_tooltip
-from fcn_3Dview.surfaces_3D_table import init_STL_Surface_table
-from fcn_3Dview.protons_3D_plan import init_3D_proton_table
 from fcn_init.init_data_tree import set_context_menu
 from fcn_3DPrinting.material_selection import calculate_red_settings
 from fcn_3DPrinting import handlers as hdl
@@ -131,10 +118,9 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # load ref csv files
         # load_Source_cal_csv_file(self)
         #
-        init_3D_Struct_table(self)
-        init_STL_Surface_table(self)
-        init_3D_proton_table(self)
-        
+        # 3D tables are now lazy loaded in fcn_init/ModulesTab_change.py
+        #
+
         #
         self.LeftButtonSagittalDown = False
         self.LeftButtonCoronalDown  = False
@@ -184,16 +170,9 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
 
         #
         self.BrCvTab_index = 0
-        self.tabWidget_BrCv.currentChanged.connect(lambda: init_BrCv_plot(self))
-        self.plotXAxis_BrCv.currentTextChanged.connect(lambda: plotViewData_BrCv_plot(self))
-
-        self.tabWidget_BrCv.currentChanged.connect(lambda: init_BrCv_edit(self))
-        self.editXMinSlider_BrCv.valueChanged.connect(lambda: plotViewData_BrCv_edit(self))
-        self.editXMaxSlider_BrCv.valueChanged.connect(lambda: plotViewData_BrCv_edit(self))
-        self.editXAxis_BrCv.currentTextChanged.connect(lambda: initXRange(self))
         self.DuetIPAddress.setText("192.168.0.1")
+        # Breathing curves connects/setups are now lazy loaded on tab change in ModulesTab_change.py
 
-        set_fcn_MoVeTab_changed(self)
         #
         self.LeftButtonAxialDown     = False
         self.LeftButtonSagittalDown  = False
@@ -210,17 +189,16 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
               
         # # Initialize VTK components
         setup_vtk_comp(self)
-        setup_vtk_IrISEval(self)
-        setup_vtk_seg(self)
-        init_histogram_ui(self)
+        # IrIS, Segmentation, and Histogram are now lazy loaded in ModulesTab_change.py/view_hist.py
         self._hook_vtk_dblclicks()
-        # Calibration module IrIS
-        init_cal_markers_IrIS(self)
         
         self.threshMinHU.setText("-200")
         self.threshMaxHU.setText("200")
-        self.threshMinHU.textChanged.connect(lambda: plot_hist(self))
-        self.threshMaxHU.textChanged.connect(lambda: plot_hist(self))
+        def run_plot_hist():
+            from fcn_segmentation.functions_segmentation import plot_hist
+            plot_hist(self)
+        self.threshMinHU.textChanged.connect(run_plot_hist)
+        self.threshMaxHU.textChanged.connect(run_plot_hist)
         self.segSelectView.currentTextChanged.connect(lambda: update_seg_slider(self))
         self.segViewSlider.valueChanged.connect(lambda: disp_seg_image_slice(self))
 
@@ -241,10 +219,9 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         vtk.vtkObject.GlobalWarningDisplayOff()
         set_transp_slider_fcn(self)
         #
-        # # Initialize the 3D viewer
-        self.VTK3D_widget, self.VTK3D_renderer, self.VTK3D_interactor = \
-            init_vtk3d_widget(self, self.VTK_view_3D)
-        self.init_3d_viewer()       
+        # # 3D viewer is now lazy loaded on tab change in ModulesTab_change.py
+        #
+
 
         set_fcn_tabModules_changed(self)
         # state flag: which axis is currently maximised  (None → original layout)
@@ -262,7 +239,6 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         #
         # 3D view:
         self.VTK_view_3D.installEventFilter(self)
-        self.vtk3dWidget.installEventFilter(self)
         self._vtk3d_is_maximized = False
         #
         initializeMenuBar(self)
@@ -389,7 +365,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
                 self.set_view_mode("all")
                 return True
 
-            if watched is self.VTK_view_3D or watched is self.vtk3dWidget:
+            if watched is self.VTK_view_3D or (hasattr(self, 'vtk3dWidget') and watched is self.vtk3dWidget):
                 # ... unchanged 3D maximize/restore code ...
                 return True
 

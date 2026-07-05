@@ -1,4 +1,5 @@
-name: Build AMIGOpy and Release
+name: Build AMIGOpy and Release - old
+
 
 on:
   workflow_dispatch:
