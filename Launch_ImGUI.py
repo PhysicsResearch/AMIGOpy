@@ -519,12 +519,82 @@ def calculate_red(self):
 
 
 if __name__ == "__main__":
-    import sys, os, time
+    import sys, os, time, traceback, datetime
     from PySide6.QtCore import Qt, QCoreApplication, QTimer
     from PySide6.QtGui import QSurfaceFormat, QPixmap
-    from PySide6.QtWidgets import QApplication, QSplashScreen
+    from PySide6.QtWidgets import QApplication, QSplashScreen, QMessageBox
+    from PySide6.QtNetwork import QLocalServer, QLocalSocket
     import qdarkstyle
     import resources_rc 
+
+    # --- Setup log directory and file in AppData ---
+    appdata_dir = os.path.join(os.getenv('APPDATA', os.path.expanduser('~')), 'AMIGOpy')
+    try:
+        os.makedirs(appdata_dir, exist_ok=True)
+        log_file_path = os.path.join(appdata_dir, 'amigopy.log')
+        log_file = open(log_file_path, 'w', encoding='utf-8')
+        log_file.write(f"=== AMIGOpy Log Started: {datetime.datetime.now()} ===\n")
+        log_file.flush()
+    except Exception as e:
+        log_file = None
+        print("Failed to initialize logging:", e)
+
+    # Redirection class for standard outputs
+    class LoggerRedirector:
+        def __init__(self, original_stream, log_file):
+            self.original_stream = original_stream
+            self.log_file = log_file
+
+        def write(self, message):
+            if self.original_stream:
+                try:
+                    self.original_stream.write(message)
+                except:
+                    pass
+            if self.log_file:
+                try:
+                    self.log_file.write(message)
+                    self.log_file.flush()
+                except:
+                    pass
+
+        def flush(self):
+            if self.original_stream:
+                try:
+                    self.original_stream.flush()
+                except:
+                    pass
+            if self.log_file:
+                try:
+                    self.log_file.flush()
+                except:
+                    pass
+
+    # Redirect sys.stdout and sys.stderr
+    if log_file:
+        sys.stdout = LoggerRedirector(sys.stdout, log_file)
+        sys.stderr = LoggerRedirector(sys.stderr, log_file)
+
+    # Custom exception hook to display a critical QMessageBox on crash
+    def exception_hook(exctype, value, tb):
+        tb_str = "".join(traceback.format_exception(exctype, value, tb))
+        sys.stderr.write(f"\nFATAL EXCEPTION CRASH:\n{tb_str}\n")
+        
+        if QApplication.instance():
+            QMessageBox.critical(
+                None,
+                "AMIGOpy Crash",
+                f"AMIGOpy has encountered a fatal error and has crashed.\n\n"
+                f"Error Details:\n{value}\n\n"
+                f"A detailed log containing the crash traceback has been saved to:\n"
+                f"{log_file_path}\n\n"
+                f"Please retrieve this log file to inspect or report the issue.",
+                QMessageBox.StandardButton.Ok
+            )
+        sys.__excepthook__(exctype, value, tb)
+        sys.exit(1)
+
+    sys.excepthook = exception_hook
 
     # --- Keep your GL defaults (unchanged) ---
     fmt = QSurfaceFormat()
@@ -536,8 +606,26 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
 
+    socket_name = "amigopy_single_instance_socket"
+    
+    # Try to connect to an existing local server
+    socket = QLocalSocket()
+    socket.connectToServer(socket_name)
+    if socket.waitForConnected(500):
+        # We connected to an existing instance!
+        # Send all command line arguments (each path on a new line)
+        paths_str = "\n".join(sys.argv[1:]) if len(sys.argv) > 1 else ""
+        socket.write(paths_str.encode('utf-8'))
+        socket.flush()
+        socket.disconnectFromServer()
+        sys.exit(0) # Exit immediately
+
+    # If we get here, we are the primary instance. Start the local server
+    server = QLocalServer()
+    QLocalServer.removeServerKey(socket_name)
+    server.listen(socket_name)
+
     # --- Show splash ASAP ---
-    # Pu
     pix = QPixmap(":/assets/Open_logo.png")
     if pix.isNull():
         pix = QPixmap(600, 300); pix.fill(Qt.black)
@@ -550,13 +638,35 @@ if __name__ == "__main__":
     app.processEvents()  # let the splash paint immediately
 
     # --- Create main window (keep __init__ as-is for now) ---
-    folder_path = sys.argv[1] if len(sys.argv) > 1 else None
+    paths = sys.argv[1:] if len(sys.argv) > 1 else []
+    folder_path = paths if len(paths) > 1 else (paths[0] if len(paths) == 1 else None)
     window = MyApp(folder_path)
 
     # Optional: apply theme after splash is visible
     app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6'))
     splash.showMessage("Loading UI…", Qt.AlignBottom | Qt.AlignHCenter | Qt.TextWordWrap, Qt.white)
     app.processEvents()
+
+    # Define the slot for incoming connection on the primary instance
+    def handle_new_connection():
+        client_socket = server.nextPendingConnection()
+        if client_socket.waitForReadyRead(1000):
+            path_data = client_socket.readAll().data().decode('utf-8').strip()
+            if path_data:
+                # split by newline to handle multiple files sent at once
+                received_paths = [p.strip() for p in path_data.split('\n') if p.strip()]
+                if received_paths:
+                    # Bring the window to the front and restore if minimized
+                    window.setWindowState(window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
+                    window.raise_()
+                    window.activateWindow()
+                    # Trigger the loading of the new DICOM folder
+                    from Launch_ImGUI import load_all_dcm
+                    to_load = received_paths if len(received_paths) > 1 else received_paths[0]
+                    load_all_dcm(window, to_load, progress_callback=None, update_label=None)
+        client_socket.disconnectFromServer()
+
+    server.newConnection.connect(handle_new_connection)
 
     # --- Show window and close splash ---
     window.show()

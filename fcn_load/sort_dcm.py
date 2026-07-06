@@ -276,22 +276,29 @@ def get_data_description(folder_path=None, progress_callback=None, update_label=
     if folder_path is None:
         folder_path = get_folder_path_from_dialog()
 
-    if not os.path.exists(folder_path) or folder_path is None:
-        print(f"Error: The folder '{folder_path}' does not exist or the operation was cancelled!")
-        return None, None, None
-
-    # if user wants to organize the dta into folder ask for the folder path
-    if sort_folder == 1:
-        _ensure_app()
-        outputfolder = QFileDialog.getExistingDirectory(
-            None,
-            "Select an OUTPUT Folder - Create one and use the refresh button if necessary"
-        ) or None
-    else:
+    if isinstance(folder_path, list):
+        all_files = []
+        for p in folder_path:
+            if os.path.exists(p):
+                all_files.extend(get_all_files(p))
         outputfolder = None
+    else:
+        if folder_path is None or not os.path.exists(folder_path):
+            print(f"Error: The folder '{folder_path}' does not exist or the operation was cancelled!")
+            return None, None, None
 
+        # if user wants to organize the dta into folder ask for the folder path
+        if sort_folder == 1:
+            _ensure_app()
+            outputfolder = QFileDialog.getExistingDirectory(
+                None,
+                "Select an OUTPUT Folder - Create one and use the refresh button if necessary"
+            ) or None
+        else:
+            outputfolder = None
 
-    all_files = get_all_files(folder_path)
+        all_files = get_all_files(folder_path)
+
     total_steps = len(all_files)
     if update_label:
         update_label.setText(f"Checking and sorting the header of {total_steps} files")
