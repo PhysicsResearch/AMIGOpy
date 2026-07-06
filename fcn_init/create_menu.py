@@ -74,43 +74,39 @@ def initializeMenuBar(self):
     ViewMenu      = self.menuBar().addMenu("View")
     WindowingMenu = ViewMenu .addMenu("Window")
     # Add items 
-    items = ["Auto","Lung", "SoftTissue", "Bone", "SPR/RED", "Zeff", "IrIS_2000","IrIS_5000","IrIS_10000","IrIS_20000","Custom"]
+    items = ["Lung", "SoftTissue", "Bone", "SPR/RED", "Zeff", "IrIS_2000","IrIS_5000","IrIS_10000","IrIS_20000","Custom"]
     for item in items:
         action = QAction(item, self)
-        # Connect the Folder action to the load_dcm function
-        if item == "Auto":
-              action.triggered.connect(lambda: window_auto(self))
-              action.setShortcut("Ctrl+Shift+1")
-        elif item == "Lung":
+        if item == "Lung":
               action.triggered.connect(lambda: window_lung(self))
-              action.setShortcut("Ctrl+1")
+              action.setShortcut("Ctrl+W, 1")
         elif item == "SoftTissue":
               action.triggered.connect(lambda: window_stissue(self))
-              action.setShortcut("Ctrl+2")
+              action.setShortcut("Ctrl+W, 2")
         elif item == "Bone":
               action.triggered.connect(lambda: window_bone(self))
-              action.setShortcut("Ctrl+3")
+              action.setShortcut("Ctrl+W, 3")
         elif item == "SPR/RED":
               action.triggered.connect(lambda: window_sprred(self))
-              action.setShortcut("Ctrl+4")
+              action.setShortcut("Ctrl+W, 4")
         elif item == "Zeff":
               action.triggered.connect(lambda: window_zeff(self))
-              action.setShortcut("Ctrl+5")
+              action.setShortcut("Ctrl+W, 5")
         elif item == "IrIS_2000":
               action.triggered.connect(lambda: window_IrIS_1(self))
-              action.setShortcut("Ctrl+6") 
+              action.setShortcut("Ctrl+W, 6") 
         elif item == "IrIS_5000":
               action.triggered.connect(lambda: window_IrIS_2(self))
-              action.setShortcut("Ctrl+7") 
+              action.setShortcut("Ctrl+W, 7") 
         elif item == "IrIS_10000":          
               action.triggered.connect(lambda: window_IrIS_3(self))
-              action.setShortcut("Ctrl+8") 
+              action.setShortcut("Ctrl+W, 8") 
         elif item == "IrIS_20000":          
               action.triggered.connect(lambda: window_IrIS_4(self))
-              action.setShortcut("Ctrl+9")  
+              action.setShortcut("Ctrl+W, 9")  
         elif item == "Custom":
               action.triggered.connect(lambda: window_custom(self))
-              action.setShortcut("Ctrl+0")       
+              action.setShortcut("Ctrl+W, 0")       
         WindowingMenu.addAction(action)
         
         

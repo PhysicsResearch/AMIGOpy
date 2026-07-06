@@ -133,13 +133,46 @@ def window_IrIS_4(self):
     set_window(self,Window,Level)   
     
 def window_custom(self):
-    # Ask for Window value
-    Window, ok1 = QInputDialog.getInt(self, "Input Window", "Enter Window value:", 0, 0, 1000000, 1)
-    if not ok1:
-        return  # User cancelled or closed the dialog
-    # Ask for Level value
-    Level, ok2 = QInputDialog.getInt(self, "Input Level", "Enter Level value:", 0, -1000000, 1000000, 1)
-    if not ok2:
-        return  # User cancelled or closed the dialog
-    set_window(self,Window,Level)
+    from PySide6.QtWidgets import QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout
+    
+    dialog = QDialog(self)
+    dialog.setWindowTitle("Custom Window Level")
+    
+    layout = QVBoxLayout(dialog)
+    form_layout = QFormLayout()
+    
+    txt_min = QLineEdit(dialog)
+    txt_min.setPlaceholderText("Min WL value")
+    txt_max = QLineEdit(dialog)
+    txt_max.setPlaceholderText("Max WL value")
+    
+    # Pre-populate with current values if available
+    idx = self.layer_selected.currentIndex()
+    if hasattr(self, 'windowLevelAxial') and idx in self.windowLevelAxial:
+        w = self.windowLevelAxial[idx].GetWindow()
+        l = self.windowLevelAxial[idx].GetLevel()
+        txt_min.setText(f"{l - w/2:.1f}")
+        txt_max.setText(f"{l + w/2:.1f}")
+    
+    form_layout.addRow("Min WL:", txt_min)
+    form_layout.addRow("Max WL:", txt_max)
+    layout.addLayout(form_layout)
+    
+    buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, dialog)
+    buttons.accepted.connect(dialog.accept)
+    buttons.rejected.connect(dialog.reject)
+    layout.addWidget(buttons)
+    
+    if dialog.exec() == QDialog.Accepted:
+        try:
+            min_val = float(txt_min.text())
+            max_val = float(txt_max.text())
+            if min_val >= max_val:
+                max_val = min_val + 1.0
+            
+            new_W = max_val - min_val
+            new_L = (max_val + min_val) / 2.0
+            set_window(self, new_W, new_L)
+        except ValueError:
+            pass
             

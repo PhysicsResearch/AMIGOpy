@@ -483,25 +483,4 @@ def set_mouse_button_custom_fcn(self):
      self.vtkWidgetSagittal.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event: onMouseMoveSagittal(self, caller, event))
      self.vtkWidgetCoronal.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event: onMouseMoveCoronal(self, caller, event))
      self.vtkWidgetAxial.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event:onMouseMoveAxial(self, caller, event))
-     #
-     # Priority -1: fires AFTER the style (priority 0) has set state=DOLLY via
-     # C++ OnRightButtonDown. Immediately resets it to VTKIS_NONE.
-     # This is necessary because right-click ROI context menus (priority +1 observers)
-     # fire BEFORE the style, so the cleanup there happens before DOLLY is ever set.
-     # When the context menu steals focus the right-button release never reaches VTK,
-     # leaving DOLLY active permanently — this post-style reset prevents that.
-     def _clear_right_dolly(caller, event):
-         sty = caller.GetInteractorStyle()
-         if sty:
-             try:
-                 sty.StopState()
-             except Exception:
-                 pass
-             try:
-                 sty.ReleaseFocus()
-             except Exception:
-                 pass
-     for _widget in [self.vtkWidgetAxial, self.vtkWidgetSagittal, self.vtkWidgetCoronal]:
-         _widget.GetRenderWindow().GetInteractor().AddObserver(
-             "RightButtonPressEvent", _clear_right_dolly, -1.0
-         )
+     #

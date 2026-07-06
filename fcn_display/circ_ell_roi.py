@@ -98,9 +98,6 @@ class PointRoiWidget(QtCore.QObject):
             pass
 
     def _on_right_click(self, caller, event):
-        # stop the interactor style from entering dolly mode
-        self._cancel_vtk_right_button()
-
         x, y = self.interactor.GetEventPosition()
         # hit test 3D cross actors
         self._picker_right.Pick(x, y, 0, self.renderer)
@@ -110,11 +107,18 @@ class PointRoiWidget(QtCore.QObject):
         hit_text = (self._stats_picker.GetActor2D() is self.statsActor)
 
         if (hit_actor in self.crossActors) or hit_text:
-            # make extra sure VTK thinks the right button is up
-            self._cancel_vtk_right_button()
+            # Temporarily disable style to prevent it from entering dolly/zoom mode
+            style = self.interactor.GetInteractorStyle()
+            self.interactor.SetInteractorStyle(None)
+            
             chosen, act_profile, act_delete = _context_menu(self.vtkWidget, enable_profile=False)
             if chosen == act_delete:
                 self.delete()
+                
+            # Restore style in next tick after event propagation finishes
+            interactor = self.interactor
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: interactor.SetInteractorStyle(style))
         else:
             return
 
@@ -396,9 +400,6 @@ class CircleRoiWidget(QtCore.QObject):
         self._update_stats()
 
     def _on_right_click(self, caller, event):
-        # release any VTK dolly/zoom state
-        self._cancel_vtk_right_button()
-
         x, y = self.interactor.GetEventPosition()
         if not self.circleSrc:
             return
@@ -413,7 +414,10 @@ class CircleRoiWidget(QtCore.QObject):
         hit_text = (hasattr(self, 'statsActor') and stats_picker.GetActor2D() is self.statsActor)
 
         if hit_actor or hit_text:
-            self._cancel_vtk_right_button()
+            # Temporarily disable style to prevent it from entering dolly/zoom mode
+            style = self.interactor.GetInteractorStyle()
+            self.interactor.SetInteractorStyle(None)
+            
             chosen, act_profile, act_delete = _context_menu(self.vtkWidget, enable_profile=True)
             if chosen == act_delete:
                 self.delete()
@@ -430,6 +434,10 @@ class CircleRoiWidget(QtCore.QObject):
                     roi_type='circle',
                     window_title="Circle ROI Histogram"
                 )
+            # Restore style in next tick after event propagation finishes
+            interactor = self.interactor
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: interactor.SetInteractorStyle(style))
         else:
             return
 
@@ -824,8 +832,6 @@ class EllipsoidRoiWidget(QtCore.QObject):
         self._update_stats()
 
     def _on_right_click(self, caller, event):
-        self._cancel_vtk_right_button()
-
         x, y = self.interactor.GetEventPosition()
         if not self.actor:
             return
@@ -837,7 +843,10 @@ class EllipsoidRoiWidget(QtCore.QObject):
         hit_text = (hasattr(self, 'statsActor') and stats_picker.GetActor2D() is self.statsActor)
 
         if hit or hit_text:
-            self._cancel_vtk_right_button()
+            # Temporarily disable style to prevent it from entering dolly/zoom mode
+            style = self.interactor.GetInteractorStyle()
+            self.interactor.SetInteractorStyle(None)
+            
             chosen, act_profile, act_delete = _context_menu(self.vtkWidget, enable_profile=True)
             if chosen == act_delete:
                 self.delete()
@@ -855,6 +864,10 @@ class EllipsoidRoiWidget(QtCore.QObject):
                     window_title="Ellipsoid ROI Histogram",
                     return_dialog=False
                 )
+            # Restore style in next tick after event propagation finishes
+            interactor = self.interactor
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: interactor.SetInteractorStyle(style))
         else:
             return
 
@@ -1336,9 +1349,6 @@ class SquareRoiWidget(QtCore.QObject):
         return x, y, z
 
     def _on_right_click(self, caller, event):
-        # tell VTK "right button is up" before anything
-        self._cancel_vtk_right_button()
-
         x, y = self.interactor.GetEventPosition()
         if not self.squareSrc:
             return
@@ -1348,7 +1358,10 @@ class SquareRoiWidget(QtCore.QObject):
         picked_text = (self._stats_picker.GetActor2D() is self.statsActor)
 
         if picked is self.squareActor or picked_text:
-            self._cancel_vtk_right_button()
+            # Temporarily disable style to prevent it from entering dolly/zoom mode
+            style = self.interactor.GetInteractorStyle()
+            self.interactor.SetInteractorStyle(None)
+            
             chosen, act_profile, act_delete = _context_menu(self.vtkWidget, enable_profile=True)
             if chosen == act_delete:
                 self.delete()
@@ -1380,6 +1393,10 @@ class SquareRoiWidget(QtCore.QObject):
                 dlg.sld_y.valueChanged.connect(on_y)
 
                 dlg.show()
+            # Restore style in next tick after event propagation finishes
+            interactor = self.interactor
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: interactor.SetInteractorStyle(style))
         else:
             return
 

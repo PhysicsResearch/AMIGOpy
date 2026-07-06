@@ -191,24 +191,6 @@ def setup_vtk_comp(self,N_im):
                 interactor_styleAxial.AddObserver("LeftButtonReleaseEvent", lambda caller, event: left_button_releasecomp_event(self, caller, event))
                 interactor_styleAxial.AddObserver("LeftButtonPressEvent", lambda caller, event: left_button_presscomp_event(self, caller, event))
                 #
-                # Priority -1: fires AFTER the style (priority 0) has processed
-                # RightButtonPressEvent and set state=DOLLY via C++ OnRightButtonDown.
-                # Immediately call StopState() to reset it back to 0.
-                # Note: priority +1 observers (_on_right_click) fire BEFORE the style,
-                # so any cleanup done there happens before DOLLY state is ever set.
-                def _clear_right_press_state(caller, event):
-                    sty = caller.GetInteractorStyle()
-                    if sty:
-                        try:
-                            sty.StopState()
-                        except Exception:
-                            pass
-                        try:
-                            sty.ReleaseFocus()
-                        except Exception:
-                            pass
-                iren = self.vtkWidgetsComp[i].GetRenderWindow().GetInteractor()
-                iren.AddObserver("RightButtonPressEvent", _clear_right_press_state, -1.0)
                 #
                 self.vtkWidgetsComp[i].AddObserver("LeftButtonPressEvent", lambda caller, event: left_button_presscomp_event(self, caller, event),0)
                 self.vtkWidgetsComp[i].AddObserver("LeftButtonReleaseEvent",lambda caller, event:left_button_releasecomp_event(self, caller, event),0)

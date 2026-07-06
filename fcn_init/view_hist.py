@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QToolButton, QLabel
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QToolButton, QLabel, QLineEdit
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
@@ -73,8 +73,49 @@ def init_histogram_ui(self):
     h.addWidget(self._xy_label, 0, Qt.AlignLeft)
     h.addStretch(1)
 
+    # Bottom row: manual min/max W/L inputs
+    bot_row = QWidget(self.hist_container_01)
+    h_bot = QHBoxLayout(bot_row)
+    h_bot.setContentsMargins(4, 0, 4, 4); h_bot.setSpacing(8)
+
+    lbl_min = QLabel("Min WL:", bot_row)
+    self.txt_min_wl = QLineEdit(bot_row)
+    self.txt_min_wl.setFixedWidth(80)
+    self.txt_min_wl.setPlaceholderText("Min")
+
+    lbl_max = QLabel("Max WL:", bot_row)
+    self.txt_max_wl = QLineEdit(bot_row)
+    self.txt_max_wl.setFixedWidth(80)
+    self.txt_max_wl.setPlaceholderText("Max")
+
+    h_bot.addWidget(lbl_min)
+    h_bot.addWidget(self.txt_min_wl)
+    h_bot.addWidget(lbl_max)
+    h_bot.addWidget(self.txt_max_wl)
+    h_bot.addStretch(1)
+
     lay_container.addWidget(top_row, 0)
     lay_container.addWidget(self.canvas_Hist_01, 1)
+    lay_container.addWidget(bot_row, 0)
+
+    # Connect manual inputs
+    def _on_manual_wl_change():
+        try:
+            min_val = float(self.txt_min_wl.text())
+            max_val = float(self.txt_max_wl.text())
+            if min_val >= max_val:
+                max_val = min_val + 1.0
+
+            new_W = max_val - min_val
+            new_L = (max_val + min_val) / 2.0
+
+            from fcn_display.win_level import set_window
+            set_window(self, new_W, new_L)
+        except ValueError:
+            pass
+
+    self.txt_min_wl.editingFinished.connect(_on_manual_wl_change)
+    self.txt_max_wl.editingFinished.connect(_on_manual_wl_change)
 
     # Interactions
     self._hist_zoom_factor = 1.2
@@ -207,6 +248,7 @@ def update_histogram_wl_lines(self, Window, Level):
         
     if changed:
         self.ax_Hist_01.set_xlim(new_xlim[0], new_xlim[1])
+        xlim = new_xlim
         
     # Check if we have the lines already on the axes
     lines_exist = True
@@ -224,6 +266,28 @@ def update_histogram_wl_lines(self, Window, Level):
         self._vline_high = self.ax_Hist_01.axvline(high_x, color='red', linestyle='--', linewidth=1.5, alpha=0.8)
         self._vline_center = self.ax_Hist_01.axvline(Level, color='yellow', linestyle=':', linewidth=1.0, alpha=0.6)
         
+    # Remove old overlay fill if it exists
+    if hasattr(self, '_fill_out'):
+        try:
+            self._fill_out.remove()
+        except Exception:
+            pass
+
+    # Draw new black overlay fill under the curve, outside the W/L region
+    if hasattr(self, '_hist_centers') and hasattr(self, '_hist_counts') and self._hist_centers.size:
+        centers = self._hist_centers
+        smooth = self._hist_counts
+        self._fill_out = self.ax_Hist_01.fill_between(
+            centers, smooth, where=(centers < low_x) | (centers > high_x),
+            step='mid', facecolor='black', alpha=0.45
+        )
+
+    # Update text fields if they are not currently focused
+    if hasattr(self, 'txt_min_wl') and not self.txt_min_wl.hasFocus():
+        self.txt_min_wl.setText(f"{low_x:.1f}")
+    if hasattr(self, 'txt_max_wl') and not self.txt_max_wl.hasFocus():
+        self.txt_max_wl.setText(f"{high_x:.1f}")
+
     self.canvas_Hist_01.draw_idle()
 
 
