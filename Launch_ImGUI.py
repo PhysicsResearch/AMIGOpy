@@ -622,7 +622,7 @@ if __name__ == "__main__":
 
     # If we get here, we are the primary instance. Start the local server
     server = QLocalServer()
-    QLocalServer.removeServerKey(socket_name)
+    QLocalServer.removeServer(socket_name)
     server.listen(socket_name)
 
     # --- Show splash ASAP ---

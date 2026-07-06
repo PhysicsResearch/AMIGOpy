@@ -41,7 +41,7 @@ def on_tree_context_menu(self, pos):
     hierarchy_indices.reverse()
 
     # Print the hierarchy for debugging
-    print("Hierarchy:", hierarchy)
+    # print("Hierarchy:", hierarchy)
 
     # Parse levels
     Type = hierarchy[0] if len(hierarchy) >= 1 else None

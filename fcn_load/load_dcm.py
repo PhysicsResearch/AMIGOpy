@@ -257,7 +257,6 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                             normalized = True
                         #
                         if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] >0):
-                            print('Image needs to be flipped to match coordinate system')
                             series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
                             series_data['metadata']['ImagePositionPatient']  =sorted_image_data[-1][1]['ImagePositionPatient']
                         else:
@@ -281,7 +280,6 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         series_data['3DMatrix'] = np.stack([item[1]['ImageData'] for item in sorted_image_data], axis=0)
                         series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
                         if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] >0):
-                            print('Image needs to be flipped to match coordinate system')
                             series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
                             series_data['metadata']['ImagePositionPatient']  =sorted_image_data[-1][1]['ImagePositionPatient']
                         else:
