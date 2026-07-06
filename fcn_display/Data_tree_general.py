@@ -375,11 +375,11 @@ def on_DataTreeView_clicked(self,index):
                     for w in (self.Reg_manual_Tx, self.Reg_manual_Ty, self.Reg_manual_Tz):
                         stack.enter_context(QtCore.QSignalBlocker(w))
                     self.Reg_manual_Tx.setValue(float(self.Im_PatPosition[idx, 0]))
-                    self.Reg_manual_Ty.setValue(float(self.Im_PatPosition[idx, 1]))
-                    self.Reg_manual_Tz.setValue(float(self.Im_PatPosition[idx, 2]))                                
+                    self.Reg_manual_Ty.setValue(float(self.Im_PatPosition[idx, 2]))  # Swap Y to Z
+                    self.Reg_manual_Tz.setValue(-float(self.Im_PatPosition[idx, 1])) # Swap Z to Y, and flip Y
                     self.Reg_manual_Refx.setValue(float(self.Im_PatPosition[0, 0]))
-                    self.Reg_manual_Refy.setValue(float(self.Im_PatPosition[0, 1]))
-                    self.Reg_manual_Refz.setValue(float(self.Im_PatPosition[0, 2]))
+                    self.Reg_manual_Refy.setValue(float(self.Im_PatPosition[0, 2]))  # Swap Y to Z
+                    self.Reg_manual_Refz.setValue(-float(self.Im_PatPosition[0, 1])) # Swap Z to Y, and flip Y
                     self.Reg_manual_Rot_X.setValue(float(0))
                     self.Reg_manual_Rot_Y.setValue(float(0))
                     self.Reg_manual_Rot_Z.setValue(float(0))
@@ -393,7 +393,7 @@ def on_DataTreeView_clicked(self,index):
                     for sb in (self.Reg_manual_Rot_X, self.Reg_manual_Rot_Y, self.Reg_manual_Rot_Z):
                         sb.setKeyboardTracking(False)  # only emit when editing finished or arrows used
 
-                if idx>0:
+                if idx>0 and 0 in self.display_data and self.display_data[0] is not None:
                     self.Im_Offset[idx,0]   = (self.Im_PatPosition[idx,0]-self.Im_PatPosition[0,0])
                     self.Im_Offset[idx,1]   = (self.display_data[0].shape[1]*self.pixel_spac[0,0]-self.display_data[idx].shape[1]*self.pixel_spac[idx,0])-(self.Im_PatPosition[idx,1]-self.Im_PatPosition[0,1])
                     self.Im_Offset[idx,2]   = (self.Im_PatPosition[idx,2]-self.Im_PatPosition[0,2])

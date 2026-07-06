@@ -19,34 +19,111 @@ def update_translation_x(self):
 
 def update_translation_y(self):    
     idx = self.layer_selected.currentIndex() 
-    self.Im_PatPosition[idx,1]   =  float(self.Reg_manual_Ty.value())
-    self.Im_Offset[idx,1]        = (self.display_data[0].shape[1]*self.pixel_spac[0,0]-self.display_data[idx ].shape[1]*self.pixel_spac[idx ,0])-(self.Im_PatPosition[idx,1]-self.Im_PatPosition[0,1])
+    # Y spin box maps to Z coordinate (index 2)
+    self.Im_PatPosition[idx,2]   =  float(self.Reg_manual_Ty.value())
+    self.Im_Offset[idx,2]        = (self.Im_PatPosition[idx ,2]-self.Im_PatPosition[0,2])
     update_view(self)
 
 def update_translation_z(self):
     idx = self.layer_selected.currentIndex()
-    self.Im_PatPosition[idx,2]   =  float(self.Reg_manual_Tz.value())
-    self.Im_Offset[idx,2]        = (self.Im_PatPosition[idx ,2]-self.Im_PatPosition[0,2])
+    # Z spin box maps to Y coordinate (index 1) and is flipped
+    self.Im_PatPosition[idx,1]   = -float(self.Reg_manual_Tz.value())
+    self.Im_Offset[idx,1]        = (self.display_data[0].shape[1]*self.pixel_spac[0,0]-self.display_data[idx ].shape[1]*self.pixel_spac[idx ,0])-(self.Im_PatPosition[idx,1]-self.Im_PatPosition[0,1])
     update_view(self)
 
                  
 def update_rotation_x(self):
-    idx = self.layer_selected.currentIndex() 
     self._ax = float(self.Reg_manual_Rot_X.value())
-    self.display_data[idx] = rotate_volume_center_aniso(self, self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'], self._ax, self._ay, self._az, order=0)
-    update_view(self)
+    trigger_rotation_update(self)
 
 def update_rotation_y(self):
-    idx = self.layer_selected.currentIndex()      
     self._ay = float(self.Reg_manual_Rot_Y.value())
-    self.display_data[idx] = rotate_volume_center_aniso(self,self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'], self._ax, self._ay, self._az,order=0)
-    update_view(self)
+    trigger_rotation_update(self)
 
 def update_rotation_z(self):
-    idx = self.layer_selected.currentIndex() 
     self._az = float(self.Reg_manual_Rot_Z.value())
-    self.display_data[idx] = rotate_volume_center_aniso(self, self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix'], self._ax, self._ay, self._az,order=0)
+    trigger_rotation_update(self)
+
+def trigger_rotation_update(self):
+    idx = self.layer_selected.currentIndex()
+    if not hasattr(self, 'patientID') or not self.patientID:
+        return
+    orig_vol = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+    
+    # 1. Real-time fast low-res preview
+    self.display_data[idx] = rotate_volume_center_aniso_fast(self, orig_vol, self._ax, self._ay, self._az, ds=3)
+    
+    # Recalculate offsets for LPS space alignment
+    self.Im_Offset[idx, 0] = (self.Im_PatPosition[idx, 0] - self.Im_PatPosition[0, 0])
+    self.Im_Offset[idx, 1] = (self.display_data[0].shape[1] * self.pixel_spac[0, 0] - self.display_data[idx].shape[1] * self.pixel_spac[idx, 0]) - (self.Im_PatPosition[idx, 1] - self.Im_PatPosition[0, 1])
+    self.Im_Offset[idx, 2] = (self.Im_PatPosition[idx, 2] - self.Im_PatPosition[0, 2])
+    
     update_view(self)
+    
+    # 2. Setup or start single-shot high-res timer
+    if not hasattr(self, '_rotation_timer'):
+        from PySide6.QtCore import QTimer
+        self._rotation_timer = QTimer()
+        self._rotation_timer.setSingleShot(True)
+        self._rotation_timer.timeout.connect(lambda: perform_deferred_rotation(self))
+        
+    self._rotation_timer.start(250)
+
+def perform_deferred_rotation(self):
+    idx = self.layer_selected.currentIndex()
+    if not hasattr(self, 'patientID') or not self.patientID:
+        return
+    orig_vol = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
+    
+    # High-quality rotation
+    self.display_data[idx] = rotate_volume_center_aniso(self, orig_vol, self._ax, self._ay, self._az, order=0)
+    
+    # Recalculate offsets
+    self.Im_Offset[idx, 0] = (self.Im_PatPosition[idx, 0] - self.Im_PatPosition[0, 0])
+    self.Im_Offset[idx, 1] = (self.display_data[0].shape[1] * self.pixel_spac[0, 0] - self.display_data[idx].shape[1] * self.pixel_spac[idx, 0]) - (self.Im_PatPosition[idx, 1] - self.Im_PatPosition[0, 1])
+    self.Im_Offset[idx, 2] = (self.Im_PatPosition[idx, 2] - self.Im_PatPosition[0, 2])
+    
+    update_view(self)
+
+def rotate_volume_center_aniso_fast(self, volume, ax_deg, ay_deg, az_deg, ds=3):
+    idx = self.layer_selected.currentIndex()
+    small_vol = volume[::ds, ::ds, ::ds]
+    
+    meta = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
+    orig_thick = meta['SliceThickness']
+    orig_spacing = meta['PixelSpacing']
+    
+    meta['SliceThickness'] = float(orig_thick) * ds
+    meta['PixelSpacing'] = [float(orig_spacing[0]) * ds, float(orig_spacing[1]) * ds]
+    
+    try:
+        out_small = rotate_volume_center_aniso(self, small_vol, ax_deg, ay_deg, az_deg, order=0)
+    finally:
+        meta['SliceThickness'] = orig_thick
+        meta['PixelSpacing'] = orig_spacing
+        
+    # Scale spacing variables set by rotate_volume_center_aniso back to target resolution
+    self.slice_thick[idx]   /= ds
+    self.pixel_spac[idx, 0] /= ds
+    self.pixel_spac[idx, 1] /= ds
+    
+    from scipy.ndimage import zoom
+    zoom_factors = [
+        volume.shape[0] / out_small.shape[0],
+        volume.shape[1] / out_small.shape[1],
+        volume.shape[2] / out_small.shape[2]
+    ]
+    out = zoom(out_small, zoom_factors, order=0)
+    
+    if out.shape != volume.shape:
+        padded = np.zeros(volume.shape, dtype=out.dtype)
+        z_min = min(out.shape[0], volume.shape[0])
+        y_min = min(out.shape[1], volume.shape[1])
+        x_min = min(out.shape[2], volume.shape[2])
+        padded[:z_min, :y_min, :x_min] = out[:z_min, :y_min, :x_min]
+        out = padded
+        
+    return out
 
 def set_transformation_step(self):
     for w in (
@@ -210,3 +287,21 @@ def apply_trasnformation(self):
     self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']           = self.pixel_spac[idx, :2]
     self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']   = self.Im_PatPosition[idx, :3] 
     self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']  = self.display_data[idx]
+
+def flip_volume_x(self):
+    idx = self.layer_selected.currentIndex()
+    if idx in self.display_data and self.display_data[idx] is not None:
+        self.display_data[idx] = np.flip(self.display_data[idx], axis=2)
+        update_view(self)
+
+def flip_volume_y(self):
+    idx = self.layer_selected.currentIndex()
+    if idx in self.display_data and self.display_data[idx] is not None:
+        self.display_data[idx] = np.flip(self.display_data[idx], axis=0)
+        update_view(self)
+
+def flip_volume_z(self):
+    idx = self.layer_selected.currentIndex()
+    if idx in self.display_data and self.display_data[idx] is not None:
+        self.display_data[idx] = np.flip(self.display_data[idx], axis=1)
+        update_view(self)

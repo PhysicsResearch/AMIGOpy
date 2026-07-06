@@ -44,7 +44,8 @@ from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
 from fcn_materialassignment.material_map import mat2HU,del_mat2HU,generate_mat_map,delete_mat_map,struct2mat,del_stuct2mat,update_mat_struct_list
 from fcn_3DPrinting.material_selection import calculate_red_settings
 from fcn_3DPrinting import handlers as hdl
-from fcn_reg.rigid_reg_manual import update_translation_x, update_translation_y, update_translation_z, update_rotation_x, update_rotation_y, update_rotation_z, set_transformation_step, apply_trasnformation
+from fcn_reg.rigid_reg_manual import update_translation_x, update_translation_y, update_translation_z, update_rotation_x, update_rotation_y, update_rotation_z, set_transformation_step, apply_trasnformation, flip_volume_x, flip_volume_y, flip_volume_z
+from fcn_reg.auto_reg_dialog import open_auto_reg_dialog, apply_last_transform_to_layer
 
 
 def initialize_software_buttons(self):
@@ -291,10 +292,41 @@ def initialize_software_buttons(self):
     self.Reg_manual_Rot_Y.valueChanged.connect(lambda: update_rotation_y(self))
     self.Reg_manual_Rot_Z.valueChanged.connect(lambda: update_rotation_z(self))
     self.Manual_reg_step.valueChanged.connect(lambda: set_transformation_step(self))
-    #
+    # Flip buttons
+    self.pushButton_4.clicked.connect(lambda: flip_volume_x(self))
+    self.pushButton_5.clicked.connect(lambda: flip_volume_y(self))
+    self.pushButton_6.clicked.connect(lambda: flip_volume_z(self))
+    self.pushButton_4.setStyleSheet("background-color: blue; color: white;")
+    self.pushButton_5.setStyleSheet("background-color: blue; color: white;")
+    self.pushButton_6.setStyleSheet("background-color: blue; color: white;")
+    # Dynamic Auto Registration buttons
+    from PySide6.QtWidgets import QPushButton
+    self.btn_auto_registration = QPushButton("Auto Registration...", self.groupBox_12)
+    self.btn_auto_registration.setObjectName("btn_auto_registration")
+    self.btn_auto_registration.setStyleSheet("background-color: darkgreen; color: white; font-weight: bold;")
+    self.gridLayout_82.addWidget(self.btn_auto_registration, 3, 1, 1, 2)
+    self.btn_auto_registration.clicked.connect(lambda: open_auto_reg_dialog(self))
+
+    self.btn_apply_last_transform = QPushButton("Apply Last Transform", self.groupBox_12)
+    self.btn_apply_last_transform.setObjectName("btn_apply_last_transform")
+    self.btn_apply_last_transform.setStyleSheet("background-color: darkgreen; color: white; font-weight: bold;")
+    self.gridLayout_82.addWidget(self.btn_apply_last_transform, 3, 3, 1, 2)
+    self.btn_apply_last_transform.clicked.connect(lambda: apply_last_transform_to_layer(self))
+
+    # Apply button
     self.apply_Im_transformation.clicked.connect(lambda: apply_trasnformation(self))
     self.apply_Im_transformation.setStyleSheet("background-color: blue; color: white;")
     
+    # Layer selection shortcuts (Ctrl+0 to Ctrl+3)
+    self.shortcut_layer_0 = QShortcut(QKeySequence("Ctrl+0"), self)
+    self.shortcut_layer_0.activated.connect(lambda: self.layer_selected.setCurrentIndex(0))
+    self.shortcut_layer_1 = QShortcut(QKeySequence("Ctrl+1"), self)
+    self.shortcut_layer_1.activated.connect(lambda: self.layer_selected.setCurrentIndex(1))
+    self.shortcut_layer_2 = QShortcut(QKeySequence("Ctrl+2"), self)
+    self.shortcut_layer_2.activated.connect(lambda: self.layer_selected.setCurrentIndex(2))
+    self.shortcut_layer_3 = QShortcut(QKeySequence("Ctrl+3"), self)
+    self.shortcut_layer_3.activated.connect(lambda: self.layer_selected.setCurrentIndex(3))
+
     # -----------------------------------------
     # Plan
     # ------------------------------------------

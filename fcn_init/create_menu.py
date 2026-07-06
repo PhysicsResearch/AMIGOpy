@@ -6,7 +6,7 @@ from fcn_load.read_IrIS import load_IrIS_folder
 from fcn_load.load_dcm  import load_all_dcm
 from fcn_load.save_load import load_amigo_bundle, save_amigo_bundle
 from fcn_display.win_level import window_auto, window_custom, window_stissue, window_lung, window_bone, window_sprred, window_zeff, window_IrIS_1, window_IrIS_2, window_IrIS_3, window_IrIS_4
-from fcn_display.colormap_set import set_color_map_gray, set_color_map_bone, set_color_map_hot, set_color_map_coolwarm, set_color_map_cold, set_color_map_jet, set_color_map_viridis, set_color_map_rainbow
+from fcn_display.colormap_set import set_color_map_gray, set_color_map_bone, set_color_map_hot, set_color_map_coolwarm, set_color_map_cold, set_color_map_jet, set_color_map_viridis, set_color_map_rainbow, set_color_map_magma, set_color_map_cividis, set_color_map_red, set_color_map_green, set_color_map_blue
 from fcn_export.export_fcn import export_np_array, export_dw_np, export_dcm_np_array
 from fcn_processing.split_dcm_series import shift_and_split_3D_matrix
 from fcn_3Dprint.split_gcode_file import  split_gcode
@@ -112,34 +112,49 @@ def initializeMenuBar(self):
         
     CmapMenu = ViewMenu.addMenu("Color")
     # Add items 
-    items = ["Gray","Bone","Hot","Cold","Jet","Viridis","CoolWarm","Rainbow"]
+    # Add items 
+    items = ["Gray","Bone","Hot","Cold","Jet","Viridis","CoolWarm","Rainbow","Magma","Cividis","Red","Green","Blue"]
     for item in items:
         action = QAction(item, self)
-        # Connect the Folder action to the load_dcm function
         if item == "Gray":
              action.triggered.connect(lambda: set_color_map_gray(self))
-             action.setShortcut("Ctrl+c+1")
+             action.setShortcut("Ctrl+C, 1")
         elif item == "Bone":
              action.triggered.connect(lambda: set_color_map_bone(self))
-             action.setShortcut("Ctrl+c+1")
+             action.setShortcut("Ctrl+C, 2")
         elif item == "Hot":
              action.triggered.connect(lambda: set_color_map_hot(self))
-             action.setShortcut("Ctrl+c+2")
+             action.setShortcut("Ctrl+C, 3")
         elif item == "Cold":
              action.triggered.connect(lambda: set_color_map_cold(self))
-             action.setShortcut("Ctrl+c+3")
+             action.setShortcut("Ctrl+C, 4")
         elif item == "Jet":
              action.triggered.connect(lambda: set_color_map_jet(self))
-             action.setShortcut("Ctrl+c+4")
+             action.setShortcut("Ctrl+C, 5")
         elif item == "Viridis":
              action.triggered.connect(lambda: set_color_map_viridis(self))
-             action.setShortcut("Ctrl+c+5")
+             action.setShortcut("Ctrl+C, 6")
         elif item == "CoolWarm":
              action.triggered.connect(lambda: set_color_map_coolwarm(self))
-             action.setShortcut("Ctrl+c+6") 
+             action.setShortcut("Ctrl+C, 7") 
         elif item == "Rainbow":
              action.triggered.connect(lambda: set_color_map_rainbow(self))
-             action.setShortcut("Ctrl+c+7")    
+             action.setShortcut("Ctrl+C, 8")    
+        elif item == "Magma":
+             action.triggered.connect(lambda: set_color_map_magma(self))
+             action.setShortcut("Ctrl+C, 9")    
+        elif item == "Cividis":
+             action.triggered.connect(lambda: set_color_map_cividis(self))
+             action.setShortcut("Ctrl+C, 0")    
+        elif item == "Red":
+             action.triggered.connect(lambda: set_color_map_red(self))
+             action.setShortcut("Ctrl+R")
+        elif item == "Green":
+             action.triggered.connect(lambda: set_color_map_green(self))
+             action.setShortcut("Ctrl+G")
+        elif item == "Blue":
+             action.triggered.connect(lambda: set_color_map_blue(self))
+             action.setShortcut("Ctrl+B")
         CmapMenu.addAction(action)    
         
            

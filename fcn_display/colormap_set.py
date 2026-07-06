@@ -41,6 +41,31 @@ def set_color_map_rainbow(self):
     self.CmapIDX[idx] = 7
     set_color_map(self)
 
+def set_color_map_magma(self):
+    idx = self.layer_selected.currentIndex()
+    self.CmapIDX[idx] = 8
+    set_color_map(self)
+
+def set_color_map_cividis(self):
+    idx = self.layer_selected.currentIndex()
+    self.CmapIDX[idx] = 9
+    set_color_map(self)
+
+def set_color_map_red(self):
+    idx = self.layer_selected.currentIndex()
+    self.CmapIDX[idx] = 10
+    set_color_map(self)
+
+def set_color_map_green(self):
+    idx = self.layer_selected.currentIndex()
+    self.CmapIDX[idx] = 11
+    set_color_map(self)
+
+def set_color_map_blue(self):
+    idx = self.layer_selected.currentIndex()
+    self.CmapIDX[idx] = 12
+    set_color_map(self)
+
 
 def create_lookup_table_with_transparency(self, windowLevel, windowWidth,CmapIDX):
     idx = self.layer_selected.currentIndex()
@@ -230,5 +255,30 @@ def create_colormap(index, scalar_range):
         ctf.AddRGBPoint(scalar_range[1] / 2, 0, 1, 0)
         ctf.AddRGBPoint(scalar_range[1] * 3 / 4, 1, 1, 0)
         ctf.AddRGBPoint(scalar_range[1], 1, 0, 0)
+
+    elif index == 8:  # Magma
+        ctf.AddRGBPoint(scalar_range[0], 0.0, 0.0, 0.04)
+        ctf.AddRGBPoint(scalar_range[0] + (scalar_range[1]-scalar_range[0])*0.25, 0.32, 0.08, 0.44)
+        ctf.AddRGBPoint(scalar_range[0] + (scalar_range[1]-scalar_range[0])*0.50, 0.71, 0.17, 0.45)
+        ctf.AddRGBPoint(scalar_range[0] + (scalar_range[1]-scalar_range[0])*0.75, 0.98, 0.50, 0.33)
+        ctf.AddRGBPoint(scalar_range[1], 0.99, 0.91, 0.77)
+
+    elif index == 9:  # Cividis
+        ctf.AddRGBPoint(scalar_range[0], 0.0, 0.17, 0.43)
+        ctf.AddRGBPoint(scalar_range[0] + (scalar_range[1]-scalar_range[0])*0.33, 0.22, 0.34, 0.54)
+        ctf.AddRGBPoint(scalar_range[0] + (scalar_range[1]-scalar_range[0])*0.66, 0.51, 0.52, 0.52)
+        ctf.AddRGBPoint(scalar_range[1], 0.99, 0.90, 0.14)
+
+    elif index == 10:  # Red
+        ctf.AddRGBPoint(scalar_range[0], 0, 0, 0)
+        ctf.AddRGBPoint(scalar_range[1], 1, 0, 0)
+
+    elif index == 11:  # Green
+        ctf.AddRGBPoint(scalar_range[0], 0, 0, 0)
+        ctf.AddRGBPoint(scalar_range[1], 0, 1, 0)
+
+    elif index == 12:  # Blue
+        ctf.AddRGBPoint(scalar_range[0], 0, 0, 0)
+        ctf.AddRGBPoint(scalar_range[1], 0, 0, 1)
 
     return ctf
