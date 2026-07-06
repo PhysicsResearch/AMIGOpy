@@ -26,6 +26,8 @@ def onTabChanged(self):
             from fcn_3Dview.structures_3D_table import init_3D_Struct_table 
             from fcn_3Dview.surfaces_3D_table import init_STL_Surface_table
             from fcn_3Dview.protons_3D_plan import init_3D_proton_table
+            from fcn_3Dview.brachy_3D_table import init_3D_brachy_table
+            from fcn_3Dview.render_controls import init_3D_render_controls
             
             init_3D_Struct_table(self)
             init_STL_Surface_table(self)
@@ -36,6 +38,9 @@ def onTabChanged(self):
             if hasattr(self, 'vtk3dWidget'):
                 self.vtk3dWidget.installEventFilter(self)
             self.init_3d_viewer()
+            
+            init_3D_brachy_table(self)
+            init_3D_render_controls(self)
             
             self._3d_view_initialized = True
     elif tabName == "Breathing curves":

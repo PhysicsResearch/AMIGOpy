@@ -329,7 +329,12 @@ class VTK3DViewerMixin:
   
         # Prepare VTK points
         vtk_points = vtk.vtkPoints()
-        for pt in points:
+        # Swap Y and Z, then flip Z
+        transformed = np.zeros_like(points)
+        transformed[:, 0] = points[:, 0]
+        transformed[:, 1] = points[:, 2] # new Y is old Z
+        transformed[:, 2] = -points[:, 1] # new Z is -old Y
+        for pt in transformed:
             vtk_points.InsertNextPoint(float(pt[0]), float(pt[1]), float(pt[2]))
 
         polydata = vtk.vtkPolyData()
@@ -533,14 +538,55 @@ class VTK3DViewerMixin:
         volp = vtk.vtkVolumeProperty()
         volp.SetColor(ctf)
         volp.SetScalarOpacity(otf)
-        volp.ShadeOff()
         volp.SetInterpolationTypeToLinear()
+        
+        # Apply current render panel controls
+        if getattr(self, '_render_controls_initialized', False):
+            # shading
+            if self.View3D_shading_checkBox.isChecked():
+                volp.ShadeOn()
+            else:
+                volp.ShadeOff()
+            # brightness (ambient/diffuse)
+            brightness_val = self.View3D_brightness_spin_01.value()
+            ambient_val = 0.1 + 0.8 * brightness_val if brightness_val >= 0 else 0.1 * (1.0 + brightness_val)
+            diffuse_val = 0.7 - 0.5 * brightness_val if brightness_val >= 0 else 0.7 + 0.3 * brightness_val
+            volp.SetAmbient(ambient_val)
+            volp.SetDiffuse(diffuse_val)
+            # specular
+            specular_power_val = self.View3D_specular_spin_01.value()
+            if specular_power_val > 0:
+                volp.SetSpecular(0.5)
+                volp.SetSpecularPower(specular_power_val)
+            else:
+                volp.SetSpecular(0.0)
+        else:
+            volp.ShadeOff()
+            
         self._vol_props[layer_idx] = volp
 
         # mapper
         mapper = vtkSmartVolumeMapper()
         mapper.SetInputData(img)
-        mapper.SetBlendModeToComposite()
+        
+        # Apply blend mode and quality
+        if getattr(self, '_render_controls_initialized', False):
+            mode = self.View3D_render_options.currentText()
+            if mode == "MIP":
+                mapper.SetBlendModeToMaximumIntensity()
+            elif mode == "MinIP":
+                mapper.SetBlendModeToMinimumIntensity()
+            else:
+                mapper.SetBlendModeToComposite()
+                
+            # Quality (sample distance)
+            quality_val = self.View3D_quality_spin_01.value()
+            sample_distance = 3.0 - 2.9 * quality_val
+            mapper.SetAutoAdjustSampleDistances(0)
+            mapper.SetSampleDistance(sample_distance)
+        else:
+            mapper.SetBlendModeToComposite()
+            
         mapper.CroppingOn()
         sx, sy, sz = voxel_spacing
         mapper.SetCroppingRegionPlanes(0, (nx-1)*sx,
@@ -650,6 +696,15 @@ class VTK3DViewerMixin:
         if hasattr(self, '_3D_proton_table'):
             self._3D_proton_table.setRowCount(0)
 
+        # ----- NEW: Clear brachy actors and data -----
+        if hasattr(self, '_3D_brachy_actors'):
+            for actors in self._3D_brachy_actors.values():
+                for actor in actors:
+                    self.VTK3D_renderer.RemoveActor(actor)
+            self._3D_brachy_actors.clear()
+        if hasattr(self, '_3D_brachy_table'):
+            self._3D_brachy_table.setRowCount(0)
+
         self.VTK3D_interactor.GetRenderWindow().Render()
 
 
@@ -747,6 +802,12 @@ class VTK3DViewerMixin:
         # ---- Subtract the reference from all spots ----
         ref = self.Im_PatPosition3Dview[0, :3] if hasattr(self, "Im_PatPosition3Dview") else np.zeros(3)
         shifted_points = points - ref  # shape (N,3)
+        # Swap Y and Z, then flip Z
+        transformed = np.zeros_like(shifted_points)
+        transformed[:, 0] = shifted_points[:, 0]
+        transformed[:, 1] = shifted_points[:, 2] # new Y is old Z
+        transformed[:, 2] = -shifted_points[:, 1] # new Z is -old Y
+        shifted_points = transformed
 
         # subtract this image reference from spots: self.Im_PatPosition3Dview[0, :3]
 

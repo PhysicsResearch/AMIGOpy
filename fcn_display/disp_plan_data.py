@@ -35,6 +35,11 @@ def update_plan_tables(self):
         self.brachy_spinBox_02.setValue(1)
         #
         update_disp_brachy_plan(self)
+        
+        # Update 3D viewer if initialized
+        if hasattr(self, '_3D_brachy_table'):
+            from fcn_3Dview.brachy_3D_table import repopulate_3D_brachy_table
+            repopulate_3D_brachy_table(self)
 
 
 def update_disp_brachy_plan(self):

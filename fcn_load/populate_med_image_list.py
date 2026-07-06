@@ -207,6 +207,8 @@ def populate_medical_image_tree(self):
                     combo_index += 1
     # Expand all items in the tree view
     self.DataTreeView.expandAll()
+    # Auto-click the first image series
+    select_first_image_series(self)
 
 def _get_or_create_parent_item(self, label):
     # Check if model is None
@@ -224,3 +226,56 @@ def _get_or_create_parent_item(self, label):
     new_item = QStandardItem(label)
     self.model.appendRow(new_item)
     return new_item    
+
+def select_first_image_series(self):
+    model = self.DataTreeView.model()
+    if not model:
+        return
+        
+    first_fallback_index = None
+    
+    # 0. Find "Medical Image" parent
+    medical_image_item = None
+    for i in range(model.rowCount()):
+        item = model.item(i)
+        if item and item.text() == "Medical Image":
+            medical_image_item = item
+            break
+            
+    if not medical_image_item:
+        return
+        
+    # Let's traverse patient -> study -> modality -> series
+    for p_idx in range(medical_image_item.rowCount()):
+        patient_item = medical_image_item.child(p_idx)
+        if not patient_item: continue
+        for s_idx in range(patient_item.rowCount()):
+            study_item = patient_item.child(s_idx)
+            if not study_item: continue
+            for m_idx in range(study_item.rowCount()):
+                modality_item = study_item.child(m_idx)
+                if not modality_item: continue
+                modality = modality_item.text().replace("Modality: ", "")
+                
+                # Iterate over series items
+                for ser_idx in range(modality_item.rowCount()):
+                    series_item = modality_item.child(ser_idx)
+                    if not series_item: continue
+                    
+                    index = series_item.index()
+                    if modality not in ("RTPLAN", "RTSTRUCT"):
+                        trigger_tree_click(self, index)
+                        return
+                    elif first_fallback_index is None:
+                        first_fallback_index = index
+
+    if first_fallback_index is not None:
+        trigger_tree_click(self, first_fallback_index)
+
+def trigger_tree_click(self, index):
+    from PySide6.QtCore import QItemSelectionModel
+    from fcn_display.Data_tree_general import on_DataTreeView_clicked
+    self.DataTreeView.selectionModel().clearSelection()
+    self.DataTreeView.selectionModel().select(index, QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows)
+    self.DataTreeView.scrollTo(index)
+    on_DataTreeView_clicked(self, index)
