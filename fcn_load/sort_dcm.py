@@ -284,7 +284,6 @@ def get_data_description(folder_path=None, progress_callback=None, update_label=
         outputfolder = None
     else:
         if folder_path is None or not os.path.exists(folder_path):
-            print(f"Error: The folder '{folder_path}' does not exist or the operation was cancelled!")
             return None, None, None
 
         # if user wants to organize the dta into folder ask for the folder path

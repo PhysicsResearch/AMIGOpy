@@ -140,6 +140,11 @@ def populate_medical_image_tree(self):
                         series_label = f"{Dose_label}_Series: {series_data['SeriesNumber']}"
                         series_item = QStandardItem(series_label)
                         modality_item.appendRow(series_item)
+                    elif modality == 'Operation':
+                        Op_label = series_data['metadata'].get('SeriesDescription', 'Operation')
+                        series_label = f"{Op_label}_Series: {series_data['SeriesNumber']}"
+                        series_item = QStandardItem(series_label)
+                        modality_item.appendRow(series_item)
                     else:
                         LUT = series_data['metadata']
                         Acq_number = series_data['metadata']['AcquisitionNumber']

@@ -16,6 +16,10 @@ def calculate_TG43_plan_dose(self):
                             "Cannot load brachy channels.")
         return []
 
+    # Reset progress bar for the actual dose calculation
+    if hasattr(self, 'progressBar') and self.progressBar is not None:
+        self.progressBar.setValue(0)
+
     # get the dwell times and positions to calculate the dose matrix
     # dwells: ndarray (N, 7): [X_mm, Y_mm, Z_mm, ThetaX, ThetaY, ThetaZ, Time]
     dwells = get_all_brachy_dwells(self)
@@ -24,15 +28,24 @@ def calculate_TG43_plan_dose(self):
     #
     dws = np.array(dwells, copy=True)
     dose, meta = transform_and_sum_dose_matrix_centered_3D(
-        dws, self.TG43.activesource.DoseMatrix,self.TG43.activesource.DoseMatrix_res_mm,
-        output_margin_mm=100, output_res_mm=2.0
+        dws, self.TG43.activesource.DoseMatrix, self.TG43.activesource.DoseMatrix_res_mm,
+        output_margin_mm=100, output_res_mm=1.0, parent=self
     )
     # account for Air kerma and h unit
     kerma_str   = self.brachy_plan_Ac.text()
     kerma_value = float(kerma_str)
-    dose = dose * kerma_value / 3600 /3600
+    dose = dose * kerma_value / 3600 / 3600
+
+    # Flip Y-axis (axis=1) to match the vertical flip applied to CT/MR/RTDOSE layers in load_dcm.py
+    dose = np.flip(dose, axis=1)
+
     store_dose_to_medical_image(self, dose, meta)
     populate_medical_image_tree(self)
+    if hasattr(self, 'progressBar') and self.progressBar is not None:
+        self.progressBar.setValue(100)
+    if hasattr(self, 'label_2') and self.label_2 is not None:
+        self.label_2.setText("TG43 dose calculation completed")
+        self.label_2.show()
 
  
 def store_dose_to_medical_image(self, dose,meta):
@@ -108,7 +121,6 @@ def get_all_brachy_dwells(self):
         # Result: (n, 7) → [X, Y, Z, ThetaX, ThetaY, ThetaZ, Time]
         time     = dwell_info[:, 2:3]  # shape (n, 1)
         position = dwell_info[:, 3:6].copy()
-        position[:, 1] *= -1           # Invert Y-axis for DICOM compatibility
         angles   = dwell_info[:, 6:9]  # shape (n, 3)
 
         # Reorder to match: [X, Y, Z, ThetaX, ThetaY, ThetaZ, Time]
@@ -127,7 +139,9 @@ def get_all_brachy_dwells(self):
 def on_brachy_init_tg43(self):
     # this part initializes the TG43 parameters and calculate the TG43 reference dose 
     # it needs to be done just once at the beginning of the program ... 
-    print("TG43 dose calculation initialized")
+    if hasattr(self, 'label_2') and self.label_2 is not None:
+        self.label_2.setText("TG43 dose calculation initialized")
+        self.label_2.show()
     # set list menu to define the dose grid and matrix size
     # DoseGrid = ["0.5","1","2","3","4","5"]
     self.brachy_tg43_dose_grid.setCurrentIndex(1)
@@ -189,7 +203,7 @@ def _rotation_matrix_from_direction(cosX, cosY, cosZ):
 
 
 def transform_and_sum_dose_matrix_centered_3D(
-    dwells, reference_matrix_3d, ref_res_mm, output_margin_mm, output_res_mm
+    dwells, reference_matrix_3d, ref_res_mm, output_margin_mm, output_res_mm, parent=None
 ):
     """
     Accumulate TG-43 dose from all dwells into a single output volume.
@@ -217,47 +231,29 @@ def transform_and_sum_dose_matrix_centered_3D(
 
     out = np.zeros((nz, ny, nx), dtype=np.float32)
 
-    # 3) Reference matrix shape & its center in voxels
+    # 3) Reference matrix shape & continuous center in reference voxels
     ref_nz, ref_ny, ref_nx = reference_matrix_3d.shape
-    cx_ref = ref_nx // 2
-    cy_ref = ref_ny // 2
-    cz_ref = ref_nz // 2
-    ref_center = np.array([cz_ref, cy_ref, cx_ref], dtype=np.float64)
+    c_ref = np.array([(ref_nz - 1) / 2.0, (ref_ny - 1) / 2.0, (ref_nx - 1) / 2.0], dtype=np.float64)
 
-    # Pre-compute: ratio between reference and output resolution
-    scale = ref_res_mm / output_res_mm  # voxels-in-output per voxel-in-ref
+    # Ratio between output and reference resolution (voxels-in-ref per voxel-in-output)
+    scale = output_res_mm / ref_res_mm
 
-    # 4) Loop dwells: rotate, translate, accumulate
-    for x_mm, y_mm, z_mm, cosX, cosY, cosZ, dwell_time in dw:
+    # Resampled reference shape at output resolution
+    out_nz = max(1, int(np.round(ref_nz / scale)))
+    out_ny = max(1, int(np.round(ref_ny / scale)))
+    out_nx = max(1, int(np.round(ref_nx / scale)))
+    
+    # 4) Loop dwells: rotate, resample to output resolution, translate, accumulate
+    N = len(dw)
+    for idx, (x_mm, y_mm, z_mm, cosX, cosY, cosZ, dwell_time) in enumerate(dw):
+        if parent is not None and hasattr(parent, 'progressBar') and parent.progressBar is not None:
+            progress_val = int((idx / N) * 100)
+            parent.progressBar.setValue(progress_val)
+            from PySide6.QtCore import QCoreApplication
+            QCoreApplication.processEvents()
+
         if dwell_time <= 0:
             continue
-
-        # --- Build rotation matrix ---
-        R = _rotation_matrix_from_direction(cosX, cosY, cosZ)
-
-        # scipy affine_transform uses the INVERSE mapping:
-        #   output[o] = input[ R_inv @ (o - center) + center ]
-        # We need R_inv to map output voxel coords back to input voxel coords.
-        # The rotation matrix maps ref-axis→source-axis, so the inverse
-        # (transpose, since R is orthogonal) maps output coords back to ref coords.
-        R_inv = R.T  # inverse of the rotation
-
-        # For affine_transform: input[matrix @ output_coord + offset]
-        # We want rotation about the center of the reference volume:
-        #   input_coord = R_inv @ (output_coord - center) + center
-        #                = R_inv @ output_coord + (center - R_inv @ center)
-        aff_offset = ref_center - R_inv @ ref_center
-
-        # Apply the rotation to the reference matrix (around its own center)
-        rotated = affine_transform(
-            reference_matrix_3d.astype(np.float64),
-            R_inv,
-            offset=aff_offset,
-            output_shape=reference_matrix_3d.shape,
-            order=1,        # bilinear interpolation
-            mode='constant',
-            cval=0.0
-        ).astype(np.float32)
 
         # --- Place rotated matrix into output grid ---
         # convert dwell (mm) → output grid voxel index
@@ -266,12 +262,44 @@ def transform_and_sum_dose_matrix_centered_3D(
         k = int(np.round((x_mm - x_min) / output_res_mm))
 
         # figure out where the ref-matrix will land in out[]
-        z0 = i - cz_ref
-        z1 = z0 + ref_nz
-        y0 = j - cy_ref
-        y1 = y0 + ref_ny
-        x0 = k - cx_ref
-        x1 = x0 + ref_nx
+        z0 = i - out_nz // 2
+        z1 = z0 + out_nz
+        y0 = j - out_ny // 2
+        y1 = y0 + out_ny
+        x0 = k - out_nx // 2
+        x1 = x0 + out_nx
+
+        # Set the continuous center of rotation in output voxels to be exactly aligned
+        # with the integer landing coordinates to prevent any half-voxel or rounding offsets
+        c_out_dwell = np.array([i - z0, j - y0, k - x0], dtype=np.float64)
+
+        # --- Build rotation matrix ---
+        R = _rotation_matrix_from_direction(cosX, cosY, cosZ)
+
+        # scipy affine_transform uses the INVERSE mapping:
+        #   r = scale * R_inv @ (o - c_out) + c_ref
+        # But indices are in (Z, Y, X) order, while R_inv is in (X, Y, Z) order.
+        # We must permute R_inv to (Z, Y, X) using P @ R_inv @ P where P swaps Z and X.
+        R_inv = R.T
+        P = np.array([
+            [0.0, 0.0, 1.0],
+            [0.0, 1.0, 0.0],
+            [1.0, 0.0, 0.0]
+        ], dtype=np.float64)
+        R_inv_zyx = P @ R_inv @ P
+        trans_matrix = scale * R_inv_zyx
+        aff_offset = c_ref - trans_matrix @ c_out_dwell
+
+        # Apply the rotation and scaling to the reference matrix
+        rotated = affine_transform(
+            reference_matrix_3d.astype(np.float64),
+            trans_matrix,
+            offset=aff_offset,
+            output_shape=(out_nz, out_ny, out_nx),
+            order=1,        # bilinear interpolation
+            mode='constant',
+            cval=0.0
+        ).astype(np.float32)
 
         # compute valid overlap with output bounds
         iz0, iy0, ix0 = max(0, z0), max(0, y0), max(0, x0)
@@ -292,7 +320,7 @@ def transform_and_sum_dose_matrix_centered_3D(
         )
 
     meta = {
-        'origin_mm': (x_min + offset[0], -y_max - offset[1], z_min + offset[2]),
+        'origin_mm': (x_min + offset[0], y_min + offset[1], z_min + offset[2]),
         'pixel_spacing_mm': output_res_mm,
         'size_pixels': (nz, ny, nx),
         'description': 'Accumulated 3D TG-43 dose (with source orientation)'

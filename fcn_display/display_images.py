@@ -64,7 +64,7 @@ def displayaxial(self, Im = None):
         
         
         Offset_vox = (self.Im_PatPosition[idx,2]-self.Im_PatPosition[i,2])/self.slice_thick[i]
-        self.current_axial_slice_index[i] = int((self.current_axial_slice_index[idx]*(self.slice_thick[idx]/self.slice_thick[i]))+Offset_vox)
+        self.current_axial_slice_index[i] = int(np.round((self.current_axial_slice_index[idx]*(self.slice_thick[idx]/self.slice_thick[i]))+Offset_vox))
         #
         if 0 <=self.current_axial_slice_index[i] <self.display_data[i].shape[0]:
             if self.display_data[i].ndim==2:
@@ -739,7 +739,7 @@ def displaycoronal(self, Im = None):
         
         
         Offset = (self.display_data[idx].shape[1]*self.pixel_spac[idx,0]-self.display_data[i].shape[1]*self.pixel_spac[i,0]-(self.Im_PatPosition[i,1]-self.Im_PatPosition[idx,1]))/self.pixel_spac[i,0]
-        self.current_coronal_slice_index[i] = int((self.current_coronal_slice_index[idx]*(self.pixel_spac[idx,0]/self.pixel_spac[i,0]))-Offset)
+        self.current_coronal_slice_index[i] = int(np.round((self.current_coronal_slice_index[idx]*(self.pixel_spac[idx,0]/self.pixel_spac[i,0]))-Offset))
         #
         if 0<= self.current_coronal_slice_index[i] <self.display_data[i].shape[1]:
             # Just update the slice data for the existing pipeline
@@ -783,6 +783,7 @@ def displaycoronal(self, Im = None):
     # Render the updated data
     self.vtkWidgetCoronal.GetRenderWindow().Render()
     self.vtkWidgetAxial.GetRenderWindow().Render()
+    self.vtkWidgetSagittal.GetRenderWindow().Render()
     self.sliceChanged.emit("coronal", self.current_coronal_slice_index)
 
 
@@ -1431,7 +1432,7 @@ def displaysagittal(self,Im = None):
         
         
         Offset_vox = (self.Im_PatPosition[idx,0]-self.Im_PatPosition[i,0])/self.pixel_spac[i,1]
-        self.current_sagittal_slice_index[i] = int(self.current_sagittal_slice_index[idx]*(self.pixel_spac[idx,1]/self.pixel_spac[i,1]) + Offset_vox)
+        self.current_sagittal_slice_index[i] = int(np.round(self.current_sagittal_slice_index[idx]*(self.pixel_spac[idx,1]/self.pixel_spac[i,1]) + Offset_vox))
         #
         if 0 <= self.current_sagittal_slice_index[i] < self.display_data[i].shape[2]:
             # Just update the slice data for the existing pipeline

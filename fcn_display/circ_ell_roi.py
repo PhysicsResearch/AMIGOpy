@@ -302,11 +302,14 @@ class PointRoiWidget(QtCore.QObject):
                 slc = data
             else:
                 if self.orientation == 'axial':
-                    si = self.parent.current_axial_slice_index[idx]; slc = data[si, :, :]
+                    si = np.clip(self.parent.current_axial_slice_index[idx], 0, data.shape[0] - 1)
+                    slc = data[si, :, :]
                 elif self.orientation == 'coronal':
-                    si = self.parent.current_coronal_slice_index[idx]; slc = data[:, si, :]
+                    si = np.clip(self.parent.current_coronal_slice_index[idx], 0, data.shape[1] - 1)
+                    slc = data[:, si, :]
                 else:
-                    si = self.parent.current_sagittal_slice_index[idx]; slc = data[:, :, si]
+                    si = np.clip(self.parent.current_sagittal_slice_index[idx], 0, data.shape[2] - 1)
+                    slc = data[:, :, si]
             h, w = slc.shape
             if self.orientation == 'axial':
                 px = (cx - self.parent.Im_Offset[idx, 0]) / self.parent.pixel_spac[idx, 0]
@@ -319,7 +322,7 @@ class PointRoiWidget(QtCore.QObject):
                 py = (cy - self.parent.Im_Offset[idx, 2]) / self.parent.slice_thick[idx]
             px = int(np.clip(round(px), 0, w - 1)); py = int(np.clip(round(py), 0, h - 1))
             val = slc[py, px]
-            lines.append(f"Layer {idx}: {int(val) if val == int(val) else round(val, 3)}")
+            lines.append(f"Layer {idx+1}: {int(val) if val == int(val) else f'{val:.3f}'}")
         if self.statsActor:
             self.statsActor.SetInput("\n".join(lines))
             self.statsActor.Modified()
@@ -676,11 +679,14 @@ class CircleRoiWidget(QtCore.QObject):
                 slc = data
             elif data.ndim == 3:
                 if self.orientation == 'axial':
-                    si = self.parent.current_axial_slice_index[idx]; slc = data[si, :, :]
+                    si = np.clip(self.parent.current_axial_slice_index[idx], 0, data.shape[0] - 1)
+                    slc = data[si, :, :]
                 elif self.orientation == 'coronal':
-                    si = self.parent.current_coronal_slice_index[idx]; slc = data[:, si, :]
+                    si = np.clip(self.parent.current_coronal_slice_index[idx], 0, data.shape[1] - 1)
+                    slc = data[:, si, :]
                 else:
-                    si = self.parent.current_sagittal_slice_index[idx]; slc = data[:, :, si]
+                    si = np.clip(self.parent.current_sagittal_slice_index[idx], 0, data.shape[2] - 1)
+                    slc = data[:, :, si]
             else:
                 continue
 
@@ -703,9 +709,9 @@ class CircleRoiWidget(QtCore.QObject):
             vals = slc[mask]
             if vals.size:
                 μ, σ = vals.mean(), vals.std()
-                lines.append(f"Layer {idx}: Mean {int(μ) if μ == int(μ) else round(μ, 3)} STD {int(σ) if σ == int(σ) else round(σ, 3)}")
+                lines.append(f"Layer {idx+1}: Mean {int(μ) if μ == int(μ) else f'{μ:.3f}'} STD {int(σ) if σ == int(σ) else f'{σ:.3f}'}")
             else:
-                lines.append(f"Layer {idx}: ∅")
+                lines.append(f"Layer {idx+1}: ∅")
         if self.statsActor:
             self.statsActor.SetInput("\n".join(lines))
             self.statsActor.Modified()
@@ -1111,11 +1117,14 @@ class EllipsoidRoiWidget(QtCore.QObject):
                 slc = data
             else:
                 if self.orientation == 'axial':
-                    si = self.parent.current_axial_slice_index[idx]; slc = data[si, :, :]
+                    si = np.clip(self.parent.current_axial_slice_index[idx], 0, data.shape[0] - 1)
+                    slc = data[si, :, :]
                 elif self.orientation == 'coronal':
-                    si = self.parent.current_coronal_slice_index[idx]; slc = data[:, si, :]
+                    si = np.clip(self.parent.current_coronal_slice_index[idx], 0, data.shape[1] - 1)
+                    slc = data[:, si, :]
                 else:
-                    si = self.parent.current_sagittal_slice_index[idx]; slc = data[:, :, si]
+                    si = np.clip(self.parent.current_sagittal_slice_index[idx], 0, data.shape[2] - 1)
+                    slc = data[:, :, si]
             h, w = slc.shape
             ox, oy, _ = self._last_center
             if self.orientation == 'axial':
@@ -1135,9 +1144,9 @@ class EllipsoidRoiWidget(QtCore.QObject):
             vals = slc[mask]
             if vals.size:
                 μ, σ = vals.mean(), vals.std()
-                lines.append(f"Layer {idx}: Mean {int(μ) if μ == int(μ) else round(μ, 3)} STD {int(σ) if σ == int(σ) else round(σ, 3)}")
+                lines.append(f"Layer {idx+1}: Mean {int(μ) if μ == int(μ) else f'{μ:.3f}'} STD {int(σ) if σ == int(σ) else f'{σ:.3f}'}")
             else:
-                lines.append(f"Layer {idx}: ∅")
+                lines.append(f"Layer {idx+1}: ∅")
         if hasattr(self, 'statsActor') and self.statsActor:
             self.statsActor.SetInput("\n".join(lines))
             self.statsActor.Modified()
@@ -1615,11 +1624,14 @@ class SquareRoiWidget(QtCore.QObject):
                 slc = data
             else:
                 if self.orientation == 'axial':
-                    si = self.parent.current_axial_slice_index[idx]; slc = data[si, :, :]
+                    si = np.clip(self.parent.current_axial_slice_index[idx], 0, data.shape[0] - 1)
+                    slc = data[si, :, :]
                 elif self.orientation == 'coronal':
-                    si = self.parent.current_coronal_slice_index[idx]; slc = data[:, si, :]
+                    si = np.clip(self.parent.current_coronal_slice_index[idx], 0, data.shape[1] - 1)
+                    slc = data[:, si, :]
                 else:
-                    si = self.parent.current_sagittal_slice_index[idx]; slc = data[:, :, si]
+                    si = np.clip(self.parent.current_sagittal_slice_index[idx], 0, data.shape[2] - 1)
+                    slc = data[:, :, si]
 
             h, w = slc.shape
             ox, oy, _ = self._last_center
@@ -1642,9 +1654,9 @@ class SquareRoiWidget(QtCore.QObject):
             vals = slc[mask]
             if vals.size:
                 μ, σ = vals.mean(), vals.std()
-                lines.append(f"Layer {idx}: Mean {int(μ) if μ == int(μ) else round(μ, 3)} STD {int(σ) if σ == int(σ) else round(σ, 3)}")
+                lines.append(f"Layer {idx+1}: Mean {int(μ) if μ == int(μ) else f'{μ:.3f}'} STD {int(σ) if σ == int(σ) else f'{σ:.3f}'}")
             else:
-                lines.append(f"Layer {idx}: ∅")
+                lines.append(f"Layer {idx+1}: ∅")
 
         if self.statsActor:
             self.statsActor.SetInput("\n".join(lines))

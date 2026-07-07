@@ -452,8 +452,6 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
             sl.hide()
             sl.setMinimumHeight(0)
         tab.hide()
-        if hasattr(self, "label_2"):
-            self.label_2.hide()  # just in case
 
         if mode == "all":
             # --- equal 3-up + sliders + tab

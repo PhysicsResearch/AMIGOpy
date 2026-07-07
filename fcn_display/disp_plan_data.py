@@ -891,7 +891,8 @@ def plot_brachy_bar_channels(self):
         ax.bar(bar_labels, bar_values, color='blue')
         
     else:
-        print(f"Selected channel {selected_channel} is out of range.")
+        if selected_channel != 0:
+            print(f"Selected channel {selected_channel} is out of range.")
         return
 
     # Draw the updated plot

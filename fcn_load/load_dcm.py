@@ -289,6 +289,17 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                     elif modality == 'RTDOSE':
                         series_data['3DMatrix'] = RTDose_matrix
                         series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
+                        
+                        # Check if Z-axis needs to be flipped based on GridFrameOffsetVector
+                        vect = getattr(dicom_file, "GridFrameOffsetVector", None)
+                        if vect is not None and len(vect) >= 2:
+                            if vect[1] - vect[0] < 0:
+                                series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
+                                orig = list(series_data['metadata']['ImagePositionPatient'])
+                                orig[2] = float(dicom_file.ImagePositionPatient[2] + vect[-1])
+                                series_data['metadata']['ImagePositionPatient'] = orig
+                                series_data['metadata']['SliceThickness'] = float(abs(vect[1] - vect[0]))
+                                
                         series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
                         series_data['3DMatrix'] = series_data['3DMatrix']*series_data['metadata']['DoseGridScaling']
                         active_dose = series_data['3DMatrix'][series_data['3DMatrix'] > 0.0]

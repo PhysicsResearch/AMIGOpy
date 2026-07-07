@@ -188,15 +188,15 @@ class AutoRegDialog(QDialog):
         for i in range(4):
             if i in self.parent_app.display_data and self.parent_app.display_data[i] is not None:
                 modality_str = getattr(self.parent_app, 'modality', 'DICOM') if i == 0 else ""
-                label = f"Layer {i} ({modality_str})" if modality_str else f"Layer {i}"
+                label = f"Layer {i+1} ({modality_str})" if modality_str else f"Layer {i+1}"
                 self.combo_ref.addItem(label, i)
                 self.combo_mov.addItem(label, i)
                 
         # Set defaults
         if self.combo_ref.count() > 0:
-            self.combo_ref.setCurrentIndex(0) # Layer 0 is default reference
+            self.combo_ref.setCurrentIndex(0) # Layer 1 is default reference
         if self.combo_mov.count() > 1:
-            self.combo_mov.setCurrentIndex(1) # Layer 1 is default moving
+            self.combo_mov.setCurrentIndex(1) # Layer 2 is default moving
             
         layout.addWidget(QLabel("<hr>"))
         
@@ -376,13 +376,13 @@ def apply_last_transform_to_layer(self):
 
     if idx == ref_idx:
         if QMessageBox:
-            QMessageBox.warning(self, "Invalid Layer", f"Cannot apply the transform to Layer {idx} because it is the Reference Layer.")
+            QMessageBox.warning(self, "Invalid Layer", f"Cannot apply the transform to Layer {idx+1} because it is the Reference Layer.")
         return
         
     mov_matrix = self.display_data[idx]
     if mov_matrix is None:
         if QMessageBox:
-            QMessageBox.warning(self, "No Image", f"No image is loaded in Layer {idx}.")
+            QMessageBox.warning(self, "No Image", f"No image is loaded in Layer {idx+1}.")
         return
 
     resample_to_ref = info['resample_to_ref']
@@ -471,7 +471,7 @@ def apply_last_transform_to_layer(self):
         update_view(self)
         
         if QMessageBox:
-            QMessageBox.information(self, "Transform Applied", f"Successfully applied the last auto-registration transform to Layer {idx}!")
+            QMessageBox.information(self, "Transform Applied", f"Successfully applied the last auto-registration transform to Layer {idx+1}!")
     except Exception as e:
         if QMessageBox:
             QMessageBox.critical(self, "Application Error", f"Failed to apply transform:\n{str(e)}")

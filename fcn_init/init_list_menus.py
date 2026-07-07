@@ -27,7 +27,7 @@ def populate_list_menus(self):
     # )
 
     # Populate selection box
-    Layers = ["0", "1", "2", "3"]
+    Layers = ["1", "2", "3", "4"]
     self.layer_selected = self.findChild(QtWidgets.QComboBox, 'Layer_sel')
     self.layer_selected.addItems(Layers)   
     self.layer_selected.currentIndexChanged.connect(lambda: update_layer_view(self))

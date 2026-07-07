@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QMenuBar
 from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtGui import QFont
+from fcn_operations.operations_dialog import open_operations_dialog
 
 from fcn_load.read_IrIS import load_IrIS_folder
 from fcn_load.load_dcm  import load_all_dcm
@@ -179,6 +180,11 @@ def initializeMenuBar(self):
     total_seg_action = QAction("TotalSegmentator", self)
     total_seg_action.triggered.connect(partial(open_segmentator_tab, self))
     ToolsMenu.addAction(total_seg_action)
+
+    # Add operations dialog entry
+    operations_action = QAction("Operations…", self)
+    operations_action.triggered.connect(lambda: open_operations_dialog(self))
+    ToolsMenu.addAction(operations_action)
     
     ExportMenu = self.menuBar().addMenu("Export")
     TypeMenu = ExportMenu.addMenu("IrIS")

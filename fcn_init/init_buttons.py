@@ -317,14 +317,14 @@ def initialize_software_buttons(self):
     self.apply_Im_transformation.clicked.connect(lambda: apply_trasnformation(self))
     self.apply_Im_transformation.setStyleSheet("background-color: blue; color: white;")
     
-    # Layer selection shortcuts (Ctrl+0 to Ctrl+3)
-    self.shortcut_layer_0 = QShortcut(QKeySequence("Ctrl+0"), self)
+    # Layer selection shortcuts (Ctrl+1 to Ctrl+4)
+    self.shortcut_layer_0 = QShortcut(QKeySequence("Ctrl+1"), self)
     self.shortcut_layer_0.activated.connect(lambda: self.layer_selected.setCurrentIndex(0))
-    self.shortcut_layer_1 = QShortcut(QKeySequence("Ctrl+1"), self)
+    self.shortcut_layer_1 = QShortcut(QKeySequence("Ctrl+2"), self)
     self.shortcut_layer_1.activated.connect(lambda: self.layer_selected.setCurrentIndex(1))
-    self.shortcut_layer_2 = QShortcut(QKeySequence("Ctrl+2"), self)
+    self.shortcut_layer_2 = QShortcut(QKeySequence("Ctrl+3"), self)
     self.shortcut_layer_2.activated.connect(lambda: self.layer_selected.setCurrentIndex(2))
-    self.shortcut_layer_3 = QShortcut(QKeySequence("Ctrl+3"), self)
+    self.shortcut_layer_3 = QShortcut(QKeySequence("Ctrl+4"), self)
     self.shortcut_layer_3.activated.connect(lambda: self.layer_selected.setCurrentIndex(3))
 
     # -----------------------------------------

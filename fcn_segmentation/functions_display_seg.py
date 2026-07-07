@@ -1,4 +1,7 @@
 from fcn_display.mouse_move_slicechanges import onMouseMoveSeg, left_button_pressseg_event, left_button_releaseseg_event
+import numpy as np
+import vtk
+
 
 
 
@@ -296,7 +299,7 @@ def displayseg(self, Im = None):
                 continue
             
             Offset_vox = (self.Im_PatPosition[idx,2]-self.Im_PatPosition[i,2])/self.slice_thick[i]
-            self.current_seg_slice_index[i] = int((self.current_seg_slice_index[idx]*(self.slice_thick[idx]/self.slice_thick[i]))+Offset_vox)
+            self.current_seg_slice_index[i] = int(np.round((self.current_seg_slice_index[idx]*(self.slice_thick[idx]/self.slice_thick[i]))+Offset_vox))
             #
             if 0 <=self.current_seg_slice_index[i] <self.display_data_seg[i].shape[0]:
                 if self.display_data_seg[i].ndim==2:
@@ -333,7 +336,7 @@ def displayseg(self, Im = None):
                 continue
             
             Offset = (self.display_data_seg[idx].shape[1]*self.pixel_spac[idx,0]-self.display_data_seg[i].shape[1]*self.pixel_spac[i,0]-(self.Im_PatPosition[i,1]-self.Im_PatPosition[idx,1]))/self.pixel_spac[i,0]
-            self.current_seg_slice_index[i] = int((self.current_seg_slice_index[idx]*(self.pixel_spac[idx,0]/self.pixel_spac[i,0]))-Offset)
+            self.current_seg_slice_index[i] = int(np.round((self.current_seg_slice_index[idx]*(self.pixel_spac[idx,0]/self.pixel_spac[i,0]))-Offset))
             
             if 0<= self.current_seg_slice_index[i] <self.display_data_seg[i].shape[1]:
                 if Im is not None:
@@ -456,7 +459,7 @@ def update_seg_image(self, Im = None):
                 continue
     
             Offset_vox = (self.Im_PatPosition[idx,2]-self.Im_PatPosition[i,2])/self.slice_thick[i]
-            self.current_seg_slice_index[i] = int((self.current_seg_slice_index[idx]*(self.slice_thick[idx]/self.slice_thick[i]))+Offset_vox)
+            self.current_seg_slice_index[i] = int(np.round((self.current_seg_slice_index[idx]*(self.slice_thick[idx]/self.slice_thick[i]))+Offset_vox))
             #
             if 0 <=self.current_seg_slice_index[i] <self.display_data_seg[i].shape[0]:
                 if self.display_data_seg[i].ndim==2:
@@ -494,7 +497,7 @@ def update_seg_image(self, Im = None):
                 continue   
 
             Offset = (self.display_data_seg[idx].shape[1]*self.pixel_spac[idx,0]-self.display_data_seg[i].shape[1]*self.pixel_spac[i,0]-(self.Im_PatPosition[i,1]-self.Im_PatPosition[idx,1]))/self.pixel_spac[i,0]
-            self.current_seg_slice_index[i] = int((self.current_seg_slice_index[idx]*(self.pixel_spac[idx,0]/self.pixel_spac[i,0]))-Offset)
+            self.current_seg_slice_index[i] = int(np.round((self.current_seg_slice_index[idx]*(self.pixel_spac[idx,0]/self.pixel_spac[i,0]))-Offset))
             #
             if 0<= self.current_seg_slice_index[i] <self.display_data_seg[i].shape[1]:
                 # Just update the slice data for the existing pipeline
@@ -529,7 +532,7 @@ def update_seg_image(self, Im = None):
                 continue
             
             Offset_vox = (self.Im_PatPosition[idx,0]-self.Im_PatPosition[i,0])/self.pixel_spac[i,1]
-            self.current_seg_slice_index[i] = int(self.current_seg_slice_index[idx]*(self.pixel_spac[idx,1]/self.pixel_spac[i,1]) + Offset_vox)
+            self.current_seg_slice_index[i] = int(np.round(self.current_seg_slice_index[idx]*(self.pixel_spac[idx,1]/self.pixel_spac[i,1]) + Offset_vox))
             
             if 0 <= self.current_seg_slice_index[i] < self.display_data_seg[i].shape[2]:
                 if Im is not None:
