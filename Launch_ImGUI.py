@@ -647,6 +647,24 @@ if __name__ == "__main__":
     splash.showMessage("Loading UI…", Qt.AlignBottom | Qt.AlignHCenter | Qt.TextWordWrap, Qt.white)
     app.processEvents()
 
+    window.buffered_paths = []
+    window.path_accumulation_timer = QTimer(window)
+    window.path_accumulation_timer.setSingleShot(True)
+
+    def process_accumulated_paths():
+        paths = list(window.buffered_paths)
+        window.buffered_paths.clear()
+        if paths:
+            # Bring window to front
+            window.setWindowState(window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
+            window.raise_()
+            window.activateWindow()
+            # Load all accumulated paths together
+            to_load = paths if len(paths) > 1 else paths[0]
+            load_all_dcm(window, to_load, progress_callback=None, update_label=None)
+
+    window.path_accumulation_timer.timeout.connect(process_accumulated_paths)
+
     # Define the slot for incoming connection on the primary instance
     def handle_new_connection():
         client_socket = server.nextPendingConnection()
@@ -656,14 +674,9 @@ if __name__ == "__main__":
                 # split by newline to handle multiple files sent at once
                 received_paths = [p.strip() for p in path_data.split('\n') if p.strip()]
                 if received_paths:
-                    # Bring the window to the front and restore if minimized
-                    window.setWindowState(window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
-                    window.raise_()
-                    window.activateWindow()
-                    # Trigger the loading of the new DICOM folder
-                    from Launch_ImGUI import load_all_dcm
-                    to_load = received_paths if len(received_paths) > 1 else received_paths[0]
-                    load_all_dcm(window, to_load, progress_callback=None, update_label=None)
+                    # Accumulate paths and restart the debounced timer
+                    window.buffered_paths.extend(received_paths)
+                    window.path_accumulation_timer.start(500)
         client_socket.disconnectFromServer()
 
     server.newConnection.connect(handle_new_connection)
@@ -672,9 +685,13 @@ if __name__ == "__main__":
     window.show()
     splash.finish(window)
 
-    # (Optional) if you pass a folder on the command line, keep your current behavior
+    # Use the same accumulation timer for startup load so that concurrent launches group together
     if folder_path is not None:
-        load_all_dcm(window, folder_path, progress_callback=None, update_label=None)
+        if isinstance(folder_path, list):
+            window.buffered_paths.extend(folder_path)
+        else:
+            window.buffered_paths.append(folder_path)
+        window.path_accumulation_timer.start(500)
 
     sys.exit(app.exec())
 
