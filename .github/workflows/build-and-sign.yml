@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build-and-sign:
@@ -267,14 +268,36 @@ jobs:
           output-artifact-directory: signed
 
       # === Extract Signed Zip and Upload Installer EXE ===
+      - name: List signed folder contents
+        shell: powershell
+        run: |
+          if (Test-Path "signed") {
+            Write-Host "Contents of 'signed' folder:"
+            Get-ChildItem -Path "signed" -Recurse | Format-List -Property FullName, Length
+          } else {
+            Write-Host "'signed' folder does not exist."
+          }
+
       - name: Extract signed files
         shell: powershell
         run: |
           if (Test-Path -LiteralPath "signed_extracted") { Remove-Item -Recurse -Force "signed_extracted" }
           New-Item -ItemType Directory -Path "signed_extracted" | Out-Null
+          
           $zip = Get-ChildItem -Path "signed" -Filter *.zip | Select-Object -First 1
-          if (-not $zip) { throw "No signed zip found in 'signed' folder." }
-          Expand-Archive -Path $zip.FullName -DestinationPath "signed_extracted" -Force
+          if ($zip) {
+              Write-Host "Found signed zip: $($zip.FullName). Extracting..."
+              Expand-Archive -Path $zip.FullName -DestinationPath "signed_extracted" -Force
+          } else {
+              Write-Host "No signed zip found. Locating raw executables..."
+              $exe = Get-ChildItem -Path "signed" -Filter "mysetup.exe" -Recurse | Select-Object -First 1
+              if ($exe) {
+                  Write-Host "Found raw mysetup.exe at: $($exe.FullName). Copying..."
+                  Copy-Item $exe.FullName "signed_extracted\mysetup.exe"
+              } else {
+                  throw "Could not find 'mysetup.exe' anywhere in the 'signed' folder."
+              }
+          }
           Get-ChildItem -Path "signed_extracted" -Recurse
 
       - name: Upload signed AMIGOpy installer
