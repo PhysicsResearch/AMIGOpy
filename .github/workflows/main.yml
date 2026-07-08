@@ -1,4 +1,4 @@
-name: Build AMIGOpy and Release
+name: Build AMIGOpy and Release (Official Signed)
 
 on:
   workflow_dispatch:
@@ -10,12 +10,10 @@ on:
 
 permissions:
   contents: write
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  actions: read
 
 jobs:
-  build-amigopy:
+  build-and-release:
     runs-on: windows-latest
 
     env:
@@ -24,6 +22,7 @@ jobs:
       QT_PLUGIN_PATH: ""
       QT_QPA_PLATFORM_PLUGIN_PATH: ""
       NUITKA_CACHE_DIR: ${{ github.workspace }}\.nuitka-cache
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout main
@@ -138,7 +137,7 @@ jobs:
             "--include-package=pandas",
             "--include-package-data=pandas",
             "--include-package=numexpr",
-            "--include-package=zstandard",
+            "--include-package-data=zstandard",
 
             "--nofollow-import-to=totalsegmentator",
             "--nofollow-import-to=torch",
@@ -200,39 +199,15 @@ jobs:
             throw "Launch_ImGUI.exe missing"
           }
 
-          Get-ChildItem -Recurse dist\AMIGOpy |
-            Select-Object -First 40 |
-            Format-List -Property FullName,Length
-
-      - name: Zip portable build
-        shell: powershell
-        run: |
-          Compress-Archive `
-            -Path "dist/AMIGOpy/*" `
-            -DestinationPath "AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}.zip" `
-            -Force
-
-      - name: Upload portable artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}
-          path: AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}.zip
-          if-no-files-found: error
-          overwrite: true
-
       - name: Ensure Inno Setup is installed
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
-
           $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-
           if (!(Test-Path $iscc)) {
             choco install innosetup -y --no-progress
-
             if (!(Test-Path $iscc)) {
               $isccAlt = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
-
               if (Test-Path $isccAlt) {
                 $iscc = $isccAlt
               } else {
@@ -240,31 +215,94 @@ jobs:
               }
             }
           }
-
-          try {
-            & $iscc /? | Out-Null
-          } catch {
-            Write-Host "ISCC present; ignoring non-zero help exit."
-          }
-
           $global:LASTEXITCODE = 0
 
       - name: Build AMIGOpy installer
         shell: powershell
         run: |
           $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-
           if (!(Test-Path $iscc)) {
             $iscc = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
           }
-
           & $iscc AMIGOpy.iss
 
-      - name: Upload installer artifact
+      # === Stage Bundle for SignPath ===
+      # Staging folder "unsigned/" is created. We copy the compiled installer exe as "mysetup.exe".
+      # Since the SignPath XML configuration requires segmentator_api.exe to be present, we copy
+      # the installer also as "segmentator_api.exe" to satisfy the PE file set list.
+      - name: Stage unsigned bundle
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Path "unsigned" -Force | Out-Null
+          if (!(Test-Path "Output\AMIGOpy-Setup.exe")) { throw "AMIGOpy installer not found at Output\AMIGOpy-Setup.exe" }
+          Copy-Item "Output\AMIGOpy-Setup.exe" "unsigned\mysetup.exe"
+          Copy-Item "Output\AMIGOpy-Setup.exe" "unsigned\segmentator_api.exe"
+
+      - name: Upload unsigned bundle artifact
+        id: upload_unsigned_bundle
         uses: actions/upload-artifact@v4
         with:
-          name: AMIGOpy-Installer-unsigned-v${{ github.event.inputs.app_version }}
-          path: Output/AMIGOpy-Setup*.exe
+          name: unsigned-bundle
+          path: unsigned/
+          if-no-files-found: error
+          overwrite: true
+
+      # === Submit to SignPath ===
+      - name: Submit bundle to SignPath
+        uses: signpath/github-action-submit-signing-request@v1.1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload_unsigned_bundle.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      # === Extract Signed Zip and Rename/Upload Signed Installer ===
+      - name: List signed folder contents
+        shell: powershell
+        run: |
+          if (Test-Path "signed") {
+            Write-Host "Contents of 'signed' folder:"
+            Get-ChildItem -Path "signed" -Recurse | Format-List -Property FullName, Length
+          } else {
+            Write-Host "'signed' folder does not exist."
+          }
+
+      - name: Extract signed files
+        shell: powershell
+        run: |
+          if (Test-Path -LiteralPath "signed_extracted") { Remove-Item -Recurse -Force "signed_extracted" }
+          New-Item -ItemType Directory -Path "signed_extracted" | Out-Null
+          
+          $zip = Get-ChildItem -Path "signed" -Filter *.zip | Select-Object -First 1
+          if ($zip) {
+              Write-Host "Found signed zip: $($zip.FullName). Extracting..."
+              Expand-Archive -Path $zip.FullName -DestinationPath "signed_extracted" -Force
+          } else {
+              Write-Host "No signed zip found. Locating raw executables..."
+              $exe = Get-ChildItem -Path "signed" -Filter "mysetup.exe" -Recurse | Select-Object -First 1
+              if ($exe) {
+                  Write-Host "Found raw mysetup.exe at: $($exe.FullName). Copying..."
+                  Copy-Item $exe.FullName "signed_extracted\mysetup.exe"
+              } else {
+                  throw "Could not find 'mysetup.exe' anywhere in the 'signed' folder."
+              }
+          }
+          Get-ChildItem -Path "signed_extracted" -Recurse
+
+      - name: Prepare installer for release
+        shell: powershell
+        run: |
+          Rename-Item -Path "signed_extracted\mysetup.exe" -NewName "AMIGOpy_Setup.exe"
+          if (!(Test-Path "signed_extracted\AMIGOpy_Setup.exe")) { throw "AMIGOpy_Setup.exe not found in signed_extracted" }
+
+      - name: Upload signed AMIGOpy installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AMIGOpy_Setup_signed-v${{ github.event.inputs.app_version }}
+          path: signed_extracted/AMIGOpy_Setup.exe
           if-no-files-found: error
           overwrite: true
 
@@ -276,5 +314,4 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            AMIGOpy-win-portable-v${{ github.event.inputs.app_version }}.zip
-            Output/AMIGOpy-Setup*.exe
+            signed_extracted/AMIGOpy_Setup.exe
