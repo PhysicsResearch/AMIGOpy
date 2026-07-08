@@ -137,6 +137,7 @@ jobs:
             "--include-package=pandas",
             "--include-package-data=pandas",
             "--include-package=numexpr",
+            "--include-package=zstandard",
             "--include-package-data=zstandard",
             "--include-distribution-metadata=zstandard",
 

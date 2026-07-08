@@ -138,6 +138,8 @@ jobs:
             "--include-package-data=pandas",
             "--include-package=numexpr",
             "--include-package=zstandard",
+            "--include-package-data=zstandard",
+            "--include-distribution-metadata=zstandard",
 
             "--nofollow-import-to=totalsegmentator",
             "--nofollow-import-to=torch",
