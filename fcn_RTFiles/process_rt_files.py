@@ -497,11 +497,11 @@ def read_brachy_plan(plan,ref_str,structured_data):
             'ChannelLength':             channel_item.get('ChannelLength', 'N/A'),
             'ChannelTotalTime':          channel_item.get('ChannelTotalTime', 'N/A'),
             'SourceApplicatorNumber':    channel_item.get('SourceApplicatorNumber', 'N/A'),
-            'SourceApplicatorID':        channel_item.get('NumberofControlPoints', 'N/A'),
+            'SourceApplicatorID':        channel_item.get('SourceApplicatorID', 'N/A'),
             'SourceApplicatorType':      channel_item.get('SourceApplicatorType', 'N/A'),
             'SourceApplicatorLength':    channel_item.get('SourceApplicatorLength', 'N/A'),
             'SourceApplicatorStepSize':  channel_item.get('SourceApplicatorStepSize', 'N/A'),
-            'FinalCumulativeTimeWeight': channel_item.get('NumberofControlPoints', 'N/A'),
+            'FinalCumulativeTimeWeight': channel_item.get('FinalCumulativeTimeWeight', 'N/A'),
             'DwellInfo':                 control_point_array,
             'ChPos':                     points_matrix
         }

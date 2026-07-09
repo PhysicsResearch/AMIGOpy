@@ -27,14 +27,15 @@ def calculate_TG43_plan_dose(self):
     #     print(dwells)
     #
     dws = np.array(dwells, copy=True)
+    output_res_mm = float(self.brachy_tg43_dose_grid.currentText().strip())
     dose, meta = transform_and_sum_dose_matrix_centered_3D(
         dws, self.TG43.activesource.DoseMatrix, self.TG43.activesource.DoseMatrix_res_mm,
-        output_margin_mm=100, output_res_mm=1.0, parent=self
+        output_margin_mm=100, output_res_mm=output_res_mm, parent=self
     )
     # account for Air kerma and h unit
     kerma_str   = self.brachy_plan_Ac.text()
     kerma_value = float(kerma_str)
-    dose = dose * kerma_value / 3600 / 3600
+    dose = (dose * kerma_value / 3600) / 100.0
 
     # Flip Y-axis (axis=1) to match the vertical flip applied to CT/MR/RTDOSE layers in load_dcm.py
     dose = np.flip(dose, axis=1)
@@ -123,8 +124,25 @@ def get_all_brachy_dwells(self):
         position = dwell_info[:, 3:6].copy()
         angles   = dwell_info[:, 6:9]  # shape (n, 3)
 
+        # Scale time weights to actual seconds if total time and final weight are available
+        tot_time = channel.get('ChannelTotalTime', 1.0)
+        final_weight = channel.get('FinalCumulativeTimeWeight', 1.0)
+        
+        try:
+            tot_time = float(tot_time) if tot_time is not None and tot_time != 'N/A' else 1.0
+        except ValueError:
+            tot_time = 1.0
+            
+        try:
+            final_weight = float(final_weight) if final_weight is not None and final_weight != 'N/A' else 1.0
+        except ValueError:
+            final_weight = 1.0
+            
+        scale_factor = tot_time / final_weight if final_weight > 0 else 1.0
+        time_scaled = time * scale_factor
+
         # Reorder to match: [X, Y, Z, ThetaX, ThetaY, ThetaZ, Time]
-        combined = np.hstack((position, angles, time))
+        combined = np.hstack((position, angles, time_scaled))
         all_dwells.append(combined)
 
     if not all_dwells:
@@ -231,17 +249,45 @@ def transform_and_sum_dose_matrix_centered_3D(
 
     out = np.zeros((nz, ny, nx), dtype=np.float32)
 
-    # 3) Reference matrix shape & continuous center in reference voxels
+    # 3) Crop reference matrix to effective dose radius for performance
     ref_nz, ref_ny, ref_nx = reference_matrix_3d.shape
-    c_ref = np.array([(ref_nz - 1) / 2.0, (ref_ny - 1) / 2.0, (ref_nx - 1) / 2.0], dtype=np.float64)
+    c_z_idx, c_y_idx, c_x_idx = ref_nz // 2, ref_ny // 2, ref_nx // 2
+    peak = float(np.max(np.abs(reference_matrix_3d)))
+    if peak > 0:
+        threshold = peak * 1e-4  # 0.01% of peak dose
+        z_profile = np.abs(reference_matrix_3d[:, c_y_idx, c_x_idx])
+        z_above = np.where(z_profile > threshold)[0]
+        z_half = max(c_z_idx - z_above[0], z_above[-1] - c_z_idx) + 2 if len(z_above) > 0 else c_z_idx
+        x_profile = np.abs(reference_matrix_3d[c_z_idx, c_y_idx, :])
+        x_above = np.where(x_profile > threshold)[0]
+        xy_half = max(c_x_idx - x_above[0], x_above[-1] - c_x_idx) + 2 if len(x_above) > 0 else c_x_idx
+        z_half = max(min(z_half, c_z_idx), 10)
+        xy_half = max(min(xy_half, c_y_idx, c_x_idx), 10)
+        ref_cropped = reference_matrix_3d[
+            c_z_idx - z_half:c_z_idx + z_half + 1,
+            c_y_idx - xy_half:c_y_idx + xy_half + 1,
+            c_x_idx - xy_half:c_x_idx + xy_half + 1
+        ].astype(np.float32)
+    else:
+        ref_cropped = reference_matrix_3d.astype(np.float32)
 
-    # Ratio between output and reference resolution (voxels-in-ref per voxel-in-output)
+    crop_nz, crop_ny, crop_nx = ref_cropped.shape
+    c_ref = np.array([(crop_nz - 1) / 2.0, (crop_ny - 1) / 2.0, (crop_nx - 1) / 2.0], dtype=np.float64)
+
+    # Ratio between output and reference resolution
     scale = output_res_mm / ref_res_mm
 
     # Resampled reference shape at output resolution
-    out_nz = max(1, int(np.round(ref_nz / scale)))
-    out_ny = max(1, int(np.round(ref_ny / scale)))
-    out_nx = max(1, int(np.round(ref_nx / scale)))
+    out_nz = max(1, int(np.round(crop_nz / scale)))
+    out_ny = max(1, int(np.round(crop_ny / scale)))
+    out_nx = max(1, int(np.round(crop_nx / scale)))
+
+    # Precompute coordinate permutation matrix (constant for all dwells)
+    P = np.array([
+        [0.0, 0.0, 1.0],
+        [0.0, 1.0, 0.0],
+        [1.0, 0.0, 0.0]
+    ], dtype=np.float64)
     
     # 4) Loop dwells: rotate, resample to output resolution, translate, accumulate
     N = len(dw)
@@ -269,9 +315,15 @@ def transform_and_sum_dose_matrix_centered_3D(
         x0 = k - out_nx // 2
         x1 = x0 + out_nx
 
-        # Set the continuous center of rotation in output voxels to be exactly aligned
-        # with the integer landing coordinates to prevent any half-voxel or rounding offsets
-        c_out_dwell = np.array([i - z0, j - y0, k - x0], dtype=np.float64)
+        # Calculate the exact fractional position of the dwell point in the output grid
+        p_out = np.array([
+            (z_mm - z_min) / output_res_mm,
+            (y_mm - y_min) / output_res_mm,
+            (x_mm - x_min) / output_res_mm
+        ], dtype=np.float64)
+
+        # Set the continuous center of rotation in the cropped sub-grid to match the exact fractional landing coordinates
+        c_out_dwell = p_out - np.array([z0, y0, x0], dtype=np.float64)
 
         # --- Build rotation matrix ---
         R = _rotation_matrix_from_direction(cosX, cosY, cosZ)
@@ -281,25 +333,20 @@ def transform_and_sum_dose_matrix_centered_3D(
         # But indices are in (Z, Y, X) order, while R_inv is in (X, Y, Z) order.
         # We must permute R_inv to (Z, Y, X) using P @ R_inv @ P where P swaps Z and X.
         R_inv = R.T
-        P = np.array([
-            [0.0, 0.0, 1.0],
-            [0.0, 1.0, 0.0],
-            [1.0, 0.0, 0.0]
-        ], dtype=np.float64)
         R_inv_zyx = P @ R_inv @ P
         trans_matrix = scale * R_inv_zyx
         aff_offset = c_ref - trans_matrix @ c_out_dwell
 
-        # Apply the rotation and scaling to the reference matrix
+        # Apply the rotation and scaling to the cropped reference matrix
         rotated = affine_transform(
-            reference_matrix_3d.astype(np.float64),
+            ref_cropped,
             trans_matrix,
             offset=aff_offset,
             output_shape=(out_nz, out_ny, out_nx),
-            order=1,        # bilinear interpolation
+            order=1,
             mode='constant',
             cval=0.0
-        ).astype(np.float32)
+        )
 
         # compute valid overlap with output bounds
         iz0, iy0, ix0 = max(0, z0), max(0, y0), max(0, x0)

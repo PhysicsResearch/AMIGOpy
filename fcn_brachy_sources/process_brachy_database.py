@@ -2,7 +2,7 @@ import os
 import sys
 import numpy as np
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvas, NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
 from fcn_brachy_sources.calculate_TG43_ref_matrix import calculate_dose_reference_matrix
 from PySide6.QtWidgets import QVBoxLayout, QMessageBox, QTableWidgetItem, QFileDialog
 from PySide6.QtGui import QColor, QBrush
@@ -392,7 +392,7 @@ def plot_brachy_ani(self):
     # Initialize the Matplotlib Figure if it doesn't exist.
     if not hasattr(self, 'plot_Brachy_Anisotropy_Fig'):
         from matplotlib.figure import Figure
-        from matplotlib.backends.backend_qt5agg import FigureCanvas, NavigationToolbar2QT as NavigationToolbar
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
         self.plot_Brachy_Anisotropy_Fig = Figure()
         self.plot_ani_canvas = FigureCanvas(self.plot_Brachy_Anisotropy_Fig)
         self.plot_ani_toolbar = NavigationToolbar(self.plot_ani_canvas, self)

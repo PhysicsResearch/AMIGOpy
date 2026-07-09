@@ -12,8 +12,7 @@ from PySide6.QtGui import QColor, QFont
 from PySide6.QtCore import Qt
 from matplotlib.figure import Figure
 import matplotlib.colors as mcolors
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
 import pandas as pd
 
 
@@ -177,7 +176,20 @@ def calculate_total_time(self):
         time_column = np.nan_to_num(time_column, nan=0.0)
         
         # Sum the "Time (s)" values for this channel
-        channel_total = np.sum(time_column)
+        # Scale by ChannelTotalTime and FinalCumulativeTimeWeight if available
+        tot_time = channel.get('ChannelTotalTime', 1.0)
+        final_weight = channel.get('FinalCumulativeTimeWeight', 1.0)
+        try:
+            tot_time = float(tot_time) if tot_time is not None and tot_time != 'N/A' else 1.0
+        except ValueError:
+            tot_time = 1.0
+        try:
+            final_weight = float(final_weight) if final_weight is not None and final_weight != 'N/A' else 1.0
+        except ValueError:
+            final_weight = 1.0
+        scale_factor = tot_time / final_weight if final_weight > 0 else 1.0
+
+        channel_total = np.sum(time_column) * scale_factor
         total_time += channel_total
         
         # If this is the selected channel, save its total time

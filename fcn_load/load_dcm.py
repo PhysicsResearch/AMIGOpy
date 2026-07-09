@@ -66,8 +66,14 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                else:
                    sli_thick = vect[1]-vect[0]
         
-        # Check if the current series_number already exists in the modality_data list
-        existing_series_data = next((s for s in modality_data if s.get('SeriesNumber') == series_number), None)
+        # Check if the current series_number already exists in the modality_data list.
+        # For CT, MR, and RTIMAGE we group files by SeriesNumber (since they are split across multiple files).
+        # For RTDOSE, RTPLAN, and RTSTRUCT, each file is a self-contained, independent object,
+        # so we should treat them as separate series even if they share the same SeriesNumber.
+        if modality in ['CT', 'MR', 'RTIMAGE']:
+            existing_series_data = next((s for s in modality_data if s.get('SeriesNumber') == series_number), None)
+        else:
+            existing_series_data = None
         if not existing_series_data:
             if (modality == 'CT' or modality == 'MR' or modality== 'RTDOSE'):
                 Header = Header = pydicom.dcmread(file_path,stop_before_pixels=True)
@@ -209,7 +215,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
            # RT dose are loaded using absolut coordinates 
            # Initial position and voxel size are difned when displaying so it alignes with referenced images
            # Get the dimensions
-           RTDose_matrix = image.reshape((dicom_file.NumberOfFrames, dicom_file.Rows, dicom_file.Columns)) 
+           existing_series_data['3DMatrix'] = image.reshape((dicom_file.NumberOfFrames, dicom_file.Rows, dicom_file.Columns)) 
 
         # Progress callback update
         if progress_callback and total_steps:        
@@ -287,16 +293,17 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
                         #
                     elif modality == 'RTDOSE':
-                        series_data['3DMatrix'] = RTDose_matrix
+                        # series_data['3DMatrix'] was already populated directly in the first loop
                         series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
                         
                         # Check if Z-axis needs to be flipped based on GridFrameOffsetVector
-                        vect = getattr(dicom_file, "GridFrameOffsetVector", None)
+                        dicom_file_ref = series_data['metadata']['DCM_Info']
+                        vect = getattr(dicom_file_ref, "GridFrameOffsetVector", None)
                         if vect is not None and len(vect) >= 2:
                             if vect[1] - vect[0] < 0:
                                 series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
                                 orig = list(series_data['metadata']['ImagePositionPatient'])
-                                orig[2] = float(dicom_file.ImagePositionPatient[2] + vect[-1])
+                                orig[2] = float(dicom_file_ref.ImagePositionPatient[2] + vect[-1])
                                 series_data['metadata']['ImagePositionPatient'] = orig
                                 series_data['metadata']['SliceThickness'] = float(abs(vect[1] - vect[0]))
                                 

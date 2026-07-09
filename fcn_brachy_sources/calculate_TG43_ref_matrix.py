@@ -6,13 +6,12 @@ import pandas as pd
 def calculate_dose_reference_matrix(self):
     """
     Builds a full 3D TG-43 dose reference volume over [-S,S] mm at Res-mm spacing by:
-      1. Computing a 2D meridian map D_mer[z, x] in the X–Z plane (Y=0)
+      1. Computing a 2D meridian map D_mer[z, x] in the X-Z plane (Y=0) - vectorized
       2. Filling zeros along the central axis (angles 0 & 180) by neighbor averaging
-      3. Revolving that meridian around the Z axis to create the full [Z,Y,X] grid
-    If S=200 mm and Res=1 mm, produces a 401×401×401 array.
-    Stores result in self.TG43.activesource.DoseMatrix (cGy/h).
+      3. Revolving that meridian around the Z axis using linear interpolation
+    Stores result in self.TG43.activesource.DoseMatrix (cGy/h) as float32.
     """
-    import numpy as np
+    from scipy.interpolate import RegularGridInterpolator
     from PySide6.QtWidgets import QMessageBox
 
     src = self.TG43.activesource
@@ -26,6 +25,13 @@ def calculate_dose_reference_matrix(self):
     except Exception as e:
         QMessageBox.critical(self, "Input Error", f"Invalid TG-43 inputs:{e}")
         return
+
+    # Cap reference matrix to max 401 voxels per axis to prevent memory issues
+    max_voxels = 401
+    n_check = int(2 * S / Res) + 1
+    if n_check > max_voxels:
+        S = (max_voxels - 1) * Res / 2.0
+
     src.DoseMatrix_res_mm = Res
     src.DoseMatrix_size   = S
     # Set the progress bar value
@@ -40,54 +46,79 @@ def calculate_dose_reference_matrix(self):
     # Set the progress bar value
     self.progressBar.setValue(20)
 
-    # 3) Geometry factor
-    def G_line(r, θ, L_cm):
-        if abs(np.sin(θ)) < 1e-8:
-            d = r*r - (L_cm/2)**2
-            return 1.0/d if d>0 else 0.0
-        ρ = r*np.sin(θ)
-        z = r*np.cos(θ)
-        a1 = np.arctan2((L_cm/2)-z, ρ)
-        a2 = np.arctan2((L_cm/2)+z, ρ)
-        return (a1 + a2) / (L_cm * ρ)
+    # 3) Geometry factor reference value: G_line at r=1 cm, θ=90°
     L_cm = L_mm / 10.0
-    G_ref = G_line(1.0, np.deg2rad(90.0), L_cm)
+    G_ref = 2.0 * np.arctan2(L_cm / 2.0, 1.0) / L_cm
     # Set the progress bar value
     self.progressBar.setValue(30)
 
     # 4) Build 1D axes for meridian plane
-    xs = np.linspace(-S, S, int(2*S/Res)+1)  # X in mm
-    zs = np.linspace(-S, S, int(2*S/Res)+1)  # Z in mm
+    n = int(2 * S / Res) + 1
+    xs = np.linspace(-S, S, n)
+    zs = np.linspace(-S, S, n)
     nx, nz = xs.size, zs.size
+    center_x = nx // 2
+    # Set the progress bar value
+    self.progressBar.setValue(40)
+
+    # 5) Compute 2D meridian dose map D_mer[z, x] — fully vectorized
+    Z_mm, X_mm = np.meshgrid(zs, xs, indexing='ij')  # shape (nz, nx)
+    R_mm = np.hypot(X_mm, Z_mm)
+    R_cm = R_mm / 10.0
+
+    valid = R_cm > 1e-10
+    Theta = np.zeros_like(R_cm)
+    Theta[valid] = np.arccos(np.clip(Z_mm[valid] / R_mm[valid], -1.0, 1.0))
+
+    # Vectorized geometry factor G_line(r, θ, L_cm)
+    G = np.zeros_like(R_cm)
+    r_v = R_cm[valid]
+    sin_t = np.sin(Theta[valid])
+    cos_t = np.cos(Theta[valid])
+    on_axis = np.abs(sin_t) < 1e-8
+    off_axis = ~on_axis
+    G_v = np.zeros(r_v.size, dtype=np.float64)
+
+    if on_axis.any():
+        d = r_v[on_axis]**2 - (L_cm / 2.0)**2
+        G_v[on_axis] = np.where(d > 0, 1.0 / d, 0.0)
+
+    if off_axis.any():
+        rho = r_v[off_axis] * sin_t[off_axis]
+        z_off = r_v[off_axis] * cos_t[off_axis]
+        a1 = np.arctan2((L_cm / 2.0) - z_off, rho)
+        a2 = np.arctan2((L_cm / 2.0) + z_off, rho)
+        G_v[off_axis] = (a1 + a2) / (L_cm * rho)
+
+    G[valid] = G_v
+    # Set the progress bar value
+    self.progressBar.setValue(50)
+
+    # Radial dose function g(r)
+    g = np.ones_like(R_cm)
+    far = valid & (R_cm >= dist_cm[0])
+    g[far] = np.maximum(0.0, np.polyval(coeffs, R_cm[far]))
+
+    # Anisotropy function F(r, θ) — bilinear interpolation on (angle, distance) grid
+    F_all = np.zeros_like(R_cm)
+    if valid.any():
+        deg_v = np.clip(np.degrees(Theta[valid]), float(ang_deg[0]), float(ang_deg[-1]))
+        r_v_clamped = np.clip(R_cm[valid], float(dist_cm[0]), float(dist_cm[-1]))
+        F_interp = RegularGridInterpolator(
+            (ang_deg.astype(np.float64), dist_cm.astype(np.float64)),
+            F_data.astype(np.float64),
+            method='linear', bounds_error=False, fill_value=None
+        )
+        pts = np.column_stack([deg_v.ravel(), r_v_clamped.ravel()])
+        F_all[valid] = F_interp(pts)
+
+    # Final meridian dose map
+    D_mer = np.where(valid, Λ * (G / G_ref) * g * F_all, 0.0)
     # Set the progress bar value
     self.progressBar.setValue(60)
-    # 5) Compute 2D meridian dose map D_mer[z, x]
-    D_mer = np.zeros((nz, nx), dtype=float)
-    for iz, z_mm in enumerate(zs):
-        for ix, x_mm in enumerate(xs):
-            r_cm = np.hypot(x_mm, z_mm)/10.0
-            if r_cm == 0:
-                continue
-            θ = np.arccos(z_mm/(r_cm*10.0))
-            G = G_line(r_cm, θ, L_cm)
-            g = 1.0 if r_cm < dist_cm[0] else max(0.0, np.polyval(coeffs, r_cm))
 
-            deg = np.degrees(θ)
-            ai  = np.clip(np.searchsorted(ang_deg, deg), 1, len(ang_deg)-1)
-            a0, a1 = ai-1, ai
-            w = 0.0 if ang_deg[a1]==ang_deg[a0] else (deg-ang_deg[a0])/(ang_deg[a1]-ang_deg[a0])
-            if r_cm <= dist_cm[0]:
-                F0, F1 = F_data[a0,0], F_data[a1,0]
-            else:
-                F0 = np.interp(r_cm, dist_cm, F_data[a0], left=F_data[a0,0])
-                F1 = np.interp(r_cm, dist_cm, F_data[a1], left=F_data[a1,0])
-            F = F0*(1-w) + F1*w
-
-            D_mer[iz, ix] = Λ * (G/G_ref) * g * F
-    # Set the progress bar value
-    self.progressBar.setValue(80)
-    # 6) Replace *all* zeros along the central axis by 1-D interpolation
-    #     
+    # 6) Replace zeros along the central axis by 1-D neighbor averaging
+    #
     center_x = nx // 2
 
     for iz in range(nz):
@@ -106,52 +137,29 @@ def calculate_dose_reference_matrix(self):
                 D_mer[iz, center_x] = right_val
             # otherwise leave it at zero
     # Set the progress bar value
-    self.progressBar.setValue(90)
+    self.progressBar.setValue(70)
 
-    # 7) Revolve meridian into full 3D volume
+    # 7) Revolve meridian into full 3D volume using linear interpolation
     ys = xs.copy()
     ny = ys.size
-    Dose3D = np.zeros((nz, ny, nx), dtype=float)
+    Dose3D = np.zeros((nz, ny, nx), dtype=np.float32)
     Xg, Yg = np.meshgrid(xs, ys, indexing='xy')
     Rg = np.hypot(Xg, Yg)
-    k = np.rint(Rg/Res).astype(int)
-    idx = center_x + k
-    np.clip(idx, 0, nx-1, out=idx)
+
+    # Use positive half of meridian for smooth radial interpolation
+    x_positive = xs[center_x:]  # [0, Res, 2*Res, ..., S]
+    Rg_flat = Rg.ravel()
+
     for iz in range(nz):
-        Dose3D[iz] = D_mer[iz, idx]
+        meridian_half = D_mer[iz, center_x:]
+        Dose3D[iz] = np.interp(Rg_flat, x_positive, meridian_half).reshape(ny, nx)
+    # Set the progress bar value
+    self.progressBar.setValue(90)
 
     # 8) Store result and update along-away
     src.DoseMatrix = Dose3D
 
-    # # 1) grab the 3D array and axes info
-    # dose3d = src.DoseMatrix                      # shape (nz, ny, nx)
-    # nz, ny, nx = dose3d.shape
-    # Res = src.DoseMatrix_res_mm                   # mm
-    # S   = src.DoseMatrix_size                     # mm half-span
-
-    # # 2) central-slice index (Z-axis)
-    # zc = nz // 2
-    # slice2d = dose3d[:, zc, :]                    # shape (ny, nx)
-
-    # # 3) build real-world axes in cm
-    # xs_mm = np.linspace(-S, S, nx)
-    # ys_mm = np.linspace(-S, S, ny)
-    # xs_cm = xs_mm / 10.0
-    # ys_cm = ys_mm / 10.0
-    # # 4) make a DataFrame and export
-    # df = pd.DataFrame(slice2d, index=ys_cm, columns=xs_cm)
-    # df.index.name  = "Y (cm)"
-    # df.columns.name = "X (cm)"
-
-    # out_dir = r"c:\test"
-    # os.makedirs(out_dir, exist_ok=True)
-    # out_path = os.path.join(out_dir, "central_dose_slice.csv")
-    # df.to_csv(out_path, float_format="%.6g")
-
-    # QMessageBox.information(self, "Export Successful",
-    #     f"Central Z-slice (z={zc}) exported to:\n{out_path}")
-
-    # # Optionally recalc along–away from central slice
+    # Optionally recalc along-away from central slice
     calculate_along_away_reference_calc(self)
     # Set the progress bar value
     self.progressBar.setValue(100)

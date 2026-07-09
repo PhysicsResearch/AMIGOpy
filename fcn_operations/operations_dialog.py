@@ -235,21 +235,22 @@ class OperationsDialog(QDialog):
                         # Try to read segmentations / structures
                         structures = series.get('structures', {})
                         for s_key, s_data in structures.items():
-                            if 'Mask3D' in s_data and s_data['Mask3D'] is not None:
-                                name = s_data.get('Name', s_key)
+                            mask3d = s_data.get('Mask3D') if isinstance(s_data, dict) else getattr(s_data, 'Mask3D', None)
+                            if mask3d is not None:
+                                name = s_data.get('Name', s_key) if isinstance(s_data, dict) else getattr(s_data, 'Name', s_key)
                                 label = f"[Mask] {patient_id} - {study_id} - {name}"
                                 meta = series.get('metadata', {})
                                 
                                 self.all_items.append({
                                     'label': label,
                                     'type': 'Mask',
-                                    'matrix': s_data['Mask3D'],
+                                    'matrix': mask3d,
                                     'patient_id': patient_id,
                                     'study_id': study_id,
                                     'spacing': meta.get('PixelSpacing', [1.0, 1.0]),
                                     'thick': float(meta.get('SliceThickness', 1.0)),
                                     'origin': meta.get('ImagePositionPatient', [0.0, 0.0, 0.0]),
-                                    'dims': s_data['Mask3D'].shape,
+                                    'dims': mask3d.shape,
                                     'desc': name
                                 })
 
@@ -418,12 +419,19 @@ class OperationsDialog(QDialog):
             }
 
             try:
+                # Un-flip the Y-axis (axis 1) of both ref_matrix and mov_matrix before passing to SimpleITK.
+                # In AMIGOpy, all loaded and calculated 3D matrices are Y-flipped for VTK display
+                # but keep their origin at y_min. Un-flipping ensures that index 0 corresponds to y_min
+                # matching the SimpleITK SetOrigin/SetSpacing coordinate mapping.
+                ref_matrix_unflipped = np.flip(ref_matrix, axis=1)
+                mov_matrix_unflipped = np.flip(mov_matrix, axis=1)
+
                 # Interpolate moving matrix onto reference matrix size
-                ref_img = sitk.GetImageFromArray(np.ascontiguousarray(ref_matrix.astype(np.float32)))
+                ref_img = sitk.GetImageFromArray(np.ascontiguousarray(ref_matrix_unflipped.astype(np.float32)))
                 ref_img.SetSpacing((float(ref_spacing[1]), float(ref_spacing[0]), float(ref_thick)))
                 ref_img.SetOrigin((float(ref_origin[0]), float(ref_origin[1]), float(ref_origin[2])))
                 
-                mov_img = sitk.GetImageFromArray(np.ascontiguousarray(mov_matrix.astype(np.float32)))
+                mov_img = sitk.GetImageFromArray(np.ascontiguousarray(mov_matrix_unflipped.astype(np.float32)))
                 mov_img.SetSpacing((float(mov_spacing[1]), float(mov_spacing[0]), float(mov_thick)))
                 mov_img.SetOrigin((float(mov_origin[0]), float(mov_origin[1]), float(mov_origin[2])))
                 
@@ -434,7 +442,10 @@ class OperationsDialog(QDialog):
                 resampler.SetDefaultPixelValue(0.0)
                 
                 resampled_img = resampler.Execute(mov_img)
-                mov_resampled = sitk.GetArrayFromImage(resampled_img)
+                mov_resampled_unflipped = sitk.GetArrayFromImage(resampled_img)
+                
+                # Flip the resampled moving matrix back in Y (axis 1) to match the display orientation
+                mov_resampled = np.flip(mov_resampled_unflipped, axis=1)
 
                 # Define aligned operands
                 operand_a = ref_matrix if use_a_ref else mov_resampled
