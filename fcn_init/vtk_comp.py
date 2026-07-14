@@ -211,6 +211,34 @@ def init_text_actor_axial(self):
     self.renAxial.AddActor(self.textActorAxialMetaTime)
     self.renAxial.AddActor(self.textActorAxialInfo)
 
+    # Initialize the color intensity scale (colorbar) actor
+    self.scalarBarActorAxial = vtk.vtkScalarBarActor()
+    self.scalarBarActorAxial.SetNumberOfLabels(5)
+    self.scalarBarActorAxial.SetUnconstrainedFontSize(True)
+    
+    # Matching cyan colors (0.2549, 0.7765, 0.9490)
+    self.scalarBarActorAxial.GetLabelTextProperty().SetColor(0.2549, 0.7765, 0.9490)
+    self.scalarBarActorAxial.GetLabelTextProperty().SetFontFamilyToArial()
+    self.scalarBarActorAxial.GetLabelTextProperty().BoldOff()
+    self.scalarBarActorAxial.GetLabelTextProperty().ItalicOff()
+    self.scalarBarActorAxial.GetLabelTextProperty().ShadowOff()
+    
+    self.scalarBarActorAxial.GetTitleTextProperty().SetColor(0.2549, 0.7765, 0.9490)
+    self.scalarBarActorAxial.GetTitleTextProperty().SetFontFamilyToArial()
+    self.scalarBarActorAxial.GetTitleTextProperty().BoldOn()
+    self.scalarBarActorAxial.GetTitleTextProperty().ItalicOff()
+    self.scalarBarActorAxial.GetTitleTextProperty().ShadowOff()
+    
+    # Position on right side of viewport (using normalized viewport coordinates)
+    self.scalarBarActorAxial.SetWidth(0.06)
+    self.scalarBarActorAxial.SetHeight(0.7)
+    self.scalarBarActorAxial.GetPositionCoordinate().SetCoordinateSystemToNormalizedViewport()
+    self.scalarBarActorAxial.GetPositionCoordinate().SetValue(0.91, 0.15)
+    
+    # Add to renderer (hidden initially until image is loaded)
+    self.scalarBarActorAxial.SetVisibility(False)
+    self.renAxial.AddActor(self.scalarBarActorAxial)
+
 def init_text_actor_sagittal(self):
     # Initialize the text actor and set its properties - Sagittal
     self.textActorSagittal = vtk.vtkTextActor()
@@ -249,6 +277,31 @@ def init_text_actor_sagittal(self):
     self.renSagittal.AddActor(self.textActorSagittalMetaTime)
     self.renSagittal.AddActor(self.textActorSagittalInfo)
 
+    # Initialize Sagittal color intensity scale
+    self.scalarBarActorSagittal = vtk.vtkScalarBarActor()
+    self.scalarBarActorSagittal.SetNumberOfLabels(5)
+    self.scalarBarActorSagittal.SetUnconstrainedFontSize(True)
+    
+    self.scalarBarActorSagittal.GetLabelTextProperty().SetColor(0.2549, 0.7765, 0.9490)
+    self.scalarBarActorSagittal.GetLabelTextProperty().SetFontFamilyToArial()
+    self.scalarBarActorSagittal.GetLabelTextProperty().BoldOff()
+    self.scalarBarActorSagittal.GetLabelTextProperty().ItalicOff()
+    self.scalarBarActorSagittal.GetLabelTextProperty().ShadowOff()
+    
+    self.scalarBarActorSagittal.GetTitleTextProperty().SetColor(0.2549, 0.7765, 0.9490)
+    self.scalarBarActorSagittal.GetTitleTextProperty().SetFontFamilyToArial()
+    self.scalarBarActorSagittal.GetTitleTextProperty().BoldOn()
+    self.scalarBarActorSagittal.GetTitleTextProperty().ItalicOff()
+    self.scalarBarActorSagittal.GetTitleTextProperty().ShadowOff()
+    
+    self.scalarBarActorSagittal.SetWidth(0.06)
+    self.scalarBarActorSagittal.SetHeight(0.7)
+    self.scalarBarActorSagittal.GetPositionCoordinate().SetCoordinateSystemToNormalizedViewport()
+    self.scalarBarActorSagittal.GetPositionCoordinate().SetValue(0.91, 0.15)
+    
+    self.scalarBarActorSagittal.SetVisibility(False)
+    self.renSagittal.AddActor(self.scalarBarActorSagittal)
+
 
 def init_text_actor_coronal(self):
     # Initialize the text actor and set its properties - Coronal
@@ -283,6 +336,31 @@ def init_text_actor_coronal(self):
     self.renCoronal.AddActor(self.textActorCoronalWL)
     self.renCoronal.AddActor(self.textActorCoronalMetaTime)
     self.renCoronal.AddActor(self.textActorCoronalInfo)
+
+    # Initialize Coronal color intensity scale
+    self.scalarBarActorCoronal = vtk.vtkScalarBarActor()
+    self.scalarBarActorCoronal.SetNumberOfLabels(5)
+    self.scalarBarActorCoronal.SetUnconstrainedFontSize(True)
+    
+    self.scalarBarActorCoronal.GetLabelTextProperty().SetColor(0.2549, 0.7765, 0.9490)
+    self.scalarBarActorCoronal.GetLabelTextProperty().SetFontFamilyToArial()
+    self.scalarBarActorCoronal.GetLabelTextProperty().BoldOff()
+    self.scalarBarActorCoronal.GetLabelTextProperty().ItalicOff()
+    self.scalarBarActorCoronal.GetLabelTextProperty().ShadowOff()
+    
+    self.scalarBarActorCoronal.GetTitleTextProperty().SetColor(0.2549, 0.7765, 0.9490)
+    self.scalarBarActorCoronal.GetTitleTextProperty().SetFontFamilyToArial()
+    self.scalarBarActorCoronal.GetTitleTextProperty().BoldOn()
+    self.scalarBarActorCoronal.GetTitleTextProperty().ItalicOff()
+    self.scalarBarActorCoronal.GetTitleTextProperty().ShadowOff()
+    
+    self.scalarBarActorCoronal.SetWidth(0.06)
+    self.scalarBarActorCoronal.SetHeight(0.7)
+    self.scalarBarActorCoronal.GetPositionCoordinate().SetCoordinateSystemToNormalizedViewport()
+    self.scalarBarActorCoronal.GetPositionCoordinate().SetValue(0.91, 0.15)
+    
+    self.scalarBarActorCoronal.SetVisibility(False)
+    self.renCoronal.AddActor(self.scalarBarActorCoronal)
 
 def init_coord_ref_ax(self):
     # For Axial view

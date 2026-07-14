@@ -224,6 +224,12 @@ def initializeMenuBar(self):
     self.selected_point_size = 8
     self.selected_point_color = "Blue"
 
+    # Colorbar scale layout state
+    self.scale_pos_x = 0.91
+    self.scale_pos_y = 0.15
+    self.scale_width = 0.06
+    self.scale_height = 0.7
+
     styleMenu = self.menuBar().addMenu("Figures")
 
     # Font Size submenu
@@ -324,6 +330,60 @@ def initializeMenuBar(self):
         lg_pColorMenu.addAction(action)
         lg_pColor.addAction(action)
 
+    # Scale Settings submenu
+    scaleSettingsMenu = styleMenu.addMenu("Scale Settings")
+    
+    # Toggle to enable/disable scale
+    scale_action = QAction("Show Intensity Scale", self, checkable=True)
+    scale_action.setChecked(False)
+    self.show_intensity_scale = False
+
+    def toggle_scale(checked):
+        self.show_intensity_scale = checked
+        idx = self.layer_selected.currentIndex() if hasattr(self, 'layer_selected') else 0
+        has_data = hasattr(self, 'display_data') and self.display_data.get(idx) is not None
+        
+        if has_data:
+            from fcn_display.colormap_set import set_color_map
+            set_color_map(self)
+        else:
+            actors = ['scalarBarActorAxial', 'scalarBarActorSagittal', 'scalarBarActorCoronal']
+            widgets = ['vtkWidgetAxial', 'vtkWidgetSagittal', 'vtkWidgetCoronal']
+            for act_name, widget_name in zip(actors, widgets):
+                if hasattr(self, act_name):
+                    actor = getattr(self, act_name)
+                    actor.SetVisibility(checked)
+                if hasattr(self, widget_name):
+                    widget = getattr(self, widget_name)
+                    widget.GetRenderWindow().Render()
+
+    scale_action.triggered.connect(toggle_scale)
+    scaleSettingsMenu.addAction(scale_action)
+    scaleSettingsMenu.addSeparator()
+        
+    # Scale Position Presets
+    scalePosMenu = scaleSettingsMenu.addMenu("Position Preset")
+    scalePosGroup = QActionGroup(self)
+    
+    presets = [
+        ("Right (Vertical)", 0.91, 0.15, 0.06, 0.7),
+        ("Left (Vertical)", 0.02, 0.15, 0.06, 0.7),
+        ("Top (Horizontal)", 0.15, 0.90, 0.7, 0.06),
+        ("Bottom (Horizontal)", 0.15, 0.05, 0.7, 0.06),
+    ]
+    for label, x, y, w, h in presets:
+        action = QAction(label, self, checkable=True)
+        if label.startswith("Right"):
+            action.setChecked(True)
+        action.triggered.connect(lambda checked, px=x, py=y, pw=w, ph=h: apply_scale_preset(self, px, py, pw, ph))
+        scalePosMenu.addAction(action)
+        scalePosGroup.addAction(action)
+        
+    # Custom Adjust Position dialog trigger
+    adjustPosAction = QAction("Adjust Position...", self)
+    adjustPosAction.triggered.connect(lambda: open_scale_position_dialog(self))
+    scaleSettingsMenu.addAction(adjustPosAction)
+
     # Layout menu
     # intended to adjust the view
     #
@@ -346,6 +406,8 @@ def initializeMenuBar(self):
             action.triggered.connect(lambda: self.set_view_mode("coronal"))
 
         ViewMenu.addAction(action)
+
+
     
     # adjust font size:
     apply_font_recursively(menu_bar, f)
@@ -357,6 +419,9 @@ def set_font_size(self, size):
 
 def set_legend_font_size(self, size):
     self.selected_legend_font_size = int(size)
+    if hasattr(self, 'scalarBarActorAxial') or hasattr(self, 'scalarBarActorSagittal') or hasattr(self, 'scalarBarActorCoronal'):
+        from fcn_display.colormap_set import set_color_map
+        set_color_map(self)
 
 def set_background(self, background):
     self.selected_background    = background
@@ -386,3 +451,74 @@ def apply_font_recursively(menu: QMenuBar, font: QFont):
         sub = act.menu()
         if sub is not None:
             apply_font_recursively(sub, font)
+
+
+def apply_scale_preset(self, x, y, w, h):
+    self.scale_pos_x = x
+    self.scale_pos_y = y
+    self.scale_width = w
+    self.scale_height = h
+    from fcn_display.colormap_set import set_color_map
+    set_color_map(self)
+
+
+def open_scale_position_dialog(self):
+    from PySide6.QtWidgets import QDialog, QFormLayout, QDoubleSpinBox, QDialogButtonBox
+    
+    dialog = QDialog(self)
+    dialog.setWindowTitle("Adjust Scale Position")
+    layout = QFormLayout(dialog)
+    
+    x_spin = QDoubleSpinBox()
+    x_spin.setRange(0.0, 1.0)
+    x_spin.setSingleStep(0.01)
+    x_spin.setValue(getattr(self, 'scale_pos_x', 0.91))
+    
+    y_spin = QDoubleSpinBox()
+    y_spin.setRange(0.0, 1.0)
+    y_spin.setSingleStep(0.01)
+    y_spin.setValue(getattr(self, 'scale_pos_y', 0.15))
+    
+    w_spin = QDoubleSpinBox()
+    w_spin.setRange(0.01, 1.0)
+    w_spin.setSingleStep(0.01)
+    w_spin.setValue(getattr(self, 'scale_width', 0.06))
+    
+    h_spin = QDoubleSpinBox()
+    h_spin.setRange(0.01, 1.0)
+    h_spin.setSingleStep(0.01)
+    h_spin.setValue(getattr(self, 'scale_height', 0.7))
+    
+    layout.addRow("Position X:", x_spin)
+    layout.addRow("Position Y:", y_spin)
+    layout.addRow("Width:", w_spin)
+    layout.addRow("Height:", h_spin)
+    
+    def update_positions():
+        self.scale_pos_x = x_spin.value()
+        self.scale_pos_y = y_spin.value()
+        self.scale_width = w_spin.value()
+        self.scale_height = h_spin.value()
+        
+        actors = ['scalarBarActorAxial', 'scalarBarActorSagittal', 'scalarBarActorCoronal']
+        widgets = ['vtkWidgetAxial', 'vtkWidgetSagittal', 'vtkWidgetCoronal']
+        for act_name, widget_name in zip(actors, widgets):
+            if hasattr(self, act_name):
+                actor = getattr(self, act_name)
+                actor.GetPositionCoordinate().SetValue(self.scale_pos_x, self.scale_pos_y)
+                actor.SetWidth(self.scale_width)
+                actor.SetHeight(self.scale_height)
+            if hasattr(self, widget_name):
+                widget = getattr(self, widget_name)
+                widget.GetRenderWindow().Render()
+                
+    x_spin.valueChanged.connect(update_positions)
+    y_spin.valueChanged.connect(update_positions)
+    w_spin.valueChanged.connect(update_positions)
+    h_spin.valueChanged.connect(update_positions)
+    
+    buttons = QDialogButtonBox(QDialogButtonBox.Ok, dialog)
+    buttons.accepted.connect(dialog.accept)
+    layout.addWidget(buttons)
+    
+    dialog.exec()

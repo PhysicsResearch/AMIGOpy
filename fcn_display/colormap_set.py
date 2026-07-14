@@ -138,6 +138,44 @@ def set_color_map(self):
     # For other indices, create and apply a custom LUT
     lut = create_lookup_table_with_transparency(self, windowLevel, windowWidth, self.CmapIDX)
     apply_custom_colormap(self,lut)
+
+    # Update color intensity scale (colorbar) actors across all views
+    actors = ['scalarBarActorAxial', 'scalarBarActorSagittal', 'scalarBarActorCoronal']
+    show_scale = getattr(self, 'show_intensity_scale', False)
+    has_data = hasattr(self, 'display_data') and self.display_data.get(idx) is not None
+    
+    for act_name in actors:
+        if hasattr(self, act_name):
+            actor = getattr(self, act_name)
+            if show_scale and has_data:
+                actor.SetLookupTable(lut)
+                
+                # Apply custom legend font size from figures menu settings
+                f_size = getattr(self, 'selected_legend_font_size', 14)
+                actor.GetLabelTextProperty().SetFontSize(f_size)
+                actor.GetTitleTextProperty().SetFontSize(f_size + 2)
+                
+                # Apply custom position and dimensions
+                px = getattr(self, 'scale_pos_x', 0.91)
+                py = getattr(self, 'scale_pos_y', 0.15)
+                pw = getattr(self, 'scale_width', 0.06)
+                ph = getattr(self, 'scale_height', 0.7)
+                actor.GetPositionCoordinate().SetValue(px, py)
+                actor.SetWidth(pw)
+                actor.SetHeight(ph)
+                
+                # Apply orientation automatically based on width vs height aspect ratio
+                if pw > ph:
+                    actor.SetOrientationToHorizontal()
+                else:
+                    actor.SetOrientationToVertical()
+                
+                # Set title to empty string to prevent numbers/layer text labels on top of the scale
+                actor.SetTitle("")
+                
+                actor.SetVisibility(True)
+            else:
+                actor.SetVisibility(False)
     
     # Update Compare colormap dictionary based on linkage checkbox
     currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
