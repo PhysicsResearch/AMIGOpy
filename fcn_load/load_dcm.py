@@ -103,7 +103,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         # Useful extras
                         'size': None,
                         'Nifiti_info': None,         # original NIfTI fields
-                        'OriginalFilePath': None,    # for traceability - used with Nifti 
+                        'OriginalFilePath': file_path,    # for traceability - used with Nifti 
                     },
                     'images': {},
                     'ImagePositionPatients': [],
@@ -141,7 +141,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         # Useful extras
                         'size': None,
                         'Nifiti_info': None,         # original NIfTI fields
-                        'OriginalFilePath': None,    # for traceability - used with Nifti 
+                        'OriginalFilePath': file_path,    # for traceability - used with Nifti 
                     },
                     'images': {},
                     'ImagePositionPatients': [],
@@ -175,7 +175,8 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         'CatOnc': getattr(dicom_file, 'get', lambda *args: [])(Tag(0x300f, 0x1000), []),
                         'DoseReferenceSequence': getattr(dicom_file, "DoseReferenceSequence", "N/A"),
                         'TreatmentProtocols': getattr(dicom_file, "TreatmentProtocols", "N/A"),
-                        'DCM_Info': dicom_file
+                        'DCM_Info': dicom_file,
+                        'OriginalFilePath': file_path,
                     },
                     'images': {},
                     'ImagePositionPatients': [],
@@ -195,7 +196,8 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         'ROIContourSequence': getattr(dicom_file,"ROIContourSequence",''),
                         'RTROIObservationsSequence': getattr(dicom_file,"RTROIObservationsSequence",''),
                         'StructureSetROISequence': getattr(dicom_file,"StructureSetROISequence",''),
-                        'DCM_Info': dicom_file
+                        'DCM_Info': dicom_file,
+                        'OriginalFilePath': file_path,
                     },
                     'images': {},
                     'ImagePositionPatients': [],
@@ -232,137 +234,192 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
     rtstruct_files    = []
     #
     
+    warnings_list = []
+
     for patient_id, studies in structured_data.items():
         for study_id, modalities in studies.items():
-            for modality, series_list in modalities.items():
+            for modality in list(modalities.keys()):
+                series_list = modalities[modality]
+                valid_series = []
                 for index, series_data in enumerate(series_list):
-                    if modality == 'CT':
-                        sorted_comments = sorted(series_data['SliceImageComments'].items(), key=lambda x: x[0])
-                        # Extract only the values from the sorted list of tuples
-                        series_data['SliceImageComments'] = [comment for _, comment in sorted_comments]
-                        sorted_image_data = sorted(series_data['images'].items(), key=lambda x: x[0])
-                        series_data['3DMatrix'] = np.stack([item[1]['ImageData'] for item in sorted_image_data], axis=0)
-                        series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
-                        #
-                        # --- Normalize Feet-First to Head-First by rotating 180° around patient Z (in-plane) ---
-                        pos = str(series_data['metadata'].get('PatientPosition', '')).upper()
-                        # Handle Feet-First positions (FFS, FFP, FFDR, FFDL, etc.)
-                        if pos.startswith('FF'):
-                            # Rotate each axial slice 180°: flip rows (axis=1) and columns (axis=2)
-                            if '3DMatrix' in series_data and series_data['3DMatrix'] is not None:
-                                series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
-                                series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=2)
-                                series_data['metadata']['AMIGO_PatientPositionNormalized'] = True
-                        else:
-                            series_data['metadata']['AMIGO_PatientPositionNormalized'] = False
-                        #
-                            # Third letter 'P' (prone) -> rotate 180° about patient X (L-R)
-                        if len(pos) >= 3 and pos[2] == 'P':
+                    try:
+                        if modality == 'CT':
+                            sorted_comments = sorted(series_data['SliceImageComments'].items(), key=lambda x: x[0])
+                            # Extract only the values from the sorted list of tuples
+                            series_data['SliceImageComments'] = [comment for _, comment in sorted_comments]
+                            sorted_image_data = sorted(series_data['images'].items(), key=lambda x: x[0])
+                            series_data['3DMatrix'] = np.stack([item[1]['ImageData'] for item in sorted_image_data], axis=0)
                             series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
-                            series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=2)
-                            normalized = True
-                        #
-                        if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] >0):
-                            series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
-                            series_data['metadata']['ImagePositionPatient']  =sorted_image_data[-1][1]['ImagePositionPatient']
-                        else:
-                            series_data['metadata']['ImagePositionPatient']=sorted_image_data[0][1]['ImagePositionPatient']
-                        series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
-                        #
-                    elif modality == 'RTIMAGE':
-                        sorted_comments = sorted(series_data['SliceImageComments'].items(), key=lambda x: x[0])
-                        # Extract only the values from the sorted list of tuples
-                        series_data['SliceImageComments'] = [comment for _, comment in sorted_comments]
-                        sorted_image_data = sorted(series_data['images'].items(), key=lambda x: x[0])
-                        series_data['3DMatrix'] = np.stack([item[1]['ImageData'] for item in sorted_image_data], axis=0)
-                        series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
-                        #
-                        series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
-                    elif modality == 'MR':
-                        sorted_comments = sorted(series_data['SliceImageComments'].items(), key=lambda x: x[0])
-                        # Extract only the values from the sorted list of tuples
-                        series_data['SliceImageComments'] = [comment for _, comment in sorted_comments]
-                        sorted_image_data = sorted(series_data['images'].items(), key=lambda x: x[0])
-                        series_data['3DMatrix'] = np.stack([item[1]['ImageData'] for item in sorted_image_data], axis=0)
-                        series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
-                        if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] >0):
-                            series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
-                            series_data['metadata']['ImagePositionPatient']  =sorted_image_data[-1][1]['ImagePositionPatient']
-                        else:
-                            series_data['metadata']['ImagePositionPatient']=sorted_image_data[0][1]['ImagePositionPatient']
-                        series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
-                        #
-                    elif modality == 'RTDOSE':
-                        # series_data['3DMatrix'] was already populated directly in the first loop
-                        series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
-                        
-                        # Check if Z-axis needs to be flipped based on GridFrameOffsetVector
-                        dicom_file_ref = series_data['metadata']['DCM_Info']
-                        vect = getattr(dicom_file_ref, "GridFrameOffsetVector", None)
-                        if vect is not None and len(vect) >= 2:
-                            if vect[1] - vect[0] < 0:
+                            #
+                            # --- Normalize Feet-First to Head-First by rotating 180° around patient Z (in-plane) ---
+                            pos = str(series_data['metadata'].get('PatientPosition', '')).upper()
+                            # Handle Feet-First positions (FFS, FFP, FFDR, FFDL, etc.)
+                            if pos.startswith('FF'):
+                                # Rotate each axial slice 180°: flip rows (axis=1) and columns (axis=2)
+                                if '3DMatrix' in series_data and series_data['3DMatrix'] is not None:
+                                    series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
+                                    series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=2)
+                                    series_data['metadata']['AMIGO_PatientPositionNormalized'] = True
+                            else:
+                                series_data['metadata']['AMIGO_PatientPositionNormalized'] = False
+                            #
+                            # Third letter 'P' (prone) -> rotate 180° about patient X (L-R)
+                            if len(pos) >= 3 and pos[2] == 'P':
+                                series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
+                                series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=2)
+                                normalized = True
+                            #
+                            if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] >0):
                                 series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
-                                orig = list(series_data['metadata']['ImagePositionPatient'])
-                                orig[2] = float(dicom_file_ref.ImagePositionPatient[2] + vect[-1])
-                                series_data['metadata']['ImagePositionPatient'] = orig
-                                series_data['metadata']['SliceThickness'] = float(abs(vect[1] - vect[0]))
-                                
-                        series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
-                        series_data['3DMatrix'] = series_data['3DMatrix']*series_data['metadata']['DoseGridScaling']
-                        active_dose = series_data['3DMatrix'][series_data['3DMatrix'] > 0.0]
-                        if active_dose.size > 0:
-                            mean_active = float(np.mean(active_dose))
-                            series_data['metadata']['WindowWidth'] = mean_active * 2.0
-                            series_data['metadata']['WindowCenter']= mean_active
-                        else:
-                            ref_value = np.max(series_data['3DMatrix'])
-                            series_data['metadata']['WindowWidth'] = ref_value if ref_value > 0 else 10.0
-                            series_data['metadata']['WindowCenter']= ref_value * 0.5 if ref_value > 0 else 5.0
-                    #
-                    elif modality == 'RTPLAN':
-                        # Store patient_id, study_id, modality, and other relevant data
-                        rtplan_info = {
-                            'patient_id': patient_id,
-                            'study_id': study_id,
-                            'modality': modality,
-                            'series_index': index,
-                            'PlanLabel': series_data['metadata']['RTPlanLabel']
-                        }
-                        rtplan_files.append(rtplan_info)
-                    elif modality == 'RTSTRUCT':
-                        # Store patient_id, study_id, modality, and other relevant data
-                        rtstruct_info = {
-                            'patient_id': patient_id,
-                            'study_id': study_id,
-                            'modality': modality,
-                            'series_index': index,
-                            'SOPInstanceUID':series_data['metadata']['SOPInstanceUID']
-                        }
-                        rtstruct_files.append(rtstruct_info)
+                                series_data['metadata']['ImagePositionPatient']  =sorted_image_data[-1][1]['ImagePositionPatient']
+                            else:
+                                series_data['metadata']['ImagePositionPatient']=sorted_image_data[0][1]['ImagePositionPatient']
+                            series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
+                            #
+                        elif modality == 'RTIMAGE':
+                            sorted_comments = sorted(series_data['SliceImageComments'].items(), key=lambda x: x[0])
+                            # Extract only the values from the sorted list of tuples
+                            series_data['SliceImageComments'] = [comment for _, comment in sorted_comments]
+                            sorted_image_data = sorted(series_data['images'].items(), key=lambda x: x[0])
+                            series_data['3DMatrix'] = np.stack([item[1]['ImageData'] for item in sorted_image_data], axis=0)
+                            series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
+                            #
+                            series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
+                        elif modality == 'MR':
+                            sorted_comments = sorted(series_data['SliceImageComments'].items(), key=lambda x: x[0])
+                            # Extract only the values from the sorted list of tuples
+                            series_data['SliceImageComments'] = [comment for _, comment in sorted_comments]
+                            sorted_image_data = sorted(series_data['images'].items(), key=lambda x: x[0])
+                            series_data['3DMatrix'] = np.stack([item[1]['ImageData'] for item in sorted_image_data], axis=0)
+                            series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
+                            if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] >0):
+                                series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
+                                series_data['metadata']['ImagePositionPatient']  =sorted_image_data[-1][1]['ImagePositionPatient']
+                            else:
+                                series_data['metadata']['ImagePositionPatient']=sorted_image_data[0][1]['ImagePositionPatient']
+                            series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
+                            #
+                        elif modality == 'RTDOSE':
+                            # series_data['3DMatrix'] was already populated directly in the first loop
+                            series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
+                            
+                            # Check if Z-axis needs to be flipped based on GridFrameOffsetVector
+                            dicom_file_ref = series_data['metadata']['DCM_Info']
+                            vect = getattr(dicom_file_ref, "GridFrameOffsetVector", None)
+                            if vect is not None and len(vect) >= 2:
+                                if vect[1] - vect[0] < 0:
+                                    series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
+                                    orig = list(series_data['metadata']['ImagePositionPatient'])
+                                    orig[2] = float(dicom_file_ref.ImagePositionPatient[2] + vect[-1])
+                                    series_data['metadata']['ImagePositionPatient'] = orig
+                                    series_data['metadata']['SliceThickness'] = float(abs(vect[1] - vect[0]))
+                                    
+                            series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
+                            series_data['3DMatrix'] = series_data['3DMatrix']*series_data['metadata']['DoseGridScaling']
+                            active_dose = series_data['3DMatrix'][series_data['3DMatrix'] > 0.0]
+                            if active_dose.size > 0:
+                                mean_active = float(np.mean(active_dose))
+                                series_data['metadata']['WindowWidth'] = mean_active * 2.0
+                                series_data['metadata']['WindowCenter']= mean_active
+                            else:
+                                ref_value = np.max(series_data['3DMatrix'])
+                                series_data['metadata']['WindowWidth'] = ref_value if ref_value > 0 else 10.0
+                                series_data['metadata']['WindowCenter']= ref_value * 0.5 if ref_value > 0 else 5.0
                         #
-                    # Rescale slope + Rescale interpect HU
-                    if '3DMatrix' in series_data and series_data['3DMatrix'] is not None:
-                        if modality != 'RTDOSE' and series_data['metadata']['RescaleSlope'] != 'N/A' and series_data['metadata']['RescaleIntercept'] != 'N/A':
-                            series_data['3DMatrix'] = (series_data['3DMatrix'] * series_data['metadata']['RescaleSlope']) + series_data['metadata']['RescaleIntercept'] 
-                    #
-                    if 'images' in series_data:
-                        del series_data['images']
-                    #
-                    if series_data['metadata']['LUTLabel']== "SPR":
-                         series_data['3DMatrix'] = (series_data['3DMatrix']/1000)+1
-                         series_data['metadata']['WindowWidth'] = 0.5
-                         series_data['metadata']['WindowCenter']= 1.0
-                    elif series_data['metadata']['LUTLabel']== "EFF_ATOMIC_NUM":
-                             # series_data['3DMatrix'] = (series_data['3DMatrix']/10)
-                         series_data['metadata']['WindowWidth'] = 4
-                         series_data['metadata']['WindowCenter']= 8 
-                    elif series_data['metadata']['LUTLabel']== "ELECTRON_DENSITY":
-                         series_data['3DMatrix'] = (series_data['3DMatrix']/1000)+1
-                         series_data['metadata']['WindowWidth'] = 0.5
-                         series_data['metadata']['WindowCenter']= 1.0  
-                    elif (modality != 'RTDOSE' and modality != 'RTIMAGE' and '3DMatrix' in series_data and series_data['3DMatrix'] is not None) :
-                         series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.int16)
-    #
+                        elif modality == 'RTPLAN':
+                            # Store patient_id, study_id, modality, and other relevant data
+                            rtplan_info = {
+                                'patient_id': patient_id,
+                                'study_id': study_id,
+                                'modality': modality,
+                                'series_data_ref': series_data,
+                                'PlanLabel': series_data['metadata']['RTPlanLabel']
+                            }
+                            rtplan_files.append(rtplan_info)
+                        elif modality == 'RTSTRUCT':
+                            # Store patient_id, study_id, modality, and other relevant data
+                            rtstruct_info = {
+                                'patient_id': patient_id,
+                                'study_id': study_id,
+                                'modality': modality,
+                                'series_data_ref': series_data,
+                                'SOPInstanceUID':series_data['metadata']['SOPInstanceUID']
+                            }
+                            rtstruct_files.append(rtstruct_info)
+                            #
+                        # Rescale slope + Rescale interpect HU
+                        if '3DMatrix' in series_data and series_data['3DMatrix'] is not None:
+                            if modality != 'RTDOSE' and series_data['metadata']['RescaleSlope'] != 'N/A' and series_data['metadata']['RescaleIntercept'] != 'N/A':
+                                series_data['3DMatrix'] = (series_data['3DMatrix'] * series_data['metadata']['RescaleSlope']) + series_data['metadata']['RescaleIntercept'] 
+                        #
+                        if 'images' in series_data:
+                            del series_data['images']
+                        #
+                        if series_data['metadata']['LUTLabel']== "SPR":
+                             series_data['3DMatrix'] = (series_data['3DMatrix']/1000)+1
+                             series_data['metadata']['WindowWidth'] = 0.5
+                             series_data['metadata']['WindowCenter']= 1.0
+                        elif series_data['metadata']['LUTLabel']== "EFF_ATOMIC_NUM":
+                                 # series_data['3DMatrix'] = (series_data['3DMatrix']/10)
+                             series_data['metadata']['WindowWidth'] = 4
+                             series_data['metadata']['WindowCenter']= 8 
+                        elif series_data['metadata']['LUTLabel']== "ELECTRON_DENSITY":
+                             series_data['3DMatrix'] = (series_data['3DMatrix']/1000)+1
+                             series_data['metadata']['WindowWidth'] = 0.5
+                             series_data['metadata']['WindowCenter']= 1.0  
+                        elif (modality != 'RTDOSE' and modality != 'RTIMAGE' and '3DMatrix' in series_data and series_data['3DMatrix'] is not None) :
+                             series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.int16)
+                        
+                        valid_series.append(series_data)
+                    except Exception as e:
+                        import os
+                        import traceback
+                        tb = traceback.format_exc()
+                        fpath = series_data.get('metadata', {}).get('OriginalFilePath')
+                        fdir = os.path.dirname(fpath) if fpath else "Unknown Folder"
+                        warnings_list.append((series_data.get('SeriesNumber', 'Unknown'), modality, fdir, str(e)))
+                        print(f"[WARN] Skipped series {series_data.get('SeriesNumber')} ({modality}) due to error: {e}\n{tb}")
+
+                modalities[modality] = valid_series
+
+    # Re-calculate correct series_index after filtering out any bad series
+    for plan in rtplan_files:
+        try:
+            lst = structured_data[plan['patient_id']][plan['study_id']][plan['modality']]
+            plan['series_index'] = lst.index(plan['series_data_ref'])
+        except (ValueError, KeyError):
+            plan['series_index'] = -1
+
+    for rtstruct in rtstruct_files:
+        try:
+            lst = structured_data[rtstruct['patient_id']][rtstruct['study_id']][rtstruct['modality']]
+            rtstruct['series_index'] = lst.index(rtstruct['series_data_ref'])
+        except (ValueError, KeyError):
+            rtstruct['series_index'] = -1
+
+    # Filter out any plans/structs whose referenced series was removed/skipped
+    rtplan_files = [p for p in rtplan_files if p['series_index'] != -1]
+    rtstruct_files = [r for r in rtstruct_files if r['series_index'] != -1]
+
+    # Show warning QMessageBox on GUI thread if there were load errors
+    if warnings_list:
+        try:
+            from PySide6.QtWidgets import QMessageBox
+            from PySide6.QtCore import QCoreApplication
+            
+            msg = "Some DICOM series failed to load (e.g. inconsistent image slice sizes). The affected series have been skipped:\n\n"
+            for s_num, mod, fdir, err in warnings_list:
+                msg += f"• Series {s_num} ({mod}) in folder:\n  {fdir}\n  Error: {err}\n\n"
+            
+            # Show QMessageBox only if 'self' is a QWidget
+            from PySide6.QtWidgets import QWidget
+            if isinstance(self, QWidget):
+                QMessageBox.warning(self, "DICOM Load Warning", msg)
+            else:
+                print(f"[DICOM Load Warning]\n{msg}")
+        except Exception as q_err:
+            print(f"Failed to display QMessageBox warning: {q_err}")
+
     # 
     for plan in rtplan_files:
         # Access the ReferencedStructureSetSequence from metadata

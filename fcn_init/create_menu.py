@@ -171,20 +171,21 @@ def initializeMenuBar(self):
     split_series_action.triggered.connect(lambda: shift_and_split_3D_matrix(self))
     ToolsMenu.addAction(split_series_action)
     
-    vmi_action = QAction("Split Series", self)
+    vmi_action = QAction("Calculate VMI", self)
     vmi_action.triggered.connect(lambda: calculate_VMI(self))
     ToolsMenu.addAction(vmi_action)
         
-    # Add items 
-    #  Single action directly under Tools, below Series
-    total_seg_action = QAction("TotalSegmentator", self)
-    total_seg_action.triggered.connect(partial(open_segmentator_tab, self))
-    ToolsMenu.addAction(total_seg_action)
-
     # Add operations dialog entry
     operations_action = QAction("Operations…", self)
     operations_action.triggered.connect(lambda: open_operations_dialog(self))
     ToolsMenu.addAction(operations_action)
+
+    # ── Auto-Contouring menu ──
+    AutoContMenu = self.menuBar().addMenu("Auto-Contouring")
+
+    total_seg_action = QAction("TotalSegmentator…", self)
+    total_seg_action.triggered.connect(partial(open_segmentator_tab, self))
+    AutoContMenu.addAction(total_seg_action)
     
     ExportMenu = self.menuBar().addMenu("Export")
     TypeMenu = ExportMenu.addMenu("IrIS")

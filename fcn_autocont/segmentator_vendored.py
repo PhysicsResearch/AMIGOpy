@@ -129,8 +129,6 @@ def _work_paths() -> Dict[str, Path]:
 
     return {"root": root, "tmp": tmp, "models": models, "logs": logs}
 
-import shutil, time
-from pathlib import Path
 
 def _clean_tmp_dir(tmp: Path, keep_recent_minutes: int = 60, keep_last: int = 2) -> None:
     """
@@ -190,6 +188,24 @@ def _targets_from_params(params: Dict[str, Any]) -> List[str]:
 
 def _device_from_params(params: Dict[str, Any]) -> str:
     dev = (params.get("device") or "cpu").strip().lower()
+    gpu_available = False
+    gpu_name = ""
+    try:
+        import torch
+        if torch.cuda.is_available():
+            gpu_available = True
+            gpu_name = torch.cuda.get_device_name(0)
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            gpu_available = True
+            gpu_name = "Apple Silicon MPS"
+    except ImportError:
+        pass
+
+    if gpu_available:
+        print(f"[TS] GPU Detected: {gpu_name or 'yes'}. Requested device: {dev}")
+    else:
+        print(f"[TS] GPU NOT Detected. Defaulting to CPU mode. Requested device: {dev}")
+
     if dev in ("gpu0", "gpu:0"):
         return "gpu:0"
     if dev not in ("cpu", "gpu", "mps") and not dev.startswith("gpu:"):
@@ -288,13 +304,14 @@ def _import_masks_into_series(owner, out_dir: Path,
     files = sorted(p for p in out_dir.rglob("*") if _is_nii_path(p))
 
     # Debug: record what we saw
-    try:
-        (out_dir / "_ts_import_seen.json").write_text(
-            json.dumps({"files": [str(f) for f in files]}, indent=2),
-            encoding="utf-8"
-        )
-    except Exception:
-        pass
+    if os.environ.get("AMIGO_DEBUG"):
+        try:
+            (out_dir / "_ts_import_seen.json").write_text(
+                json.dumps({"files": [str(f) for f in files]}, indent=2),
+                encoding="utf-8"
+            )
+        except Exception:
+            pass
 
     imported = 0
 
@@ -354,10 +371,11 @@ def _import_masks_into_series(owner, out_dir: Path,
         pass
 
     # Debug: write import count
-    try:
-        (out_dir / "_ts_import_result.txt").write_text(f"imported={imported}\n", encoding="utf-8")
-    except Exception:
-        pass
+    if os.environ.get("AMIGO_DEBUG"):
+        try:
+            (out_dir / "_ts_import_result.txt").write_text(f"imported={imported}\n", encoding="utf-8")
+        except Exception:
+            pass
 
     return imported
 

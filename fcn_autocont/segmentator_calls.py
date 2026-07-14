@@ -365,7 +365,7 @@ def open_segmentator_tab(self):
     # Reuse existing window if alive
     if getattr(self, "segwin", None) is not None:
         try:
-            if not shiboken6.isValid(self.segwin) and self.segwin.isVisible():
+            if shiboken6.isValid(self.segwin) and self.segwin.isVisible():
                 self.segwin.raise_()
                 self.segwin.activateWindow()
                 return

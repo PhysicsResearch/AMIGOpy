@@ -254,6 +254,35 @@ class SegmentatorWindow(QWidget):
         opt.addSpacing(20); opt.addWidget(QLabel("Output type:"))
         self.output_type = QComboBox(); self.output_type.addItems(["nifti","dicom"])
         opt.addWidget(self.output_type)
+
+        opt.addSpacing(20); opt.addWidget(QLabel("Device:"))
+        self.device_type = QComboBox(); self.device_type.addItems(["cpu", "gpu"])
+        opt.addWidget(self.device_type)
+
+        # GPU Detection
+        gpu_detected = False
+        gpu_name = ""
+        try:
+            import torch
+            if torch.cuda.is_available():
+                gpu_detected = True
+                gpu_name = torch.cuda.get_device_name(0)
+            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                gpu_detected = True
+                gpu_name = "Apple Silicon MPS"
+        except ImportError:
+            pass
+
+        if gpu_detected:
+            self.lbl_gpu = QLabel(f"🟢 GPU Detected: {gpu_name}")
+            self.lbl_gpu.setStyleSheet("color: green; font-weight: bold;")
+            self.device_type.setCurrentText("gpu")
+        else:
+            self.lbl_gpu = QLabel("🔴 GPU: Not Detected (CPU mode)")
+            self.lbl_gpu.setStyleSheet("color: #D32F2F;")
+            self.device_type.setCurrentText("cpu")
+        opt.addWidget(self.lbl_gpu)
+
         opt.addStretch()
         main.addLayout(opt)
 
@@ -542,6 +571,7 @@ class SegmentatorWindow(QWidget):
         if rs > 0:                           params["resample"] = rs
         if self.chk_no_crop.isChecked():     params["no_crop"] = True
         params["output_type"] = self.output_type.currentText().strip().lower()
+        params["device"] = self.device_type.currentText().strip().lower()
 
         params["subroutines"] = [k for k, cb in self.subr_cb.items() if cb.isChecked()]
 
