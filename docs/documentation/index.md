@@ -4,7 +4,7 @@ Welcome to the AMIGOpy User Guide. This section will walk you through the core w
 
 ---
 
-## 📥 Loading Data
+## Loading Data
 
 AMIGOpy provides several flexible methods to load your medical images, 3D structures, dose distributions, and CAD/3D printing models.
 
@@ -30,37 +30,47 @@ AMIGOpy supports various keyboard shortcuts to open standard formats:
 
 ---
 
-## 🖥️ Navigating the Interface
+## Navigating the Interface
 
 Once your data is loaded, the interface displays the volumetric views and analysis panels:
 
 ![Main Interface](../images/main_interface.png)
-*Figure 2: The AMIGOpy main interface layout.*
+*Figure 2: The AMIGOpy main interface layout, with numbered annotations matching the panels below.*
 
-### 🌳 Data Tree (Left Panel)
-All loaded items are organized in the hierarchical **Data Tree** menu on the left side:
+### 1. Data Tree (Left Panel)
+All loaded items are organized in the hierarchical Data Tree menu on the left side (marked as **1** on the interface diagram):
 * Grouped by format (e.g., `Medical Image` ➔ `DICOM`).
 * Organized by **PatientID**, **StudyID**, **Modality** (e.g., `CT`, `RTDOSE`, `RTSTRUCT`, `RTPLAN`), and **Series**.
 * Under `RTSTRUCT`, you can expand and view individual contoured structures (e.g., `BODY`, `Lung_R`).
 
-### 🎞️ Slice Views (Top Panels)
-The main display features three orthogonal slice rendering viewports (from left to right):
-* **Axial view** (Transverse)
-* **Sagittal view**
-* **Coronal view**
+### 2. Layers & Transparency Panel (Bottom-Left)
+Located directly below the Data Tree (marked as **2** on the interface diagram):
+* Controls active visualization layers (supporting up to 4 concurrent image layers).
+* Individual transparency sliders to blend slices and structures seamlessly.
+
+### 3. Slice Viewports (Top Panels)
+The main display features three orthogonal slice rendering viewports (marked as **3** on the interface diagram):
+* **Axial view** (Transverse) — left pane.
+* **Sagittal view** — middle pane.
+* **Coronal view** — right pane.
 Each view contains position lines indicating cross-sectional alignment and slider controls below the viewports to page through slices.
 
-### 📊 Contrast Histogram (Bottom-Center Panel)
-The histogram panel at the bottom center plots the distribution of Hounsfield Units (HU) or voxel intensities in the loaded scan:
+### 4. Contrast Histogram (Bottom-Center Panel)
+The histogram panel at the bottom center plots the distribution of Hounsfield Units (HU) or voxel intensities in the loaded scan (marked as **4** on the interface diagram):
 * The graph helps visualize the image contrast.
 * The red vertical dotted lines indicate the current window boundaries.
 * You can adjust the **Min WL** and **Max WL** values using the text inputs below the plot to adjust contrast windowing manually.
 
+### 5. Transform & Registration Panel (Bottom-Right)
+Located at the bottom right corner (marked as **5** on the interface diagram):
+* Translation and rotation inputs to manual align scans.
+* **Auto Registration** trigger buttons (for intensity-based mutual alignment of multiple datasets).
+
 ---
 
-## 🖱️ Mouse Controls in Slice Views
+## Mouse Controls in Slice Views
 
 Interact with the viewports using your mouse:
-* 🖱️ **Window & Level**: **Left-click and hold** inside any slice view, then drag the mouse to dynamically adjust the contrast Window (width) and Level (center).
-* 🔍 **Zooming**: **Right-click and hold**, then drag up/down to zoom in or out on the slice.
-* ✋ **Panning (Dragging)**: **Click and hold the mouse wheel (middle click)**, then drag the mouse to pan the image around the viewport.
+* **Window & Level**: Left-click and hold inside any slice view, then drag the mouse to dynamically adjust the contrast Window (width) and Level (center).
+* **Zooming**: Right-click and hold, then drag up/down to zoom in or out on the slice.
+* **Panning (Dragging)**: Click and hold the mouse wheel (middle click), then drag the mouse to pan the image around the viewport.
