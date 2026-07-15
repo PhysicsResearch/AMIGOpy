@@ -597,45 +597,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Loading Data">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#method-1-windows-explorer-integration-recommended" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 1: Windows Explorer Integration (Recommended)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#method-2-drag-and-drop" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 2: Drag and Drop
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#method-3-top-navigation-menu" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 3: Top Navigation Menu
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -646,67 +607,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Navigating the Interface">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-data-tree-left-panel" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Data Tree (Left Panel)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-layers-transparency-panel-bottom-left" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Layers &amp; Transparency Panel (Bottom-Left)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-slice-viewports-top-panels" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Slice Viewports (Top Panels)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-contrast-histogram-bottom-center-panel" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Contrast Histogram (Bottom-Center Panel)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-transform-registration-panel-bottom-right" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Transform &amp; Registration Panel (Bottom-Right)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1187,14 +1087,14 @@
 <hr />
 <h2 id="loading-data">Loading Data<a class="headerlink" href="#loading-data" title="Permanent link">&para;</a></h2>
 <p>AMIGOpy provides several flexible methods to load your medical images, 3D structures, dose distributions, and CAD/3D printing models.</p>
-<h3 id="method-1-windows-explorer-integration-recommended">Method 1: Windows Explorer Integration (Recommended)<a class="headerlink" href="#method-1-windows-explorer-integration-recommended" title="Permanent link">&para;</a></h3>
-<p>You can launch AMIGOpy and load entire datasets directly from Windows Explorer:
+<p><strong>Method 1: Windows Explorer Integration (Recommended)</strong>
+You can launch AMIGOpy and load entire datasets directly from Windows Explorer:
 * <strong>Loading a Folder</strong>: Right-click any folder containing your dataset in Windows Explorer, select <strong>Open with</strong>, and choose <strong>AMIGOpy</strong>. AMIGOpy will launch and automatically scan and load all files recursively inside that folder.
 * <strong>Loading Individual or Grouped Files</strong>: Select a single <code>.dcm</code> (DICOM) file, or select a group of files, right-click, select <strong>Open with</strong>, and choose <strong>AMIGOpy</strong>.</p>
-<h3 id="method-2-drag-and-drop">Method 2: Drag and Drop<a class="headerlink" href="#method-2-drag-and-drop" title="Permanent link">&para;</a></h3>
-<p>With the AMIGOpy interface already open, you can drag and drop folders or individual files directly from Windows Explorer into the <strong>Data Tree</strong> panel on the left side of the window to load them.</p>
-<h3 id="method-3-top-navigation-menu">Method 3: Top Navigation Menu<a class="headerlink" href="#method-3-top-navigation-menu" title="Permanent link">&para;</a></h3>
-<p>You can open files from the top menu by going to <strong>File ➔ Open</strong> and selecting your desired format. </p>
+<p><strong>Method 2: Drag and Drop</strong>
+With the AMIGOpy interface already open, you can drag and drop folders or individual files directly from Windows Explorer into the <strong>Data Tree</strong> panel on the left side of the window to load them.</p>
+<p><strong>Method 3: Top Navigation Menu</strong>
+You can open files from the top menu by going to <strong>File ➔ Open</strong> and selecting your desired format. </p>
 <p>AMIGOpy supports various keyboard shortcuts to open standard formats:
 * <strong>DICOM</strong> (<code>Ctrl + D</code>) — Select a folder, and AMIGOpy will recursively load all DICOM slices, RTDoses, RTStructs, and RTPlans inside.
 * <strong>NIfTI</strong> (<code>Ctrl + N</code>) — Open NIfTI volumetric data (<code>.nii</code>, <code>.nii.gz</code>).
@@ -1207,28 +1107,28 @@
 <p>Once your data is loaded, the interface displays the volumetric views and analysis panels:</p>
 <p><img alt="Main Interface" src="../images/main_interface.png" />
 <em>Figure 2: The AMIGOpy main interface layout, with numbered annotations matching the panels below.</em></p>
-<h3 id="1-data-tree-left-panel">1. Data Tree (Left Panel)<a class="headerlink" href="#1-data-tree-left-panel" title="Permanent link">&para;</a></h3>
-<p>All loaded items are organized in the hierarchical Data Tree menu on the left side (marked as <strong>1</strong> on the interface diagram):
+<p><strong>1. Data Tree (Left Panel)</strong>
+All loaded items are organized in the hierarchical Data Tree menu on the left side (marked as <strong>1</strong> on the interface diagram):
 * Grouped by format (e.g., <code>Medical Image</code> ➔ <code>DICOM</code>).
 * Organized by <strong>PatientID</strong>, <strong>StudyID</strong>, <strong>Modality</strong> (e.g., <code>CT</code>, <code>RTDOSE</code>, <code>RTSTRUCT</code>, <code>RTPLAN</code>), and <strong>Series</strong>.
 * Under <code>RTSTRUCT</code>, you can expand and view individual contoured structures (e.g., <code>BODY</code>, <code>Lung_R</code>).</p>
-<h3 id="2-layers-transparency-panel-bottom-left">2. Layers &amp; Transparency Panel (Bottom-Left)<a class="headerlink" href="#2-layers-transparency-panel-bottom-left" title="Permanent link">&para;</a></h3>
-<p>Located directly below the Data Tree (marked as <strong>2</strong> on the interface diagram):
+<p><strong>2. Layers &amp; Transparency Panel (Bottom-Left)</strong>
+Located directly below the Data Tree (marked as <strong>2</strong> on the interface diagram):
 * Controls active visualization layers (supporting up to 4 concurrent image layers).
 * Individual transparency sliders to blend slices and structures seamlessly.</p>
-<h3 id="3-slice-viewports-top-panels">3. Slice Viewports (Top Panels)<a class="headerlink" href="#3-slice-viewports-top-panels" title="Permanent link">&para;</a></h3>
-<p>The main display features three orthogonal slice rendering viewports (marked as <strong>3</strong> on the interface diagram):
+<p><strong>3. Slice Viewports (Top Panels)</strong>
+The main display features three orthogonal slice rendering viewports (marked as <strong>3</strong> on the interface diagram):
 * <strong>Axial view</strong> (Transverse) — left pane.
 * <strong>Sagittal view</strong> — middle pane.
 * <strong>Coronal view</strong> — right pane.
 Each view contains position lines indicating cross-sectional alignment and slider controls below the viewports to page through slices.</p>
-<h3 id="4-contrast-histogram-bottom-center-panel">4. Contrast Histogram (Bottom-Center Panel)<a class="headerlink" href="#4-contrast-histogram-bottom-center-panel" title="Permanent link">&para;</a></h3>
-<p>The histogram panel at the bottom center plots the distribution of Hounsfield Units (HU) or voxel intensities in the loaded scan (marked as <strong>4</strong> on the interface diagram):
+<p><strong>4. Contrast Histogram (Bottom-Center Panel)</strong>
+The histogram panel at the bottom center plots the distribution of Hounsfield Units (HU) or voxel intensities in the loaded scan (marked as <strong>4</strong> on the interface diagram):
 * The graph helps visualize the image contrast.
 * The red vertical dotted lines indicate the current window boundaries.
 * You can adjust the <strong>Min WL</strong> and <strong>Max WL</strong> values using the text inputs below the plot to adjust contrast windowing manually.</p>
-<h3 id="5-transform-registration-panel-bottom-right">5. Transform &amp; Registration Panel (Bottom-Right)<a class="headerlink" href="#5-transform-registration-panel-bottom-right" title="Permanent link">&para;</a></h3>
-<p>Located at the bottom right corner (marked as <strong>5</strong> on the interface diagram):
+<p><strong>5. Transform &amp; Registration Panel (Bottom-Right)</strong>
+Located at the bottom right corner (marked as <strong>5</strong> on the interface diagram):
 * Translation and rotation inputs to manual align scans.
 * <strong>Auto Registration</strong> trigger buttons (for intensity-based mutual alignment of multiple datasets).</p>
 <hr />
