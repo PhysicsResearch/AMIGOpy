@@ -1,20 +1,66 @@
-# Documentation
+# User Guide
 
+Welcome to the AMIGOpy User Guide. This section will walk you through the core workflows of loading data, navigating the interface, and performing image analysis.
 
-This section briefly describes the interface whilst subpages have further instructions regarding specific features.
+---
 
-![Image](https://sites.google.com/sitesv-images-rt/ACHe0d2FTsa-0ckh1f4w2Ku6o5XcWpn0qO0DWzTzvFYXr10ZhMdaY34dU-HDGe0sKyzv5tYuKPvH7afazBhPEg4qCC_WV7GBmNd4GXoeTMbmQRN6h5eAMz37kQUycZfVpcIqiuivaob2IjXvRdXDmP0x1ojFjG-_JMwzkOpGvOF8l6747m955itaWPS8EpvVhX6Jg0x7mxr30qYTu04WaJl1xJLMjL10aWlx3FGSDscfJJs=w1280)
+## 📥 Loading Data
 
-AMIGOpy Main Interface - Note that while the main structure will remain consistent, more recent versions may include icons that were not present in earlier releases due to the software undergoing constant modifications during this initial phase. However, these changes will not impact the usability of the software.
+AMIGOpy provides several flexible methods to load your medical images, 3D structures, dose distributions, and CAD/3D printing models.
 
-- Menu (Items and Icons): Includes functions for loading, exporting, and adjusting window levels and colour maps.
+### Method 1: Windows Explorer Integration (Recommended)
+You can launch AMIGOpy and load entire datasets directly from Windows Explorer:
+* **Loading a Folder**: Right-click any folder containing your dataset in Windows Explorer, select **Open with**, and choose **AMIGOpy**. AMIGOpy will launch and automatically scan and load all files recursively inside that folder.
+* **Loading Individual or Grouped Files**: Select a single `.dcm` (DICOM) file, or select a group of files, right-click, select **Open with**, and choose **AMIGOpy**.
 
-- Data Tree: Displays all data loaded into memory, grouped by type (e.g., DICOM and NIfTI) to allow users to easily switch between them.
+### Method 2: Drag and Drop
+With the AMIGOpy interface already open, you can drag and drop folders or individual files directly from Windows Explorer into the **Data Tree** panel on the left side of the window to load them.
 
-- Modules: AMIGOpy will feature a variety of modules (e.g., visualization, processing, DECT, etc.) each with a unique interface setup. These can be accessed via this tab.
+### Method 3: Top Navigation Menu
+You can open files from the top menu by going to **File ➔ Open** and selecting your desired format. 
 
-- Active Layer Selection: Used for overlaying images. Sliding bars are available to adjust transparency levels.
+AMIGOpy supports various keyboard shortcuts to open standard formats:
+* **DICOM** (`Ctrl + D`) — Select a folder, and AMIGOpy will recursively load all DICOM slices, RTDoses, RTStructs, and RTPlans inside.
+* **NIfTI** (`Ctrl + N`) — Open NIfTI volumetric data (`.nii`, `.nii.gz`).
+* **AMIGOpy** (`Ctrl + A`) — Open native workspace files.
+* **IrIS** (`Ctrl + I`) — Open IrIS formats.
 
-- Additional Features Tab: The visualization model includes multiple resources (e.g., histogram visualization) that are organized into tabs for easy access.
+![File Open Menu](../images/file_open_menu.png)
+*Figure 1: The File ➔ Open menu options and shortcuts.*
 
-- Visualization Feature Example: Demonstrates a histogram feature displaying HU values from the current image.
+---
+
+## 🖥️ Navigating the Interface
+
+Once your data is loaded, the interface displays the volumetric views and analysis panels:
+
+![Main Interface](../images/main_interface.png)
+*Figure 2: The AMIGOpy main interface layout.*
+
+### 🌳 Data Tree (Left Panel)
+All loaded items are organized in the hierarchical **Data Tree** menu on the left side:
+* Grouped by format (e.g., `Medical Image` ➔ `DICOM`).
+* Organized by **PatientID**, **StudyID**, **Modality** (e.g., `CT`, `RTDOSE`, `RTSTRUCT`, `RTPLAN`), and **Series**.
+* Under `RTSTRUCT`, you can expand and view individual contoured structures (e.g., `BODY`, `Lung_R`).
+
+### 🎞️ Slice Views (Top Panels)
+The main display features three orthogonal slice rendering viewports (from left to right):
+* **Axial view** (Transverse)
+* **Sagittal view**
+* **Coronal view**
+Each view contains position lines indicating cross-sectional alignment and slider controls below the viewports to page through slices.
+
+### 📊 Contrast Histogram (Bottom-Center Panel)
+The histogram panel at the bottom center plots the distribution of Hounsfield Units (HU) or voxel intensities in the loaded scan:
+* The graph helps visualize the image contrast.
+* The red vertical dotted lines indicate the current window boundaries.
+* You can adjust the **Min WL** and **Max WL** values using the text inputs below the plot to adjust contrast windowing manually.
+
+---
+
+## 🖱️ Mouse Controls in Slice Views
+
+Interact with the viewports using your mouse:
+* 🖱️ **Window & Level**: **Left-click and hold** inside any slice view, then drag the mouse to dynamically adjust the contrast Window (width) and Level (center).
+* 🔍 **Zooming**: **Right-click and hold**, then drag up/down to zoom in or out on the slice.
+* ✋ **Panning (Dragging)**: **Click and hold the mouse wheel (middle click)**, then drag the mouse to pan the image around the viewport.
