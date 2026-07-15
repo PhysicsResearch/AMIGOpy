@@ -37,17 +37,92 @@ theme:
 
 # Navigation (edit as you add pages)
 nav:
-  - Home: index.md
+  - Home: 
+      - Welcome: index.md
+      - Matlab version: home/matlab-version.md
   - Installation: installation.md
+  - Features:
+      - Overview: features-overview.md
+      - List of features: features.md
+  - Documentation:
+      - Overview: documentation/index.md
+      - 4DCT:
+          - Overview: documentation/4dct/index.md
+          - Split Series: documentation/4dct/split-series.md
+      - DECT:
+          - Overview: documentation/dect/index.md
+          - Physical Quantities:
+              - Overview: documentation/dect/physical-quantities/index.md
+              - Theory: documentation/dect/physical-quantities/theory.md
+              - Load and Export: documentation/dect/physical-quantities/load-and-export.md
+          - RED: documentation/dect/red.md
+          - Zeff: documentation/dect/zeff.md
+          - Zeff vs I-Value: documentation/dect/zeff-vs-i-value.md
+          - I-Value: documentation/dect/i-value.md
+          - SPR: documentation/dect/spr.md
+          - Create Images: documentation/dect/create-images.md
+      - Export: documentation/export.md
+      - Image Processing:
+          - Overview: documentation/image-processing/index.md
+          - Denoise: documentation/image-processing/denoise.md
+      - IrIS: documentation/iris.md
+      - Multiple Images: documentation/multiple-images.md
+      - ROI - Regions of interest: documentation/roi-regions-of-interest.md
+      - Text Files (e.g. csv): documentation/text-files-e-g-csv.md
+      - Visualization:
+          - Overview: documentation/visualization/index.md
+          - Load Data: documentation/visualization/load-data.md
+          - Navigation and Zoom: documentation/visualization/navegation-and-zoom.md
+          - Contrast and Color map: documentation/visualization/constrast-and-color-map.md
+          - Overlay - Doses: documentation/visualization/overlay-doses.md
+      - Metadata: documentation/metadata.md
+      - Treatment Plan:
+          - Overview: documentation/treatment-plan/index.md
+          - RTSTRUCT:
+              - Overview: documentation/treatment-plan/rtstruct/index.md
+              - General Info: documentation/treatment-plan/rtstruct/general-info.md
+          - Brachytherapy:
+              - Overview: documentation/treatment-plan/brachytherapy/index.md
+              - Plan Evaluation:
+                  - Overview: documentation/treatment-plan/brachytherapy/plan-evaluation/index.md
+                  - Calculate Dose (TG-43): documentation/treatment-plan/brachytherapy/plan-evaluation/calcute-dose-with-tg-43.md
+                  - Create Mask: documentation/treatment-plan/brachytherapy/plan-evaluation/create-mask.md
+                  - Calculate DVH: documentation/treatment-plan/brachytherapy/plan-evaluation/calculate-dvh.md
+                  - Plot DVH: documentation/treatment-plan/brachytherapy/plan-evaluation/plot-dvh.md
+                  - Deviation Metrics: documentation/treatment-plan/brachytherapy/plan-evaluation/deviation-metrics.md
+                  - Export Dose Statistics Table: documentation/treatment-plan/brachytherapy/plan-evaluation/export-dose-statistics-table.md
+                  - Uncertainty Bands: documentation/treatment-plan/brachytherapy/plan-evaluation/uncertainty-bands.md
+                  - Error Simulation: documentation/treatment-plan/brachytherapy/plan-evaluation/error-simulation.md
+          - EQD2: documentation/treatment-plan/eqd2.md
+          - Material Assignment: documentation/treatment-plan/material-assignment.md
+      - Breathing Curves:
+          - Overview: documentation/breathing-curves/index.md
+          - Import & Create: documentation/breathing-curves/import-create.md
+          - Edit & Export: documentation/breathing-curves/edit-export.md
+          - Analyze & Plot: documentation/breathing-curves/analyze-plot.md
+      - Segmentation: documentation/segmentation.md
   - Development: 
       - Guidelines: DevGuidelines/Software-documentation-guidelines.md
       - Variables & Structures: 
-        - Overview: dev/variables&structures/General_variable_descriptions.md
-        - Medical Images: 
-          - Image series: dev/variables&structures/MedicalImage_type.md
-          - Structures: dev/variables&structures/Structures.md
-  - About: dev/about.md
-  - Publications: dev/references.md
+          - Overview: dev/variables&structures/General_variable_descriptions.md
+          - Medical Images: 
+              - Image series: dev/variables&structures/MedicalImage_type.md
+              - Structures: dev/variables&structures/Structures.md
+  - Developers:
+      - Overview: developers/index.md
+      - Compiling: developers/compiling.md
+      - Variable List: developers/variable-list.md
+      - Display: developers/display.md
+      - How Data is Stored:
+          - Overview: developers/how-is-the-data-stored/index.md
+          - DICOM:
+              - Overview: developers/how-is-the-data-stored/dicom/index.md
+              - RTDOSE: developers/how-is-the-data-stored/dicom/rtdose.md
+      - Customize Plots: developers/customize-plots.md
+      - Git: developers/git.md
+  - Datasets: datasets.md
+  - About: about.md
+  - Publications: references.md
   - Download: https://github.com/PhysicsResearch/AMIGOpy/releases
 
 markdown_extensions:
