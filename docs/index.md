@@ -54,3 +54,18 @@ An overview of **variable naming conventions**, **data structures**, and **core 
 
 ---
 
+## Key Features
+
+AMIGOpy contains a wide array of tools and resources for medical physics and imaging research:
+
+* 📷 **Image Types**: Open, display, and manage standard DICOM and IrIS formats, with future support planned for Nifty and tiff files.
+* 🕒 **4DCT**: Dynamic navigation through 4D computed tomography datasets, including 4DCT series comparisons, series splitting, and video rendering.
+* 🧪 **Dual Energy CT (DECT)**: Calibration, extraction, and generation of Relative Electron Density (RED), Effective Atomic Number (Zeff), Zeff-vs-I-value, I-value, and Stopping Power Ratio (SPR) using multiple methods.
+* 🎯 **Treatment Plans Visualization**: Support for importing, mapping, and overlays of RTDose distributions, RTStruct contours, and RTPlan Brachytherapy datasets (including channel overlays, dwell times, and positions).
+* 🔄 **Image Registration**: Tools to handle multi-panel comparisons, image alignment, and registration across multiple datasets.
+* ✍️ **Contours & Overlays**: Support for layer overlays (up to 4 layers), selecting cylindrical Regions of Interest (ROIs), and contouring tools.
+
+> [!TIP]
+> This is only a subset of the capabilities in AMIGOpy. There are many more features available in the software—we highly encourage you to explore the [Documentation](documentation/index.md) section of this site for detailed explanations and step-by-step user guides!
+
+
