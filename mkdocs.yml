@@ -40,7 +40,6 @@ nav:
   - Home: 
       - Welcome: index.md
       - Matlab version: home/matlab-version.md
-  - Installation: installation.md
   - Documentation:
       - Overview: documentation/index.md
       - 4DCT:
@@ -99,6 +98,7 @@ nav:
           - Analyze & Plot: documentation/breathing-curves/analyze-plot.md
       - Segmentation: documentation/segmentation.md
   - Development: 
+      - Installation: installation.md
       - Guidelines: DevGuidelines/Software-documentation-guidelines.md
       - Variables & Structures: 
           - Overview: dev/variables&structures/General_variable_descriptions.md

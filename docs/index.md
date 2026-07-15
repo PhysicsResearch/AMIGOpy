@@ -58,12 +58,15 @@ An overview of **variable naming conventions**, **data structures**, and **core 
 
 AMIGOpy contains a wide array of tools and resources for medical physics and imaging research:
 
-* 📷 **Image Types**: Open, display, and manage standard DICOM and IrIS formats, with future support planned for Nifty and tiff files.
-* 🕒 **4DCT**: Dynamic navigation through 4D computed tomography datasets, including 4DCT series comparisons, series splitting, and video rendering.
-* 🧪 **Dual Energy CT (DECT)**: Calibration, extraction, and generation of Relative Electron Density (RED), Effective Atomic Number (Zeff), Zeff-vs-I-value, I-value, and Stopping Power Ratio (SPR) using multiple methods.
-* 🎯 **Treatment Plans Visualization**: Support for importing, mapping, and overlays of RTDose distributions, RTStruct contours, and RTPlan Brachytherapy datasets (including channel overlays, dwell times, and positions).
-* 🔄 **Image Registration**: Tools to handle multi-panel comparisons, image alignment, and registration across multiple datasets.
-* ✍️ **Contours & Overlays**: Support for layer overlays (up to 4 layers), selecting cylindrical Regions of Interest (ROIs), and contouring tools.
+* 📷 **Supported File Formats**:
+    * **Medical Images**: Import, display, and manage standard DICOM, NIfTI (`.nii`/`.nii.gz`), MetaImage (`.mha`/`.mhd`), NumPy arrays (`.npy`), TIFF stacks, and IrIS formats.
+    * **3D Printing & CAD**: Import and visualize 3D meshes and CAD formats including STL, OBJ, 3MF, and STEP/STP.
+* 🕒 **4DCT Analysis**: Dynamic navigation through 4D computed tomography datasets, including 4DCT series comparisons, series splitting, and temporal video loop rendering.
+* 🧪 **Dual Energy CT (DECT)**: Comprehensive calibration, extraction, and generation of Relative Electron Density (RED), Effective Atomic Number (Zeff), Zeff-vs-I-value, I-value, and Stopping Power Ratio (SPR) using multiple conversion methods.
+* 🎯 **Treatment Plan Visualization**: Full integration with radiotherapy DICOM (RT-DICOM) standards to import and overlay 3D RTDose distributions, RTStruct contours, and RTPlan Brachytherapy sources (including channel overlays, dwell times, and source positions).
+* 🔄 **Image Registration**: Support for both automatic image registration (intensity-based mutual registration) and manual rigid/translational registration for precise multi-scan alignment.
+* ✍️ **Contours & Overlays**: Advanced multi-layer overlays (up to 4 concurrent layers), interactive cylindrical ROI selection, contour generation, and dose-volume histogram (DVH) statistics.
+* 🛠️ **3D Printing & Phantom Design**: Tissue-equivalent phantom design tools, including matching 3D printing filaments with specific tissue RED/Zeff values and G-code file parsing/splitting.
 
 > [!TIP]
 > This is only a subset of the capabilities in AMIGOpy. There are many more features available in the software—we highly encourage you to explore the [Documentation](documentation/index.md) section of this site for detailed explanations and step-by-step user guides!

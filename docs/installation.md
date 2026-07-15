@@ -1,28 +1,12 @@
 # Installation
 
-This page explains how to install **AMIGO** using two different methods:
-
-* **Option 1:** Download the compiled version (**Windows only**) *(recommended for most users)*
-* **Option 2:** Install from source using Anaconda *(recommended for developers)*
+This page explains how to install **AMIGO** from source using Anaconda (recommended for developers).
 
 Target Python version: **≥ 3.11**
 
 ---
 
-## Option 1 — Download Compiled Version (Windows Only)
-
-This is the easiest way to install and run **AMIGO** without setting up Python or dependencies manually.
-
-1. Go to the [AMIGO Releases](https://github.com/PhysicsResearch/AMIGOpy/releases).
-2. Download the latest `.exe` installer.
-3. Run the installer and follow the on-screen instructions.
-4. Launch **AMIGO** from the Start Menu or Desktop shortcut.
-
-> **Note:** The compiled version may not always include the very latest changes. For development, use **Option 2**.
-
----
-
-## Option 2 — Install from Source (Recommended for Developers)
+## Install from Source
 
 This option is ideal if you plan to contribute, debug, or modify AMIGO. We recommend using **Anaconda** to create a dedicated virtual environment, ensuring all dependencies are correctly managed and isolated.
 
