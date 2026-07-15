@@ -40,7 +40,7 @@ nav:
   - Home: 
       - Welcome: index.md
       - Matlab version: home/matlab-version.md
-  - Documentation:
+  - User Guide:
       - Overview: documentation/index.md
       - 4DCT:
           - Overview: documentation/4dct/index.md
@@ -106,9 +106,9 @@ nav:
               - Image series: dev/variables&structures/MedicalImage_type.md
               - Structures: dev/variables&structures/Structures.md
   - Datasets: datasets.md
-  - About: about.md
   - Publications: references.md
   - Download: https://github.com/PhysicsResearch/AMIGOpy/releases
+  - About: about.md
 
 markdown_extensions:
   - admonition
