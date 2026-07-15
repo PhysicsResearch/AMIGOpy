@@ -25,9 +25,6 @@ AMIGOpy supports various keyboard shortcuts to open standard formats:
 * **AMIGOpy** (`Ctrl + A`) — Open native workspace files.
 * **IrIS** (`Ctrl + I`) — Open IrIS formats.
 
-![File Open Menu](../images/file_open_menu.png)
-*Figure 1: The File ➔ Open menu options and shortcuts.*
-
 ---
 
 ## Navigating the Interface
@@ -35,7 +32,7 @@ AMIGOpy supports various keyboard shortcuts to open standard formats:
 Once your data is loaded, the interface displays the volumetric views and analysis panels:
 
 ![Main Interface](../images/main_interface.png)
-*Figure 2: The AMIGOpy main interface layout, with numbered annotations matching the panels below.*
+*Figure 1: The AMIGOpy main interface layout, with numbered annotations matching the panels below.*
 
 **1. Data Tree (Left Panel)**
 All loaded items are organized in the hierarchical Data Tree menu on the left side (marked as **1** on the interface diagram):
