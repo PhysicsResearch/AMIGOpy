@@ -6,7 +6,7 @@ os.environ.setdefault("QT_OPENGL", "software")  # safer on RDP/VM
 sys.modules['pyarrow'] = None
 
 from PySide6.QtCore import Qt, QCoreApplication
-from PySide6.QtGui import QSurfaceFormat, QIcon
+from PySide6.QtGui import QSurfaceFormat, QIcon, QGuiApplication
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QToolBar
 from PySide6.QtCore import QEvent, Qt, QTimer, Signal, QObject
 # Force software GL (stable on many Windows setups)
@@ -104,6 +104,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # Set up the user interface from Designer.
         self.setupUi(self)
 
+        self.setWindowIcon(QIcon("AMBpy.ico"))
         self.setWindowTitle("AMIGOpy")
         #
         #
@@ -118,6 +119,113 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # initialize drop functions
         # Enable drag and drop
         initialize_drop_fcn(self)
+
+        # Restructure layout of centralwidget to use a horizontal splitter
+        import shiboken6
+        from PySide6.QtWidgets import QSplitter, QVBoxLayout, QWidget, QGridLayout
+        
+        # 1. Remove widgets from the old gridLayout_3
+        self.gridLayout_3.removeWidget(self.groupBox_17)
+        self.gridLayout_3.removeWidget(self.groupBox)
+        self.gridLayout_3.removeWidget(self.progressBar)
+        self.gridLayout_3.removeWidget(self.label_2)
+        self.gridLayout_3.removeWidget(self.tabModules)
+        
+        # 2. Delete the old gridLayout_3 layout safely
+        shiboken6.delete(self.gridLayout_3)
+        
+        # 3. Create a horizontal splitter
+        main_splitter = QSplitter(Qt.Horizontal, self.centralwidget)
+        main_splitter.setObjectName("main_horizontal_splitter")
+        main_splitter.setHandleWidth(8)
+        
+        # 4. Create a left-side container widget and layout
+        left_container = QWidget(main_splitter)
+        left_container.setObjectName("left_side_container")
+        left_layout = QVBoxLayout(left_container)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(8)
+        
+        # Create a vertical splitter for the left panel widgets so they expand and are resizable
+        left_splitter = QSplitter(Qt.Vertical, left_container)
+        left_splitter.setObjectName("left_vertical_splitter")
+        left_splitter.setHandleWidth(8)
+        
+        left_splitter.addWidget(self.groupBox_17)
+        left_splitter.addWidget(self.groupBox)
+        left_splitter.setStretchFactor(0, 3)
+        left_splitter.setStretchFactor(1, 1)
+        
+        left_layout.addWidget(left_splitter, 1)
+        left_layout.addWidget(self.progressBar)
+        left_layout.addWidget(self.label_2)
+        
+        # 5. Add widgets to splitter
+        main_splitter.addWidget(left_container)
+        main_splitter.addWidget(self.tabModules)
+        
+        # 6. Set initial pane sizes & stretch factors
+        main_splitter.setSizes([320, 1300])
+        main_splitter.setStretchFactor(0, 1)
+        main_splitter.setStretchFactor(1, 4)
+        
+        # 7. Create a new layout on centralwidget containing the splitter
+        new_central_layout = QVBoxLayout(self.centralwidget)
+        new_central_layout.setContentsMargins(10, 10, 10, 10)
+        new_central_layout.addWidget(main_splitter)
+
+        # -------------------------------------------------------------
+        # Restructure display layout with vertical splitter (Horizontal divider bar)
+        # between the VTK orthogonal views/axes (top) and tabView01 (bottom)
+        # -------------------------------------------------------------
+        # Remove widgets from old layout
+        self.gridLayout_4.removeWidget(self.VTK_view_01)
+        self.gridLayout_4.removeWidget(self.VTK_view_02)
+        self.gridLayout_4.removeWidget(self.VTK_view_03)
+        self.gridLayout_4.removeWidget(self.AxialSlider)
+        self.gridLayout_4.removeWidget(self.SagittalSlider)
+        self.gridLayout_4.removeWidget(self.CoronalSlider)
+        self.gridLayout_4.removeWidget(self.tabView01)
+        
+        # Delete old layout
+        shiboken6.delete(self.gridLayout_4)
+        
+        # Create a vertical splitter for the display tab (creates horizontal drag divider bar)
+        self.view_splitter = QSplitter(Qt.Vertical, self.im_display_tab)
+        self.view_splitter.setObjectName("main_view_vertical_splitter")
+        self.view_splitter.setHandleWidth(8)
+        
+        # Create container and layout for top views
+        top_views_container = QWidget(self.view_splitter)
+        self.top_grid = QGridLayout(top_views_container)
+        self.top_grid.setContentsMargins(0, 0, 0, 0)
+        self.top_grid.setSpacing(6)
+        
+        # Override self.gridLayout_4 so set_view_mode populates the top grid layout
+        self.gridLayout_4 = self.top_grid
+        
+        # Add views and sliders to top_grid immediately so they have a valid parent layout
+        # hierarchy on VTK initialization/startup.
+        self.top_grid.addWidget(self.VTK_view_01, 0, 0, 1, 1)
+        self.top_grid.addWidget(self.VTK_view_02, 0, 1, 1, 1)
+        self.top_grid.addWidget(self.VTK_view_03, 0, 2, 1, 1)
+        self.top_grid.addWidget(self.AxialSlider, 1, 0, 1, 1)
+        self.top_grid.addWidget(self.SagittalSlider, 1, 1, 1, 1)
+        self.top_grid.addWidget(self.CoronalSlider, 1, 2, 1, 1)
+        
+        # Add components to splitter
+        self.view_splitter.addWidget(top_views_container)
+        self.view_splitter.addWidget(self.tabView01)
+        
+        # Set stretch factors & initial sizes
+        self.view_splitter.setStretchFactor(0, 3)
+        self.view_splitter.setStretchFactor(1, 2)
+        self.view_splitter.setSizes([500, 300])
+        
+        # Create new layout for display tab containing the splitter
+        new_display_layout = QVBoxLayout(self.im_display_tab)
+        new_display_layout.setContentsMargins(0, 0, 0, 0)
+        new_display_layout.addWidget(self.view_splitter)
         # load ref csv files
         # load_Source_cal_csv_file(self)
         #
@@ -442,6 +550,10 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         views = {k: (w(p), w(s)) for k, (p, s) in _VIEW_ATTRS.items()}
         tab = self.tabView01
 
+        # Save sizes if we are maximizing from the unmaximized (all) state
+        if mode != "all" and self._max_axis is None and hasattr(self, 'view_splitter'):
+            self._saved_view_splitter_sizes = self.view_splitter.sizes()
+
         # clear grid
         while gl.count():
             gl.takeAt(0)
@@ -454,18 +566,27 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         tab.hide()
 
         if mode == "all":
-            # --- equal 3-up + sliders + tab
-            gl.setRowStretch(0, 5)   # views
-            gl.setRowStretch(1, 0)   # sliders
-            gl.setRowStretch(2, 2)   # tab
+            # --- equal 3-up + sliders
+            gl.setRowStretch(0, 1)   # views get all the vertical space in top_views_container
+            gl.setRowStretch(1, 0)   # sliders wrap height
+            gl.setRowStretch(2, 0)   # no tab row stretch
             gl.setColumnStretch(0, 1); gl.setColumnStretch(1, 1); gl.setColumnStretch(2, 1)
 
             for key, (vw, sl) in views.items():
                 r, c = _ORIG_POS[key]["pane"];   gl.addWidget(vw, r, c, 1, 1); vw.show()
                 r, c = _ORIG_POS[key]["slider"]; gl.addWidget(sl, r, c, 1, 1); sl.show()
 
-            r, c = _ORIG_POS["tab"]["pane"]; rs, cs = _ORIG_POS["tab"]["span"]
-            gl.addWidget(tab, r, c, rs, cs); tab.show()
+            # If splitter is initialized, tab is managed by it
+            if hasattr(self, 'view_splitter'):
+                tab.show()
+                # Restore the splitter sizes so the panel structure doesn't collapse
+                if hasattr(self, '_saved_view_splitter_sizes'):
+                    self.view_splitter.setSizes(self._saved_view_splitter_sizes)
+                else:
+                    self.view_splitter.setSizes([500, 300])
+            else:
+                r, c = _ORIG_POS["tab"]["pane"]; rs, cs = _ORIG_POS["tab"]["span"]
+                gl.addWidget(tab, r, c, rs, cs); tab.show()
 
             self._max_axis = None
             return
@@ -474,10 +595,10 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         big_axis = mode
         big_vw, big_sl = views[big_axis]
 
-        # give almost all space to row 0 (big view); small to row 1 (slider)
-        gl.setRowStretch(0, 9)    # big view
-        gl.setRowStretch(1, 1)    # slider
-        gl.setRowStretch(2, 0)    # no tab row used
+        # give all space to row 0 (big view) in top_views_container
+        gl.setRowStretch(0, 1)    # big view gets all vertical space
+        gl.setRowStretch(1, 0)    # slider wraps height
+        gl.setRowStretch(2, 0)    # no tab row stretch
         gl.setColumnStretch(0, 1); gl.setColumnStretch(1, 1); gl.setColumnStretch(2, 1)
 
         # add ONLY the big view and its slider
@@ -602,7 +723,16 @@ if __name__ == "__main__":
     fmt.setStencilBufferSize(8)
     QSurfaceFormat.setDefaultFormat(fmt)
 
+    # Set Windows Taskbar Icon Grouping ID so the taskbar icon displays correctly
+    import ctypes
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("amigo.amigopy.gui.1.0")
+    except Exception:
+        pass
+
+    QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon("AMBpy.ico"))
 
     socket_name = "amigopy_single_instance_socket"
     
@@ -641,7 +771,20 @@ if __name__ == "__main__":
     window = MyApp(folder_path)
 
     # Optional: apply theme after splash is visible
-    app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6'))
+    custom_qss = """
+    QSplitter {
+        background-color: #19232D;
+    }
+    QSplitter::handle {
+        background-color: #19232D;
+        border: none;
+    }
+    #centralwidget, #im_display_tab, #left_side_container {
+        background-color: #19232D;
+        border: none;
+    }
+    """
+    app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6') + custom_qss)
     splash.showMessage("Loading UI…", Qt.AlignBottom | Qt.AlignHCenter | Qt.TextWordWrap, Qt.white)
     app.processEvents()
 
@@ -680,6 +823,22 @@ if __name__ == "__main__":
     server.newConnection.connect(handle_new_connection)
 
     # --- Show window and close splash ---
+    # Adjust initial window size and position dynamically to fit within screen available geometry
+    screen = app.primaryScreen()
+    if screen:
+        geom = screen.availableGeometry()
+        scr_w = geom.width()
+        scr_h = geom.height()
+        
+        # Default design dimensions are 1713x1122. If screen is smaller, clamp and center.
+        if scr_w < 1713 or scr_h < 1122:
+            new_w = min(1713, int(scr_w * 0.95))
+            new_h = min(1122, int(scr_h * 0.90))
+            
+            x = geom.x() + (scr_w - new_w) // 2
+            y = geom.y() + (scr_h - new_h) // 2
+            window.setGeometry(x, y, new_w, new_h)
+            
     window.show()
     splash.finish(window)
 

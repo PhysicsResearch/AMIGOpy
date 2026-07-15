@@ -48,6 +48,7 @@ nav:
           - Structures: dev/variables&structures/Structures.md
   - About: dev/about.md
   - Publications: dev/references.md
+  - Download: https://github.com/PhysicsResearch/AMIGOpy/releases
 
 markdown_extensions:
   - admonition

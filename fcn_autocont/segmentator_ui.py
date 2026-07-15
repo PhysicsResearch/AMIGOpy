@@ -24,9 +24,9 @@ from PySide6.QtWidgets import (
 
 # ---------------------------------------------------------------------------
 # TUNABLE HEIGHTS
-MINH_QUICK       = 160   # Quick-groups scroll height
-MINH_CT_GROUPS   = 520   # CT structures groups scroll height
-MINH_MR_GROUPS   = 520   # MR structures groups scroll height
+MINH_QUICK       = 110   # Quick-groups scroll height
+MINH_CT_GROUPS   = 200   # CT structures groups scroll height
+MINH_MR_GROUPS   = 200   # MR structures groups scroll height
 COLS_PER_GROUP   = 3     # columns for each label grid
 # ---------------------------------------------------------------------------
 
@@ -213,7 +213,20 @@ class SegmentatorWindow(QWidget):
         self.setWindowFlags(self.windowFlags() | Qt.Window)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.setWindowTitle("Auto-Contouring (TotalSegmentator)")
-        self.setMinimumSize(1320, 820)
+        self.setMinimumSize(950, 600)
+
+        # Determine screen size and set startup size dynamically
+        from PySide6.QtGui import QGuiApplication
+        screen = QGuiApplication.primaryScreen()
+        if screen:
+            geom = screen.availableGeometry()
+            scr_w = geom.width()
+            scr_h = geom.height()
+            new_w = min(1320, int(scr_w * 0.95))
+            new_h = min(850, int(scr_h * 0.90))
+            self.resize(new_w, new_h)
+        else:
+            self.resize(1320, 850)
 
         self.setStyleSheet("""
             QPushButton {
@@ -314,12 +327,12 @@ class SegmentatorWindow(QWidget):
         self._populate_series_table()
         splitter.addWidget(left)
 
-        # RIGHT: a SINGLE scroll area with a vertical column (prevents overlap)
-        right_container = QWidget()
-        right_v = QVBoxLayout(right_container); right_v.setContentsMargins(0,0,0,0); right_v.setSpacing(6)
+        # RIGHT: a vertical splitter to allow resizing components using the mouse
+        right_splitter = QSplitter(Qt.Vertical)
+        right_splitter.setHandleWidth(8)
 
         # Sub-routines
-        right_v.addWidget(self._build_subroutine_box())
+        right_splitter.addWidget(self._build_subroutine_box())
 
         # CT section
         ct_box, self.ct_search, _ = self._build_structures_section(
@@ -327,7 +340,7 @@ class SegmentatorWindow(QWidget):
             all_targets=CT_ALL_TARGETS, groups=CT_GROUPS, quick=CT_QUICK,
             search_ph="Filter CT labels...", min_groups_height=MINH_CT_GROUPS, target_map="ct"
         )
-        right_v.addWidget(ct_box)
+        right_splitter.addWidget(ct_box)
 
         # MR section
         mr_box, self.mr_search, _ = self._build_structures_section(
@@ -335,13 +348,15 @@ class SegmentatorWindow(QWidget):
             all_targets=MR_ALL_TARGETS, groups=MR_GROUPS, quick=MR_QUICK,
             search_ph="Filter MR labels...", min_groups_height=MINH_MR_GROUPS, target_map="mr"
         )
-        right_v.addWidget(mr_box)
+        right_splitter.addWidget(mr_box)
 
-        right_v.addStretch(1)  # spacer at end so content stacks nicely
+        right_splitter.setStretchFactor(0, 0)
+        right_splitter.setStretchFactor(1, 1)
+        right_splitter.setStretchFactor(2, 1)
 
         # Scroll wrapper for the whole right column
         right_scroll = QScrollArea(); right_scroll.setWidgetResizable(True)
-        right_scroll.setWidget(right_container)
+        right_scroll.setWidget(right_splitter)
 
         # Right side composite (scroll + buttons row)
         right_side = QWidget(); rsv = QVBoxLayout(right_side)
