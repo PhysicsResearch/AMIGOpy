@@ -41,6 +41,12 @@ nav:
       - Welcome: index.md
       - Matlab version: home/matlab-version.md
   - Installation: installation.md
+<<<<<<< HEAD
+=======
+  - Features:
+      - Overview: features-overview.md
+      - List of features: features.md
+>>>>>>> 214a1a34145db3dd8db49eb776660ed29add91bf
   - Documentation:
       - Overview: documentation/index.md
       - 4DCT:
@@ -105,6 +111,21 @@ nav:
           - Medical Images: 
               - Image series: dev/variables&structures/MedicalImage_type.md
               - Structures: dev/variables&structures/Structures.md
+<<<<<<< HEAD
+=======
+  - Developers:
+      - Overview: developers/index.md
+      - Compiling: developers/compiling.md
+      - Variable List: developers/variable-list.md
+      - Display: developers/display.md
+      - How Data is Stored:
+          - Overview: developers/how-is-the-data-stored/index.md
+          - DICOM:
+              - Overview: developers/how-is-the-data-stored/dicom/index.md
+              - RTDOSE: developers/how-is-the-data-stored/dicom/rtdose.md
+      - Customize Plots: developers/customize-plots.md
+      - Git: developers/git.md
+>>>>>>> 214a1a34145db3dd8db49eb776660ed29add91bf
   - Datasets: datasets.md
   - About: about.md
   - Publications: references.md
