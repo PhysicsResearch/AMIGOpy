@@ -592,12 +592,12 @@
   <a href="#loading-data" class="md-nav__link">
     <span class="md-ellipsis">
       
-        📥 Loading Data
+        Loading Data
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="📥 Loading Data">
+    <nav class="md-nav" aria-label="Loading Data">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -642,19 +642,19 @@
   <a href="#navigating-the-interface" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🖥️ Navigating the Interface
+        Navigating the Interface
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="🖥️ Navigating the Interface">
+    <nav class="md-nav" aria-label="Navigating the Interface">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#data-tree-left-panel" class="md-nav__link">
+  <a href="#1-data-tree-left-panel" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🌳 Data Tree (Left Panel)
+        1. Data Tree (Left Panel)
       
     </span>
   </a>
@@ -662,10 +662,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#slice-views-top-panels" class="md-nav__link">
+  <a href="#2-layers-transparency-panel-bottom-left" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🎞️ Slice Views (Top Panels)
+        2. Layers &amp; Transparency Panel (Bottom-Left)
       
     </span>
   </a>
@@ -673,10 +673,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#contrast-histogram-bottom-center-panel" class="md-nav__link">
+  <a href="#3-slice-viewports-top-panels" class="md-nav__link">
     <span class="md-ellipsis">
       
-        📊 Contrast Histogram (Bottom-Center Panel)
+        3. Slice Viewports (Top Panels)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-contrast-histogram-bottom-center-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Contrast Histogram (Bottom-Center Panel)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-transform-registration-panel-bottom-right" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Transform &amp; Registration Panel (Bottom-Right)
       
     </span>
   </a>
@@ -692,7 +714,7 @@
   <a href="#mouse-controls-in-slice-views" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🖱️ Mouse Controls in Slice Views
+        Mouse Controls in Slice Views
       
     </span>
   </a>
@@ -1163,7 +1185,7 @@
 <h1 id="user-guide">User Guide<a class="headerlink" href="#user-guide" title="Permanent link">&para;</a></h1>
 <p>Welcome to the AMIGOpy User Guide. This section will walk you through the core workflows of loading data, navigating the interface, and performing image analysis.</p>
 <hr />
-<h2 id="loading-data">📥 Loading Data<a class="headerlink" href="#loading-data" title="Permanent link">&para;</a></h2>
+<h2 id="loading-data">Loading Data<a class="headerlink" href="#loading-data" title="Permanent link">&para;</a></h2>
 <p>AMIGOpy provides several flexible methods to load your medical images, 3D structures, dose distributions, and CAD/3D printing models.</p>
 <h3 id="method-1-windows-explorer-integration-recommended">Method 1: Windows Explorer Integration (Recommended)<a class="headerlink" href="#method-1-windows-explorer-integration-recommended" title="Permanent link">&para;</a></h3>
 <p>You can launch AMIGOpy and load entire datasets directly from Windows Explorer:
@@ -1181,32 +1203,40 @@
 <p><img alt="File Open Menu" src="../images/file_open_menu.png" />
 <em>Figure 1: The File ➔ Open menu options and shortcuts.</em></p>
 <hr />
-<h2 id="navigating-the-interface">🖥️ Navigating the Interface<a class="headerlink" href="#navigating-the-interface" title="Permanent link">&para;</a></h2>
+<h2 id="navigating-the-interface">Navigating the Interface<a class="headerlink" href="#navigating-the-interface" title="Permanent link">&para;</a></h2>
 <p>Once your data is loaded, the interface displays the volumetric views and analysis panels:</p>
 <p><img alt="Main Interface" src="../images/main_interface.png" />
-<em>Figure 2: The AMIGOpy main interface layout.</em></p>
-<h3 id="data-tree-left-panel">🌳 Data Tree (Left Panel)<a class="headerlink" href="#data-tree-left-panel" title="Permanent link">&para;</a></h3>
-<p>All loaded items are organized in the hierarchical <strong>Data Tree</strong> menu on the left side:
+<em>Figure 2: The AMIGOpy main interface layout, with numbered annotations matching the panels below.</em></p>
+<h3 id="1-data-tree-left-panel">1. Data Tree (Left Panel)<a class="headerlink" href="#1-data-tree-left-panel" title="Permanent link">&para;</a></h3>
+<p>All loaded items are organized in the hierarchical Data Tree menu on the left side (marked as <strong>1</strong> on the interface diagram):
 * Grouped by format (e.g., <code>Medical Image</code> ➔ <code>DICOM</code>).
 * Organized by <strong>PatientID</strong>, <strong>StudyID</strong>, <strong>Modality</strong> (e.g., <code>CT</code>, <code>RTDOSE</code>, <code>RTSTRUCT</code>, <code>RTPLAN</code>), and <strong>Series</strong>.
 * Under <code>RTSTRUCT</code>, you can expand and view individual contoured structures (e.g., <code>BODY</code>, <code>Lung_R</code>).</p>
-<h3 id="slice-views-top-panels">🎞️ Slice Views (Top Panels)<a class="headerlink" href="#slice-views-top-panels" title="Permanent link">&para;</a></h3>
-<p>The main display features three orthogonal slice rendering viewports (from left to right):
-* <strong>Axial view</strong> (Transverse)
-* <strong>Sagittal view</strong>
-* <strong>Coronal view</strong>
+<h3 id="2-layers-transparency-panel-bottom-left">2. Layers &amp; Transparency Panel (Bottom-Left)<a class="headerlink" href="#2-layers-transparency-panel-bottom-left" title="Permanent link">&para;</a></h3>
+<p>Located directly below the Data Tree (marked as <strong>2</strong> on the interface diagram):
+* Controls active visualization layers (supporting up to 4 concurrent image layers).
+* Individual transparency sliders to blend slices and structures seamlessly.</p>
+<h3 id="3-slice-viewports-top-panels">3. Slice Viewports (Top Panels)<a class="headerlink" href="#3-slice-viewports-top-panels" title="Permanent link">&para;</a></h3>
+<p>The main display features three orthogonal slice rendering viewports (marked as <strong>3</strong> on the interface diagram):
+* <strong>Axial view</strong> (Transverse) — left pane.
+* <strong>Sagittal view</strong> — middle pane.
+* <strong>Coronal view</strong> — right pane.
 Each view contains position lines indicating cross-sectional alignment and slider controls below the viewports to page through slices.</p>
-<h3 id="contrast-histogram-bottom-center-panel">📊 Contrast Histogram (Bottom-Center Panel)<a class="headerlink" href="#contrast-histogram-bottom-center-panel" title="Permanent link">&para;</a></h3>
-<p>The histogram panel at the bottom center plots the distribution of Hounsfield Units (HU) or voxel intensities in the loaded scan:
+<h3 id="4-contrast-histogram-bottom-center-panel">4. Contrast Histogram (Bottom-Center Panel)<a class="headerlink" href="#4-contrast-histogram-bottom-center-panel" title="Permanent link">&para;</a></h3>
+<p>The histogram panel at the bottom center plots the distribution of Hounsfield Units (HU) or voxel intensities in the loaded scan (marked as <strong>4</strong> on the interface diagram):
 * The graph helps visualize the image contrast.
 * The red vertical dotted lines indicate the current window boundaries.
 * You can adjust the <strong>Min WL</strong> and <strong>Max WL</strong> values using the text inputs below the plot to adjust contrast windowing manually.</p>
+<h3 id="5-transform-registration-panel-bottom-right">5. Transform &amp; Registration Panel (Bottom-Right)<a class="headerlink" href="#5-transform-registration-panel-bottom-right" title="Permanent link">&para;</a></h3>
+<p>Located at the bottom right corner (marked as <strong>5</strong> on the interface diagram):
+* Translation and rotation inputs to manual align scans.
+* <strong>Auto Registration</strong> trigger buttons (for intensity-based mutual alignment of multiple datasets).</p>
 <hr />
-<h2 id="mouse-controls-in-slice-views">🖱️ Mouse Controls in Slice Views<a class="headerlink" href="#mouse-controls-in-slice-views" title="Permanent link">&para;</a></h2>
+<h2 id="mouse-controls-in-slice-views">Mouse Controls in Slice Views<a class="headerlink" href="#mouse-controls-in-slice-views" title="Permanent link">&para;</a></h2>
 <p>Interact with the viewports using your mouse:
-* 🖱️ <strong>Window &amp; Level</strong>: <strong>Left-click and hold</strong> inside any slice view, then drag the mouse to dynamically adjust the contrast Window (width) and Level (center).
-* 🔍 <strong>Zooming</strong>: <strong>Right-click and hold</strong>, then drag up/down to zoom in or out on the slice.
-* ✋ <strong>Panning (Dragging)</strong>: <strong>Click and hold the mouse wheel (middle click)</strong>, then drag the mouse to pan the image around the viewport.</p>
+* <strong>Window &amp; Level</strong>: Left-click and hold inside any slice view, then drag the mouse to dynamically adjust the contrast Window (width) and Level (center).
+* <strong>Zooming</strong>: Right-click and hold, then drag up/down to zoom in or out on the slice.
+* <strong>Panning (Dragging)</strong>: Click and hold the mouse wheel (middle click), then drag the mouse to pan the image around the viewport.</p>
 
 
 
