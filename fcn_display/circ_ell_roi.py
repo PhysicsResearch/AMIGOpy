@@ -1401,6 +1401,13 @@ class SquareRoiWidget(QtCore.QObject):
                 dlg.sld_x.valueChanged.connect(on_x)
                 dlg.sld_y.valueChanged.connect(on_y)
 
+                def on_close():
+                    self._vline_actor.SetVisibility(False)
+                    self._hline_actor.SetVisibility(False)
+                    self.renWin.Render()
+
+                dlg.finished.connect(on_close)
+
                 dlg.show()
             # Restore style in next tick after event propagation finishes
             interactor = self.interactor
