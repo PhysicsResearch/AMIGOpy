@@ -1,5 +1,5 @@
 import os
-from PySide6.QtWidgets import QWidget, QTreeView, QAbstractItemView
+from PySide6.QtWidgets import QWidget, QTreeView, QAbstractItemView, QHeaderView
 from PySide6.QtCore import Qt
 from fcn_load.load_dcm  import load_all_dcm
 from fcn_display.dicom_info import open_dicom_tag_viewer
@@ -27,6 +27,11 @@ class FolderDropTreeView(QTreeView):
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
         self.setDragDropMode(QAbstractItemView.DragDropMode.DropOnly)
+
+        # Allow horizontal scrollbar and auto-resize column to fit text content
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.header().setStretchLastSection(False)
+        self.header().setSectionResizeMode(QHeaderView.ResizeToContents)
 
         # Bind shared event handlers
         self.dragEnterEvent = lambda event: generic_drag_enter_event(self, event)

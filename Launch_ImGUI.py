@@ -142,6 +142,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # 4. Create a left-side container widget and layout
         left_container = QWidget(main_splitter)
         left_container.setObjectName("left_side_container")
+        left_container.setMinimumWidth(1)
         left_layout = QVBoxLayout(left_container)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(8)
@@ -151,6 +152,9 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         left_splitter.setObjectName("left_vertical_splitter")
         left_splitter.setHandleWidth(8)
         
+        self.groupBox_17.setMinimumSize(1, 1)
+        self.DataTreeView.setMinimumSize(1, 1)
+        self.groupBox.setMinimumSize(1, 1)
         left_splitter.addWidget(self.groupBox_17)
         left_splitter.addWidget(self.groupBox)
         left_splitter.setStretchFactor(0, 3)
@@ -161,6 +165,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         left_layout.addWidget(self.label_2)
         
         # 5. Add widgets to splitter
+        self.tabModules.setMinimumWidth(1)
         main_splitter.addWidget(left_container)
         main_splitter.addWidget(self.tabModules)
         
@@ -197,6 +202,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         
         # Create container and layout for top views
         top_views_container = QWidget(self.view_splitter)
+        top_views_container.setMinimumHeight(1)
         self.top_grid = QGridLayout(top_views_container)
         self.top_grid.setContentsMargins(0, 0, 0, 0)
         self.top_grid.setSpacing(6)
@@ -206,6 +212,9 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         
         # Add views and sliders to top_grid immediately so they have a valid parent layout
         # hierarchy on VTK initialization/startup.
+        self.VTK_view_01.setMinimumSize(1, 1)
+        self.VTK_view_02.setMinimumSize(1, 1)
+        self.VTK_view_03.setMinimumSize(1, 1)
         self.top_grid.addWidget(self.VTK_view_01, 0, 0, 1, 1)
         self.top_grid.addWidget(self.VTK_view_02, 0, 1, 1, 1)
         self.top_grid.addWidget(self.VTK_view_03, 0, 2, 1, 1)
@@ -214,6 +223,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.top_grid.addWidget(self.CoronalSlider, 1, 2, 1, 1)
         
         # Add components to splitter
+        self.tabView01.setMinimumHeight(1)
         self.view_splitter.addWidget(top_views_container)
         self.view_splitter.addWidget(self.tabView01)
         
@@ -226,6 +236,41 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         new_display_layout = QVBoxLayout(self.im_display_tab)
         new_display_layout.setContentsMargins(0, 0, 0, 0)
         new_display_layout.addWidget(self.view_splitter)
+
+        # -------------------------------------------------------------
+        # Restructure View tab in tabView01 (bottom area) with a horizontal splitter
+        # between the histogram (left) and the transform tabs (right)
+        # -------------------------------------------------------------
+        # Remove widgets from the gridLayout_81 on tab_5
+        self.gridLayout_81.removeWidget(self.hist_container_01)
+        self.gridLayout_81.removeWidget(self.tabWidget_10)
+        
+        # Delete old gridLayout_81
+        shiboken6.delete(self.gridLayout_81)
+        
+        # Create a horizontal splitter for the bottom View tab
+        self.bottom_view_splitter = QSplitter(Qt.Horizontal, self.tab_5)
+        self.bottom_view_splitter.setObjectName("bottom_view_horizontal_splitter")
+        self.bottom_view_splitter.setHandleWidth(8)
+        
+        # Set minimum sizes to 1 to allow smooth intermediate steps
+        self.hist_container_01.setMinimumWidth(1)
+        self.tabWidget_10.setMinimumWidth(1)
+        
+        # Add components to the splitter
+        self.bottom_view_splitter.addWidget(self.hist_container_01)
+        self.bottom_view_splitter.addWidget(self.tabWidget_10)
+        
+        # Set stretch factors & initial sizes
+        self.bottom_view_splitter.setStretchFactor(0, 2)
+        self.bottom_view_splitter.setStretchFactor(1, 1)
+        self.bottom_view_splitter.setSizes([600, 300])
+        
+        # Create a new layout for tab_5 to hold the splitter
+        new_tab5_layout = QHBoxLayout(self.tab_5)
+        new_tab5_layout.setContentsMargins(0, 0, 0, 0)
+        new_tab5_layout.addWidget(self.bottom_view_splitter)
+
         # load ref csv files
         # load_Source_cal_csv_file(self)
         #
