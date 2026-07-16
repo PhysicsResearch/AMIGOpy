@@ -122,7 +122,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
 
         # Restructure layout of centralwidget to use a horizontal splitter
         import shiboken6
-        from PySide6.QtWidgets import QSplitter, QVBoxLayout, QWidget, QGridLayout
+        from PySide6.QtWidgets import QSplitter, QVBoxLayout, QHBoxLayout, QWidget, QGridLayout
         
         # 1. Remove widgets from the old gridLayout_3
         self.gridLayout_3.removeWidget(self.groupBox_17)
