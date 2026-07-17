@@ -13,8 +13,10 @@ permissions:
   actions: read
 
 jobs:
-  build-and-sign:
+  build:
     runs-on: windows-latest
+    outputs:
+      artifact-id: ${{ steps.upload_unsigned_bundle.outputs.artifact-id }}
 
     env:
       KMP_DUPLICATE_LIB_OK: "TRUE"
@@ -257,6 +259,10 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
+  sign:
+    needs: build
+    runs-on: windows-latest
+    steps:
       # === Submit to SignPath ===
       - name: Submit bundle to SignPath
         uses: signpath/github-action-submit-signing-request@v1.1
@@ -265,7 +271,7 @@ jobs:
           organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
           project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
           signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG_RELEASE }}
-          github-artifact-id: ${{ steps.upload_unsigned_bundle.outputs.artifact-id }}
+          github-artifact-id: ${{ needs.build.outputs.artifact-id }}
           wait-for-completion: true
           output-artifact-directory: signed
 
