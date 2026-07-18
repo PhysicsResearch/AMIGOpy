@@ -28,9 +28,11 @@ def initialize_software_tables(self):
     
     
     # Adjust source calibration table ----------------------
-    column_names = ["X Cent. (Px)", "Y Cent. (Px)", "Rad. (Px)", "Init. Slice", "Last. Slice", "Trasnp.","R","G","B"]
-    self.table_circ_roi.setColumnCount(9)
+    column_names = ["X Cent. (Px)", "Y Cent. (Px)", "Rad. (Px)", "Init. Slice", "Last. Slice", "Trasnp.","R","G","B", "Actions"]
+    self.table_circ_roi.setColumnCount(10)
     self.table_circ_roi.setRowCount(0)
+    self.table_circ_roi.setSelectionBehavior(QAbstractItemView.SelectRows)
+    self.table_circ_roi.setSelectionMode(QAbstractItemView.SingleSelection)
     #
     self.table_circ_roi.setHorizontalHeaderLabels(column_names)
     # Adjust the column width to fit the content or header

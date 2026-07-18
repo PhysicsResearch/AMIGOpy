@@ -417,12 +417,16 @@ def initialize_software_buttons(self):
     # Circle ROI -----------------------------------------------------------------------------------
     # display (or not) ROI
     self.checkBox_circ_roi_data_2.clicked.connect(lambda: toggle_rois(self)) 
+    self.roi_circle_add_row.setText("Add")
+    self.roi_circle_add_row.setStyleSheet("background-color: blue; color: white;")
     self.roi_circle_add_row.clicked.connect(lambda: roi_c_add_row(self))
+    self.roi_circle_remove_row.setText("Remove")
+    self.roi_circle_remove_row.setStyleSheet("background-color: blue; color: white;")
     self.roi_circle_remove_row.clicked.connect(lambda: roi_c_remove_row(self))
     self.circ_roi_exp_csv.clicked.connect(lambda: export_roi_circ_table_to_csv(self))
     self.circ_roi_exp_csv.setStyleSheet("background-color: blue; color: white;")
     self.circ_roi_load_csv.clicked.connect(lambda: import_roi_circ_table(self))
-    self.circ_roi_load_csv.setStyleSheet("background-color: red; color: white;")
+    self.circ_roi_load_csv.setStyleSheet("background-color: green; color: white;")
     self.get_circ_roi_data.clicked.connect(lambda: c_roi_getdata(self))
     self.get_circ_roi_data.setStyleSheet("background-color: blue; color: white;")
     self.get_circ_roi_data2.clicked.connect(lambda: c_roi_getdata(self))
@@ -430,6 +434,7 @@ def initialize_software_buttons(self):
     #
     self.exp_csv_roi_c_values.clicked.connect(lambda: export_roi_circ_values_to_csv(self))
     self.exp_csv_roi_c_values.setStyleSheet("background-color: blue; color: white;")
+    self.checkBox_circ_roi_data_2.setChecked(True)
     
     
 
