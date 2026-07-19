@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1713</width>
+    <width>1379</width>
     <height>1122</height>
    </rect>
   </property>
@@ -295,6 +295,38 @@
       <property name="value">
        <number>24</number>
       </property>
+     </widget>
+    </item>
+    <item row="4" column="1" colspan="2">
+     <widget class="QLabel" name="label_2">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="text">
+       <string>--------------</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="0" colspan="2">
+     <widget class="QGroupBox" name="groupBox_17">
+      <property name="title">
+       <string/>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_47">
+       <item row="0" column="0">
+        <widget class="QTreeView" name="DataTreeView">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </item>
     <item row="0" column="2" rowspan="3">
@@ -8981,8 +9013,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>252</width>
-             <height>130</height>
+             <width>392</width>
+             <height>292</height>
             </rect>
            </property>
            <attribute name="label">
@@ -9123,8 +9155,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>175</width>
-             <height>108</height>
+             <width>174</width>
+             <height>106</height>
             </rect>
            </property>
            <attribute name="label">
@@ -9190,8 +9222,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>243</width>
-             <height>168</height>
+             <width>242</width>
+             <height>165</height>
             </rect>
            </property>
            <attribute name="label">
@@ -9329,7 +9361,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>226</width>
+             <width>228</width>
              <height>134</height>
             </rect>
            </property>
@@ -9372,160 +9404,152 @@
         <string>3D Printing</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_87">
-        <item row="9" column="0" colspan="2">
-         <widget class="QTableView" name="tableView_red"/>
-        </item>
-        <item row="8" column="0" colspan="2">
-         <widget class="QPushButton" name="RED_calc_button">
-          <property name="text">
-           <string>Calculate Optimal Settings</string>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="0" colspan="2">
-         <widget class="QGroupBox" name="groupBox_optim_method">
-          <property name="title">
-           <string>Optimization Method</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_88">
-           <item row="0" column="0">
-            <widget class="QRadioButton" name="radio_flow">
-             <property name="text">
-              <string>Flow</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QRadioButton" name="radio_flow_infill">
-             <property name="text">
-              <string>Flow + Infill</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_human_tissue">
-          <property name="text">
-           <string>Human Tissue:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QComboBox" name="tissue_combo"/>
-        </item>
-        <item row="10" column="0" colspan="2">
-         <spacer name="verticalSpacer_24">
-          <property name="orientation">
-           <enum>Qt::Orientation::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
         <item row="0" column="0">
-         <widget class="QPushButton" name="import_reference_btn">
-          <property name="text">
-           <string>Load Reference Tissue File</string>
+         <widget class="QTabWidget" name="D3">
+          <property name="currentIndex">
+           <number>0</number>
           </property>
-         </widget>
-        </item>
-        <item row="4" column="0" colspan="2">
-         <widget class="QPushButton" name="load_cal_btn">
-          <property name="text">
-           <string>Load Calibration Matrix File</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0" colspan="2">
-         <widget class="QPushButton" name="show_filaments_button">
-          <property name="text">
-           <string>Match Filaments</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="0">
-         <widget class="QLabel" name="label_filament">
-          <property name="text">
-           <string>Select Filament</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QPushButton" name="import_tested_filaments_btn">
-          <property name="text">
-           <string>Load Filament Property File</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="1">
-         <widget class="QComboBox" name="filament_combo"/>
-        </item>
-        <item row="3" column="0" colspan="2">
-         <widget class="QTableView" name="tableView_filaments"/>
-        </item>
-        <item row="7" column="0" colspan="2">
-         <widget class="QGroupBox" name="groupBox_Extrap">
-          <property name="title">
-           <string>Extrapolation</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_89">
-           <item row="0" column="0">
-            <widget class="QRadioButton" name="radio_extrap">
-             <property name="text">
-              <string>Extrapolate</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QRadioButton" name="radio_no_extrap">
-             <property name="text">
-              <string>No Extrapolation</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
+          <widget class="QWidget" name="tab_18">
+           <attribute name="title">
+            <string>Database</string>
+           </attribute>
+          </widget>
+          <widget class="QWidget" name="tab_27">
+           <attribute name="title">
+            <string>MatMix</string>
+           </attribute>
+          </widget>
+          <widget class="QWidget" name="tab_19">
+           <attribute name="title">
+            <string>Flow_Infill</string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_29">
+            <item row="0" column="0">
+             <widget class="QPushButton" name="import_reference_btn">
+              <property name="text">
+               <string>Load Reference Tissue File</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QPushButton" name="import_tested_filaments_btn">
+              <property name="text">
+               <string>Load Filament Property File</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_human_tissue">
+              <property name="text">
+               <string>Human Tissue:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QComboBox" name="tissue_combo"/>
+            </item>
+            <item row="2" column="0" colspan="2">
+             <widget class="QPushButton" name="show_filaments_button">
+              <property name="text">
+               <string>Match Filaments</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0" colspan="2">
+             <widget class="QTableView" name="tableView_filaments"/>
+            </item>
+            <item row="4" column="0" colspan="2">
+             <widget class="QPushButton" name="load_cal_btn">
+              <property name="text">
+               <string>Load Calibration Matrix File</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <widget class="QLabel" name="label_filament">
+              <property name="text">
+               <string>Select Filament</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QComboBox" name="filament_combo"/>
+            </item>
+            <item row="6" column="0" colspan="2">
+             <widget class="QGroupBox" name="groupBox_optim_method">
+              <property name="title">
+               <string>Optimization Method</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_88">
+               <item row="0" column="0">
+                <widget class="QRadioButton" name="radio_flow">
+                 <property name="text">
+                  <string>Flow</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QRadioButton" name="radio_flow_infill">
+                 <property name="text">
+                  <string>Flow + Infill</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="7" column="0" colspan="2">
+             <widget class="QGroupBox" name="groupBox_Extrap">
+              <property name="title">
+               <string>Extrapolation</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_89">
+               <item row="0" column="0">
+                <widget class="QRadioButton" name="radio_extrap">
+                 <property name="text">
+                  <string>Extrapolate</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QRadioButton" name="radio_no_extrap">
+                 <property name="text">
+                  <string>No Extrapolation</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="8" column="0" colspan="2">
+             <widget class="QPushButton" name="RED_calc_button">
+              <property name="text">
+               <string>Calculate Optimal Settings</string>
+              </property>
+             </widget>
+            </item>
+            <item row="9" column="0" colspan="2">
+             <widget class="QTableView" name="tableView_red"/>
+            </item>
+            <item row="10" column="0" colspan="2">
+             <spacer name="verticalSpacer_24">
+              <property name="orientation">
+               <enum>Qt::Orientation::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>209</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
          </widget>
         </item>
        </layout>
       </widget>
-     </widget>
-    </item>
-    <item row="4" column="1" colspan="2">
-     <widget class="QLabel" name="label_2">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="text">
-       <string>--------------</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="0" colspan="2">
-     <widget class="QGroupBox" name="groupBox_17">
-      <property name="title">
-       <string/>
-      </property>
-      <layout class="QGridLayout" name="gridLayout_47">
-       <item row="0" column="0">
-        <widget class="QTreeView" name="DataTreeView">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-        </widget>
-       </item>
-      </layout>
      </widget>
     </item>
    </layout>

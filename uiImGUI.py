@@ -31,7 +31,7 @@ class Ui_AMIGOpy(object):
     def setupUi(self, AMIGOpy):
         if not AMIGOpy.objectName():
             AMIGOpy.setObjectName(u"AMIGOpy")
-        AMIGOpy.resize(1713, 1122)
+        AMIGOpy.resize(1379, 1122)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -216,6 +216,33 @@ class Ui_AMIGOpy(object):
 
         self.gridLayout_3.addWidget(self.progressBar, 4, 0, 2, 1)
 
+        self.label_2 = QLabel(self.centralwidget)
+        self.label_2.setObjectName(u"label_2")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.label_2.sizePolicy().hasHeightForWidth())
+        self.label_2.setSizePolicy(sizePolicy1)
+
+        self.gridLayout_3.addWidget(self.label_2, 4, 1, 1, 2)
+
+        self.groupBox_17 = QGroupBox(self.centralwidget)
+        self.groupBox_17.setObjectName(u"groupBox_17")
+        self.gridLayout_47 = QGridLayout(self.groupBox_17)
+        self.gridLayout_47.setObjectName(u"gridLayout_47")
+        self.DataTreeView = QTreeView(self.groupBox_17)
+        self.DataTreeView.setObjectName(u"DataTreeView")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Expanding)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.DataTreeView.sizePolicy().hasHeightForWidth())
+        self.DataTreeView.setSizePolicy(sizePolicy2)
+
+        self.gridLayout_47.addWidget(self.DataTreeView, 0, 0, 1, 1)
+
+
+        self.gridLayout_3.addWidget(self.groupBox_17, 0, 0, 1, 2)
+
         self.tabModules = QTabWidget(self.centralwidget)
         self.tabModules.setObjectName(u"tabModules")
         self.im_display_tab = QWidget()
@@ -243,11 +270,8 @@ class Ui_AMIGOpy(object):
 
         self.VTK_view_02 = QWidget(self.im_display_tab)
         self.VTK_view_02.setObjectName(u"VTK_view_02")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Expanding)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.VTK_view_02.sizePolicy().hasHeightForWidth())
-        self.VTK_view_02.setSizePolicy(sizePolicy1)
+        sizePolicy2.setHeightForWidth(self.VTK_view_02.sizePolicy().hasHeightForWidth())
+        self.VTK_view_02.setSizePolicy(sizePolicy2)
         self.gridLayout_92 = QGridLayout(self.VTK_view_02)
         self.gridLayout_92.setObjectName(u"gridLayout_92")
         self.horizontalSpacer_80 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
@@ -263,11 +287,11 @@ class Ui_AMIGOpy(object):
 
         self.VTK_view_01 = QWidget(self.im_display_tab)
         self.VTK_view_01.setObjectName(u"VTK_view_01")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.VTK_view_01.sizePolicy().hasHeightForWidth())
-        self.VTK_view_01.setSizePolicy(sizePolicy2)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.VTK_view_01.sizePolicy().hasHeightForWidth())
+        self.VTK_view_01.setSizePolicy(sizePolicy3)
         self.gridLayout_90 = QGridLayout(self.VTK_view_01)
         self.gridLayout_90.setObjectName(u"gridLayout_90")
         self.verticalSpacer_25 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
@@ -283,11 +307,11 @@ class Ui_AMIGOpy(object):
 
         self.VTK_view_03 = QWidget(self.im_display_tab)
         self.VTK_view_03.setObjectName(u"VTK_view_03")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.VTK_view_03.sizePolicy().hasHeightForWidth())
-        self.VTK_view_03.setSizePolicy(sizePolicy3)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.VTK_view_03.sizePolicy().hasHeightForWidth())
+        self.VTK_view_03.setSizePolicy(sizePolicy4)
         self.gridLayout_91 = QGridLayout(self.VTK_view_03)
         self.gridLayout_91.setObjectName(u"gridLayout_91")
         self.verticalSpacer_27 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
@@ -303,11 +327,8 @@ class Ui_AMIGOpy(object):
 
         self.tabView01 = QTabWidget(self.im_display_tab)
         self.tabView01.setObjectName(u"tabView01")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.tabView01.sizePolicy().hasHeightForWidth())
-        self.tabView01.setSizePolicy(sizePolicy4)
+        sizePolicy1.setHeightForWidth(self.tabView01.sizePolicy().hasHeightForWidth())
+        self.tabView01.setSizePolicy(sizePolicy1)
         self.tabView01.setFont(font)
         self.tabView01.setTabPosition(QTabWidget.TabPosition.West)
         self.tab_5 = QWidget()
@@ -316,15 +337,15 @@ class Ui_AMIGOpy(object):
         self.gridLayout_81.setObjectName(u"gridLayout_81")
         self.hist_container_01 = QWidget(self.tab_5)
         self.hist_container_01.setObjectName(u"hist_container_01")
-        sizePolicy4.setHeightForWidth(self.hist_container_01.sizePolicy().hasHeightForWidth())
-        self.hist_container_01.setSizePolicy(sizePolicy4)
+        sizePolicy1.setHeightForWidth(self.hist_container_01.sizePolicy().hasHeightForWidth())
+        self.hist_container_01.setSizePolicy(sizePolicy1)
 
         self.gridLayout_81.addWidget(self.hist_container_01, 0, 0, 1, 1)
 
         self.tabWidget_10 = QTabWidget(self.tab_5)
         self.tabWidget_10.setObjectName(u"tabWidget_10")
-        sizePolicy4.setHeightForWidth(self.tabWidget_10.sizePolicy().hasHeightForWidth())
-        self.tabWidget_10.setSizePolicy(sizePolicy4)
+        sizePolicy1.setHeightForWidth(self.tabWidget_10.sizePolicy().hasHeightForWidth())
+        self.tabWidget_10.setSizePolicy(sizePolicy1)
         self.tab_44 = QWidget()
         self.tab_44.setObjectName(u"tab_44")
         self.gridLayout_31 = QGridLayout(self.tab_44)
@@ -795,8 +816,8 @@ class Ui_AMIGOpy(object):
         self.gridLayout_44.setObjectName(u"gridLayout_44")
         self.tabWidget_3 = QTabWidget(self.tab_14)
         self.tabWidget_3.setObjectName(u"tabWidget_3")
-        sizePolicy4.setHeightForWidth(self.tabWidget_3.sizePolicy().hasHeightForWidth())
-        self.tabWidget_3.setSizePolicy(sizePolicy4)
+        sizePolicy1.setHeightForWidth(self.tabWidget_3.sizePolicy().hasHeightForWidth())
+        self.tabWidget_3.setSizePolicy(sizePolicy1)
         self.tab_37 = QWidget()
         self.tab_37.setObjectName(u"tab_37")
         self.gridLayout_8 = QGridLayout(self.tab_37)
@@ -895,8 +916,8 @@ class Ui_AMIGOpy(object):
 
         self.STRUCTlist = QListWidget(self.tab_39)
         self.STRUCTlist.setObjectName(u"STRUCTlist")
-        sizePolicy4.setHeightForWidth(self.STRUCTlist.sizePolicy().hasHeightForWidth())
-        self.STRUCTlist.setSizePolicy(sizePolicy4)
+        sizePolicy1.setHeightForWidth(self.STRUCTlist.sizePolicy().hasHeightForWidth())
+        self.STRUCTlist.setSizePolicy(sizePolicy1)
 
         self.gridLayout_9.addWidget(self.STRUCTlist, 0, 0, 1, 3)
 
@@ -907,8 +928,8 @@ class Ui_AMIGOpy(object):
         self.gridLayout_7.setObjectName(u"gridLayout_7")
         self.tabWidget_4 = QTabWidget(self.tab_9)
         self.tabWidget_4.setObjectName(u"tabWidget_4")
-        sizePolicy4.setHeightForWidth(self.tabWidget_4.sizePolicy().hasHeightForWidth())
-        self.tabWidget_4.setSizePolicy(sizePolicy4)
+        sizePolicy1.setHeightForWidth(self.tabWidget_4.sizePolicy().hasHeightForWidth())
+        self.tabWidget_4.setSizePolicy(sizePolicy1)
         self.tab_10 = QWidget()
         self.tab_10.setObjectName(u"tab_10")
         self.IrIS_CorFrame_checkbox = QCheckBox(self.tab_10)
@@ -1018,8 +1039,8 @@ class Ui_AMIGOpy(object):
         self.gridLayout_30.setObjectName(u"gridLayout_30")
         self.tabWidget_8 = QTabWidget(self.tab_31)
         self.tabWidget_8.setObjectName(u"tabWidget_8")
-        sizePolicy4.setHeightForWidth(self.tabWidget_8.sizePolicy().hasHeightForWidth())
-        self.tabWidget_8.setSizePolicy(sizePolicy4)
+        sizePolicy1.setHeightForWidth(self.tabWidget_8.sizePolicy().hasHeightForWidth())
+        self.tabWidget_8.setSizePolicy(sizePolicy1)
         self.tab_32 = QWidget()
         self.tab_32.setObjectName(u"tab_32")
         self.gridLayout_33 = QGridLayout(self.tab_32)
@@ -1087,8 +1108,8 @@ class Ui_AMIGOpy(object):
         self.gridLayout_32.setObjectName(u"gridLayout_32")
         self.tabWidget_9 = QTabWidget(self.tab_30)
         self.tabWidget_9.setObjectName(u"tabWidget_9")
-        sizePolicy4.setHeightForWidth(self.tabWidget_9.sizePolicy().hasHeightForWidth())
-        self.tabWidget_9.setSizePolicy(sizePolicy4)
+        sizePolicy1.setHeightForWidth(self.tabWidget_9.sizePolicy().hasHeightForWidth())
+        self.tabWidget_9.setSizePolicy(sizePolicy1)
         self.tab_34 = QWidget()
         self.tab_34.setObjectName(u"tab_34")
         self.gridLayout_45 = QGridLayout(self.tab_34)
@@ -5734,7 +5755,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg.setObjectName(u"toolBox_seg")
         self.seg_manual_contour = QWidget()
         self.seg_manual_contour.setObjectName(u"seg_manual_contour")
-        self.seg_manual_contour.setGeometry(QRect(0, 0, 252, 130))
+        self.seg_manual_contour.setGeometry(QRect(0, 0, 392, 292))
         self.gridLayout_60 = QGridLayout(self.seg_manual_contour)
         self.gridLayout_60.setObjectName(u"gridLayout_60")
         self.undoSegText = QLineEdit(self.seg_manual_contour)
@@ -5814,7 +5835,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg.addItem(self.seg_manual_contour, u"Manual contouring && edits")
         self.page_thresholding = QWidget()
         self.page_thresholding.setObjectName(u"page_thresholding")
-        self.page_thresholding.setGeometry(QRect(0, 0, 175, 108))
+        self.page_thresholding.setGeometry(QRect(0, 0, 174, 106))
         self.gridLayout_70 = QGridLayout(self.page_thresholding)
         self.gridLayout_70.setObjectName(u"gridLayout_70")
         self.indexMinThreshSeg = QSpinBox(self.page_thresholding)
@@ -5859,7 +5880,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg.addItem(self.page_thresholding, u"Thresholding")
         self.morph_oper = QWidget()
         self.morph_oper.setObjectName(u"morph_oper")
-        self.morph_oper.setGeometry(QRect(0, 0, 243, 168))
+        self.morph_oper.setGeometry(QRect(0, 0, 242, 165))
         self.gridLayout_79 = QGridLayout(self.morph_oper)
         self.gridLayout_79.setObjectName(u"gridLayout_79")
         self.lineEdit_70 = QLineEdit(self.morph_oper)
@@ -5937,7 +5958,7 @@ class Ui_AMIGOpy(object):
         self.toolBox_seg.addItem(self.morph_oper, u"Morphological operations")
         self.page = QWidget()
         self.page.setObjectName(u"page")
-        self.page.setGeometry(QRect(0, 0, 226, 134))
+        self.page.setGeometry(QRect(0, 0, 228, 134))
         self.gridLayout_61 = QGridLayout(self.page)
         self.gridLayout_61.setObjectName(u"gridLayout_61")
         self.calcSegStatsButton = QPushButton(self.page)
@@ -5975,17 +5996,64 @@ class Ui_AMIGOpy(object):
         self.tab_3DP.setObjectName(u"tab_3DP")
         self.gridLayout_87 = QGridLayout(self.tab_3DP)
         self.gridLayout_87.setObjectName(u"gridLayout_87")
-        self.tableView_red = QTableView(self.tab_3DP)
-        self.tableView_red.setObjectName(u"tableView_red")
+        self.D3 = QTabWidget(self.tab_3DP)
+        self.D3.setObjectName(u"D3")
+        self.tab_18 = QWidget()
+        self.tab_18.setObjectName(u"tab_18")
+        self.D3.addTab(self.tab_18, "")
+        self.tab_27 = QWidget()
+        self.tab_27.setObjectName(u"tab_27")
+        self.D3.addTab(self.tab_27, "")
+        self.tab_19 = QWidget()
+        self.tab_19.setObjectName(u"tab_19")
+        self.gridLayout_29 = QGridLayout(self.tab_19)
+        self.gridLayout_29.setObjectName(u"gridLayout_29")
+        self.import_reference_btn = QPushButton(self.tab_19)
+        self.import_reference_btn.setObjectName(u"import_reference_btn")
 
-        self.gridLayout_87.addWidget(self.tableView_red, 9, 0, 1, 2)
+        self.gridLayout_29.addWidget(self.import_reference_btn, 0, 0, 1, 1)
 
-        self.RED_calc_button = QPushButton(self.tab_3DP)
-        self.RED_calc_button.setObjectName(u"RED_calc_button")
+        self.import_tested_filaments_btn = QPushButton(self.tab_19)
+        self.import_tested_filaments_btn.setObjectName(u"import_tested_filaments_btn")
 
-        self.gridLayout_87.addWidget(self.RED_calc_button, 8, 0, 1, 2)
+        self.gridLayout_29.addWidget(self.import_tested_filaments_btn, 0, 1, 1, 1)
 
-        self.groupBox_optim_method = QGroupBox(self.tab_3DP)
+        self.label_human_tissue = QLabel(self.tab_19)
+        self.label_human_tissue.setObjectName(u"label_human_tissue")
+
+        self.gridLayout_29.addWidget(self.label_human_tissue, 1, 0, 1, 1)
+
+        self.tissue_combo = QComboBox(self.tab_19)
+        self.tissue_combo.setObjectName(u"tissue_combo")
+
+        self.gridLayout_29.addWidget(self.tissue_combo, 1, 1, 1, 1)
+
+        self.show_filaments_button = QPushButton(self.tab_19)
+        self.show_filaments_button.setObjectName(u"show_filaments_button")
+
+        self.gridLayout_29.addWidget(self.show_filaments_button, 2, 0, 1, 2)
+
+        self.tableView_filaments = QTableView(self.tab_19)
+        self.tableView_filaments.setObjectName(u"tableView_filaments")
+
+        self.gridLayout_29.addWidget(self.tableView_filaments, 3, 0, 1, 2)
+
+        self.load_cal_btn = QPushButton(self.tab_19)
+        self.load_cal_btn.setObjectName(u"load_cal_btn")
+
+        self.gridLayout_29.addWidget(self.load_cal_btn, 4, 0, 1, 2)
+
+        self.label_filament = QLabel(self.tab_19)
+        self.label_filament.setObjectName(u"label_filament")
+
+        self.gridLayout_29.addWidget(self.label_filament, 5, 0, 1, 1)
+
+        self.filament_combo = QComboBox(self.tab_19)
+        self.filament_combo.setObjectName(u"filament_combo")
+
+        self.gridLayout_29.addWidget(self.filament_combo, 5, 1, 1, 1)
+
+        self.groupBox_optim_method = QGroupBox(self.tab_19)
         self.groupBox_optim_method.setObjectName(u"groupBox_optim_method")
         self.gridLayout_88 = QGridLayout(self.groupBox_optim_method)
         self.gridLayout_88.setObjectName(u"gridLayout_88")
@@ -6000,58 +6068,9 @@ class Ui_AMIGOpy(object):
         self.gridLayout_88.addWidget(self.radio_flow_infill, 0, 1, 1, 1)
 
 
-        self.gridLayout_87.addWidget(self.groupBox_optim_method, 6, 0, 1, 2)
+        self.gridLayout_29.addWidget(self.groupBox_optim_method, 6, 0, 1, 2)
 
-        self.label_human_tissue = QLabel(self.tab_3DP)
-        self.label_human_tissue.setObjectName(u"label_human_tissue")
-
-        self.gridLayout_87.addWidget(self.label_human_tissue, 1, 0, 1, 1)
-
-        self.tissue_combo = QComboBox(self.tab_3DP)
-        self.tissue_combo.setObjectName(u"tissue_combo")
-
-        self.gridLayout_87.addWidget(self.tissue_combo, 1, 1, 1, 1)
-
-        self.verticalSpacer_24 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-        self.gridLayout_87.addItem(self.verticalSpacer_24, 10, 0, 1, 2)
-
-        self.import_reference_btn = QPushButton(self.tab_3DP)
-        self.import_reference_btn.setObjectName(u"import_reference_btn")
-
-        self.gridLayout_87.addWidget(self.import_reference_btn, 0, 0, 1, 1)
-
-        self.load_cal_btn = QPushButton(self.tab_3DP)
-        self.load_cal_btn.setObjectName(u"load_cal_btn")
-
-        self.gridLayout_87.addWidget(self.load_cal_btn, 4, 0, 1, 2)
-
-        self.show_filaments_button = QPushButton(self.tab_3DP)
-        self.show_filaments_button.setObjectName(u"show_filaments_button")
-
-        self.gridLayout_87.addWidget(self.show_filaments_button, 2, 0, 1, 2)
-
-        self.label_filament = QLabel(self.tab_3DP)
-        self.label_filament.setObjectName(u"label_filament")
-
-        self.gridLayout_87.addWidget(self.label_filament, 5, 0, 1, 1)
-
-        self.import_tested_filaments_btn = QPushButton(self.tab_3DP)
-        self.import_tested_filaments_btn.setObjectName(u"import_tested_filaments_btn")
-
-        self.gridLayout_87.addWidget(self.import_tested_filaments_btn, 0, 1, 1, 1)
-
-        self.filament_combo = QComboBox(self.tab_3DP)
-        self.filament_combo.setObjectName(u"filament_combo")
-
-        self.gridLayout_87.addWidget(self.filament_combo, 5, 1, 1, 1)
-
-        self.tableView_filaments = QTableView(self.tab_3DP)
-        self.tableView_filaments.setObjectName(u"tableView_filaments")
-
-        self.gridLayout_87.addWidget(self.tableView_filaments, 3, 0, 1, 2)
-
-        self.groupBox_Extrap = QGroupBox(self.tab_3DP)
+        self.groupBox_Extrap = QGroupBox(self.tab_19)
         self.groupBox_Extrap.setObjectName(u"groupBox_Extrap")
         self.gridLayout_89 = QGridLayout(self.groupBox_Extrap)
         self.gridLayout_89.setObjectName(u"gridLayout_89")
@@ -6066,32 +6085,29 @@ class Ui_AMIGOpy(object):
         self.gridLayout_89.addWidget(self.radio_no_extrap, 0, 1, 1, 1)
 
 
-        self.gridLayout_87.addWidget(self.groupBox_Extrap, 7, 0, 1, 2)
+        self.gridLayout_29.addWidget(self.groupBox_Extrap, 7, 0, 1, 2)
+
+        self.RED_calc_button = QPushButton(self.tab_19)
+        self.RED_calc_button.setObjectName(u"RED_calc_button")
+
+        self.gridLayout_29.addWidget(self.RED_calc_button, 8, 0, 1, 2)
+
+        self.tableView_red = QTableView(self.tab_19)
+        self.tableView_red.setObjectName(u"tableView_red")
+
+        self.gridLayout_29.addWidget(self.tableView_red, 9, 0, 1, 2)
+
+        self.verticalSpacer_24 = QSpacerItem(20, 209, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_29.addItem(self.verticalSpacer_24, 10, 0, 1, 2)
+
+        self.D3.addTab(self.tab_19, "")
+
+        self.gridLayout_87.addWidget(self.D3, 0, 0, 1, 1)
 
         self.tabModules.addTab(self.tab_3DP, "")
 
         self.gridLayout_3.addWidget(self.tabModules, 0, 2, 3, 1)
-
-        self.label_2 = QLabel(self.centralwidget)
-        self.label_2.setObjectName(u"label_2")
-        sizePolicy4.setHeightForWidth(self.label_2.sizePolicy().hasHeightForWidth())
-        self.label_2.setSizePolicy(sizePolicy4)
-
-        self.gridLayout_3.addWidget(self.label_2, 4, 1, 1, 2)
-
-        self.groupBox_17 = QGroupBox(self.centralwidget)
-        self.groupBox_17.setObjectName(u"groupBox_17")
-        self.gridLayout_47 = QGridLayout(self.groupBox_17)
-        self.gridLayout_47.setObjectName(u"gridLayout_47")
-        self.DataTreeView = QTreeView(self.groupBox_17)
-        self.DataTreeView.setObjectName(u"DataTreeView")
-        sizePolicy1.setHeightForWidth(self.DataTreeView.sizePolicy().hasHeightForWidth())
-        self.DataTreeView.setSizePolicy(sizePolicy1)
-
-        self.gridLayout_47.addWidget(self.DataTreeView, 0, 0, 1, 1)
-
-
-        self.gridLayout_3.addWidget(self.groupBox_17, 0, 0, 1, 2)
 
         AMIGOpy.setCentralWidget(self.centralwidget)
         self.statusbar = QStatusBar(AMIGOpy)
@@ -6161,6 +6177,7 @@ class Ui_AMIGOpy(object):
         self.tabWidget_BrCv.setCurrentIndex(0)
         self.BrCv_PhOperWidget.setCurrentIndex(0)
         self.toolBox_seg.setCurrentIndex(0)
+        self.D3.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(AMIGOpy)
@@ -6170,13 +6187,15 @@ class Ui_AMIGOpy(object):
         AMIGOpy.setWindowTitle(QCoreApplication.translate("AMIGOpy", u"MainWindow", None))
         self.label.setText("")
         self.groupBox.setTitle("")
-        self.lineEdit_18.setText(QCoreApplication.translate("AMIGOpy", u"Layer 1", None))
-        self.lineEdit_21.setText(QCoreApplication.translate("AMIGOpy", u"Layer 4", None))
-        self.lineEdit_20.setText(QCoreApplication.translate("AMIGOpy", u"Layer 3", None))
+        self.lineEdit_18.setText(QCoreApplication.translate("AMIGOpy", u"Layer 0", None))
+        self.lineEdit_21.setText(QCoreApplication.translate("AMIGOpy", u"Layer 3", None))
+        self.lineEdit_20.setText(QCoreApplication.translate("AMIGOpy", u"Layer 2", None))
         self.lineEdit_22.setText(QCoreApplication.translate("AMIGOpy", u"PMI", None))
         self.lineEdit_23.setText(QCoreApplication.translate("AMIGOpy", u"Transparency", None))
         self.lineEdit_24.setText(QCoreApplication.translate("AMIGOpy", u"Active layer", None))
-        self.lineEdit_19.setText(QCoreApplication.translate("AMIGOpy", u"Layer 2", None))
+        self.lineEdit_19.setText(QCoreApplication.translate("AMIGOpy", u"Layer 1", None))
+        self.label_2.setText(QCoreApplication.translate("AMIGOpy", u"--------------", None))
+        self.groupBox_17.setTitle("")
         self.tabModules.setProperty(u"Layout", "")
         self.groupBox_13.setTitle(QCoreApplication.translate("AMIGOpy", u"Rotation", None))
         self.lineEdit_85.setText(QCoreApplication.translate("AMIGOpy", u"Moving", None))
@@ -6185,7 +6204,7 @@ class Ui_AMIGOpy(object):
         self.pushButton_6.setText(QCoreApplication.translate("AMIGOpy", u"Z", None))
         self.pushButton_4.setText(QCoreApplication.translate("AMIGOpy", u"X", None))
         self.groupBox_12.setTitle(QCoreApplication.translate("AMIGOpy", u"Translation", None))
-        self.lineEdit_71.setText(QCoreApplication.translate("AMIGOpy", u"Lay. 1", None))
+        self.lineEdit_71.setText(QCoreApplication.translate("AMIGOpy", u"Lay. 0", None))
         self.lineEdit_72.setText(QCoreApplication.translate("AMIGOpy", u"Layer", None))
         self.lineEdit_73.setText(QCoreApplication.translate("AMIGOpy", u"STEP", None))
         self.apply_Im_transformation.setText(QCoreApplication.translate("AMIGOpy", u"Apply", None))
@@ -6664,21 +6683,22 @@ class Ui_AMIGOpy(object):
         self.exportSegStrucButton.setText(QCoreApplication.translate("AMIGOpy", u"Export structures", None))
         self.toolBox_seg.setItemText(self.toolBox_seg.indexOf(self.page), QCoreApplication.translate("AMIGOpy", u"Export && analyze", None))
         self.tabModules.setTabText(self.tabModules.indexOf(self.tab_seg), QCoreApplication.translate("AMIGOpy", u"Segmentation", None))
-        self.RED_calc_button.setText(QCoreApplication.translate("AMIGOpy", u"Calculate Optimal Settings", None))
+        self.D3.setTabText(self.D3.indexOf(self.tab_18), QCoreApplication.translate("AMIGOpy", u"Database", None))
+        self.D3.setTabText(self.D3.indexOf(self.tab_27), QCoreApplication.translate("AMIGOpy", u"MatMix", None))
+        self.import_reference_btn.setText(QCoreApplication.translate("AMIGOpy", u"Load Reference Tissue File", None))
+        self.import_tested_filaments_btn.setText(QCoreApplication.translate("AMIGOpy", u"Load Filament Property File", None))
+        self.label_human_tissue.setText(QCoreApplication.translate("AMIGOpy", u"Human Tissue:", None))
+        self.show_filaments_button.setText(QCoreApplication.translate("AMIGOpy", u"Match Filaments", None))
+        self.load_cal_btn.setText(QCoreApplication.translate("AMIGOpy", u"Load Calibration Matrix File", None))
+        self.label_filament.setText(QCoreApplication.translate("AMIGOpy", u"Select Filament", None))
         self.groupBox_optim_method.setTitle(QCoreApplication.translate("AMIGOpy", u"Optimization Method", None))
         self.radio_flow.setText(QCoreApplication.translate("AMIGOpy", u"Flow", None))
         self.radio_flow_infill.setText(QCoreApplication.translate("AMIGOpy", u"Flow + Infill", None))
-        self.label_human_tissue.setText(QCoreApplication.translate("AMIGOpy", u"Human Tissue:", None))
-        self.import_reference_btn.setText(QCoreApplication.translate("AMIGOpy", u"Load Reference Tissue File", None))
-        self.load_cal_btn.setText(QCoreApplication.translate("AMIGOpy", u"Load Calibration Matrix File", None))
-        self.show_filaments_button.setText(QCoreApplication.translate("AMIGOpy", u"Match Filaments", None))
-        self.label_filament.setText(QCoreApplication.translate("AMIGOpy", u"Select Filament", None))
-        self.import_tested_filaments_btn.setText(QCoreApplication.translate("AMIGOpy", u"Load Filament Property File", None))
         self.groupBox_Extrap.setTitle(QCoreApplication.translate("AMIGOpy", u"Extrapolation", None))
         self.radio_extrap.setText(QCoreApplication.translate("AMIGOpy", u"Extrapolate", None))
         self.radio_no_extrap.setText(QCoreApplication.translate("AMIGOpy", u"No Extrapolation", None))
+        self.RED_calc_button.setText(QCoreApplication.translate("AMIGOpy", u"Calculate Optimal Settings", None))
+        self.D3.setTabText(self.D3.indexOf(self.tab_19), QCoreApplication.translate("AMIGOpy", u"Flow_Infill", None))
         self.tabModules.setTabText(self.tabModules.indexOf(self.tab_3DP), QCoreApplication.translate("AMIGOpy", u"3D Printing", None))
-        self.label_2.setText(QCoreApplication.translate("AMIGOpy", u"--------------", None))
-        self.groupBox_17.setTitle("")
     # retranslateUi
 

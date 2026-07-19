@@ -20,6 +20,7 @@ from fcn_load.load_npy import load_npy_files
 from fcn_load.load_tiff_similar import load_tiff_files, load_png_files, load_jpeg_files, load_bmp_files  
 from fcn_autocont.segmentator_calls import open_segmentator_tab
 from functools import partial
+from fcn_init.create_3D_database_tab import export_3dp_database_action, import_3dp_database_action
 
 
 def initializeMenuBar(self):
@@ -71,6 +72,11 @@ def initializeMenuBar(self):
         if item == "Tiff":
             action.triggered.connect(lambda: load_tiff_files(self))
         openMenu.addAction(action)
+        
+    importMenu = fileMenu.addMenu("Import")
+    import_3dp_action = QAction("3DP Database", self)
+    import_3dp_action.triggered.connect(lambda: import_3dp_database_action(self))
+    importMenu.addAction(import_3dp_action)
 
     ViewMenu      = self.menuBar().addMenu("View")
     WindowingMenu = ViewMenu .addMenu("Window")
@@ -213,6 +219,10 @@ def initializeMenuBar(self):
             action.triggered.connect(lambda: export_dw_np(self))
             
         TypeMenu.addAction(action)
+        
+    export_3dp_action = QAction("3DP Database", self)
+    export_3dp_action.triggered.connect(lambda: export_3dp_database_action(self))
+    ExportMenu.addAction(export_3dp_action)
     
     # Figures
     self.selected_font_size = 14
@@ -223,6 +233,8 @@ def initializeMenuBar(self):
     self.selected_line_color = "Red" 
     self.selected_point_size = 8
     self.selected_point_color = "Blue"
+    self.selected_line_style = "Solid"
+    self.selected_marker_type = "Circle"
 
     # Colorbar scale layout state
     self.scale_pos_x = 0.91
@@ -232,7 +244,19 @@ def initializeMenuBar(self):
 
     styleMenu = self.menuBar().addMenu("Figures")
 
-    # Font Size submenu
+    # 1. Background submenu
+    backgroundMenu = styleMenu.addMenu("Background")
+    backgroundGroup = QActionGroup(self)
+    backgrounds = ["Transparent", "White"]
+    for bg in backgrounds:
+        action = QAction(bg, self, checkable=True)
+        if bg == self.selected_background:
+            action.setChecked(True)
+        action.triggered.connect(lambda checked, b=bg: set_background(self,b))
+        backgroundMenu.addAction(action)
+        backgroundGroup.addAction(action)
+
+    # 2. Font Size submenu
     fontSizeMenu = styleMenu.addMenu("Font Size")
     fontSizeGroup = QActionGroup(self)
     fontSizes = [8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40]
@@ -244,47 +268,59 @@ def initializeMenuBar(self):
         fontSizeMenu.addAction(action)
         fontSizeGroup.addAction(action)
 
-    # Background submenu
-    backgroundMenu = styleMenu.addMenu("Background")
-    backgroundGroup = QActionGroup(self)
-    backgrounds = ["Transparent", "White"]
-    for bg in backgrounds:
-        action = QAction(bg, self, checkable=True)
-        if bg == self.selected_background:
-            action.setChecked(True)
-        action.triggered.connect(lambda checked, b=bg: set_background(self,b))
-        backgroundMenu.addAction(action)
-        backgroundGroup.addAction(action)
-        
-    # Legend on/off submenu
-    legendMenu = styleMenu.addMenu("Legend")
-    legendGroup = QActionGroup(self)
-    legends = ["On", "Off"]
-    for lg in legends:
-        action = QAction(lg, self, checkable=True)
-        if lg == "On":
-            action.setChecked(True)
-        action.triggered.connect(lambda checked, l=lg: set_legend_on_off(self,l))
-        legendMenu.addAction(action)
-        legendGroup.addAction(action)
-    
-    # Font Size LEgend submenu
+    # 3. Font Size Legend submenu
     lg_fontSizeMenu = styleMenu.addMenu("Font Size Legend")
     lg_fontSizeGroup = QActionGroup(self)
     fontSizes = [8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40]
     for size in fontSizes:
         action = QAction(str(size), self, checkable=True)
-        if size == self.selected_font_size:
+        if size == self.selected_legend_font_size:
             action.setChecked(True)
         action.triggered.connect(lambda checked, s=size: set_legend_font_size(self,s))
         lg_fontSizeMenu.addAction(action)
         lg_fontSizeGroup.addAction(action)
 
-    # Line Width submenu
+    # 4. Legend on/off submenu
+    legendMenu = styleMenu.addMenu("Legend")
+    legendGroup = QActionGroup(self)
+    legends = ["On", "Off"]
+    for lg in legends:
+        action = QAction(lg, self, checkable=True)
+        if lg == self.selected_legend_on_off:
+            action.setChecked(True)
+        action.triggered.connect(lambda checked, l=lg: set_legend_on_off(self,l))
+        legendMenu.addAction(action)
+        legendGroup.addAction(action)
+
+    # 5. Line Color submenu
+    lg_lineColorMenu = styleMenu.addMenu("Line Color")
+    lg_lineColor     = QActionGroup(self)
+    lineColors       = ["blue", "black", "green", "red", "white"]
+    for color in lineColors:
+        action = QAction(color, self, checkable=True)
+        if color.lower() == self.selected_line_color.lower():
+            action.setChecked(True)
+        action.triggered.connect(lambda checked, s=color: set_line_color(self,s))
+        lg_lineColorMenu.addAction(action)
+        lg_lineColor.addAction(action)
+
+    # 6. Line Style submenu
+    lineStyleMenu = styleMenu.addMenu("Line Style")
+    lineStyleGroup = QActionGroup(self)
+    lineStyles = ["Solid", "Dashed", "Dotted", "Dash-Dot", "None"]
+    for style in lineStyles:
+        action = QAction(style, self, checkable=True)
+        if style.lower() == self.selected_line_style.lower():
+            action.setChecked(True)
+        action.triggered.connect(lambda checked, s=style: set_line_style(self,s))
+        lineStyleMenu.addAction(action)
+        lineStyleGroup.addAction(action)
+
+    # 7. Line Width submenu
     lg_lineWidthMenu = styleMenu.addMenu("Line Width")
     lg_lineWidth     = QActionGroup(self)
     lineWidth        = [0.5, 1, 2, 3, 4, 5, 6]
-    for size in lineWidth :
+    for size in lineWidth:
         action = QAction(str(size), self, checkable=True)
         if size == self.selected_line_width:
             action.setChecked(True)
@@ -292,25 +328,35 @@ def initializeMenuBar(self):
         lg_lineWidthMenu.addAction(action)
         lg_lineWidth.addAction(action)
 
-    # Line Color submenu
-    lg_lineColorMenu = styleMenu.addMenu("Line Color")
-    lg_lineColor     = QActionGroup(self)
-    lineColors       = ["blue","black","green","red","white"]
-    for color in lineColors :
-        action = QAction(str(color), self, checkable=True)
-        if color == self.selected_line_color:
+    # 8. Marker Type submenu
+    markerTypeMenu = styleMenu.addMenu("Marker Type")
+    markerTypeGroup = QActionGroup(self)
+    markerTypes = ["Circle", "Square", "Triangle", "Star", "None"]
+    for mtype in markerTypes:
+        action = QAction(mtype, self, checkable=True)
+        if mtype.lower() == self.selected_marker_type.lower():
             action.setChecked(True)
-        action.triggered.connect(lambda checked, s=color: set_line_color(self,s))
-        lg_lineColorMenu.addAction(action)
-        lg_lineColor.addAction(action)
+        action.triggered.connect(lambda checked, m=mtype: set_marker_type(self,m))
+        markerTypeMenu.addAction(action)
+        markerTypeGroup.addAction(action)
 
+    # 9. Point Color submenu
+    lg_pColorMenu = styleMenu.addMenu("Point Color")
+    lg_pColor     = QActionGroup(self)
+    lineColors       = ["blue", "black", "green", "red", "white"]
+    for color in lineColors:
+        action = QAction(color, self, checkable=True)
+        if color.lower() == self.selected_point_color.lower():
+            action.setChecked(True)
+        action.triggered.connect(lambda checked, s=color: set_point_color(self,s))
+        lg_pColorMenu.addAction(action)
+        lg_pColor.addAction(action)
 
-
-    # Point size submenu
+    # 10. Point size submenu
     lg_psizetMenu = styleMenu.addMenu("Point size")
     lg_psize     = QActionGroup(self)
     psize        = [2, 4, 6, 8, 10, 15, 20]
-    for size in psize :
+    for size in psize:
         action = QAction(str(size), self, checkable=True)
         if size == self.selected_point_size:
             action.setChecked(True)
@@ -318,19 +364,7 @@ def initializeMenuBar(self):
         lg_psizetMenu.addAction(action)
         lg_psize.addAction(action)
 
-    # Point Color submenu
-    lg_pColorMenu = styleMenu.addMenu("Point Color")
-    lg_pColor     = QActionGroup(self)
-    lineColors       = ["blue","black","green","red","white"]
-    for color in lineColors :
-        action = QAction(str(color), self, checkable=True)
-        if color == self.selected_point_color:
-            action.setChecked(True)
-        action.triggered.connect(lambda checked, s=color: set_point_color(self,s))
-        lg_pColorMenu.addAction(action)
-        lg_pColor.addAction(action)
-
-    # Scale Settings submenu
+    # 11. Scale Settings submenu
     scaleSettingsMenu = styleMenu.addMenu("Scale Settings")
     
     # Toggle to enable/disable scale
@@ -414,35 +448,59 @@ def initializeMenuBar(self):
 
 
         
+def trigger_mix_graph_update(self):
+    if hasattr(self, "update_mix_graph_func"):
+        try:
+            self.update_mix_graph_func()
+        except Exception as e:
+            print(f"Error updating mix graph: {e}")
+
 def set_font_size(self, size):
     self.selected_font_size = int(size)
+    trigger_mix_graph_update(self)
 
 def set_legend_font_size(self, size):
     self.selected_legend_font_size = int(size)
     if hasattr(self, 'scalarBarActorAxial') or hasattr(self, 'scalarBarActorSagittal') or hasattr(self, 'scalarBarActorCoronal'):
         from fcn_display.colormap_set import set_color_map
         set_color_map(self)
+    trigger_mix_graph_update(self)
 
 def set_background(self, background):
     self.selected_background    = background
+    trigger_mix_graph_update(self)
     
 def set_legend_on_off(self, legend):
     self.selected_legend_on_off = legend
+    trigger_mix_graph_update(self)
 
 def set_line_width(self, size):
     self.selected_line_width = float(size)
+    trigger_mix_graph_update(self)
 
 def set_line_color(self, color):
     self.selected_line_color = color
+    trigger_mix_graph_update(self)
+
+def set_line_style(self, style):
+    self.selected_line_style = style
+    trigger_mix_graph_update(self)
+
+def set_marker_type(self, mtype):
+    self.selected_marker_type = mtype
+    trigger_mix_graph_update(self)
 
 def set_psize(self, size):
     self.selected_point_size = int(size)
+    trigger_mix_graph_update(self)
 
 def set_p_color(self, color):
     self.selected_point_color = color
+    trigger_mix_graph_update(self)
 
 def set_point_color(self, color):
     self.selected_point_color = color
+    trigger_mix_graph_update(self)
 
 
 def apply_font_recursively(menu: QMenuBar, font: QFont):
