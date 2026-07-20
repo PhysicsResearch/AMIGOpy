@@ -518,8 +518,8 @@ def set_mouse_button_custom_fcn(self):
      self.vtkWidgetAxial.AddObserver("LeftButtonPressEvent", lambda caller, event: left_button_pressaxial_event(self, caller, event),0)
      self.vtkWidgetAxial.AddObserver("LeftButtonReleaseEvent",lambda caller, event:left_button_releaseaxial_event(self, caller, event),0)
      # mouse
-     self.vtkWidgetAxial.AddObserver("MouseWheelForwardEvent", self.on_scroll_forwardAxial)
-     self.vtkWidgetAxial.AddObserver("MouseWheelBackwardEvent", self.on_scroll_backwardAxial)
+     # self.vtkWidgetAxial.AddObserver("MouseWheelForwardEvent", self.on_scroll_forwardAxial)
+     # self.vtkWidgetAxial.AddObserver("MouseWheelBackwardEvent", self.on_scroll_backwardAxial)
      #
      # After setting up your vtkWidget and renderer:
      interactor_styleSagittal = self.vtkWidgetSagittal.GetInteractorStyle()
@@ -532,8 +532,8 @@ def set_mouse_button_custom_fcn(self):
      interactor_styleSagittal.OnLeftButtonDown     = lambda: None
      interactor_styleSagittal.OnLeftButtonUp       = lambda: None
      # mouse
-     self.vtkWidgetSagittal.AddObserver("MouseWheelForwardEvent", self.on_scroll_forwardSagittal)
-     self.vtkWidgetSagittal.AddObserver("MouseWheelBackwardEvent", self.on_scroll_backwardSagittal)
+     # self.vtkWidgetSagittal.AddObserver("MouseWheelForwardEvent", self.on_scroll_forwardSagittal)
+     # self.vtkWidgetSagittal.AddObserver("MouseWheelBackwardEvent", self.on_scroll_backwardSagittal)
      #
      self.vtkWidgetSagittal.AddObserver("LeftButtonPressEvent", self.left_button_presssagittal_event,0)
      self.vtkWidgetSagittal.AddObserver("LeftButtonReleaseEvent", self.left_button_releasesagittal_event,0)
@@ -555,10 +555,10 @@ def set_mouse_button_custom_fcn(self):
      self.vtkWidgetCoronal.AddObserver("LeftButtonReleaseEvent", self.left_button_releasecoronal_event,0)
                      
      # mouse to chenge slice
-     self.vtkWidgetCoronal.AddObserver("MouseWheelForwardEvent", self.on_scroll_forwardCoronal)
-     self.vtkWidgetCoronal.AddObserver("MouseWheelBackwardEvent", self.on_scroll_backwardCoronal)
+     # self.vtkWidgetCoronal.AddObserver("MouseWheelForwardEvent", self.on_scroll_forwardCoronal)
+     # self.vtkWidgetCoronal.AddObserver("MouseWheelBackwardEvent", self.on_scroll_backwardCoronal)
      
      self.vtkWidgetSagittal.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event: onMouseMoveSagittal(self, caller, event))
      self.vtkWidgetCoronal.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event: onMouseMoveCoronal(self, caller, event))
      self.vtkWidgetAxial.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event:onMouseMoveAxial(self, caller, event))
-     #
+     #

@@ -20,7 +20,7 @@ from fcn_load.load_npy import load_npy_files
 from fcn_load.load_tiff_similar import load_tiff_files, load_png_files, load_jpeg_files, load_bmp_files  
 from fcn_autocont.segmentator_calls import open_segmentator_tab
 from functools import partial
-from fcn_init.create_3D_database_tab import export_3dp_database_action, import_3dp_database_action
+from fcn_init.create_3D_database_tab import export_3dp_database_action, import_3dp_database_action, restore_3dp_database_action
 
 
 def initializeMenuBar(self):
@@ -185,6 +185,12 @@ def initializeMenuBar(self):
     operations_action = QAction("Operations…", self)
     operations_action.triggered.connect(lambda: open_operations_dialog(self))
     ToolsMenu.addAction(operations_action)
+    
+    # 3DP submenu
+    tdp_menu = ToolsMenu.addMenu("3DP")
+    restore_3dp_action = QAction("Restore Database…", self)
+    restore_3dp_action.triggered.connect(lambda: restore_3dp_database_action(self))
+    tdp_menu.addAction(restore_3dp_action)
 
     # ── Auto-Contouring menu ──
     AutoContMenu = self.menuBar().addMenu("Auto-Contouring")

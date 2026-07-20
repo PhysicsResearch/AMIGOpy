@@ -345,6 +345,17 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.SagittalSlider.valueChanged.connect(self.on_sagittalslider_change)
         self.CoronalSlider.valueChanged.connect(self.on_coronalslider_change)
         
+        # Configure slider step sizes to be exactly 1 slice for precise navigation
+        self.AxialSlider.setSingleStep(1)
+        self.AxialSlider.setPageStep(1)
+        self.SagittalSlider.setSingleStep(1)
+        self.SagittalSlider.setPageStep(1)
+        self.CoronalSlider.setSingleStep(1)
+        self.CoronalSlider.setPageStep(1)
+        if hasattr(self, "segViewSlider"):
+            self.segViewSlider.setSingleStep(1)
+            self.segViewSlider.setPageStep(1)
+        
 
               
         # # Initialize VTK components

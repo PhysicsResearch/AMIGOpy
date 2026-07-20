@@ -427,6 +427,10 @@ def on_DataTreeView_clicked(self,index):
                 self.SagittalSlider.setMaximum(self.display_data[idx].shape[2] - 1)
                 self.CoronalSlider.setMaximum(self.display_data[idx].shape[1] - 1)
                 #
+                self.AxialSlider.setValue(Ax_s)
+                self.SagittalSlider.setValue(Sa_s)
+                self.CoronalSlider.setValue(Co_s)
+                #
                 # compare previous image agains current and reset camera update window/level if needed
                 compare_view_previous(self, Window, Level, idx)
                 #
@@ -741,12 +745,12 @@ def on_DataTreeView_clicked(self,index):
             self.Im_PatPosition[idx, :3]  = [0,0,0]
             #
             # # # Update the slider's value to match the current slice index
-            self.AxialSlider.setValue(0)
-            self.SagittalSlider.setValue(0)
-            self.CoronalSlider.setValue(0)
             self.AxialSlider.setMaximum(0)
             self.SagittalSlider.setMaximum(0)
-            self.CoronalSlider.setMaximum(0)   
+            self.CoronalSlider.setMaximum(0)
+            self.AxialSlider.setValue(0)
+            self.SagittalSlider.setValue(0)
+            self.CoronalSlider.setValue(0)   
             displayaxial(self)
             displaysagittal(self)
             displaycoronal(self)
@@ -782,12 +786,12 @@ def on_DataTreeView_clicked(self,index):
             self.Im_PatPosition[idx, :3]  = [0,0,0]
             #
             # # # Update the slider's value to match the current slice index
-            self.AxialSlider.setValue(self.current_axial_slice_index[idx])
-            self.SagittalSlider.setValue(self.current_sagittal_slice_index[idx])
-            self.CoronalSlider.setValue(self.current_coronal_slice_index[idx])
             self.AxialSlider.setMaximum(self.display_data[idx].shape[0] - 1)
             self.SagittalSlider.setMaximum(self.display_data[idx].shape[2] - 1)
             self.CoronalSlider.setMaximum(self.display_data[idx].shape[1] - 1)
+            self.AxialSlider.setValue(self.current_axial_slice_index[idx])
+            self.SagittalSlider.setValue(self.current_sagittal_slice_index[idx])
+            self.CoronalSlider.setValue(self.current_coronal_slice_index[idx])
             #
             # 
             displayaxial(self)

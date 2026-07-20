@@ -4,6 +4,9 @@ import json
 import random
 import threading
 import zipfile
+import glob
+import shutil
+from datetime import datetime, date
 import pandas as pd
 from PySide6 import QtWidgets
 from PySide6.QtWidgets import (
@@ -147,17 +150,26 @@ class ClipboardTableWidget(QTableWidget):
         
         if is_single_value and selected_ranges:
             val_str = rows[0][0]
+            is_row_select = (self.selectionBehavior() == QAbstractItemView.SelectRows)
+            active_col = self.currentColumn() if self.currentColumn() >= 0 else 0
+            
             for r_range in selected_ranges:
                 for r in range(r_range.topRow(), r_range.bottomRow() + 1):
-                    for c in range(r_range.leftColumn(), r_range.rightColumn() + 1):
-                        self.set_cell_value(r, c, val_str)
+                    if is_row_select:
+                        self.set_cell_value(r, active_col, val_str)
+                    else:
+                        for c in range(r_range.leftColumn(), r_range.rightColumn() + 1):
+                            self.set_cell_value(r, c, val_str)
         else:
+            is_row_select = (self.selectionBehavior() == QAbstractItemView.SelectRows)
+            actual_start_col = 0 if is_row_select else start_col
+            
             for r_idx, row_vals in enumerate(rows):
                 r = start_row + r_idx
                 if r >= self.rowCount():
                     break
                 for c_idx, val_str in enumerate(row_vals):
-                    c = start_col + c_idx
+                    c = actual_start_col + c_idx
                     if c >= self.columnCount():
                         break
                     self.set_cell_value(r, c, val_str)
@@ -172,12 +184,23 @@ class ClipboardTableWidget(QTableWidget):
 
     def set_cell_value(self, r, c, val_str):
         # Don't overwrite the Actions/View column
-        header_item = self.horizontalHeaderItem(c)
-        if header_item and header_item.text() == "Actions":
-            return
+        try:
+            header_text = self.model().headerData(c, Qt.Horizontal, Qt.DisplayRole)
+            if header_text == "Actions":
+                return
+        except Exception:
+            pass
+            
+        item = self.item(r, c)
+        if item is not None:
+            try:
+                if not (item.flags() & Qt.ItemIsEditable):
+                    return
+            except RuntimeError:
+                item = None
             
         # Clean value string to support comma decimal separators from regional Excel copies
-        cleaned_val = val_str.replace(',', '.')
+        cleaned_val = "".join(ch for ch in val_str if ch.isdigit() or ch in ['.', ',', '-', '+']).replace(',', '.')
         
         widget = self.cellWidget(r, c)
         if isinstance(widget, QComboBox):
@@ -190,23 +213,39 @@ class ClipboardTableWidget(QTableWidget):
                 pass
             return
             
-        item = self.item(r, c)
-        if item is None:
-            item = QTableWidgetItem()
-            self.setItem(r, c, item)
-            
         delegate = self.itemDelegateForColumn(c)
-        if delegate is not None:
+        if delegate is None:
+            delegate = self.itemDelegate()
+            
+        if isinstance(delegate, FloatDelegate):
             try:
                 float_val = float(cleaned_val)
-                item.setData(Qt.EditRole, float_val)
-                item.setText(f"{float_val:.4f}")
             except ValueError:
-                item.setData(Qt.EditRole, 0.0)
-                item.setText("0.0000")
+                float_val = 0.0
+                
+            if item is not None:
+                try:
+                    item.setData(Qt.EditRole, float_val)
+                    item.setText(f"{float_val:.4f}")
+                    return
+                except RuntimeError:
+                    pass
+            new_item = QTableWidgetItem()
+            new_item.setData(Qt.EditRole, float_val)
+            new_item.setText(f"{float_val:.4f}")
+            self.setItem(r, c, new_item)
         else:
-            item.setData(Qt.EditRole, val_str)
-            item.setText(val_str)
+            if item is not None:
+                try:
+                    item.setData(Qt.EditRole, val_str)
+                    item.setText(val_str)
+                    return
+                except RuntimeError:
+                    pass
+            new_item = QTableWidgetItem()
+            new_item.setData(Qt.EditRole, val_str)
+            new_item.setText(val_str)
+            self.setItem(r, c, new_item)
 
     def show_context_menu(self, pos):
         item = self.itemAt(pos)
@@ -259,32 +298,42 @@ class ClipboardTableWidget(QTableWidget):
 
     # Column header context menu
     def show_header_context_menu(self, pos):
-        col = self.horizontalHeader().logicalIndexAt(pos)
-        if col < 0:
-            return
+        try:
+            col = self.horizontalHeader().logicalIndexAt(pos)
+            if col < 0:
+                return
+                
+            col_name = f"Column {col}"
+            try:
+                val = self.model().headerData(col, Qt.Horizontal, Qt.DisplayRole)
+                if val is not None:
+                    col_name = str(val)
+            except Exception:
+                pass
+                
+            if col_name == "Actions":
+                return
+                
+            menu = QMenu(self)
+            menu.setStyleSheet("""
+                QMenu {
+                    background-color: #1e1e24;
+                    color: #ffffff;
+                    border: 1px solid #3c4450;
+                }
+                QMenu::item:selected {
+                    background-color: #3b82f6;
+                }
+            """)
             
-        header_item = self.horizontalHeaderItem(col)
-        col_name = header_item.text() if header_item else f"Column {col}"
-        
-        if col_name == "Actions":
-            return
-            
-        menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu {
-                background-color: #1e1e24;
-                color: #ffffff;
-                border: 1px solid #3c4450;
-            }
-            QMenu::item:selected {
-                background-color: #3b82f6;
-            }
-        """)
-        
-        paste_col_action = menu.addAction(f"Paste Clipboard Values to '{col_name}'")
-        action = menu.exec(self.horizontalHeader().mapToGlobal(pos))
-        if action == paste_col_action:
-            self.paste_column_values(col)
+            paste_col_action = menu.addAction(f"Paste Clipboard Values to '{col_name}'")
+            action = menu.exec(self.horizontalHeader().mapToGlobal(pos))
+            if action == paste_col_action:
+                self.paste_column_values(col)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Error in show_header_context_menu: {e}")
 
     def paste_column_values(self, col):
         clipboard_text = QApplication.clipboard().text()
@@ -310,7 +359,7 @@ class ClipboardTableWidget(QTableWidget):
                 if inserter:
                     inserter(r)
                 else:
-                    self.insertRow(r)
+                    break
             self.set_cell_value(r, col, val_str)
             
         self.blockSignals(False)
@@ -398,85 +447,128 @@ def get_mix_notes_db_path():
     os.makedirs(appdata_dir, exist_ok=True)
     return os.path.join(appdata_dir, 'filaments_mix_notes_db.json')
 
+def safe_float(val_str, default=0.0):
+    if val_str is None:
+        return default
+    s = str(val_str).strip()
+    if not s:
+        return default
+    try:
+        cleaned = "".join(ch for ch in s if ch.isdigit() or ch in ['.', ',', '-', '+']).replace(',', '.')
+        return float(cleaned) if cleaned else default
+    except (ValueError, TypeError):
+        return default
+
+def get_expected_material_red(self, mat_name, ref_red, infill_pct):
+    points = []
+    if mat_name and hasattr(self, "calibration_data_cache"):
+        cal_rows = self.calibration_data_cache.get(mat_name, [])
+        for row in cal_rows:
+            if len(row) > 12:
+                x = safe_float(row[12]) # Infill Density (%)
+                y = safe_float(row[6])  # RED
+                if x > 0.0 and y > 0.0:
+                    points.append((x, y))
+                    
+    distinct_x = set(p[0] for p in points)
+    if len(distinct_x) >= 2:
+        n = len(points)
+        sum_x = sum(p[0] for p in points)
+        sum_y = sum(p[1] for p in points)
+        sum_xx = sum(p[0]**2 for p in points)
+        sum_xy = sum(p[0]*p[1] for p in points)
+        denominator = (n * sum_xx - sum_x**2)
+        if abs(denominator) > 1e-5:
+            slope = (n * sum_xy - sum_x * sum_y) / denominator
+            intercept = (sum_y - slope * sum_x) / n
+            return slope * infill_pct + intercept
+            
+    if len(points) > 0:
+        avg_x = sum(p[0] for p in points) / len(points)
+        avg_y = sum(p[1] for p in points) / len(points)
+        if avg_x > 0.0:
+            return (infill_pct / avg_x) * avg_y
+            
+    return (infill_pct / 100.0) * ref_red
+
+def find_mix_group_row_and_size(self, mix_id):
+    total_rows = self.table_mat_mix.rowCount()
+    for r in range(total_rows):
+        spin = self.table_mat_mix.cellWidget(r, 0)
+        if spin is not None:
+            try:
+                if isinstance(spin, QSpinBox):
+                    prop = spin.property("mix_id")
+                    if prop is not None and str(prop) == str(mix_id):
+                        return r, spin.value()
+            except RuntimeError:
+                pass
+    return -1, 0
+
+def safe_get_combo_text(combo):
+    if combo is not None:
+        try:
+            if isinstance(combo, QComboBox):
+                return combo.currentText().strip()
+        except RuntimeError:
+            pass
+    return ""
+
 # Predictive Zeff and RED calculations weighted by the mass weight (%value/100) using main database or matmix top table references
-def calculate_predicted_values(self, row_idx, table_source):
+def calculate_predicted_values(self, row_idx, table_source, comp_reds=None, comp_zeffs=None):
     mix_id = getattr(self, "current_viewed_mix_id", None)
     if mix_id is None:
         return None, None
         
-    start_row = -1
-    total_rows = self.table_mat_mix.rowCount()
-    for r in range(total_rows):
-        spin = self.table_mat_mix.cellWidget(r, 0)
-        if isinstance(spin, QSpinBox) and spin.property("mix_id") == mix_id:
-            start_row = r
-            group_size = spin.value()
-            break
+    if comp_reds is None or comp_zeffs is None:
+        start_row, group_size = find_mix_group_row_and_size(self, mix_id)
+        if start_row == -1:
+            return None, None
             
-    if start_row == -1:
-        return None, None
-        
-    comp_reds = []
-    comp_zeffs = []
-    for i in range(group_size):
-        r = start_row + i
-        if r >= self.table_mat_mix.rowCount():
-            break
-            
-        # Get selected material name from top MatMix table (column 1 combobox)
-        combo = self.table_mat_mix.cellWidget(r, 1)
-        mat_name = combo.currentText().strip() if isinstance(combo, QComboBox) else ""
-        
-        # Look up RED and Zeff in the matmix top table first, then fallback to main database self.table_3d_db
-        ref_red = 0.0
-        ref_zeff = 0.0
-        
-        # 1. Read from matmix top table (RED is column 3, Zeff is column 4)
-        red_item = self.table_mat_mix.item(r, 3)
-        zeff_item = self.table_mat_mix.item(r, 4)
-        if red_item and red_item.text().strip():
-            try:
-                ref_red = float(red_item.text().replace(',', '.'))
-            except ValueError:
-                pass
-        if zeff_item and zeff_item.text().strip():
-            try:
-                ref_zeff = float(zeff_item.text().replace(',', '.'))
-            except ValueError:
-                pass
+        comp_reds = []
+        comp_zeffs = []
+        for i in range(group_size):
+            r = start_row + i
+            if r >= self.table_mat_mix.rowCount():
+                break
                 
-        # 2. Fallback to main database if still not found/0
-        if ref_red == 0.0 or ref_zeff == 0.0:
-            if mat_name:
-                for r_db in range(self.table_3d_db.rowCount()):
-                    item_db = self.table_3d_db.item(r_db, 0)
-                    if item_db and item_db.text().strip() == mat_name:
-                        if ref_red == 0.0:
-                            try:
-                                ref_red = float(self.table_3d_db.item(r_db, 6).text().replace(',', '.')) if self.table_3d_db.item(r_db, 6) else 0.0
-                            except ValueError:
-                                ref_red = 0.0
-                        if ref_zeff == 0.0:
-                            try:
-                                ref_zeff = float(self.table_3d_db.item(r_db, 8).text().replace(',', '.')) if self.table_3d_db.item(r_db, 8) else 0.0
-                            except ValueError:
-                                ref_zeff = 0.0
-                        break
-        comp_reds.append(ref_red)
-        comp_zeffs.append(ref_zeff)
+            # Get selected material name from top MatMix table (column 1 combobox)
+            combo = self.table_mat_mix.cellWidget(r, 1)
+            mat_name = safe_get_combo_text(combo)
+            
+            # Look up RED and Zeff in the matmix top table first, then fallback to main database self.table_3d_db
+            ref_red = 0.0
+            ref_zeff = 0.0
+            
+            # 1. Read from matmix top table (RED is column 3, Zeff is column 4)
+            red_str = safe_get_cell_text(self.table_mat_mix, r, 3)
+            zeff_str = safe_get_cell_text(self.table_mat_mix, r, 4)
+            if red_str.strip():
+                ref_red = safe_float(red_str)
+            if zeff_str.strip():
+                ref_zeff = safe_float(zeff_str)
+                    
+            # 2. Fallback to main database if still not found/0
+            if ref_red == 0.0 or ref_zeff == 0.0:
+                if mat_name:
+                    for r_db in range(self.table_3d_db.rowCount()):
+                        item_db_text = safe_get_cell_text(self.table_3d_db, r_db, 0)
+                        if item_db_text.strip() == mat_name:
+                            if ref_red == 0.0:
+                                db_red_str = safe_get_cell_text(self.table_3d_db, r_db, 6)
+                                ref_red = safe_float(db_red_str)
+                            if ref_zeff == 0.0:
+                                db_zeff_str = safe_get_cell_text(self.table_3d_db, r_db, 8)
+                                ref_zeff = safe_float(db_zeff_str)
+                            break
+            comp_reds.append(ref_red)
+            comp_zeffs.append(ref_zeff)
         
     n_mats = len(comp_reds)
     percentages = []
     for idx in range(n_mats):
-        item = table_source.item(row_idx, idx)
-        try:
-            val = float(item.data(Qt.EditRole)) if item else 0.0
-        except (ValueError, TypeError):
-            try:
-                val = float(item.text().replace(',', '.')) if item and item.text() else 0.0
-            except ValueError:
-                val = 0.0
-        percentages.append(val)
+        val_raw = safe_get_cell_value(table_source, row_idx, idx, Qt.EditRole)
+        percentages.append(safe_float(val_raw))
         
     total_p = sum(percentages)
     if total_p <= 0:
@@ -500,70 +592,82 @@ def calculate_predicted_values(self, row_idx, table_source):
     
     return pred_red, pred_zeff
 
-def update_row_predictions(self, row, n_mats):
+def update_row_predictions(self, row, n_mats, comp_reds=None, comp_zeffs=None):
     if not hasattr(self, "table_mix_z_red"):
         return
-    pred_red, pred_zeff = calculate_predicted_values(self, row, self.table_mix_z_red)
+    pred_red, pred_zeff = calculate_predicted_values(self, row, self.table_mix_z_red, comp_reds, comp_zeffs)
     if pred_red is not None and pred_zeff is not None:
         self.table_mix_z_red.blockSignals(True)
         
-        # Read measured Zeff from column n_mats
-        z_item = self.table_mix_z_red.item(row, n_mats)
-        try:
-            val_z = float(z_item.data(Qt.EditRole)) if z_item else 0.0
-        except (ValueError, TypeError):
-            try:
-                val_z = float(z_item.text().replace(',', '.')) if z_item and z_item.text() else 0.0
-            except ValueError:
-                val_z = 0.0
+        # Read measured Zeff from column n_mats of Z_red
+        val_z_raw = safe_get_cell_value(self.table_mix_z_red, row, n_mats, Qt.EditRole)
+        val_z = safe_float(val_z_raw)
                 
-        # Read measured RED from column n_mats + 4
-        r_item = self.table_mix_z_red.item(row, n_mats + 4)
-        try:
-            val_r = float(r_item.data(Qt.EditRole)) if r_item else 0.0
-        except (ValueError, TypeError):
-            try:
-                val_r = float(r_item.text().replace(',', '.')) if r_item and r_item.text() else 0.0
-            except ValueError:
-                val_r = 0.0
+        # Read measured RED from column n_mats + 4 of Z_red
+        val_r_raw = safe_get_cell_value(self.table_mix_z_red, row, n_mats + 4, Qt.EditRole)
+        val_r = safe_float(val_r_raw)
                 
         # Update Pred. Zeff (column n_mats + 2)
         pz_item = self.table_mix_z_red.item(row, n_mats + 2)
-        if not pz_item:
+        if pz_item is not None:
+            try:
+                pz_item.setData(Qt.EditRole, pred_zeff)
+                pz_item.setText(f"{pred_zeff:.4f}")
+            except RuntimeError:
+                pz_item = None
+        if pz_item is None:
             pz_item = QTableWidgetItem()
             pz_item.setFlags(pz_item.flags() & ~Qt.ItemIsEditable)
+            pz_item.setData(Qt.EditRole, pred_zeff)
+            pz_item.setText(f"{pred_zeff:.4f}")
             self.table_mix_z_red.setItem(row, n_mats + 2, pz_item)
-        pz_item.setData(Qt.EditRole, pred_zeff)
-        pz_item.setText(f"{pred_zeff:.4f}")
         
         # Update Diff. Zeff (column n_mats + 3): Zeff - Pred. Zeff
         diff_z = val_z - pred_zeff
         dz_item = self.table_mix_z_red.item(row, n_mats + 3)
-        if not dz_item:
+        if dz_item is not None:
+            try:
+                dz_item.setData(Qt.EditRole, diff_z)
+                dz_item.setText(f"{diff_z:.4f}")
+            except RuntimeError:
+                dz_item = None
+        if dz_item is None:
             dz_item = QTableWidgetItem()
             dz_item.setFlags(dz_item.flags() & ~Qt.ItemIsEditable)
+            dz_item.setData(Qt.EditRole, diff_z)
+            dz_item.setText(f"{diff_z:.4f}")
             self.table_mix_z_red.setItem(row, n_mats + 3, dz_item)
-        dz_item.setData(Qt.EditRole, diff_z)
-        dz_item.setText(f"{diff_z:.4f}")
         
         # Update Pred. RED (column n_mats + 6)
         pr_item = self.table_mix_z_red.item(row, n_mats + 6)
-        if not pr_item:
+        if pr_item is not None:
+            try:
+                pr_item.setData(Qt.EditRole, pred_red)
+                pr_item.setText(f"{pred_red:.4f}")
+            except RuntimeError:
+                pr_item = None
+        if pr_item is None:
             pr_item = QTableWidgetItem()
             pr_item.setFlags(pr_item.flags() & ~Qt.ItemIsEditable)
+            pr_item.setData(Qt.EditRole, pred_red)
+            pr_item.setText(f"{pred_red:.4f}")
             self.table_mix_z_red.setItem(row, n_mats + 6, pr_item)
-        pr_item.setData(Qt.EditRole, pred_red)
-        pr_item.setText(f"{pred_red:.4f}")
         
         # Update Diff. RED (column n_mats + 7): RED - Pred. RED
         diff_r = val_r - pred_red
         dr_item = self.table_mix_z_red.item(row, n_mats + 7)
-        if not dr_item:
+        if dr_item is not None:
+            try:
+                dr_item.setData(Qt.EditRole, diff_r)
+                dr_item.setText(f"{diff_r:.4f}")
+            except RuntimeError:
+                dr_item = None
+        if dr_item is None:
             dr_item = QTableWidgetItem()
             dr_item.setFlags(dr_item.flags() & ~Qt.ItemIsEditable)
+            dr_item.setData(Qt.EditRole, diff_r)
+            dr_item.setText(f"{diff_r:.4f}")
             self.table_mix_z_red.setItem(row, n_mats + 7, dr_item)
-        dr_item.setData(Qt.EditRole, diff_r)
-        dr_item.setText(f"{diff_r:.4f}")
         
         self.table_mix_z_red.blockSignals(False)
 
@@ -576,75 +680,144 @@ def on_m_value_changed(self, val):
     self.mix_m_value_cache[mix_id] = val
     
     # Recalculate predictions and differences for all rows in Z & RED table
-    start_row = -1
-    total_rows = self.table_mat_mix.rowCount()
-    for r in range(total_rows):
-        spin = self.table_mat_mix.cellWidget(r, 0)
-        if isinstance(spin, QSpinBox) and spin.property("mix_id") == mix_id:
-            start_row = r
-            group_size = spin.value()
-            break
+    start_row, group_size = find_mix_group_row_and_size(self, mix_id)
             
     if start_row != -1:
         mat_names = get_materials_in_mix(self, start_row, group_size)
         n_mats = len(mat_names)
+        
+        # Resolve mix reference values once for high-performance loading
+        comp_reds = []
+        comp_zeffs = []
+        for i in range(group_size):
+            r_idx = start_row + i
+            if r_idx >= self.table_mat_mix.rowCount():
+                break
+            combo = self.table_mat_mix.cellWidget(r_idx, 1)
+            mat_name = safe_get_combo_text(combo)
+            ref_red = 0.0
+            ref_zeff = 0.0
+            red_str = safe_get_cell_text(self.table_mat_mix, r_idx, 3)
+            zeff_str = safe_get_cell_text(self.table_mat_mix, r_idx, 4)
+            if red_str.strip():
+                try:
+                    ref_red = float(red_str.replace(',', '.'))
+                except ValueError:
+                    pass
+            if zeff_str.strip():
+                try:
+                    ref_zeff = float(zeff_str.replace(',', '.'))
+                except ValueError:
+                    pass
+            if ref_red == 0.0 or ref_zeff == 0.0:
+                if mat_name:
+                    for r_db in range(self.table_3d_db.rowCount()):
+                        item_db_text = safe_get_cell_text(self.table_3d_db, r_db, 0)
+                        if item_db_text.strip() == mat_name:
+                            if ref_red == 0.0:
+                                try:
+                                    db_red_str = safe_get_cell_text(self.table_3d_db, r_db, 6)
+                                    ref_red = float(db_red_str.replace(',', '.')) if db_red_str else 0.0
+                                except ValueError:
+                                    ref_red = 0.0
+                            if ref_zeff == 0.0:
+                                try:
+                                    db_zeff_str = safe_get_cell_text(self.table_3d_db, r_db, 8)
+                                    ref_zeff = float(db_zeff_str.replace(',', '.')) if db_zeff_str else 0.0
+                                except ValueError:
+                                    ref_zeff = 0.0
+                            break
+            comp_reds.append(ref_red)
+            comp_zeffs.append(ref_zeff)
+            
         for r in range(self.table_mix_z_red.rowCount()):
-            update_row_predictions(self, r, n_mats)
+            update_row_predictions(self, r, n_mats, comp_reds, comp_zeffs)
             
     update_mix_graph(self)
+    auto_save_all_databases(self)
 
 def sync_mix_tables(self, source, changed_item):
     if not hasattr(self, "table_mix_calibration_info") or not hasattr(self, "table_mix_z_red"):
         return
         
-    row = changed_item.row()
-    col = changed_item.column()
-    
+    try:
+        row = changed_item.row()
+        col = changed_item.column()
+        val = changed_item.data(Qt.EditRole)
+        val_str = changed_item.text()
+    except RuntimeError:
+        return
+        
     mix_id = getattr(self, "current_viewed_mix_id", None)
     if mix_id is None:
         return
         
-    start_row = -1
-    total_rows = self.table_mat_mix.rowCount()
-    for r in range(total_rows):
-        spin = self.table_mat_mix.cellWidget(r, 0)
-        if isinstance(spin, QSpinBox) and spin.property("mix_id") == mix_id:
-            start_row = r
-            group_size = spin.value()
-            break
-            
+    start_row, group_size = find_mix_group_row_and_size(self, mix_id)
     if start_row == -1:
         return
         
     mat_names = get_materials_in_mix(self, start_row, group_size)
     n_mats = len(mat_names)
     
-    val = changed_item.data(Qt.EditRole)
-    val_str = changed_item.text()
+    if col == n_mats - 2:
+        # Sum other columns (0 to n_mats-2) except the last column (n_mats-1)
+        current_sum = 0.0
+        for c in range(n_mats - 1):
+            if c == col:
+                current_sum += safe_float(val_str)
+            else:
+                txt = safe_get_cell_text(source, row, c)
+                current_sum += safe_float(txt)
+        
+        last_col_val = max(0.0, 100.0 - current_sum)
+        last_col_val_str = f"{last_col_val:.4f}"
+        
+        # Block signals on both tables to prevent recursive updates
+        self.table_mix_calibration_info.blockSignals(True)
+        self.table_mix_z_red.blockSignals(True)
+        
+        try:
+            if source == self.table_mix_calibration_info:
+                # 1. Update last column in source
+                set_target_cell(self.table_mix_calibration_info, row, n_mats - 1, last_col_val, last_col_val_str)
+                # 2. Sync col to target
+                set_target_cell(self.table_mix_z_red, row, col, val, val_str)
+                # 3. Sync last column to target
+                set_target_cell(self.table_mix_z_red, row, n_mats - 1, last_col_val, last_col_val_str)
+            else:  # source == self.table_mix_z_red
+                # 1. Update last column in source
+                set_target_cell(self.table_mix_z_red, row, n_mats - 1, last_col_val, last_col_val_str)
+                # 2. Sync col to target
+                set_target_cell(self.table_mix_calibration_info, row, col, val, val_str)
+                # 3. Sync last column to target
+                set_target_cell(self.table_mix_calibration_info, row, n_mats - 1, last_col_val, last_col_val_str)
+            
+            update_row_predictions(self, row, n_mats)
+            update_mix_graph(self)
+        finally:
+            self.table_mix_calibration_info.blockSignals(False)
+            self.table_mix_z_red.blockSignals(False)
+        
+        auto_save_all_databases(self)
+        return
     
     if source == self.table_mix_calibration_info:
         self.table_mix_z_red.blockSignals(True)
         if col < n_mats:
-            target_item = self.table_mix_z_red.item(row, col)
-            if not target_item:
-                target_item = QTableWidgetItem()
-                self.table_mix_z_red.setItem(row, col, target_item)
-            target_item.setData(Qt.EditRole, val)
-            target_item.setText(val_str)
-            update_row_predictions(self, row, n_mats)
+            set_target_cell(self.table_mix_z_red, row, col, val, val_str)
         else:
             std_col = col - n_mats
             if std_col == 6:  # RED in Info
                 target_col = n_mats + 4  # RED in Z & RED
                 set_target_cell(self.table_mix_z_red, row, target_col, val, val_str)
             elif std_col == 7:  # RED_STD in Info
-                target_col = n_mats + 5  # STD in Z & RED
+                target_col = n_mats + 5  # STD (RED STD) in Z & RED
                 set_target_cell(self.table_mix_z_red, row, target_col, val, val_str)
             elif std_col == 8:  # Zeff in Info
                 target_col = n_mats  # Zeff in Z & RED
                 set_target_cell(self.table_mix_z_red, row, target_col, val, val_str)
             elif std_col == 9:  # Zeff STD in Info
-                target_col = n_mats + 1  # STD in Z & RED
+                target_col = n_mats + 1  # STD (Zeff STD) in Z & RED
                 set_target_cell(self.table_mix_z_red, row, target_col, val, val_str)
         update_row_predictions(self, row, n_mats)
         self.table_mix_z_red.blockSignals(False)
@@ -653,13 +826,7 @@ def sync_mix_tables(self, source, changed_item):
     elif source == self.table_mix_z_red:
         self.table_mix_calibration_info.blockSignals(True)
         if col < n_mats:
-            target_item = self.table_mix_calibration_info.item(row, col)
-            if not target_item:
-                target_item = QTableWidgetItem()
-                self.table_mix_calibration_info.setItem(row, col, target_item)
-            target_item.setData(Qt.EditRole, val)
-            target_item.setText(val_str)
-            update_row_predictions(self, row, n_mats)
+            set_target_cell(self.table_mix_calibration_info, row, col, val, val_str)
         else:
             std_col = col - n_mats
             if std_col == 0:  # Zeff in Z & RED
@@ -677,16 +844,40 @@ def sync_mix_tables(self, source, changed_item):
         update_row_predictions(self, row, n_mats)
         self.table_mix_calibration_info.blockSignals(False)
         update_mix_graph(self)
+    auto_save_all_databases(self)
+
+def safe_get_cell_value(table, r, c, role=Qt.EditRole):
+    model = table.model()
+    if model is None:
+        return None
+    index = model.index(r, c)
+    if not index.isValid():
+        return None
+    return model.data(index, role)
+
+def safe_get_cell_text(table, r, c):
+    val = safe_get_cell_value(table, r, c, Qt.DisplayRole)
+    return str(val) if val is not None else ""
 
 def set_target_cell(table, r, c, val, val_str):
     item = table.item(r, c)
-    if not item:
-        item = QTableWidgetItem()
-        table.setItem(r, c, item)
-    item.setData(Qt.EditRole, val)
-    item.setText(val_str)
+    if item is not None:
+        try:
+            item.setData(Qt.EditRole, val)
+            item.setText(val_str)
+            return
+        except RuntimeError:
+            pass
+            
+    new_item = QTableWidgetItem()
+    new_item.setData(Qt.EditRole, val)
+    new_item.setText(val_str)
+    table.setItem(r, c, new_item)
 
 def setup_3d_database_tab(self):
+    # Prevent auto-save from firing during initialization
+    self._is_loading = True
+    
     # Create a vertical splitter to divide the Database tab into two rows
     self.splitter_3d_db = QSplitter(Qt.Vertical)
     
@@ -712,8 +903,8 @@ def setup_3d_database_tab(self):
     # Connect cellClicked signal to automatically update details below ONLY when explicitly clicked (deferred to avoid closeEditor warning)
     self.table_3d_db.cellClicked.connect(lambda row, col: QTimer.singleShot(0, lambda: display_selected_filament_details(self)))
     
-    # Connect itemChanged to automatically update the dropdown values in the mixed materials tab in real-time
-    self.table_3d_db.itemChanged.connect(lambda: update_mat_mix_comboboxes(self))
+    # Connect itemChanged to automatically save changes in real-time
+    self.table_3d_db.itemChanged.connect(lambda: auto_save_all_databases(self))
     
     # Define row inserter and post paste handlers for main database
     def insert_db_row(r):
@@ -721,14 +912,14 @@ def setup_3d_database_tab(self):
         for c in range(10):
             self.table_3d_db.setItem(r, c, QTableWidgetItem(""))
     self.table_3d_db.row_inserter = insert_db_row
-    self.table_3d_db.post_paste_handler = lambda: update_mat_mix_comboboxes(self)
+    self.table_3d_db.post_paste_handler = lambda: auto_save_all_databases(self)
     
     # Set custom delegate for float columns to allow 4 decimal places during inline editing
-    self.float_delegate = FloatDelegate(self.table_3d_db)
-    self.table_3d_db.setItemDelegateForColumn(6, self.float_delegate)
-    self.table_3d_db.setItemDelegateForColumn(7, self.float_delegate)
-    self.table_3d_db.setItemDelegateForColumn(8, self.float_delegate)
-    self.table_3d_db.setItemDelegateForColumn(9, self.float_delegate)
+    self.float_delegate_3d_db = FloatDelegate(self.table_3d_db)
+    self.table_3d_db.setItemDelegateForColumn(6, self.float_delegate_3d_db)
+    self.table_3d_db.setItemDelegateForColumn(7, self.float_delegate_3d_db)
+    self.table_3d_db.setItemDelegateForColumn(8, self.float_delegate_3d_db)
+    self.table_3d_db.setItemDelegateForColumn(9, self.float_delegate_3d_db)
     
     # Add/Remove/Save buttons below the table
     btn_layout = QHBoxLayout()
@@ -741,13 +932,8 @@ def setup_3d_database_tab(self):
     self.btn_3d_db_remove.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_3d_db_remove.clicked.connect(lambda: remove_selected_material(self))
     
-    self.btn_3d_db_save = QPushButton("Save Changes")
-    self.btn_3d_db_save.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
-    self.btn_3d_db_save.clicked.connect(lambda: save_3d_database_action(self))
-    
     btn_layout.addWidget(self.btn_3d_db_add)
     btn_layout.addWidget(self.btn_3d_db_remove)
-    btn_layout.addWidget(self.btn_3d_db_save)
     btn_layout.addStretch()
     top_layout.addLayout(btn_layout)
     
@@ -795,9 +981,13 @@ def setup_3d_database_tab(self):
     self.table_calibration_info.row_inserter = insert_cal_row
     
     # Connect FloatDelegate to calibration table float columns (all except 0, 1, 13, 16)
+    self.float_delegate_calibration_info = FloatDelegate(self.table_calibration_info)
     cal_float_cols = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 17, 18, 19]
     for c in cal_float_cols:
-        self.table_calibration_info.setItemDelegateForColumn(c, self.float_delegate)
+        self.table_calibration_info.setItemDelegateForColumn(c, self.float_delegate_calibration_info)
+        
+    self.table_calibration_info.itemChanged.connect(lambda: auto_save_all_databases(self))
+    self.table_calibration_info.post_paste_handler = lambda: auto_save_all_databases(self)
         
     # Calibration Action Buttons
     cal_btn_layout = QHBoxLayout()
@@ -810,8 +1000,13 @@ def setup_3d_database_tab(self):
     self.btn_cal_remove.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_cal_remove.clicked.connect(lambda: remove_calibration_row(self))
     
+    self.btn_cal_copy_to = QPushButton("Copy To...")
+    self.btn_cal_copy_to.setStyleSheet("background-color: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_cal_copy_to.clicked.connect(lambda: copy_calibration_to_another_material(self))
+    
     cal_btn_layout.addWidget(self.btn_cal_add)
     cal_btn_layout.addWidget(self.btn_cal_remove)
+    cal_btn_layout.addWidget(self.btn_cal_copy_to)
     cal_btn_layout.addStretch()
     self.info_layout.addLayout(cal_btn_layout)
     
@@ -827,6 +1022,7 @@ def setup_3d_database_tab(self):
     self.txt_notes = QTextEdit()
     self.txt_notes.setPlaceholderText("Enter notes, specs, or other general details about the filament...")
     self.txt_notes.setStyleSheet("background-color: #1e1e24; color: #ffffff; border: 1px solid #3c4450; border-radius: 4px;")
+    self.txt_notes.textChanged.connect(lambda: auto_save_all_databases(self))
     self.notes_layout.addWidget(self.txt_notes)
     
     # Add Tabs to Detail Panel
@@ -886,7 +1082,8 @@ def setup_mat_mix_tab(self):
         self.table_mat_mix.insertRow(r)
         populate_mix_row(self, r, has_spinbox=False)
     self.table_mat_mix.row_inserter = insert_mix_row
-    self.table_mat_mix.post_paste_handler = lambda: (update_group_borders_and_properties(self), update_mat_mix_comboboxes(self))
+    self.table_mat_mix.post_paste_handler = lambda: (update_group_borders_and_properties(self), auto_save_all_databases(self))
+    self.table_mat_mix.itemChanged.connect(lambda: auto_save_all_databases(self))
     
     # Connect cellClicked signal to update details ONLY when explicitly clicked (deferred to avoid closeEditor warning)
     self.table_mat_mix.cellClicked.connect(lambda row, col: QTimer.singleShot(0, lambda: display_selected_mix_details(self)))
@@ -907,13 +1104,13 @@ def setup_mat_mix_tab(self):
     self.btn_mix_remove.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_remove.clicked.connect(lambda: remove_mix_group(self))
     
-    self.btn_mix_save = QPushButton("Save Mixes")
-    self.btn_mix_save.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
-    self.btn_mix_save.clicked.connect(lambda: save_mix_database_action(self))
+    self.btn_mix_create = QPushButton("Mix Helper")
+    self.btn_mix_create.setStyleSheet("background-color: #16a34a; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_create.clicked.connect(lambda: open_create_mix_dialog(self))
     
     btn_layout.addWidget(self.btn_mix_add)
     btn_layout.addWidget(self.btn_mix_remove)
-    btn_layout.addWidget(self.btn_mix_save)
+    btn_layout.addWidget(self.btn_mix_create)
     btn_layout.addStretch()
     top_layout.addLayout(btn_layout)
     
@@ -957,6 +1154,7 @@ def setup_mat_mix_tab(self):
     self.table_mix_calibration_info.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
     self.table_mix_calibration_info.horizontalHeader().setStretchLastSection(True)
     self.table_mix_calibration_info.setSortingEnabled(True)
+    self.float_delegate_mix_calibration_info = FloatDelegate(self.table_mix_calibration_info)
     self.mix_info_layout.addWidget(self.table_mix_calibration_info)
     
     # Define row inserter for mix calibration table
@@ -1042,6 +1240,7 @@ def setup_mat_mix_tab(self):
     self.table_mix_z_red.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
     self.table_mix_z_red.horizontalHeader().setStretchLastSection(True)
     self.table_mix_z_red.setSortingEnabled(True)
+    self.float_delegate_mix_z_red = FloatDelegate(self.table_mix_z_red)
     self.mix_z_red_layout.addWidget(self.table_mix_z_red)
     
     # Define row inserter for mix Z & RED table
@@ -1088,55 +1287,143 @@ def setup_mat_mix_tab(self):
     
     # Set post paste handlers to coordinate batch pastes correctly
     def sync_after_paste_calibration():
+        mix_id = getattr(self, "current_viewed_mix_id", None)
+        comp_reds = None
+        comp_zeffs = None
+        if mix_id is not None:
+            start_row, group_size = find_mix_group_row_and_size(self, mix_id)
+            if start_row != -1:
+                comp_reds = []
+                comp_zeffs = []
+                for i in range(group_size):
+                    r_idx = start_row + i
+                    if r_idx >= self.table_mat_mix.rowCount():
+                        break
+                    combo = self.table_mat_mix.cellWidget(r_idx, 1)
+                    mat_name = safe_get_combo_text(combo)
+                    ref_red = 0.0
+                    ref_zeff = 0.0
+                    
+                    red_str = safe_get_cell_text(self.table_mat_mix, r_idx, 3)
+                    zeff_str = safe_get_cell_text(self.table_mat_mix, r_idx, 4)
+                    
+                    if red_str.strip():
+                        ref_red = safe_float(red_str)
+                    if zeff_str.strip():
+                        ref_zeff = safe_float(zeff_str)
+                    if ref_red == 0.0 or ref_zeff == 0.0:
+                        if mat_name:
+                            for r_db in range(self.table_3d_db.rowCount()):
+                                item_db_text = safe_get_cell_text(self.table_3d_db, r_db, 0)
+                                if item_db_text.strip() == mat_name:
+                                    if ref_red == 0.0:
+                                        db_red_str = safe_get_cell_text(self.table_3d_db, r_db, 6)
+                                        ref_red = safe_float(db_red_str)
+                                    if ref_zeff == 0.0:
+                                        db_zeff_str = safe_get_cell_text(self.table_3d_db, r_db, 8)
+                                        ref_zeff = safe_float(db_zeff_str)
+                                    break
+                    comp_reds.append(ref_red)
+                    comp_zeffs.append(ref_zeff)
+
         self.table_mix_z_red.blockSignals(True)
         n_mats = self.table_mix_z_red.columnCount() - 8
         for r in range(self.table_mix_calibration_info.rowCount()):
             if r >= self.table_mix_z_red.rowCount():
                 self.table_mix_z_red.insertRow(r)
             for c in range(n_mats):
-                item_src = self.table_mix_calibration_info.item(r, c)
-                if item_src:
-                    set_target_cell(self.table_mix_z_red, r, c, item_src.data(Qt.EditRole), item_src.text())
-            z_item = self.table_mix_calibration_info.item(r, n_mats + 8)
-            zstd_item = self.table_mix_calibration_info.item(r, n_mats + 9)
-            r_item = self.table_mix_calibration_info.item(r, n_mats + 6)
-            rstd_item = self.table_mix_calibration_info.item(r, n_mats + 7)
-            if z_item:
-                set_target_cell(self.table_mix_z_red, r, n_mats, z_item.data(Qt.EditRole), z_item.text())
-            if zstd_item:
-                set_target_cell(self.table_mix_z_red, r, n_mats + 1, zstd_item.data(Qt.EditRole), zstd_item.text())
-            if r_item:
-                set_target_cell(self.table_mix_z_red, r, n_mats + 4, r_item.data(Qt.EditRole), r_item.text())
-            if rstd_item:
-                set_target_cell(self.table_mix_z_red, r, n_mats + 5, rstd_item.data(Qt.EditRole), rstd_item.text())
-            update_row_predictions(self, r, n_mats)
+                val = safe_get_cell_value(self.table_mix_calibration_info, r, c, Qt.EditRole)
+                val_str = safe_get_cell_text(self.table_mix_calibration_info, r, c)
+                set_target_cell(self.table_mix_z_red, r, c, val, val_str)
+                
+            z_val = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 8, Qt.EditRole)
+            z_str = safe_get_cell_text(self.table_mix_calibration_info, r, n_mats + 8)
+            set_target_cell(self.table_mix_z_red, r, n_mats, z_val, z_str)
+            
+            zstd_val = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 9, Qt.EditRole)
+            zstd_str = safe_get_cell_text(self.table_mix_calibration_info, r, n_mats + 9)
+            set_target_cell(self.table_mix_z_red, r, n_mats + 1, zstd_val, zstd_str)
+            
+            r_val = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 6, Qt.EditRole)
+            r_str = safe_get_cell_text(self.table_mix_calibration_info, r, n_mats + 6)
+            set_target_cell(self.table_mix_z_red, r, n_mats + 4, r_val, r_str)
+            
+            rstd_val = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 7, Qt.EditRole)
+            rstd_str = safe_get_cell_text(self.table_mix_calibration_info, r, n_mats + 7)
+            set_target_cell(self.table_mix_z_red, r, n_mats + 5, rstd_val, rstd_str)
+            
+            update_row_predictions(self, r, n_mats, comp_reds, comp_zeffs)
         self.table_mix_z_red.blockSignals(False)
         update_mix_graph(self)
     self.table_mix_calibration_info.post_paste_handler = sync_after_paste_calibration
     
     def sync_after_paste_z_red():
+        mix_id = getattr(self, "current_viewed_mix_id", None)
+        comp_reds = None
+        comp_zeffs = None
+        if mix_id is not None:
+            start_row, group_size = find_mix_group_row_and_size(self, mix_id)
+            if start_row != -1:
+                comp_reds = []
+                comp_zeffs = []
+                for i in range(group_size):
+                    r_idx = start_row + i
+                    if r_idx >= self.table_mat_mix.rowCount():
+                        break
+                    combo = self.table_mat_mix.cellWidget(r_idx, 1)
+                    mat_name = safe_get_combo_text(combo)
+                    ref_red = 0.0
+                    ref_zeff = 0.0
+                    
+                    red_str = safe_get_cell_text(self.table_mat_mix, r_idx, 3)
+                    zeff_str = safe_get_cell_text(self.table_mat_mix, r_idx, 4)
+                    
+                    if red_str.strip():
+                        ref_red = safe_float(red_str)
+                    if zeff_str.strip():
+                        ref_zeff = safe_float(zeff_str)
+                    if ref_red == 0.0 or ref_zeff == 0.0:
+                        if mat_name:
+                            for r_db in range(self.table_3d_db.rowCount()):
+                                item_db_text = safe_get_cell_text(self.table_3d_db, r_db, 0)
+                                if item_db_text.strip() == mat_name:
+                                    if ref_red == 0.0:
+                                        db_red_str = safe_get_cell_text(self.table_3d_db, r_db, 6)
+                                        ref_red = safe_float(db_red_str)
+                                    if ref_zeff == 0.0:
+                                        db_zeff_str = safe_get_cell_text(self.table_3d_db, r_db, 8)
+                                        ref_zeff = safe_float(db_zeff_str)
+                                    break
+                    comp_reds.append(ref_red)
+                    comp_zeffs.append(ref_zeff)
+
         self.table_mix_calibration_info.blockSignals(True)
         n_mats = self.table_mix_z_red.columnCount() - 8
         for r in range(self.table_mix_z_red.rowCount()):
             if r >= self.table_mix_calibration_info.rowCount():
                 self.table_mix_calibration_info.insertRow(r)
             for c in range(n_mats):
-                item_src = self.table_mix_z_red.item(r, c)
-                if item_src:
-                    set_target_cell(self.table_mix_calibration_info, r, c, item_src.data(Qt.EditRole), item_src.text())
-            z_item = self.table_mix_z_red.item(r, n_mats)
-            zstd_item = self.table_mix_z_red.item(r, n_mats + 1)
-            r_item = self.table_mix_z_red.item(r, n_mats + 4)
-            rstd_item = self.table_mix_z_red.item(r, n_mats + 5)
-            if z_item:
-                set_target_cell(self.table_mix_calibration_info, r, n_mats + 8, z_item.data(Qt.EditRole), z_item.text())
-            if zstd_item:
-                set_target_cell(self.table_mix_calibration_info, r, n_mats + 9, zstd_item.data(Qt.EditRole), zstd_item.text())
-            if r_item:
-                set_target_cell(self.table_mix_calibration_info, r, n_mats + 6, r_item.data(Qt.EditRole), r_item.text())
-            if rstd_item:
-                set_target_cell(self.table_mix_calibration_info, r, n_mats + 7, rstd_item.data(Qt.EditRole), rstd_item.text())
-            update_row_predictions(self, r, n_mats)
+                val = safe_get_cell_value(self.table_mix_z_red, r, c, Qt.EditRole)
+                val_str = safe_get_cell_text(self.table_mix_z_red, r, c)
+                set_target_cell(self.table_mix_calibration_info, r, c, val, val_str)
+                
+            z_val = safe_get_cell_value(self.table_mix_z_red, r, n_mats, Qt.EditRole)
+            z_str = safe_get_cell_text(self.table_mix_z_red, r, n_mats)
+            set_target_cell(self.table_mix_calibration_info, r, n_mats + 8, z_val, z_str)
+            
+            zstd_val = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 1, Qt.EditRole)
+            zstd_str = safe_get_cell_text(self.table_mix_z_red, r, n_mats + 1)
+            set_target_cell(self.table_mix_calibration_info, r, n_mats + 9, zstd_val, zstd_str)
+            
+            r_val = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 4, Qt.EditRole)
+            r_str = safe_get_cell_text(self.table_mix_z_red, r, n_mats + 4)
+            set_target_cell(self.table_mix_calibration_info, r, n_mats + 6, r_val, r_str)
+            
+            rstd_val = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 5, Qt.EditRole)
+            rstd_str = safe_get_cell_text(self.table_mix_z_red, r, n_mats + 5)
+            set_target_cell(self.table_mix_calibration_info, r, n_mats + 7, rstd_val, rstd_str)
+            
+            update_row_predictions(self, r, n_mats, comp_reds, comp_zeffs)
         self.table_mix_calibration_info.blockSignals(False)
         update_mix_graph(self)
     self.table_mix_z_red.post_paste_handler = sync_after_paste_z_red
@@ -1151,8 +1438,13 @@ def setup_mat_mix_tab(self):
     self.btn_mix_cal_remove.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_cal_remove.clicked.connect(lambda: remove_mix_calibration_row(self))
     
+    self.btn_mix_cal_clear = QPushButton("Clear All")
+    self.btn_mix_cal_clear.setStyleSheet("background-color: red; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_cal_clear.clicked.connect(lambda: clear_all_mix_calibration_rows(self))
+    
     mix_cal_btn_layout.addWidget(self.btn_mix_cal_add)
     mix_cal_btn_layout.addWidget(self.btn_mix_cal_remove)
+    mix_cal_btn_layout.addWidget(self.btn_mix_cal_clear)
     mix_cal_btn_layout.addStretch()
     self.mix_info_layout.addLayout(mix_cal_btn_layout)
     
@@ -1168,6 +1460,7 @@ def setup_mat_mix_tab(self):
     self.txt_mix_notes = QTextEdit()
     self.txt_mix_notes.setPlaceholderText("Enter notes, specs, or other general details about the material mix...")
     self.txt_mix_notes.setStyleSheet("background-color: #1e1e24; color: #ffffff; border: 1px solid #3c4450; border-radius: 4px;")
+    self.txt_mix_notes.textChanged.connect(lambda: auto_save_all_databases(self))
     self.mix_notes_layout.addWidget(self.txt_mix_notes)
     
     # Mix RED tab setup
@@ -1235,17 +1528,18 @@ def setup_mat_mix_tab(self):
     mix_red_right_layout.addWidget(self.lbl_mix_red_table_title)
     
     self.table_mix_red_cal = ClipboardTableWidget()
-    self.table_mix_red_cal.setColumnCount(11)
+    self.table_mix_red_cal.setColumnCount(14)
     self.table_mix_red_cal.setHorizontalHeaderLabels([
         "Infill %", "Flow", "HU-Low", "HU-Low STD", "HU-High", "HU-High STD",
-        "RED", "RED STD", "Pred. RED", "kV - Low", "kV - High"
+        "RED", "RED STD", "Pred. RED", "Zeff", "Zeff STD", "Pred. Zeff", "kV - Low", "kV - High"
     ])
     self.table_mix_red_cal.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
     self.table_mix_red_cal.horizontalHeader().setStretchLastSection(True)
     self.table_mix_red_cal.setSelectionBehavior(QAbstractItemView.SelectRows)
     self.table_mix_red_cal.setSelectionMode(QAbstractItemView.SingleSelection)
     self.table_mix_red_cal.setSortingEnabled(True)
-    self.table_mix_red_cal.setItemDelegate(self.float_delegate)
+    self.float_delegate_mix_red_cal = FloatDelegate(self.table_mix_red_cal)
+    self.table_mix_red_cal.setItemDelegate(self.float_delegate_mix_red_cal)
     
     # Connect itemChanged to handle inline cell editing and update Pred. RED / cache
     self.table_mix_red_cal.itemChanged.connect(lambda item: on_mix_red_cal_cell_changed(self, item))
@@ -1259,20 +1553,34 @@ def setup_mat_mix_tab(self):
             if ratio_idx < len(mix_red_data):
                 combination = mix_red_data[ratio_idx]
                 ratios = combination["percentage"]
-                pred_red = calculate_mix_red_predicted_val(self, ratios)
+                pred_zeff = calculate_mix_zeff_predicted_val(self, ratios)
                 
                 self.table_mix_red_cal.blockSignals(True)
                 for r in range(self.table_mix_red_cal.rowCount()):
+                    infill_val = safe_float(safe_get_cell_text(self.table_mix_red_cal, r, 0))
+                    row_pred_red = calculate_mix_red_predicted_val(self, ratios, infill_val)
+                    
+                    # Pred. RED (col 8)
                     pred_item = self.table_mix_red_cal.item(r, 8)
                     if not pred_item:
                         pred_item = QTableWidgetItem()
                         pred_item.setFlags(pred_item.flags() & ~Qt.ItemIsEditable)
                         self.table_mix_red_cal.setItem(r, 8, pred_item)
-                    pred_item.setData(Qt.EditRole, pred_red)
-                    pred_item.setText(f"{pred_red:.4f}")
+                    pred_item.setData(Qt.EditRole, row_pred_red)
+                    pred_item.setText(f"{row_pred_red:.4f}")
+                    
+                    # Pred. Zeff (col 11)
+                    pred_z_item = self.table_mix_red_cal.item(r, 11)
+                    if not pred_z_item:
+                        pred_z_item = QTableWidgetItem()
+                        pred_z_item.setFlags(pred_z_item.flags() & ~Qt.ItemIsEditable)
+                        self.table_mix_red_cal.setItem(r, 11, pred_z_item)
+                    pred_z_item.setData(Qt.EditRole, pred_zeff)
+                    pred_z_item.setText(f"{pred_zeff:.4f}")
                 self.table_mix_red_cal.blockSignals(False)
                 
                 save_mix_red_table_to_cache(self, mix_id, ratio_idx)
+                auto_save_all_databases(self)
     self.table_mix_red_cal.post_paste_handler = sync_mix_red_after_paste
     
     mix_red_right_layout.addWidget(self.table_mix_red_cal)
@@ -1286,8 +1594,13 @@ def setup_mat_mix_tab(self):
     self.btn_mix_red_cal_remove.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_red_cal_remove.clicked.connect(lambda: remove_mix_red_cal_row(self))
     
+    self.btn_mix_red_cal_clear = QPushButton("Clear All")
+    self.btn_mix_red_cal_clear.setStyleSheet("background-color: red; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_red_cal_clear.clicked.connect(lambda: clear_all_mix_red_cal_rows(self))
+    
     mix_red_right_btn_layout.addWidget(self.btn_mix_red_cal_add)
     mix_red_right_btn_layout.addWidget(self.btn_mix_red_cal_remove)
+    mix_red_right_btn_layout.addWidget(self.btn_mix_red_cal_clear)
     mix_red_right_btn_layout.addStretch()
     mix_red_right_layout.addLayout(mix_red_right_btn_layout)
     
@@ -1344,6 +1657,11 @@ def setup_mat_mix_tab(self):
     if self.table_mat_mix.rowCount() > 0:
         self.table_mat_mix.selectRow(0)
         display_selected_mix_details(self)
+    
+    self._is_loading = False
+    
+    # Create a daily backup on first access each day
+    create_daily_backup(self)
 
 def on_mix_tab_changed(self, index):
     # Tab 4 is the Graphs tab
@@ -1403,6 +1721,39 @@ def initialize_mix_graph(self):
     """)
     self.combo_graph_y.currentTextChanged.connect(lambda: update_mix_graph(self))
     graph_ctrl_layout.addWidget(self.combo_graph_y)
+    
+    graph_ctrl_layout.addSpacing(15)
+    
+    self.lbl_graph_fit = QLabel("Fit:")
+    self.lbl_graph_fit.setStyleSheet("font-weight: bold; color: #e5e7eb; margin-right: 5px;")
+    graph_ctrl_layout.addWidget(self.lbl_graph_fit)
+    
+    self.combo_graph_fit = FocusComboBox()
+    self.combo_graph_fit.setStyleSheet("""
+        QComboBox {
+            background-color: #2b2b36;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            color: #ffffff;
+            padding: 4px;
+            min-width: 120px;
+        }
+    """)
+    self.combo_graph_fit.addItem("None", 0)
+    self.combo_graph_fit.addItem("Degree 1", 1)
+    self.combo_graph_fit.addItem("Degree 2", 2)
+    self.combo_graph_fit.addItem("Degree 3", 3)
+    self.combo_graph_fit.addItem("Degree 4", 4)
+    self.combo_graph_fit.currentTextChanged.connect(lambda: update_mix_graph(self))
+    graph_ctrl_layout.addWidget(self.combo_graph_fit)
+    
+    graph_ctrl_layout.addSpacing(15)
+    
+    self.check_show_equation = QtWidgets.QCheckBox("Show Equation & R²")
+    self.check_show_equation.setStyleSheet("color: #e5e7eb; font-weight: bold;")
+    self.check_show_equation.setChecked(False)
+    self.check_show_equation.stateChanged.connect(lambda state: update_mix_graph(self))
+    graph_ctrl_layout.addWidget(self.check_show_equation)
     
     graph_ctrl_layout.addStretch()
     self.mix_graphs_layout.addLayout(graph_ctrl_layout)
@@ -1733,7 +2084,24 @@ def save_calibration_database(self):
             json.dump(self.notes_cache, f, indent=4)
     except Exception as e:
         print(f"Error saving notes database: {e}")
-
+def auto_save_all_databases(self):
+    if getattr(self, "_is_loading", False) or getattr(self, "_is_autosaving", False):
+        return
+    self._is_autosaving = True
+    try:
+        save_current_active_material_cache(self)
+        save_current_active_mix_cache(self)
+        
+        save_3d_database(self)
+        save_calibration_database(self)
+        save_mix_database(self)
+        save_mix_calibration_database(self)
+        
+        update_mat_mix_comboboxes(self)
+    except Exception as e:
+        print(f"Error during auto-save: {e}")
+    finally:
+        self._is_autosaving = False
 def save_3d_database_action(self):
     save_current_active_material_cache(self)
     save_3d_database(self)
@@ -1770,6 +2138,7 @@ def remove_selected_material(self):
             self.txt_notes.clear()
             if hasattr(self, "table_mat_mix"):
                 update_mat_mix_comboboxes(self)
+            auto_save_all_databases(self)
     else:
         QMessageBox.information(self, "Information", "Please select a line in the database table to remove first.")
 
@@ -1904,6 +2273,7 @@ def add_calibration_row(self):
     self.table_calibration_info.blockSignals(False)
     self.table_calibration_info.setSortingEnabled(True)
     self.table_calibration_info.selectRow(row_idx)
+    auto_save_all_databases(self)
 
 def remove_calibration_row(self):
     selected_ranges = self.table_calibration_info.selectedRanges()
@@ -1924,8 +2294,135 @@ def remove_calibration_row(self):
             self.table_calibration_info.removeRow(row)
             self.table_calibration_info.blockSignals(False)
             self.table_calibration_info.setSortingEnabled(True)
+            auto_save_all_databases(self)
     else:
         QMessageBox.information(self, "Information", "Please select a calibration row to remove first.")
+
+def copy_calibration_to_another_material(self):
+    if not getattr(self, "current_viewed_filament", None):
+        QMessageBox.warning(self, "Warning", "Please select a material first.")
+        return
+        
+    source_mat = self.current_viewed_filament
+    
+    # Save currently edited values of the source material to cache first
+    save_current_active_material_cache(self)
+    
+    # Get other materials in the database
+    other_materials = []
+    for r in range(self.table_3d_db.rowCount()):
+        name_item = self.table_3d_db.item(r, 0)
+        name = name_item.text().strip() if name_item else ""
+        if name and name != source_mat:
+            other_materials.append(name)
+            
+    if not other_materials:
+        QMessageBox.information(self, "Information", "No other materials available in the list to copy to.")
+        return
+        
+    dlg = QDialog(self)
+    dlg.setWindowTitle("Copy Calibration Data")
+    dlg.setMinimumWidth(400)
+    dlg.setStyleSheet("""
+        QDialog {
+            background-color: #1e1e24;
+            color: #ffffff;
+        }
+        QLabel {
+            color: #e5e7eb;
+        }
+        QComboBox {
+            background-color: #2b2b36;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            color: #ffffff;
+            padding: 5px;
+            min-width: 200px;
+        }
+        QPushButton {
+            font-weight: bold;
+            padding: 6px 12px;
+            border-radius: 4px;
+        }
+    """)
+    
+    layout = QVBoxLayout(dlg)
+    
+    lbl_desc = QLabel(f"Copy calibration measurements and notes from:<br/><b>{source_mat}</b><br/><br/>To target material:")
+    lbl_desc.setWordWrap(True)
+    layout.addWidget(lbl_desc)
+    
+    combo = QComboBox()
+    combo.addItems(sorted(other_materials))
+    layout.addWidget(combo)
+    
+    lbl_warn = QLabel(
+        "<b>WARNING:</b> This will permanently replace all existing calibration measurements and notes of the target material."
+    )
+    lbl_warn.setWordWrap(True)
+    lbl_warn.setStyleSheet("""
+        QLabel {
+            color: #ef4444;
+            background-color: #2d1f22;
+            border-left: 4px solid #ef4444;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+    """)
+    layout.addWidget(lbl_warn)
+    
+    buttons = QHBoxLayout()
+    btn_ok = QPushButton("OK")
+    btn_ok.setStyleSheet("background-color: #0284c7; color: white;")
+    btn_cancel = QPushButton("Cancel")
+    btn_cancel.setStyleSheet("background-color: #4b5563; color: white;")
+    
+    buttons.addStretch()
+    buttons.addWidget(btn_ok)
+    buttons.addWidget(btn_cancel)
+    layout.addLayout(buttons)
+    
+    btn_ok.clicked.connect(dlg.accept)
+    btn_cancel.clicked.connect(dlg.reject)
+    
+    if dlg.exec() == QDialog.Accepted:
+        target_mat = combo.currentText()
+        if not target_mat:
+            return
+            
+        reply = QMessageBox.warning(
+            self, "Confirm Overwrite",
+            f"Are you sure you want to overwrite '{target_mat}'?\n\nAll existing calibration data and notes for '{target_mat}' will be permanently deleted and replaced by the data from '{source_mat}'.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            # Copy calibration cache
+            source_rows = self.calibration_data_cache.get(source_mat, [])
+            # Deep copy list of lists
+            copied_rows = [list(r) for r in source_rows]
+            self.calibration_data_cache[target_mat] = copied_rows
+            
+            # Copy notes cache
+            copied_note = self.notes_cache.get(source_mat, "")
+            self.notes_cache[target_mat] = copied_note
+            
+            # Auto-save changes to the database files
+            save_calibration_database(self)
+            
+            # If the user is currently viewing the target material, reload the details view so they see the copied data
+            if getattr(self, "current_viewed_filament", None) == target_mat:
+                # Temporarily reset current_viewed_filament to force display_selected_filament_details to re-render
+                self.current_viewed_filament = None
+                display_selected_filament_details(self)
+                
+            QMessageBox.information(
+                self, "Success",
+                f"Successfully copied calibration measurements and notes from '{source_mat}' to '{target_mat}'!"
+            )
 
 # Insert new material row below the selected row
 def add_material_dialog(self):
@@ -2082,6 +2579,7 @@ def add_material_dialog(self):
         
         if hasattr(self, "table_mat_mix"):
             update_mat_mix_comboboxes(self)
+        auto_save_all_databases(self)
 
 # Dynamic row insertion logic for Mix Groups
 def populate_mix_row(self, r, has_spinbox=True, group_size_val=1, mix_id_val=None):
@@ -2148,34 +2646,39 @@ def on_mix_material_changed(self, combo, text):
     if row == -1:
         return
         
-    if not text:
-        for c in range(3, 9):
-            item = self.table_mat_mix.item(row, c)
-            if item:
-                item.setText("")
-        return
+    self.table_mat_mix.blockSignals(True)
+    try:
+        if not text:
+            for c in range(3, 9):
+                item = self.table_mat_mix.item(row, c)
+                if item:
+                    item.setText("")
+        else:
+            mat_row = -1
+            for r in range(self.table_3d_db.rowCount()):
+                item = self.table_3d_db.item(r, 0)
+                if item and item.text() == text:
+                    mat_row = r
+                    break
+                    
+            if mat_row != -1:
+                red = self.table_3d_db.item(mat_row, 6).text() if self.table_3d_db.item(mat_row, 6) else ""
+                zeff = self.table_3d_db.item(mat_row, 8).text() if self.table_3d_db.item(mat_row, 8) else ""
+                color = self.table_3d_db.item(mat_row, 3).text() if self.table_3d_db.item(mat_row, 3) else ""
+                brand = self.table_3d_db.item(mat_row, 1).text() if self.table_3d_db.item(mat_row, 1) else ""
+                m_type = self.table_3d_db.item(mat_row, 2).text() if self.table_3d_db.item(mat_row, 2) else ""
+                printer = self.table_3d_db.item(mat_row, 4).text() if self.table_3d_db.item(mat_row, 4) else ""
+                
+                self.table_mat_mix.item(row, 3).setText(red)
+                self.table_mat_mix.item(row, 4).setText(zeff)
+                self.table_mat_mix.item(row, 5).setText(color)
+                self.table_mat_mix.item(row, 6).setText(brand)
+                self.table_mat_mix.item(row, 7).setText(m_type)
+                self.table_mat_mix.item(row, 8).setText(printer)
+    finally:
+        self.table_mat_mix.blockSignals(False)
         
-    mat_row = -1
-    for r in range(self.table_3d_db.rowCount()):
-        item = self.table_3d_db.item(r, 0)
-        if item and item.text() == text:
-            mat_row = r
-            break
-            
-    if mat_row != -1:
-        red = self.table_3d_db.item(mat_row, 6).text() if self.table_3d_db.item(mat_row, 6) else ""
-        zeff = self.table_3d_db.item(mat_row, 8).text() if self.table_3d_db.item(mat_row, 8) else ""
-        color = self.table_3d_db.item(mat_row, 3).text() if self.table_3d_db.item(mat_row, 3) else ""
-        brand = self.table_3d_db.item(mat_row, 1).text() if self.table_3d_db.item(mat_row, 1) else ""
-        m_type = self.table_3d_db.item(mat_row, 2).text() if self.table_3d_db.item(mat_row, 2) else ""
-        printer = self.table_3d_db.item(mat_row, 4).text() if self.table_3d_db.item(mat_row, 4) else ""
-        
-        self.table_mat_mix.item(row, 3).setText(red)
-        self.table_mat_mix.item(row, 4).setText(zeff)
-        self.table_mat_mix.item(row, 5).setText(color)
-        self.table_mat_mix.item(row, 6).setText(brand)
-        self.table_mat_mix.item(row, 7).setText(m_type)
-        self.table_mat_mix.item(row, 8).setText(printer)
+    auto_save_all_databases(self)
         
     if hasattr(self, "current_viewed_mix_id") and self.current_viewed_mix_id is not None:
         start_row = row
@@ -2238,7 +2741,7 @@ def update_group_borders_and_properties(self):
     while r < total_rows:
         spin = self.table_mat_mix.cellWidget(r, 0)
         if isinstance(spin, QSpinBox):
-            n = spin.value()
+            n = max(1, spin.value())
             self.table_mat_mix.setProperty(f"group_start_{r}", True)
             last_row = min(r + n - 1, total_rows - 1)
             self.table_mat_mix.setProperty(f"group_end_{last_row}", True)
@@ -2261,6 +2764,14 @@ def update_mat_mix_comboboxes(self):
                 mat_names.append(name)
     mat_names.sort()
     
+    # Check if the list of materials has actually changed
+    last_names = getattr(self, "_last_material_names", None)
+    force = getattr(self, "_force_combobox_update", False)
+    if not force and last_names is not None and last_names == mat_names:
+        return
+    self._force_combobox_update = False
+    self._last_material_names = mat_names
+    
     for r in range(self.table_mat_mix.rowCount()):
         combo = self.table_mat_mix.cellWidget(r, 1)
         if isinstance(combo, QComboBox):
@@ -2271,9 +2782,14 @@ def update_mat_mix_comboboxes(self):
             combo.blockSignals(True)
             combo.clear()
             combo.addItem("")
-            combo.addItems(mat_names)
             
-            if current_sel in mat_names:
+            local_items = list(mat_names)
+            if current_sel and current_sel not in local_items:
+                local_items.append(current_sel)
+                
+            combo.addItems(local_items)
+            
+            if current_sel:
                 combo.setCurrentText(current_sel)
             else:
                 combo.setCurrentIndex(0)
@@ -2315,6 +2831,7 @@ def add_mix_group(self):
     
     self.table_mat_mix.selectRow(row_idx)
     display_selected_mix_details(self)
+    auto_save_all_databases(self)
 
 def remove_mix_group(self):
     selected_ranges = self.table_mat_mix.selectedRanges()
@@ -2366,6 +2883,7 @@ def remove_mix_group(self):
                 self.txt_mix_notes.clear()
                 
         update_group_borders_and_properties(self)
+        auto_save_all_databases(self)
 
 # Save MatMix CSV
 def save_mix_database(self):
@@ -2383,7 +2901,7 @@ def save_mix_database(self):
             while r < total_rows:
                 spin = self.table_mat_mix.cellWidget(r, 0)
                 if isinstance(spin, QSpinBox):
-                    n = spin.value()
+                    n = max(1, spin.value())
                     mix_id = spin.property("mix_id")
                     for i in range(n):
                         row_idx = r + i
@@ -2460,6 +2978,7 @@ def load_mix_database(self):
     self.table_mat_mix.setSortingEnabled(True)
     
     update_group_borders_and_properties(self)
+    self._force_combobox_update = True
     update_mat_mix_comboboxes(self)
 
 # Save Mix Action Wrapper
@@ -2514,10 +3033,9 @@ def get_materials_in_mix(self, start_row, group_size):
         if r >= self.table_mat_mix.rowCount():
             break
         combo = self.table_mat_mix.cellWidget(r, 1)
-        if isinstance(combo, QComboBox):
-            text = combo.currentText().strip()
-            if text:
-                mat_names.append(text)
+        text = safe_get_combo_text(combo)
+        if text:
+            mat_names.append(text)
     return mat_names
 
 def display_selected_mix_details(self):
@@ -2556,9 +3074,14 @@ def display_selected_mix_details(self):
     self.lbl_mix_notes_title.setText(f"Notes & Specifications (Mix ID: {mix_id})")
     
     # Load and display Mix RED combinations
+    old_mix_id = getattr(self, "current_viewed_mix_id", None)
+    old_row = self.list_mix_red_ratios.currentRow()
     refresh_mix_red_ratios_list(self)
     if self.list_mix_red_ratios.count() > 0:
-        self.list_mix_red_ratios.setCurrentRow(0)
+        if old_mix_id == mix_id and 0 <= old_row < self.list_mix_red_ratios.count():
+            self.list_mix_red_ratios.setCurrentRow(old_row)
+        else:
+            self.list_mix_red_ratios.setCurrentRow(0)
     else:
         self.table_mix_red_cal.blockSignals(True)
         self.table_mix_red_cal.clearContents()
@@ -2593,7 +3116,7 @@ def display_selected_mix_details(self):
         if c == n_mats + 10:
             self.table_mix_calibration_info.setItemDelegateForColumn(c, None)
         else:
-            self.table_mix_calibration_info.setItemDelegateForColumn(c, self.float_delegate)
+            self.table_mix_calibration_info.setItemDelegateForColumn(c, self.float_delegate_mix_calibration_info)
             
     # Configure columns in mix Z & RED table dynamically
     self.table_mix_z_red.blockSignals(True)
@@ -2608,9 +3131,54 @@ def display_selected_mix_details(self):
     self.table_mix_z_red.setHorizontalHeaderLabels(z_red_headers)
     
     for c in range(self.table_mix_z_red.columnCount()):
-        self.table_mix_z_red.setItemDelegateForColumn(c, self.float_delegate)
+        self.table_mix_z_red.setItemDelegateForColumn(c, self.float_delegate_mix_z_red)
         
     cal_rows = self.mix_calibration_cache.get(mix_id, [])
+    
+    # Resolve mix reference values once for high-performance loading
+    comp_reds = []
+    comp_zeffs = []
+    for i in range(group_size):
+        r = start_row + i
+        if r >= self.table_mat_mix.rowCount():
+            break
+        combo = self.table_mat_mix.cellWidget(r, 1)
+        mat_name = safe_get_combo_text(combo)
+        ref_red = 0.0
+        ref_zeff = 0.0
+        red_str = safe_get_cell_text(self.table_mat_mix, r, 3)
+        zeff_str = safe_get_cell_text(self.table_mat_mix, r, 4)
+        if red_str.strip():
+            try:
+                ref_red = float(red_str.replace(',', '.'))
+            except ValueError:
+                pass
+        if zeff_str.strip():
+            try:
+                ref_zeff = float(zeff_str.replace(',', '.'))
+            except ValueError:
+                pass
+        if ref_red == 0.0 or ref_zeff == 0.0:
+            if mat_name:
+                for r_db in range(self.table_3d_db.rowCount()):
+                    item_db_text = safe_get_cell_text(self.table_3d_db, r_db, 0)
+                    if item_db_text.strip() == mat_name:
+                        if ref_red == 0.0:
+                            try:
+                                db_red_str = safe_get_cell_text(self.table_3d_db, r_db, 6)
+                                ref_red = float(db_red_str.replace(',', '.')) if db_red_str else 0.0
+                            except ValueError:
+                                ref_red = 0.0
+                        if ref_zeff == 0.0:
+                            try:
+                                db_zeff_str = safe_get_cell_text(self.table_3d_db, r_db, 8)
+                                ref_zeff = float(db_zeff_str.replace(',', '.')) if db_zeff_str else 0.0
+                            except ValueError:
+                                ref_zeff = 0.0
+                        break
+        comp_reds.append(ref_red)
+        comp_zeffs.append(ref_zeff)
+        
     for row_data in cal_rows:
         if len(row_data) < 20:
             continue
@@ -2631,11 +3199,11 @@ def display_selected_mix_details(self):
             except ValueError:
                 item.setData(Qt.EditRole, 0.0)
                 item.setText("0.0000")
-            self.table_mix_calibration_info.setItem(row_idx, idx, item)
-            
             item_z = QTableWidgetItem()
             item_z.setData(Qt.EditRole, item.data(Qt.EditRole))
             item_z.setText(item.text())
+            
+            self.table_mix_calibration_info.setItem(row_idx, idx, item)
             self.table_mix_z_red.setItem(row_idx, idx, item_z)
             
         for std_idx, val_str in enumerate(row_data[1:]):
@@ -2697,7 +3265,7 @@ def display_selected_mix_details(self):
             item_red_std.setText("0.0000")
         self.table_mix_z_red.setItem(row_idx, n_mats + 5, item_red_std)
         
-        update_row_predictions(self, row_idx, n_mats)
+        update_row_predictions(self, row_idx, n_mats, comp_reds, comp_zeffs)
         
     self.table_mix_calibration_info.blockSignals(False)
     self.table_mix_calibration_info.setSortingEnabled(True)
@@ -2795,15 +3363,7 @@ def update_mix_graph(self):
         return
         
     # Get active mix group size
-    start_row = -1
-    total_rows = self.table_mat_mix.rowCount()
-    for r in range(total_rows):
-        spin = self.table_mat_mix.cellWidget(r, 0)
-        if isinstance(spin, QSpinBox) and spin.property("mix_id") == mix_id:
-            start_row = r
-            group_size = spin.value()
-            break
-            
+    start_row, group_size = find_mix_group_row_and_size(self, mix_id)
     if start_row == -1:
         self.graph_canvas.draw()
         return
@@ -2840,36 +3400,60 @@ def update_mix_graph(self):
     for r in range(num_rows):
         ratios = []
         for c in range(n_mats):
-            item = self.table_mix_z_red.item(r, c)
+            val_raw = safe_get_cell_value(self.table_mix_z_red, r, c, Qt.EditRole)
             try:
-                val = float(item.data(Qt.EditRole)) if item else 0.0
+                val = float(val_raw) if val_raw is not None else 0.0
             except (ValueError, TypeError):
                 val = 0.0
             ratios.append(val)
             
-        item_z = self.table_mix_z_red.item(r, n_mats)
-        val_z = float(item_z.data(Qt.EditRole)) if item_z else 0.0
-        
-        item_zstd = self.table_mix_z_red.item(r, n_mats + 1)
-        val_zstd = float(item_zstd.data(Qt.EditRole)) if item_zstd else 0.0
-        
-        item_pz = self.table_mix_z_red.item(r, n_mats + 2)
-        val_pz = float(item_pz.data(Qt.EditRole)) if item_pz else 0.0
-        
-        item_dz = self.table_mix_z_red.item(r, n_mats + 3)
-        val_dz = float(item_dz.data(Qt.EditRole)) if item_dz else 0.0
-        
-        item_red = self.table_mix_z_red.item(r, n_mats + 4)
-        val_red = float(item_red.data(Qt.EditRole)) if item_red else 0.0
-        
-        item_red_std = self.table_mix_z_red.item(r, n_mats + 5)
-        val_red_std = float(item_red_std.data(Qt.EditRole)) if item_red_std else 0.0
-        
-        item_pr = self.table_mix_z_red.item(r, n_mats + 6)
-        val_pr = float(item_pr.data(Qt.EditRole)) if item_pr else 0.0
-        
-        item_dr = self.table_mix_z_red.item(r, n_mats + 7)
-        val_dr = float(item_dr.data(Qt.EditRole)) if item_dr else 0.0
+        val_z_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats, Qt.EditRole)
+        try:
+            val_z = float(val_z_raw) if val_z_raw is not None else 0.0
+        except (ValueError, TypeError):
+            val_z = 0.0
+            
+        val_zstd_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 1, Qt.EditRole)
+        try:
+            val_zstd = float(val_zstd_raw) if val_zstd_raw is not None else 0.0
+        except (ValueError, TypeError):
+            val_zstd = 0.0
+            
+        val_pz_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 2, Qt.EditRole)
+        try:
+            val_pz = float(val_pz_raw) if val_pz_raw is not None else 0.0
+        except (ValueError, TypeError):
+            val_pz = 0.0
+            
+        val_dz_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 3, Qt.EditRole)
+        try:
+            val_dz = float(val_dz_raw) if val_dz_raw is not None else 0.0
+        except (ValueError, TypeError):
+            val_dz = 0.0
+            
+        val_red_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 4, Qt.EditRole)
+        try:
+            val_red = float(val_red_raw) if val_red_raw is not None else 0.0
+        except (ValueError, TypeError):
+            val_red = 0.0
+            
+        val_red_std_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 5, Qt.EditRole)
+        try:
+            val_red_std = float(val_red_std_raw) if val_red_std_raw is not None else 0.0
+        except (ValueError, TypeError):
+            val_red_std = 0.0
+            
+        val_pr_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 6, Qt.EditRole)
+        try:
+            val_pr = float(val_pr_raw) if val_pr_raw is not None else 0.0
+        except (ValueError, TypeError):
+            val_pr = 0.0
+            
+        val_dr_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 7, Qt.EditRole)
+        try:
+            val_dr = float(val_dr_raw) if val_dr_raw is not None else 0.0
+        except (ValueError, TypeError):
+            val_dr = 0.0
         
         # Extract X Axis Value
         if user_data_x[0] == "ratio":
@@ -3000,8 +3584,81 @@ def update_mix_graph(self):
     ax.errorbar(
         x_sorted, y_sorted, xerr=xerr_arg, yerr=yerr_arg,
         color=sel_color, marker=marker_sym, markersize=marker_sz,
-        linestyle=line_style, linewidth=line_width, ecolor="#9ca3af", elinewidth=1, capsize=3
+        linestyle=line_style, linewidth=line_width, ecolor="#9ca3af", elinewidth=1, capsize=3,
+        label="Data"
     )
+    
+    # Check if a polynomial fit is requested
+    fit_deg = 0
+    if hasattr(self, "combo_graph_fit"):
+        fit_deg = self.combo_graph_fit.currentData()
+        
+    if fit_deg > 0 and len(x_sorted) > fit_deg:
+        import numpy as np
+        try:
+            x_arr = np.array(x_sorted, dtype=float)
+            y_arr = np.array(y_sorted, dtype=float)
+            valid = np.isfinite(x_arr) & np.isfinite(y_arr)
+            if np.sum(valid) > fit_deg:
+                x_valid = x_arr[valid]
+                y_valid = y_arr[valid]
+                
+                # Fit polynomial
+                coefs = np.polyfit(x_valid, y_valid, fit_deg)
+                p = np.poly1d(coefs)
+                
+                # Calculate R^2
+                y_pred = p(x_valid)
+                y_mean = np.mean(y_valid)
+                ss_res = np.sum((y_valid - y_pred) ** 2)
+                ss_tot = np.sum((y_valid - y_mean) ** 2)
+                r2 = 1.0 - (ss_res / ss_tot) if ss_tot != 0 else 1.0
+                
+                # Format polynomial equation
+                terms = []
+                for power, coef in enumerate(coefs[::-1]):
+                    if abs(coef) < 1e-4:
+                        continue
+                    if power == 0:
+                        terms.append(f"{coef:+.4f}")
+                    elif power == 1:
+                        terms.append(f"{coef:+.4f}x")
+                    else:
+                        terms.append(f"{coef:+.4f}x$^{power}$")
+                equation_str = " ".join(terms[::-1]).strip()
+                if equation_str.startswith("+"):
+                    equation_str = equation_str[1:]
+                if not equation_str:
+                    equation_str = "0.0000"
+                full_display_str = f"$y = {equation_str}$\n$R^2 = {r2:.4f}$"
+                
+                # Generate smooth curve points for plotting
+                x_fit = np.linspace(min(x_valid), max(x_valid), 100)
+                y_fit = p(x_fit)
+                
+                # Draw the fit line as a dashed line
+                ax.plot(
+                    x_fit, y_fit,
+                    color=sel_color, linestyle="--", linewidth=line_width * 0.8,
+                    label=f"Fit (deg {fit_deg})"
+                )
+                
+                # Display equation and R^2 box if selected
+                if hasattr(self, "check_show_equation") and self.check_show_equation.isChecked():
+                    ax.text(
+                        0.05, 0.95, full_display_str,
+                        transform=ax.transAxes,
+                        verticalalignment='top',
+                        horizontalalignment='left',
+                        bbox=dict(boxstyle='round,pad=0.5', facecolor=bg, edgecolor=spine_color, alpha=0.8),
+                        color=text_color,
+                        fontsize=font_size
+                    )
+                
+                if getattr(self, "selected_legend_on_off", "On") == "On":
+                    ax.legend(facecolor=bg, edgecolor=spine_color, labelcolor=text_color)
+        except Exception as e:
+            print(f"Error computing polynomial fit: {e}")
     
     ax.set_title(f"{y_label} vs {x_label}", fontdict=font_settings, color=text_color, pad=10)
     ax.set_xlabel(x_label, fontdict=font_settings, color=text_color)
@@ -3032,15 +3689,7 @@ def save_current_active_mix_cache(self):
         if hasattr(self, "spin_m_value"):
             self.mix_m_value_cache[mix_id] = self.spin_m_value.value()
             
-        start_row = -1
-        total_rows = self.table_mat_mix.rowCount()
-        for r in range(total_rows):
-            spin = self.table_mat_mix.cellWidget(r, 0)
-            if isinstance(spin, QSpinBox) and spin.property("mix_id") == mix_id:
-                start_row = r
-                group_size = spin.value()
-                break
-                
+        start_row, group_size = find_mix_group_row_and_size(self, mix_id)
         if start_row == -1:
             return
             
@@ -3051,19 +3700,20 @@ def save_current_active_mix_cache(self):
         for r in range(self.table_mix_calibration_info.rowCount()):
             ratios = []
             for c in range(n_mats):
-                item = self.table_mix_calibration_info.item(r, c)
-                val = item.data(Qt.EditRole) if item else 0.0
-                ratios.append(f"{float(val):.4f}" if val is not None else "0.0000")
+                val = safe_get_cell_value(self.table_mix_calibration_info, r, c, Qt.EditRole)
+                val_float = float(val) if val is not None else 0.0
+                ratios.append(f"{val_float:.4f}")
             ratios_str = ",".join(ratios)
             
             row_data = [ratios_str]
             for std_idx in range(19):
                 c = n_mats + std_idx
-                item = self.table_mix_calibration_info.item(r, c)
                 if std_idx == 10:
-                    val_str = item.text() if item else "Grid"
+                    val_str = safe_get_cell_text(self.table_mix_calibration_info, r, c)
+                    if not val_str:
+                        val_str = "Grid"
                 else:
-                    val = item.data(Qt.EditRole) if item else 0.0
+                    val = safe_get_cell_value(self.table_mix_calibration_info, r, c, Qt.EditRole)
                     val_str = str(val) if val is not None else "0.0"
                 row_data.append(val_str)
             rows.append(row_data)
@@ -3293,6 +3943,7 @@ def add_mix_calibration_row(self):
     
     self.table_mix_z_red.blockSignals(False)
     update_mix_graph(self)
+    auto_save_all_databases(self)
 
 def remove_mix_calibration_row(self):
     selected_ranges = self.table_mix_calibration_info.selectedRanges()
@@ -3318,8 +3969,37 @@ def remove_mix_calibration_row(self):
             self.table_mix_z_red.removeRow(row)
             self.table_mix_z_red.blockSignals(False)
             update_mix_graph(self)
+            auto_save_all_databases(self)
     else:
         QMessageBox.information(self, "Information", "Please select a calibration row in the mix table to remove first.")
+
+def clear_all_mix_calibration_rows(self):
+    if self.table_mix_calibration_info.rowCount() == 0:
+        QMessageBox.information(self, "Information", "The calibration table is already empty.")
+        return
+        
+    reply = QMessageBox.question(
+        self, "Confirm Clear All",
+        "Are you sure you want to clear all calibration rows for this mix?",
+        QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+    )
+    if reply == QMessageBox.Yes:
+        self.table_mix_calibration_info.setSortingEnabled(False)
+        self.table_mix_calibration_info.blockSignals(True)
+        self.table_mix_calibration_info.clearContents()
+        self.table_mix_calibration_info.setRowCount(0)
+        self.table_mix_calibration_info.blockSignals(False)
+        self.table_mix_calibration_info.setSortingEnabled(True)
+        
+        self.table_mix_z_red.setSortingEnabled(False)
+        self.table_mix_z_red.blockSignals(True)
+        self.table_mix_z_red.clearContents()
+        self.table_mix_z_red.setRowCount(0)
+        self.table_mix_z_red.blockSignals(False)
+        self.table_mix_z_red.setSortingEnabled(True)
+        
+        update_mix_graph(self)
+        auto_save_all_databases(self)
 
 # Mix RED tab helper methods
 def get_mix_red_db_path():
@@ -3394,6 +4074,20 @@ def add_mix_red_ratio(self):
         form.addRow(f"% {name}:", spin)
         spinboxes.append(spin)
         
+    if len(spinboxes) >= 2:
+        def sync_add_spinboxes():
+            for sb in spinboxes:
+                sb.blockSignals(True)
+            try:
+                current_sum = sum(sb.value() for sb in spinboxes[:-1])
+                last_val = max(0.0, 100.0 - current_sum)
+                spinboxes[-1].setValue(last_val)
+            finally:
+                for sb in spinboxes:
+                    sb.blockSignals(False)
+        for sb in spinboxes[:-1]:
+            sb.valueChanged.connect(sync_add_spinboxes)
+        
     btn_layout = QHBoxLayout()
     btn_ok = QPushButton("Add")
     btn_cancel = QPushButton("Cancel")
@@ -3422,6 +4116,7 @@ def add_mix_red_ratio(self):
         
         refresh_mix_red_ratios_list(self)
         self.list_mix_red_ratios.setCurrentRow(self.list_mix_red_ratios.count() - 1)
+        auto_save_all_databases(self)
         break
 
 def remove_mix_red_ratio(self):
@@ -3452,6 +4147,7 @@ def remove_mix_red_ratio(self):
                 self.table_mix_red_cal.clearContents()
                 self.table_mix_red_cal.setRowCount(0)
                 self.table_mix_red_cal.blockSignals(False)
+            auto_save_all_databases(self)
 
 def refresh_mix_red_ratios_list(self):
     self.list_mix_red_ratios.blockSignals(True)
@@ -3504,26 +4200,39 @@ def display_selected_mix_red_ratio_details(self, idx):
     ratios = combination["percentage"]
     rows = combination.get("rows", [])
     
-    pred_red = calculate_mix_red_predicted_val(self, ratios)
+    pred_zeff = calculate_mix_zeff_predicted_val(self, ratios)
     
     for row_vals in rows:
         row_idx = self.table_mix_red_cal.rowCount()
         self.table_mix_red_cal.insertRow(row_idx)
         
-        # Check if we need to migrate from older 8-column format
-        is_migration = (len(row_vals) == 8)
-        if is_migration:
-            new_row_vals = ["100.0", "100.0", row_vals[2], row_vals[3], row_vals[4], row_vals[5], row_vals[6], row_vals[7], "0.0", row_vals[0], row_vals[1]]
+        # Check if we need to migrate from older formats
+        if len(row_vals) == 8:
+            new_row_vals = ["100.0", "100.0", row_vals[2], row_vals[3], row_vals[4], row_vals[5], row_vals[6], row_vals[7], "0.0", "0.0", "0.0", "0.0", row_vals[0], row_vals[1]]
+        elif len(row_vals) == 11:
+            new_row_vals = [
+                row_vals[0], row_vals[1], row_vals[2], row_vals[3], row_vals[4], row_vals[5], row_vals[6], row_vals[7],
+                "0.0", "0.0", "0.0", "0.0", row_vals[9], row_vals[10]
+            ]
         else:
             new_row_vals = row_vals
             
-        for c in range(11):
+        infill_val = safe_float(new_row_vals[0])
+        row_pred_red = calculate_mix_red_predicted_val(self, ratios, infill_val)
+            
+        for c in range(14):
             if c == 8:
                 pred_item = QTableWidgetItem()
                 pred_item.setFlags(pred_item.flags() & ~Qt.ItemIsEditable)
-                pred_item.setData(Qt.EditRole, pred_red)
-                pred_item.setText(f"{pred_red:.4f}")
+                pred_item.setData(Qt.EditRole, row_pred_red)
+                pred_item.setText(f"{row_pred_red:.4f}")
                 self.table_mix_red_cal.setItem(row_idx, 8, pred_item)
+            elif c == 11:
+                pred_z_item = QTableWidgetItem()
+                pred_z_item.setFlags(pred_z_item.flags() & ~Qt.ItemIsEditable)
+                pred_z_item.setData(Qt.EditRole, pred_zeff)
+                pred_z_item.setText(f"{pred_zeff:.4f}")
+                self.table_mix_red_cal.setItem(row_idx, 11, pred_z_item)
             else:
                 val_str = new_row_vals[c] if c < len(new_row_vals) else "0.0"
                 item = QTableWidgetItem()
@@ -3538,20 +4247,14 @@ def display_selected_mix_red_ratio_details(self, idx):
         
     self.table_mix_red_cal.blockSignals(False)
 
-def calculate_mix_red_predicted_val(self, ratios):
+def calculate_mix_red_predicted_val(self, ratios, infill_pct=100.0):
     mix_id = getattr(self, "current_viewed_mix_id", None)
     if mix_id is None:
         return 0.0
         
     start_row = -1
     total_rows = self.table_mat_mix.rowCount()
-    for r in range(total_rows):
-        spin = self.table_mat_mix.cellWidget(r, 0)
-        if isinstance(spin, QSpinBox) and spin.property("mix_id") == mix_id:
-            start_row = r
-            group_size = spin.value()
-            break
-            
+    start_row, group_size = find_mix_group_row_and_size(self, mix_id)
     if start_row == -1:
         return 0.0
         
@@ -3562,32 +4265,72 @@ def calculate_mix_red_predicted_val(self, ratios):
             break
             
         combo = self.table_mat_mix.cellWidget(r, 1)
-        mat_name = combo.currentText().strip() if isinstance(combo, QComboBox) else ""
+        mat_name = safe_get_combo_text(combo)
         
         ref_red = 0.0
-        red_item = self.table_mat_mix.item(r, 3)
-        if red_item and red_item.text().strip():
-            try:
-                ref_red = float(red_item.text().replace(',', '.'))
-            except ValueError:
-                pass
+        red_str = safe_get_cell_text(self.table_mat_mix, r, 3)
+        if red_str.strip():
+            ref_red = safe_float(red_str)
                 
         if ref_red == 0.0 and mat_name:
             for r_db in range(self.table_3d_db.rowCount()):
-                item_db = self.table_3d_db.item(r_db, 0)
-                if item_db and item_db.text().strip() == mat_name:
-                    try:
-                        ref_red = float(self.table_3d_db.item(r_db, 6).text().replace(',', '.')) if self.table_3d_db.item(r_db, 6) else 0.0
-                    except ValueError:
-                        ref_red = 0.0
+                item_db_text = safe_get_cell_text(self.table_3d_db, r_db, 0)
+                if item_db_text.strip() == mat_name:
+                    db_red_str = safe_get_cell_text(self.table_3d_db, r_db, 6)
+                    ref_red = safe_float(db_red_str)
                     break
-        comp_reds.append(ref_red)
+        
+        expected_red = get_expected_material_red(self, mat_name, ref_red, infill_pct)
+        comp_reds.append(expected_red)
         
     pred_red = 0.0
     for idx, ratio in enumerate(ratios):
         if idx < len(comp_reds):
             pred_red += (ratio / 100.0) * comp_reds[idx]
     return pred_red
+
+def calculate_mix_zeff_predicted_val(self, ratios):
+    mix_id = getattr(self, "current_viewed_mix_id", None)
+    if mix_id is None:
+        return 0.0
+        
+    start_row, group_size = find_mix_group_row_and_size(self, mix_id)
+    if start_row == -1:
+        return 0.0
+        
+    comp_zeffs = []
+    for i in range(group_size):
+        r = start_row + i
+        if r >= self.table_mat_mix.rowCount():
+            break
+            
+        combo = self.table_mat_mix.cellWidget(r, 1)
+        mat_name = safe_get_combo_text(combo)
+        
+        ref_zeff = 0.0
+        zeff_str = safe_get_cell_text(self.table_mat_mix, r, 4)
+        if zeff_str.strip():
+            ref_zeff = safe_float(zeff_str)
+                
+        if ref_zeff == 0.0 and mat_name:
+            for r_db in range(self.table_3d_db.rowCount()):
+                item_db_text = safe_get_cell_text(self.table_3d_db, r_db, 0)
+                if item_db_text.strip() == mat_name:
+                    db_zeff_str = safe_get_cell_text(self.table_3d_db, r_db, 8)
+                    ref_zeff = safe_float(db_zeff_str)
+                    break
+        comp_zeffs.append(ref_zeff)
+        
+    power = 3.4
+    if hasattr(self, "mix_m_value_cache"):
+        power = self.mix_m_value_cache.get(mix_id, 3.4)
+        
+    term_sum = 0.0
+    for idx, ratio in enumerate(ratios):
+        if idx < len(comp_zeffs):
+            term_sum += (comp_zeffs[idx] ** power) * (ratio / 100.0)
+    pred_zeff = term_sum ** (1.0 / power) if power != 0 else 0.0
+    return pred_zeff
 
 def save_mix_red_table_to_cache(self, mix_id, ratio_idx):
     if mix_id not in self.mix_red_cache:
@@ -3602,13 +4345,9 @@ def save_mix_red_table_to_cache(self, mix_id, ratio_idx):
     rows_data = []
     for r in range(self.table_mix_red_cal.rowCount()):
         row_vals = []
-        for c in range(11):
-            item = self.table_mix_red_cal.item(r, c)
-            if item is not None:
-                val = item.data(Qt.EditRole)
-                row_vals.append(str(val) if val is not None else "0.0")
-            else:
-                row_vals.append("0.0")
+        for c in range(14):
+            val = safe_get_cell_value(self.table_mix_red_cal, r, c, Qt.EditRole)
+            row_vals.append(str(val) if val is not None else "0.0")
         rows_data.append(row_vals)
     combination["rows"] = rows_data
 
@@ -3630,6 +4369,7 @@ def add_mix_red_cal_row(self):
     ratios = combination["percentage"]
     
     pred_red = calculate_mix_red_predicted_val(self, ratios)
+    pred_zeff = calculate_mix_zeff_predicted_val(self, ratios)
     
     selected_ranges = self.table_mix_red_cal.selectedRanges()
     if selected_ranges:
@@ -3672,17 +4412,36 @@ def add_mix_red_cal_row(self):
     pred_item.setText(f"{pred_red:.4f}")
     self.table_mix_red_cal.setItem(row_idx, 8, pred_item)
     
-    # kV - Low in col 9
+    # Zeff in col 9 (default 6.0)
+    item_zeff = QTableWidgetItem()
+    item_zeff.setData(Qt.EditRole, 6.0)
+    item_zeff.setText("6.0000")
+    self.table_mix_red_cal.setItem(row_idx, 9, item_zeff)
+    
+    # Zeff STD in col 10 (default 0.1)
+    item_zeff_std = QTableWidgetItem()
+    item_zeff_std.setData(Qt.EditRole, 0.1)
+    item_zeff_std.setText("0.1000")
+    self.table_mix_red_cal.setItem(row_idx, 10, item_zeff_std)
+    
+    # Pred. Zeff in col 11
+    pred_z_item = QTableWidgetItem()
+    pred_z_item.setFlags(pred_z_item.flags() & ~Qt.ItemIsEditable)
+    pred_z_item.setData(Qt.EditRole, pred_zeff)
+    pred_z_item.setText(f"{pred_zeff:.4f}")
+    self.table_mix_red_cal.setItem(row_idx, 11, pred_z_item)
+    
+    # kV - Low in col 12
     item_kv_low = QTableWidgetItem()
     item_kv_low.setData(Qt.EditRole, 80.0)
     item_kv_low.setText("80.0000")
-    self.table_mix_red_cal.setItem(row_idx, 9, item_kv_low)
+    self.table_mix_red_cal.setItem(row_idx, 12, item_kv_low)
     
-    # kV - High in col 10
+    # kV - High in col 13
     item_kv_high = QTableWidgetItem()
     item_kv_high.setData(Qt.EditRole, 140.0)
     item_kv_high.setText("140.0000")
-    self.table_mix_red_cal.setItem(row_idx, 10, item_kv_high)
+    self.table_mix_red_cal.setItem(row_idx, 13, item_kv_high)
     
     self.table_mix_red_cal.blockSignals(False)
     self.table_mix_red_cal.setSortingEnabled(True)
@@ -3719,13 +4478,43 @@ def remove_mix_red_cal_row(self):
             self.table_mix_red_cal.setSortingEnabled(True)
             
             save_mix_red_table_to_cache(self, mix_id, ratio_idx)
+            auto_save_all_databases(self)
     else:
         QMessageBox.information(self, "Information", "Please select a calibration row in the table to remove first.")
+
+def clear_all_mix_red_cal_rows(self):
+    mix_id = getattr(self, "current_viewed_mix_id", None)
+    if mix_id is None:
+        return
+        
+    ratio_idx = self.list_mix_red_ratios.currentRow()
+    if ratio_idx < 0:
+        return
+        
+    if self.table_mix_red_cal.rowCount() == 0:
+        QMessageBox.information(self, "Information", "The calibration table is already empty.")
+        return
+        
+    reply = QMessageBox.question(
+        self, "Confirm Clear All",
+        "Are you sure you want to clear all calibration rows for the selected combination?",
+        QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+    )
+    if reply == QMessageBox.Yes:
+        self.table_mix_red_cal.setSortingEnabled(False)
+        self.table_mix_red_cal.blockSignals(True)
+        self.table_mix_red_cal.clearContents()
+        self.table_mix_red_cal.setRowCount(0)
+        self.table_mix_red_cal.blockSignals(False)
+        self.table_mix_red_cal.setSortingEnabled(True)
+        
+        save_mix_red_table_to_cache(self, mix_id, ratio_idx)
+        auto_save_all_databases(self)
 
 def on_mix_red_cal_cell_changed(self, item):
     row = item.row()
     col = item.column()
-    if col == 8:
+    if col in [8, 11]:  # Pred. RED and Pred. Zeff are read-only / calculated
         return
         
     mix_id = getattr(self, "current_viewed_mix_id", None)
@@ -3743,9 +4532,12 @@ def on_mix_red_cal_cell_changed(self, item):
     combination = mix_red_data[ratio_idx]
     ratios = combination["percentage"]
     
-    pred_red = calculate_mix_red_predicted_val(self, ratios)
+    infill_val = safe_float(safe_get_cell_text(self.table_mix_red_cal, row, 0))
+    pred_red = calculate_mix_red_predicted_val(self, ratios, infill_val)
+    pred_zeff = calculate_mix_zeff_predicted_val(self, ratios)
     
     self.table_mix_red_cal.blockSignals(True)
+    
     pred_item = self.table_mix_red_cal.item(row, 8)
     if not pred_item:
         pred_item = QTableWidgetItem()
@@ -3753,9 +4545,19 @@ def on_mix_red_cal_cell_changed(self, item):
         self.table_mix_red_cal.setItem(row, 8, pred_item)
     pred_item.setData(Qt.EditRole, pred_red)
     pred_item.setText(f"{pred_red:.4f}")
+    
+    pred_z_item = self.table_mix_red_cal.item(row, 11)
+    if not pred_z_item:
+        pred_z_item = QTableWidgetItem()
+        pred_z_item.setFlags(pred_z_item.flags() & ~Qt.ItemIsEditable)
+        self.table_mix_red_cal.setItem(row, 11, pred_z_item)
+    pred_z_item.setData(Qt.EditRole, pred_zeff)
+    pred_z_item.setText(f"{pred_zeff:.4f}")
+    
     self.table_mix_red_cal.blockSignals(False)
     
     save_mix_red_table_to_cache(self, mix_id, ratio_idx)
+    auto_save_all_databases(self)
 
 def edit_mix_red_ratio(self):
     mix_id = getattr(self, "current_viewed_mix_id", None)
@@ -3828,6 +4630,20 @@ def edit_mix_red_ratio(self):
         form.addRow(f"% {name}:", spin)
         spinboxes.append(spin)
         
+    if len(spinboxes) >= 2:
+        def sync_edit_spinboxes():
+            for sb in spinboxes:
+                sb.blockSignals(True)
+            try:
+                current_sum = sum(sb.value() for sb in spinboxes[:-1])
+                last_val = max(0.0, 100.0 - current_sum)
+                spinboxes[-1].setValue(last_val)
+            finally:
+                for sb in spinboxes:
+                    sb.blockSignals(False)
+        for sb in spinboxes[:-1]:
+            sb.valueChanged.connect(sync_edit_spinboxes)
+        
     btn_layout = QHBoxLayout()
     btn_ok = QPushButton("Save")
     btn_cancel = QPushButton("Cancel")
@@ -3851,18 +4667,19 @@ def edit_mix_red_ratio(self):
         # Save any current active table changes to cache
         save_mix_red_table_to_cache(self, mix_id, idx)
         
-        # Recalculate Pred. RED for all rows in the calibration table
-        pred_red = calculate_mix_red_predicted_val(self, ratios)
-        
+        # Recalculate Pred. RED for all rows in the calibration table dynamically
         self.table_mix_red_cal.blockSignals(True)
         for r in range(self.table_mix_red_cal.rowCount()):
+            infill_val = safe_float(safe_get_cell_text(self.table_mix_red_cal, r, 0))
+            row_pred_red = calculate_mix_red_predicted_val(self, ratios, infill_val)
+            
             pred_item = self.table_mix_red_cal.item(r, 8)
             if not pred_item:
                 pred_item = QTableWidgetItem()
                 pred_item.setFlags(pred_item.flags() & ~Qt.ItemIsEditable)
                 self.table_mix_red_cal.setItem(r, 8, pred_item)
-            pred_item.setData(Qt.EditRole, pred_red)
-            pred_item.setText(f"{pred_red:.4f}")
+            pred_item.setData(Qt.EditRole, row_pred_red)
+            pred_item.setText(f"{row_pred_red:.4f}")
         self.table_mix_red_cal.blockSignals(False)
             
         # Refresh left list display text without changing row selection
@@ -3871,6 +4688,7 @@ def edit_mix_red_ratio(self):
         
         # Force redraw details of the edited item
         display_selected_mix_red_ratio_details(self, idx)
+        auto_save_all_databases(self)
         break
 
 def export_3dp_database_action(self):
@@ -3986,3 +4804,707 @@ def import_3dp_database_action(self):
         QMessageBox.information(self, "Success", "3DP Database imported and loaded successfully!")
     except Exception as e:
         QMessageBox.critical(self, "Error", f"Failed to import 3DP Database:\n{e}")
+
+def open_create_mix_dialog(self):
+    from itertools import combinations
+    
+    dlg = QDialog(self)
+    dlg.setWindowTitle("Mix Helper – Zeff & RED Solver")
+    dlg.setMinimumSize(950, 600)
+    dlg.setStyleSheet("""
+        QDialog {
+            background-color: #1e1e24;
+            color: #ffffff;
+        }
+        QLabel {
+            color: #e5e7eb;
+        }
+        QTableWidget {
+            background-color: #1e1e24;
+            color: #ffffff;
+            border: 1px solid #3c4450;
+            gridline-color: #3c4450;
+        }
+        QTableWidget::item {
+            padding: 4px;
+        }
+        QHeaderView::section {
+            background-color: #2b2b36;
+            color: #ffffff;
+            border: 1px solid #3c4450;
+            padding: 4px;
+            font-weight: bold;
+        }
+        QDoubleSpinBox, QSpinBox {
+            background-color: #2b2b36;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            color: #ffffff;
+            padding: 4px;
+        }
+        QPushButton {
+            background-color: blue;
+            color: white;
+            font-weight: bold;
+            padding: 8px 16px;
+            border-radius: 4px;
+        }
+        QCheckBox {
+            color: #ffffff;
+        }
+        QCheckBox::indicator {
+            width: 18px;
+            height: 18px;
+        }
+    """)
+    
+    main_layout = QHBoxLayout(dlg)
+    
+    # ── LEFT: Material table ──
+    left_widget = QWidget()
+    left_layout = QVBoxLayout(left_widget)
+    left_layout.setContentsMargins(0, 0, 0, 0)
+    
+    lbl_mat = QLabel("Available Materials")
+    lbl_mat.setStyleSheet("font-size: 14px; font-weight: bold; color: #3b82f6;")
+    left_layout.addWidget(lbl_mat)
+    
+    mat_table = QTableWidget()
+    mat_table.setColumnCount(4)
+    mat_table.setHorizontalHeaderLabels(["Material Name", "Zeff", "RED", "Include"])
+    mat_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+    mat_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+    mat_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+    mat_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+    mat_table.setSelectionMode(QAbstractItemView.NoSelection)
+    mat_table.verticalHeader().setVisible(False)
+    
+    # Populate from database
+    checkboxes = []
+    mat_data = []  # list of (name, zeff_float, red_float)
+    for r in range(self.table_3d_db.rowCount()):
+        name_item = self.table_3d_db.item(r, 0)
+        zeff_item = self.table_3d_db.item(r, 8)
+        red_item = self.table_3d_db.item(r, 6)
+        name = name_item.text().strip() if name_item else ""
+        if not name:
+            continue
+        try:
+            zeff_val = float(zeff_item.text().replace(',', '.')) if zeff_item else 0.0
+        except ValueError:
+            zeff_val = 0.0
+        try:
+            red_val = float(red_item.text().replace(',', '.')) if red_item else 0.0
+        except ValueError:
+            red_val = 0.0
+        if zeff_val <= 0:
+            continue
+        mat_data.append((name, zeff_val, red_val))
+        
+    mat_table.setRowCount(len(mat_data))
+    for i, (name, zeff_val, red_val) in enumerate(mat_data):
+        name_tw = QTableWidgetItem(name)
+        name_tw.setFlags(name_tw.flags() & ~Qt.ItemIsEditable)
+        mat_table.setItem(i, 0, name_tw)
+        
+        zeff_tw = QTableWidgetItem(f"{zeff_val:.4f}")
+        zeff_tw.setFlags(zeff_tw.flags() & ~Qt.ItemIsEditable)
+        mat_table.setItem(i, 1, zeff_tw)
+        
+        red_tw = QTableWidgetItem(f"{red_val:.4f}")
+        red_tw.setFlags(red_tw.flags() & ~Qt.ItemIsEditable)
+        mat_table.setItem(i, 2, red_tw)
+        
+        cb_widget = QWidget()
+        cb_layout = QHBoxLayout(cb_widget)
+        cb_layout.setContentsMargins(0, 0, 0, 0)
+        cb_layout.setAlignment(Qt.AlignCenter)
+        cb = QtWidgets.QCheckBox()
+        cb.setChecked(True)
+        cb_layout.addWidget(cb)
+        mat_table.setCellWidget(i, 3, cb_widget)
+        checkboxes.append(cb)
+        
+    left_layout.addWidget(mat_table)
+    
+    # ── RIGHT: Parameters and Results ──
+    right_widget = QWidget()
+    right_layout = QVBoxLayout(right_widget)
+    right_layout.setContentsMargins(0, 0, 0, 0)
+    
+    lbl_params = QLabel("Solver Parameters")
+    lbl_params.setStyleSheet("font-size: 14px; font-weight: bold; color: #3b82f6;")
+    right_layout.addWidget(lbl_params)
+    
+    form = QFormLayout()
+    form.setLabelAlignment(Qt.AlignRight)
+    
+    spin_desired_zeff = QDoubleSpinBox()
+    spin_desired_zeff.setRange(1.0, 100.0)
+    spin_desired_zeff.setValue(7.0)
+    spin_desired_zeff.setDecimals(4)
+    spin_desired_zeff.setSingleStep(0.1)
+    lbl_dz = QLabel("Desired Zeff:")
+    lbl_dz.setStyleSheet("font-weight: bold;")
+    form.addRow(lbl_dz, spin_desired_zeff)
+    
+    spin_m_val = QDoubleSpinBox()
+    spin_m_val.setRange(1.0, 10.0)
+    spin_m_val.setValue(3.4)
+    spin_m_val.setDecimals(2)
+    spin_m_val.setSingleStep(0.1)
+    lbl_mv = QLabel("Zeff m-value:")
+    lbl_mv.setStyleSheet("font-weight: bold;")
+    form.addRow(lbl_mv, spin_m_val)
+    
+    spin_min_mat = QSpinBox()
+    spin_min_mat.setRange(2, 10)
+    spin_min_mat.setValue(2)
+    lbl_min = QLabel("Min Materials:")
+    lbl_min.setStyleSheet("font-weight: bold;")
+    form.addRow(lbl_min, spin_min_mat)
+    
+    spin_max_mat = QSpinBox()
+    spin_max_mat.setRange(2, 10)
+    spin_max_mat.setValue(3)
+    lbl_max = QLabel("Max Materials:")
+    lbl_max.setStyleSheet("font-weight: bold;")
+    form.addRow(lbl_max, spin_max_mat)
+    
+    spin_step = QDoubleSpinBox()
+    spin_step.setRange(0.1, 25.0)
+    spin_step.setValue(5.0)
+    spin_step.setDecimals(1)
+    spin_step.setSingleStep(1.0)
+    lbl_step = QLabel("% Step Size:")
+    lbl_step.setStyleSheet("font-weight: bold;")
+    form.addRow(lbl_step, spin_step)
+    
+    spin_tol = QDoubleSpinBox()
+    spin_tol.setRange(0.001, 1.0)
+    spin_tol.setValue(0.05)
+    spin_tol.setDecimals(3)
+    spin_tol.setSingleStep(0.01)
+    lbl_tol = QLabel("Zeff Tolerance:")
+    lbl_tol.setStyleSheet("font-weight: bold;")
+    form.addRow(lbl_tol, spin_tol)
+    
+    right_layout.addLayout(form)
+    
+    btn_calculate = QPushButton("Calculate Mix")
+    btn_calculate.setStyleSheet("background-color: #16a34a; color: white; font-weight: bold; padding: 10px 20px; border-radius: 4px; font-size: 13px;")
+    right_layout.addWidget(btn_calculate)
+    
+    lbl_results = QLabel("Results")
+    lbl_results.setStyleSheet("font-size: 14px; font-weight: bold; color: #3b82f6; margin-top: 10px;")
+    right_layout.addWidget(lbl_results)
+    
+    result_table = QTableWidget()
+    result_table.setColumnCount(0)
+    result_table.setStyleSheet("""
+        QTableWidget {
+            background-color: #1e1e24;
+            color: #ffffff;
+            border: 1px solid #3c4450;
+            gridline-color: #3c4450;
+        }
+    """)
+    result_table.horizontalHeader().setStretchLastSection(True)
+    result_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+    result_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+    result_table.setSelectionMode(QAbstractItemView.SingleSelection)
+    result_table.verticalHeader().setVisible(False)
+    right_layout.addWidget(result_table)
+    
+    lbl_note = QLabel(
+        "<b>Note:</b> Predicted RED is calculated using reference database values representing 100% infill (maximum density). "
+        "While lower RED values can be achieved during printing by reducing infill density and/or flow, "
+        "exceeding these maximum reference values is generally not possible. Users can pre-calculate the predicted RED "
+        "for a specific mixture by adding it as a Mix Group in the main tab."
+    )
+    lbl_note.setWordWrap(True)
+    lbl_note.setStyleSheet("""
+        QLabel {
+            color: #d1d5db;
+            background-color: #2b2b36;
+            border-left: 4px solid #3b82f6;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+    """)
+    right_layout.addWidget(lbl_note)
+    
+    # Splitter for left and right
+    splitter = QSplitter(Qt.Horizontal)
+    splitter.addWidget(left_widget)
+    splitter.addWidget(right_widget)
+    splitter.setSizes([350, 550])
+    main_layout.addWidget(splitter)
+    
+    def run_solver():
+        desired_zeff = spin_desired_zeff.value()
+        m = spin_m_val.value()
+        min_n = spin_min_mat.value()
+        max_n = spin_max_mat.value()
+        step = spin_step.value()
+        tol = spin_tol.value()
+        
+        if min_n > max_n:
+            QMessageBox.warning(dlg, "Invalid Range", "Min Materials must be ≤ Max Materials.")
+            return
+            
+        # Gather included materials
+        included = []
+        for i, (name, zeff_val, red_val) in enumerate(mat_data):
+            if checkboxes[i].isChecked():
+                included.append((name, zeff_val, red_val))
+                
+        if len(included) < min_n:
+            QMessageBox.warning(dlg, "Not Enough Materials", f"You have only {len(included)} materials included but need at least {min_n}.")
+            return
+            
+        target_zm = desired_zeff ** m
+        results = []
+        
+        for n in range(min_n, min(max_n, len(included)) + 1):
+            for combo in combinations(range(len(included)), n):
+                names_c = [included[idx][0] for idx in combo]
+                zeffs_c = [included[idx][1] for idx in combo]
+                reds_c = [included[idx][2] for idx in combo]
+                zm = [z ** m for z in zeffs_c]
+                
+                if n == 2:
+                    # Analytical solution for 2 materials
+                    # target = p1 * zm[0] + (1 - p1) * zm[1]
+                    denom = zm[0] - zm[1]
+                    if abs(denom) < 1e-12:
+                        continue
+                    p1 = (target_zm - zm[1]) / denom
+                    if p1 < 0 or p1 > 1:
+                        continue
+                    p2 = 1.0 - p1
+                    achieved_zm = p1 * zm[0] + p2 * zm[1]
+                    achieved_zeff = achieved_zm ** (1.0 / m)
+                    if abs(achieved_zeff - desired_zeff) <= tol:
+                        percentages = [p1 * 100.0, p2 * 100.0]
+                        achieved_red = p1 * reds_c[0] + p2 * reds_c[1]
+                        results.append((names_c, percentages, achieved_zeff, achieved_red))
+                else:
+                    # Grid search for 3+ materials
+                    def _search(depth, remaining, current_pcts):
+                        if depth == n - 1:
+                            pct_last = remaining
+                            if pct_last < 0 or pct_last > 100:
+                                return
+                            pcts = current_pcts + [pct_last / 100.0]
+                            achieved_zm = sum(p * z for p, z in zip(pcts, zm))
+                            achieved_zeff = achieved_zm ** (1.0 / m) if achieved_zm > 0 else 0.0
+                            if abs(achieved_zeff - desired_zeff) <= tol:
+                                percentages = [p * 100.0 for p in pcts]
+                                achieved_red = sum(p * r for p, r in zip(pcts, reds_c))
+                                results.append((list(names_c), list(percentages), achieved_zeff, achieved_red))
+                            return
+                        for pct_int in range(0, int(remaining / step) + 1):
+                            pct = pct_int * step
+                            if pct > remaining + 0.001:
+                                break
+                            _search(depth + 1, remaining - pct, current_pcts + [pct / 100.0])
+                    
+                    _search(0, 100.0, [])
+        
+        # Sort results by closeness to desired Zeff
+        results.sort(key=lambda x: abs(x[2] - desired_zeff))
+        
+        # Cap at 500 results for performance
+        results = results[:500]
+        
+        # Build experimental data lookup from existing mix calibration data
+        # Two structures:
+        #   exact_lookup: {tuple(sorted((name, round_pct)...)): (avg_zeff, avg_red)} for exact matches
+        #   series_lookup: {frozenset(mat_names): [(first_mat_pct, zeff, red), ...]} for poly fit
+        import numpy as np
+        
+        exact_lookup = {}      # exact (material, pct) match
+        series_lookup = {}     # per material-set data series for poly fitting
+        fit_cache = {}         # cached poly fit objects per material-set
+        
+        try:
+            total_rows = self.table_mat_mix.rowCount()
+            r_scan = 0
+            while r_scan < total_rows:
+                spin = self.table_mat_mix.cellWidget(r_scan, 0)
+                if not isinstance(spin, QSpinBox):
+                    r_scan += 1
+                    continue
+                grp_size = spin.value()
+                grp_mix_id = spin.property("mix_id")
+                
+                # Get material names for this mix group
+                grp_mat_names = []
+                for i in range(grp_size):
+                    ri = r_scan + i
+                    if ri >= total_rows:
+                        break
+                    combo = self.table_mat_mix.cellWidget(ri, 1)
+                    grp_mat_names.append(combo.currentText().strip() if isinstance(combo, QComboBox) else "")
+                
+                mat_set_key = frozenset(grp_mat_names)
+                # Determine which material name comes first alphabetically for consistent x-axis
+                sorted_names = sorted(grp_mat_names)
+                first_mat_name = sorted_names[0] if sorted_names else ""
+                first_mat_idx = grp_mat_names.index(first_mat_name) if first_mat_name in grp_mat_names else 0
+                
+                # Scan the calibration cache for this mix_id
+                cal_rows = self.mix_calibration_cache.get(grp_mix_id, [])
+                for cal_row in cal_rows:
+                    if len(cal_row) < 11:
+                        continue
+                    ratios_str = cal_row[0]
+                    ratios_list = [r_s.strip() for r_s in ratios_str.split(',') if r_s.strip()]
+                    
+                    # Parse all percentages
+                    key_parts = []
+                    pct_values = []
+                    valid = True
+                    for idx_m, mat_n in enumerate(grp_mat_names):
+                        if idx_m < len(ratios_list):
+                            try:
+                                pct_val = float(ratios_list[idx_m])
+                            except ValueError:
+                                valid = False
+                                break
+                            key_parts.append((mat_n, round(pct_val, 1)))
+                            pct_values.append(pct_val)
+                        else:
+                            valid = False
+                            break
+                    if not valid or not key_parts:
+                        continue
+                    
+                    # Extract measured Zeff (index 9) and RED (index 7)
+                    try:
+                        measured_zeff = float(cal_row[9])
+                    except (ValueError, IndexError):
+                        measured_zeff = 0.0
+                    try:
+                        measured_red = float(cal_row[7])
+                    except (ValueError, IndexError):
+                        measured_red = 0.0
+                    
+                    if measured_zeff <= 0 and measured_red <= 0:
+                        continue
+                    
+                    # Store in exact lookup
+                    exact_key = tuple(sorted(key_parts))
+                    if exact_key not in exact_lookup:
+                        exact_lookup[exact_key] = []
+                    exact_lookup[exact_key].append((measured_zeff, measured_red))
+                    
+                    # Store in series lookup (first material % as x-axis)
+                    x_val = pct_values[first_mat_idx] if first_mat_idx < len(pct_values) else 0.0
+                    if mat_set_key not in series_lookup:
+                        series_lookup[mat_set_key] = {"first_mat": first_mat_name, "data": []}
+                    series_lookup[mat_set_key]["data"].append((x_val, measured_zeff, measured_red))
+                    
+                r_scan += grp_size
+        except Exception:
+            pass  # Silently skip if lookup fails
+        
+        # Pre-build poly fits for each material set that has enough data
+        for mat_set_key, info in series_lookup.items():
+            data_pts = info["data"]
+            if len(data_pts) < 2:
+                continue
+            try:
+                x_arr = np.array([d[0] for d in data_pts], dtype=float)
+                z_arr = np.array([d[1] for d in data_pts], dtype=float)
+                r_arr = np.array([d[2] for d in data_pts], dtype=float)
+                
+                deg = min(3, len(data_pts) - 1)
+                
+                # Fit Zeff vs first_mat_%
+                valid_z = (z_arr > 0) & np.isfinite(z_arr) & np.isfinite(x_arr)
+                poly_z = None
+                if np.sum(valid_z) > deg:
+                    coefs_z = np.polyfit(x_arr[valid_z], z_arr[valid_z], deg)
+                    poly_z = np.poly1d(coefs_z)
+                
+                # Fit RED vs first_mat_%
+                valid_r = (r_arr > 0) & np.isfinite(r_arr) & np.isfinite(x_arr)
+                poly_r = None
+                if np.sum(valid_r) > deg:
+                    coefs_r = np.polyfit(x_arr[valid_r], r_arr[valid_r], deg)
+                    poly_r = np.poly1d(coefs_r)
+                
+                fit_cache[mat_set_key] = {
+                    "first_mat": info["first_mat"],
+                    "poly_z": poly_z,
+                    "poly_r": poly_r
+                }
+            except Exception:
+                pass
+        
+        # Display results
+        if not results:
+            result_table.setRowCount(0)
+            result_table.setColumnCount(1)
+            result_table.setHorizontalHeaderLabels(["No Results"])
+            result_table.insertRow(0)
+            result_table.setItem(0, 0, QTableWidgetItem("No valid combinations found. Try adjusting parameters."))
+            lbl_results.setText("Results (0 combinations found)")
+            return
+            
+        # Determine max number of materials in any result for column headers
+        max_mats = max(len(r[0]) for r in results)
+        col_headers = []
+        for i in range(max_mats):
+            col_headers.append(f"Material {i+1}")
+            col_headers.append(f"% Mat {i+1}")
+        col_headers.append("Achieved Zeff")
+        col_headers.append("Δ Zeff")
+        col_headers.append("Achieved RED")
+        col_headers.append("Exp. Zeff")
+        col_headers.append("Exp. RED")
+        
+        result_table.setColumnCount(len(col_headers))
+        result_table.setHorizontalHeaderLabels(col_headers)
+        result_table.setRowCount(len(results))
+        
+        for r_idx, (names_r, pcts_r, achieved_zeff, achieved_red) in enumerate(results):
+            col = 0
+            for i in range(max_mats):
+                if i < len(names_r):
+                    result_table.setItem(r_idx, col, QTableWidgetItem(names_r[i]))
+                    pct_item = QTableWidgetItem(f"{pcts_r[i]:.2f}")
+                    result_table.setItem(r_idx, col + 1, pct_item)
+                else:
+                    result_table.setItem(r_idx, col, QTableWidgetItem(""))
+                    result_table.setItem(r_idx, col + 1, QTableWidgetItem(""))
+                col += 2
+            
+            zeff_item = QTableWidgetItem(f"{achieved_zeff:.4f}")
+            result_table.setItem(r_idx, col, zeff_item)
+            
+            diff_val = achieved_zeff - desired_zeff
+            diff_item = QTableWidgetItem(f"{diff_val:+.4f}")
+            result_table.setItem(r_idx, col + 1, diff_item)
+            
+            red_item = QTableWidgetItem(f"{achieved_red:.4f}")
+            result_table.setItem(r_idx, col + 2, red_item)
+            
+            # --- Experimental cross-reference ---
+            exp_zeff_str = "—"
+            exp_red_str = "—"
+            is_exact = False
+            
+            # 1. Try exact match first
+            key_parts = [(names_r[i], round(pcts_r[i], 1)) for i in range(len(names_r))]
+            exact_key = tuple(sorted(key_parts))
+            exact_vals = exact_lookup.get(exact_key, [])
+            if exact_vals:
+                avg_z = sum(v[0] for v in exact_vals) / len(exact_vals)
+                avg_r = sum(v[1] for v in exact_vals) / len(exact_vals)
+                if avg_z > 0:
+                    exp_zeff_str = f"{avg_z:.4f}"
+                if avg_r > 0:
+                    exp_red_str = f"{avg_r:.4f}"
+                is_exact = True
+            
+            # 2. If no exact match, try poly3 interpolation
+            if not is_exact:
+                mat_set_key = frozenset(names_r)
+                fit_info = fit_cache.get(mat_set_key)
+                if fit_info:
+                    first_mat = fit_info["first_mat"]
+                    # Find the percentage of the first material in this result
+                    x_query = None
+                    for i, nm in enumerate(names_r):
+                        if nm == first_mat:
+                            x_query = pcts_r[i]
+                            break
+                    if x_query is not None:
+                        if fit_info["poly_z"] is not None:
+                            pred_z = float(fit_info["poly_z"](x_query))
+                            if pred_z > 0:
+                                exp_zeff_str = f"~{pred_z:.4f}"
+                        if fit_info["poly_r"] is not None:
+                            pred_r = float(fit_info["poly_r"](x_query))
+                            if pred_r > 0:
+                                exp_red_str = f"~{pred_r:.4f}"
+            
+            exp_z_item = QTableWidgetItem(exp_zeff_str)
+            exp_r_item = QTableWidgetItem(exp_red_str)
+            if is_exact:
+                exp_z_item.setForeground(QColor("#22c55e"))  # Green for exact match
+                exp_r_item.setForeground(QColor("#22c55e"))
+            elif exp_zeff_str != "—" or exp_red_str != "—":
+                exp_z_item.setForeground(QColor("#facc15"))  # Yellow for interpolated
+                exp_r_item.setForeground(QColor("#facc15"))
+            result_table.setItem(r_idx, col + 3, exp_z_item)
+            result_table.setItem(r_idx, col + 4, exp_r_item)
+        
+        result_table.resizeColumnsToContents()
+        lbl_results.setText(f"Results ({len(results)} combinations found)")
+    
+    btn_calculate.clicked.connect(run_solver)
+    
+    dlg.exec()
+
+
+# ── Daily Backup System ──────────────────────────────────────────────────────
+
+def _get_backup_dir():
+    """Return the path to the daily backup directory."""
+    appdata_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
+    backup_dir = os.path.join(appdata_dir, 'backups')
+    os.makedirs(backup_dir, exist_ok=True)
+    return backup_dir
+
+
+def create_daily_backup(self):
+    """Create a backup of all database files once per day (on first access).
+    Keeps only the 3 most recent daily backups."""
+    try:
+        backup_dir = _get_backup_dir()
+        today_str = date.today().strftime('%Y-%m-%d')
+        backup_name = f"backup_{today_str}.zip"
+        backup_path = os.path.join(backup_dir, backup_name)
+        
+        # If today's backup already exists, nothing to do
+        if os.path.exists(backup_path):
+            return
+        
+        db_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
+        db_files = [
+            "filaments_3d_db.csv",
+            "filaments_calibration_db.csv",
+            "filaments_notes_db.json",
+            "filaments_mix_db.csv",
+            "filaments_mix_calibration_db.csv",
+            "filaments_mix_notes_db.json",
+            "filaments_mix_red_db.json"
+        ]
+        
+        # Only backup if at least one file exists
+        existing = [f for f in db_files if os.path.exists(os.path.join(db_dir, f))]
+        if not existing:
+            return
+        
+        with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for f in existing:
+                full_path = os.path.join(db_dir, f)
+                zipf.write(full_path, f)
+        
+        # Prune old backups, keep only the 3 most recent
+        backup_files = sorted(glob.glob(os.path.join(backup_dir, 'backup_*.zip')))
+        while len(backup_files) > 3:
+            oldest = backup_files.pop(0)
+            try:
+                os.remove(oldest)
+            except OSError:
+                pass
+                
+        print(f"Daily 3DP database backup created: {backup_name}")
+    except Exception as e:
+        print(f"Warning: Could not create daily backup: {e}")
+
+
+def restore_3dp_database_action(self):
+    """Show a dialog to restore the 3DP database from a daily backup."""
+    backup_dir = _get_backup_dir()
+    backup_files = sorted(glob.glob(os.path.join(backup_dir, 'backup_*.zip')), reverse=True)
+    
+    if not backup_files:
+        QMessageBox.information(self, "No Backups", "No backup restore points were found.")
+        return
+    
+    # Build list of restore point labels
+    labels = []
+    for bp in backup_files:
+        fname = os.path.basename(bp)
+        # Extract date from backup_YYYY-MM-DD.zip
+        date_str = fname.replace('backup_', '').replace('.zip', '')
+        try:
+            dt = datetime.strptime(date_str, '%Y-%m-%d')
+            size_kb = os.path.getsize(bp) / 1024
+            labels.append(f"{dt.strftime('%A, %B %d, %Y')}  ({size_kb:.1f} KB)")
+        except (ValueError, OSError):
+            labels.append(fname)
+    
+    # Show selection dialog
+    from PySide6.QtWidgets import QInputDialog
+    chosen, ok = QInputDialog.getItem(
+        self, "Restore 3DP Database",
+        "Select a restore point:\n\n"
+        "Warning: This will replace ALL current 3DP database data.",
+        labels, 0, False
+    )
+    if not ok or not chosen:
+        return
+    
+    idx = labels.index(chosen)
+    selected_backup = backup_files[idx]
+    
+    reply = QMessageBox.warning(
+        self, "Confirm Restore",
+        f"Are you sure you want to restore the database from:\n\n"
+        f"{os.path.basename(selected_backup)}\n\n"
+        f"This will permanently overwrite ALL current 3DP database data.",
+        QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+    )
+    if reply != QMessageBox.Yes:
+        return
+    
+    db_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
+    
+    try:
+        # Prevent auto-save during reload
+        self._is_loading = True
+        
+        with zipfile.ZipFile(selected_backup, 'r') as zipf:
+            namelist = zipf.namelist()
+            has_valid = any(f.endswith('.csv') or f.endswith('.json') for f in namelist)
+            if not has_valid:
+                QMessageBox.critical(self, "Invalid Backup", "The selected backup file does not contain valid database files.")
+                self._is_loading = False
+                return
+            zipf.extractall(db_dir)
+        
+        # Hot-reload all databases
+        self.current_viewed_filament = None
+        self.current_viewed_mix_id = None
+        
+        load_3d_database(self)
+        load_all_calibration_data(self)
+        load_mix_database(self)
+        load_all_mix_calibration_data(self)
+        
+        if self.table_3d_db.rowCount() > 0:
+            self.table_3d_db.selectRow(0)
+            display_selected_filament_details(self)
+        else:
+            self.table_calibration_info.clearContents()
+            self.table_calibration_info.setRowCount(0)
+            self.txt_notes.clear()
+        
+        if self.table_mat_mix.rowCount() > 0:
+            self.table_mat_mix.selectRow(0)
+            display_selected_mix_details(self)
+        else:
+            self.table_mix_calibration_info.clearContents()
+            self.table_mix_calibration_info.setRowCount(0)
+            self.table_mix_z_red.clearContents()
+            self.table_mix_z_red.setRowCount(0)
+            self.txt_mix_notes.clear()
+        
+        if hasattr(self, "graph_canvas"):
+            update_mix_graph(self)
+        
+        self._is_loading = False
+        
+        QMessageBox.information(self, "Success", "3DP Database restored successfully!")
+    except Exception as e:
+        self._is_loading = False
+        QMessageBox.critical(self, "Error", f"Failed to restore 3DP Database:\n{e}")

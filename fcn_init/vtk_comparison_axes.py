@@ -195,9 +195,10 @@ def setup_vtk_comp(self,N_im):
                 self.vtkWidgetsComp[i].AddObserver("LeftButtonPressEvent", lambda caller, event: left_button_presscomp_event(self, caller, event),0)
                 self.vtkWidgetsComp[i].AddObserver("LeftButtonReleaseEvent",lambda caller, event:left_button_releasecomp_event(self, caller, event),0)
                 # mouse
-                self.vtkWidgetsComp[i].AddObserver("MouseWheelForwardEvent", lambda caller, event: on_scroll_forwardcomp(self, caller, event))
-                self.vtkWidgetsComp[i].AddObserver("MouseWheelBackwardEvent", lambda caller, event: on_scroll_backwardcomp(self, caller, event))
+                # self.vtkWidgetsComp[i].AddObserver("MouseWheelForwardEvent", lambda caller, event: on_scroll_forwardcomp(self, caller, event))
+                # self.vtkWidgetsComp[i].AddObserver("MouseWheelBackwardEvent", lambda caller, event: on_scroll_backwardcomp(self, caller, event))
                 #
+                iren = self.vtkWidgetsComp[i].GetRenderWindow().GetInteractor()
                 iren.AddObserver("MouseMoveEvent",lambda caller, event:onMouseMovecomp(self, caller, event))
                 #
                 # Create text for annotation - lable-ID

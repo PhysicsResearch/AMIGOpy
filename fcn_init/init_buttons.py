@@ -431,7 +431,31 @@ def initialize_software_buttons(self):
     self.get_circ_roi_data.setStyleSheet("background-color: blue; color: white;")
     self.get_circ_roi_data2.clicked.connect(lambda: c_roi_getdata(self))
     self.get_circ_roi_data2.setStyleSheet("background-color: blue; color: white;")
-    #
+    
+    # Create programmatically the ROI configuration inputs (pixel size, slices)
+    from PySide6.QtWidgets import QHBoxLayout, QLabel, QSpinBox
+    self.roi_config_widget = QtWidgets.QWidget(self.tab_34)
+    roi_config_layout = QHBoxLayout(self.roi_config_widget)
+    roi_config_layout.setContentsMargins(0, 0, 0, 0)
+    roi_config_layout.setSpacing(5)
+    
+    lbl_pixel_size = QLabel("Default Pixel Size (Px):", self.tab_34)
+    self.roi_default_pixel_size = QSpinBox(self.tab_34)
+    self.roi_default_pixel_size.setRange(1, 1000)
+    self.roi_default_pixel_size.setValue(10)
+    
+    lbl_slices = QLabel("Slices:", self.tab_34)
+    self.roi_slices = QSpinBox(self.tab_34)
+    self.roi_slices.setRange(1, 1000)
+    self.roi_slices.setValue(1)
+    
+    roi_config_layout.addWidget(lbl_pixel_size)
+    roi_config_layout.addWidget(self.roi_default_pixel_size)
+    roi_config_layout.addWidget(lbl_slices)
+    roi_config_layout.addWidget(self.roi_slices)
+    
+    self.gridLayout_45.addWidget(self.roi_config_widget, 1, 3, 1, 1)
+
     self.exp_csv_roi_c_values.clicked.connect(lambda: export_roi_circ_values_to_csv(self))
     self.exp_csv_roi_c_values.setStyleSheet("background-color: blue; color: white;")
     self.checkBox_circ_roi_data_2.setChecked(True)

@@ -92,7 +92,11 @@ def roi_c_add_row(self):
     # Get current slice coordinates from sliders/variables
     x_val = "0"
     y_val = "0"
-    rad_val = "10" # default radius of 10px
+    
+    # Default radius from spinbox
+    rad_val = str(self.roi_default_pixel_size.value()) if hasattr(self, 'roi_default_pixel_size') else "10"
+    
+    # Slice val
     slice_val = "0"
 
     # Sagittal (X)
@@ -113,6 +117,14 @@ def roi_c_add_row(self):
     elif hasattr(self, 'AxialSlider'):
         slice_val = str(self.AxialSlider.value())
 
+    # Range of axial slices based on spinbox
+    num_slices = self.roi_slices.value() if hasattr(self, 'roi_slices') else 1
+    try:
+        init_slice = int(slice_val)
+    except ValueError:
+        init_slice = 0
+    last_slice = init_slice + num_slices - 1
+
     # Generate a random RGB color (values rounded to 2 decimal places)
     r_val = f"{random.random():.2f}"
     g_val = f"{random.random():.2f}"
@@ -122,8 +134,8 @@ def roi_c_add_row(self):
     self.table_circ_roi.setItem(row_position, 0, QTableWidgetItem(x_val))
     self.table_circ_roi.setItem(row_position, 1, QTableWidgetItem(y_val))
     self.table_circ_roi.setItem(row_position, 2, QTableWidgetItem(rad_val))
-    self.table_circ_roi.setItem(row_position, 3, QTableWidgetItem(slice_val))
-    self.table_circ_roi.setItem(row_position, 4, QTableWidgetItem(slice_val))
+    self.table_circ_roi.setItem(row_position, 3, QTableWidgetItem(str(init_slice)))
+    self.table_circ_roi.setItem(row_position, 4, QTableWidgetItem(str(last_slice)))
     self.table_circ_roi.setItem(row_position, 5, QTableWidgetItem("0.5"))
     self.table_circ_roi.setItem(row_position, 6, QTableWidgetItem(r_val))
     self.table_circ_roi.setItem(row_position, 7, QTableWidgetItem(g_val))
@@ -232,12 +244,14 @@ def update_row_color(self, row):
         print(f'Skipping row {row} due to invalid data')
             
 def export_roi_circ_table_to_csv(self):
-    # Open a dialog to select the folder
+    # Open a dialog to select the file path
     options = QFileDialog.Options()
     options |= QFileDialog.DontUseNativeDialog
-    folder = QFileDialog.getExistingDirectory(self, "Select Folder", options=options)
+    file_path, _ = QFileDialog.getSaveFileName(
+        self, "Save Coordinates CSV", "roi_circles_coordinates.csv", "CSV Files (*.csv)", options=options
+    )
 
-    if folder:
+    if file_path:
         # Prepare data for CSV
         data = []
         for row in range(self.table_circ_roi.rowCount()):
@@ -253,31 +267,33 @@ def export_roi_circ_table_to_csv(self):
         # Convert data to a DataFrame
         df = pd.DataFrame(data)
 
-        # Define the file path
-        file_path = f"{folder}/roi_circles_coordinates.csv"
-
         # Save DataFrame to CSV
-        df.to_csv(file_path, index=False, header=False)
-
-        print(f"Table exported to {file_path}")
+        try:
+            df.to_csv(file_path, index=False, header=False)
+            print(f"Table exported to {file_path}")
+        except Exception as e:
+            QMessageBox.warning(self, "Warning", f"Could not write to {file_path}. Please close the file if it is open in another program.")
         
 def export_roi_circ_values_to_csv(self):
-    # Open a dialog to select the folder
+    # Open a dialog to select the file path
     options = QFileDialog.Options()
     options |= QFileDialog.DontUseNativeDialog
-    folder = QFileDialog.getExistingDirectory(self, "Select Folder", options=options)
+    file_path, _ = QFileDialog.getSaveFileName(
+        self, "Save Values CSV", "roi_circles_values.csv", "CSV Files (*.csv)", options=options
+    )
 
-    if hasattr(self, 'exportVoxValsROI') and self.exportVoxValsROI.isChecked():
-        voxels_data = c_roi_getvoxels(self)
-        df = pd.DataFrame({k:pd.Series(v) for k,v in voxels_data.items()})
-        file_path = f"{folder}/roi_circles_voxels_values.csv"
-        try:
-            df.to_csv(file_path, index=False)
-        except:
-            QMessageBox.warning(None, "Warning", f"Could not write to {file_path}. Please close the file if it is open in another program.")
-            return
+    if file_path:
+        if hasattr(self, 'exportVoxValsROI') and self.exportVoxValsROI.isChecked():
+            voxels_data = c_roi_getvoxels(self)
+            df_vox = pd.DataFrame({k:pd.Series(v) for k,v in voxels_data.items()})
+            base, ext = os.path.splitext(file_path)
+            voxels_file_path = f"{base}_voxels{ext}"
+            try:
+                df_vox.to_csv(voxels_file_path, index=False)
+            except:
+                QMessageBox.warning(None, "Warning", f"Could not write to {voxels_file_path}. Please close the file if it is open in another program.")
+                return
 
-    if folder:
         # Prepare data for CSV
         data = []
         headers = []
@@ -298,12 +314,10 @@ def export_roi_circ_values_to_csv(self):
         # Convert data to a DataFrame
         df = pd.DataFrame(data, columns=headers)
 
-        # Define the file path
-        file_path = f"{folder}/roi_circles_values.csv"
-
         # Save DataFrame to CSV
         try:
             df.to_csv(file_path, index=False)
+            print(f"Values exported to {file_path}")
         except:
             QMessageBox.warning(None, "Warning", f"Could not write to {file_path}. Please close the file if it is open in another program.")
             return

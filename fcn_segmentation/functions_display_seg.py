@@ -150,8 +150,8 @@ def set_mouse_button_custom_fcn_seg(self):
      self.vtkWidgetSeg.AddObserver("LeftButtonPressEvent", lambda caller, event: left_button_pressseg_event(self, caller, event),0)
      self.vtkWidgetSeg.AddObserver("LeftButtonReleaseEvent",lambda caller, event:left_button_releaseseg_event(self, caller, event),0)
      # mouse
-     self.vtkWidgetSeg.AddObserver("MouseWheelForwardEvent", self.on_scroll_forwardSeg)
-     self.vtkWidgetSeg.AddObserver("MouseWheelBackwardEvent", self.on_scroll_backwardSeg)
+     # self.vtkWidgetSeg.AddObserver("MouseWheelForwardEvent", self.on_scroll_forwardSeg)
+     # self.vtkWidgetSeg.AddObserver("MouseWheelBackwardEvent", self.on_scroll_backwardSeg)
      #
      self.vtkWidgetSeg.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event:onMouseMoveSeg(self, caller, event))
      
