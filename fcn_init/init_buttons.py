@@ -48,284 +48,297 @@ from fcn_reg.rigid_reg_manual import update_translation_x, update_translation_y,
 from fcn_reg.auto_reg_dialog import open_auto_reg_dialog, apply_last_transform_to_layer
 
 
+
+
+
+def safe_btn(parent, attr_name, signal_name, callback, style=None):
+    btn = getattr(parent, attr_name, None)
+    if btn is None and hasattr(parent, 'findChild'):
+        btn = parent.findChild(QtWidgets.QWidget, attr_name)
+    if btn is not None and hasattr(btn, signal_name):
+        try:
+            signal = getattr(btn, signal_name)
+            signal.connect(callback)
+            if style and hasattr(btn, 'setStyleSheet'):
+                btn.setStyleSheet(style)
+        except (TypeError, RuntimeError):
+            pass
+    elif btn is not None and style and hasattr(btn, 'setStyleSheet'):
+        try:
+            btn.setStyleSheet(style)
+        except (TypeError, RuntimeError):
+            pass
+    return btn
+
+def safe_style(parent, attr_name, style):
+    btn = getattr(parent, attr_name, None)
+    if btn is None and hasattr(parent, 'findChild'):
+        btn = parent.findChild(QtWidgets.QWidget, attr_name)
+    if btn is not None and hasattr(btn, 'setStyleSheet'):
+        try:
+            btn.setStyleSheet(style)
+        except (TypeError, RuntimeError):
+            pass
+    return btn
+
 def initialize_software_buttons(self):
 
 
     # IrIS add row dw table
-    self.add_dw_table.clicked.connect(lambda: add_row_dw_table(self))
-    self.remove_dw_table.clicked.connect(lambda: remove_row_dw_table(self))
+    safe_btn(self, 'add_dw_table', 'clicked', lambda: add_row_dw_table(self))
+    safe_btn(self, 'remove_dw_table', 'clicked', lambda: remove_row_dw_table(self))
     
     #Metadata
-    self.metadata_search.textChanged.connect(lambda text: on_metadata_search_text_changed(self,text))
+    safe_btn(self, 'metadata_search', 'textChanged', lambda text: on_metadata_search_text_changed(self,text))
 
     # Image processing
-    self.ImageUndo_operation.clicked.connect(lambda: image_processing_undo(self))
-    self.ImageUndo_operation.setStyleSheet("background-color: green; color: white;")
+    safe_btn(self, 'ImageUndo_operation', 'clicked', lambda: image_processing_undo(self), "background-color: green; color: white;")
     #
 
     # Breathing curves explore
-    self.loadCSVView_BrCv.clicked.connect(lambda: openCSVFile_BrCv(self))
-    self.loadCSVView_BrCv.setStyleSheet("background-color: green; color: white;")
-    self.setParamsCreateCv.clicked.connect(lambda: setParams(self))
-    self.createCv.clicked.connect(lambda: createCurve(self))
-    self.createCv.setStyleSheet("background-color: green; color: white;")
-    self.calcStats_BrCv.clicked.connect(lambda: calcStats(self))
-    self.calcStats_BrCv.setStyleSheet("background-color: green; color: white;")
-    self.plotView_BrCv.clicked.connect(lambda: plotViewData_BrCv_plot(self))
-    self.plotView_BrCv.setStyleSheet("background-color: green; color: white;")
+    safe_btn(self, 'loadCSVView_BrCv', 'clicked', lambda: openCSVFile_BrCv(self), "background-color: green; color: white;")
+    safe_btn(self, 'setParamsCreateCv', 'clicked', lambda: setParams(self))
+    safe_btn(self, 'createCv', 'clicked', lambda: createCurve(self), "background-color: green; color: white;")
+    safe_btn(self, 'calcStats_BrCv', 'clicked', lambda: calcStats(self), "background-color: green; color: white;")
+    safe_btn(self, 'plotView_BrCv', 'clicked', lambda: plotViewData_BrCv_plot(self), "background-color: green; color: white;")
     # self.plotExport_BrCv.clicked.connect(lambda: exportPlot(self))
     # self.plotExport_BrCv.setStyleSheet("background-color: blue; color: white")
-    self.applyOper_BrCv.clicked.connect(lambda: applyOperations(self))
-    self.applyOper_BrCv.setStyleSheet("background-color: green; color: white")
-    self.undoOperations_BrCv.clicked.connect(lambda: undoOperations(self))
-    self.undoOperations_BrCv.setStyleSheet("background-color: green; color: white")
-    self.exportData_BrCv.clicked.connect(lambda: exportData(self))
-    self.exportData_BrCv.setStyleSheet("background-color: blue; color: white")
-    self.exportGCODE_BrCv.clicked.connect(lambda: exportGCODE(self))
-    self.exportGCODE_BrCv.setStyleSheet("background-color: blue; color: white")
-    self.cropRangeEdit_BrCv.clicked.connect(lambda: cropRange_BrCv_edit(self))
-    self.cropRangeEdit_BrCv.setStyleSheet("background-color: blue; color:white")
-    self.loadDuetPage.clicked.connect(lambda: setDuetIP(self))
-    self.loadDuetPage.setStyleSheet("background-color: blue; color:white")
-    self.definePhOperFolder.clicked.connect(lambda: defineInputFolder(self))
-    self.definePhOperFolder.setStyleSheet("background-color: blue; color:white")
-    self.MoVeAcqStart.clicked.connect(lambda: setAcqStart(self))
-    self.MoVeAcqStart.setStyleSheet("background-color: green; color:white")
-    self.exportDataMoVe.clicked.connect(lambda: exportMoVeData(self))
-    self.exportDataMoVe.setStyleSheet("background-color: green; color:white")
+    safe_btn(self, 'applyOper_BrCv', 'clicked', lambda: applyOperations(self), "background-color: green; color: white")
+    safe_btn(self, 'undoOperations_BrCv', 'clicked', lambda: undoOperations(self), "background-color: green; color: white")
+    safe_btn(self, 'exportData_BrCv', 'clicked', lambda: exportData(self), "background-color: blue; color: white")
+    safe_btn(self, 'exportGCODE_BrCv', 'clicked', lambda: exportGCODE(self), "background-color: blue; color: white")
+    safe_btn(self, 'cropRangeEdit_BrCv', 'clicked', lambda: cropRange_BrCv_edit(self), "background-color: blue; color:white")
+    safe_btn(self, 'loadDuetPage', 'clicked', lambda: setDuetIP(self), "background-color: blue; color:white")
+    safe_btn(self, 'definePhOperFolder', 'clicked', lambda: defineInputFolder(self), "background-color: blue; color:white")
+    safe_btn(self, 'MoVeAcqStart', 'clicked', lambda: setAcqStart(self), "background-color: green; color:white")
+    safe_btn(self, 'exportDataMoVe', 'clicked', lambda: exportMoVeData(self), "background-color: green; color:white")
 
     # Segmentation
-    self.applyThreshSeg.clicked.connect(lambda: threshSeg(self))
-    self.applyThreshSeg.setStyleSheet("background-color: blue; color:white")
-    self.segBrushButton.clicked.connect(lambda: on_brush_click(self))
-    self.segEraseButton.clicked.connect(lambda: on_erase_click(self))
-    self.undoSeg.clicked.connect(lambda: undo_brush_seg(self))
-    self.createSegStruct.clicked.connect(lambda: InitSeg(self))
-    self.createSegStruct.setStyleSheet("background-color: green; color:white")
-    self.calcSegStatsButton.clicked.connect(lambda: calcStrucStats(self))
-    self.calcSegStatsButton.setStyleSheet("background-color: green; color:white")
-    self.deleteSegStruct.clicked.connect(lambda: DeleteSeg(self))
-    self.deleteSegStruct.setStyleSheet("background-color: red; color:white")
-    self.exportSegStatsButton.clicked.connect(lambda: exportStrucStats(self))
-    self.exportSegStatsButton.setStyleSheet("background-color: blue; color:white")
-    self.exportSegStrucButton.clicked.connect(lambda: exportSegStruc(self))
-    self.exportSegStrucButton.setStyleSheet("background-color: blue; color:white")
-    self.ApplyMorphOper.clicked.connect(lambda: apply_morph_oper(self))
-    self.ApplyMorphOper.setStyleSheet("background-color: blue; color:white")
-    self.UndoMorphOper.clicked.connect(lambda: undo_morph_oper(self))
-    self.UndoMorphOper.setStyleSheet("background-color: blue; color:white")
+    from fcn_display.display_images_seg import update_seg_slider, disp_seg_image_slice
+    from fcn_segmentation.functions_segmentation import plot_hist
+    from PySide6.QtGui import QIcon
+
+    safe_btn(self, 'segViewSlider', 'valueChanged', lambda val: disp_seg_image_slice(self))
+    safe_btn(self, 'segSelectView', 'currentTextChanged', lambda text: update_seg_slider(self))
+    safe_btn(self, 'threshMinHU', 'textChanged', lambda text: plot_hist(self))
+    safe_btn(self, 'threshMaxHU', 'textChanged', lambda text: plot_hist(self))
+
+    if hasattr(self, 'segViewSlider') and self.segViewSlider is not None and hasattr(self.segViewSlider, 'setSingleStep'):
+        self.segViewSlider.setSingleStep(1)
+        self.segViewSlider.setPageStep(1)
+
+    t_min = getattr(self, 'threshMinHU', None)
+    t_max = getattr(self, 'threshMaxHU', None)
+    if t_min is not None and hasattr(t_min, 'setText') and not t_min.text():
+        t_min.setText("-200")
+    if t_max is not None and hasattr(t_max, 'setText') and not t_max.text():
+        t_max.setText("200")
+
+    b_brush = getattr(self, 'segBrushButton', None)
+    b_erase = getattr(self, 'segEraseButton', None)
+    b_undo = getattr(self, 'undoSeg', None)
+    if b_brush is not None and hasattr(b_brush, 'setIcon'):
+        b_brush.setIcon(QIcon("./icons/brush.png"))
+    if b_erase is not None and hasattr(b_erase, 'setIcon'):
+        b_erase.setIcon(QIcon("./icons/eraser.png"))
+    if b_undo is not None and hasattr(b_undo, 'setIcon'):
+        b_undo.setIcon(QIcon("./icons/undo.png"))
+
+    safe_btn(self, 'applyThreshSeg', 'clicked', lambda: threshSeg(self), "background-color: blue; color:white")
+    safe_btn(self, 'segBrushButton', 'clicked', lambda: on_brush_click(self))
+    safe_btn(self, 'segEraseButton', 'clicked', lambda: on_erase_click(self))
+    safe_btn(self, 'undoSeg', 'clicked', lambda: undo_brush_seg(self))
+    safe_btn(self, 'createSegStruct', 'clicked', lambda: InitSeg(self), "background-color: green; color:white")
+    safe_btn(self, 'calcSegStatsButton', 'clicked', lambda: calcStrucStats(self), "background-color: green; color:white")
+    safe_btn(self, 'deleteSegStruct', 'clicked', lambda: DeleteSeg(self), "background-color: red; color:white")
+    safe_btn(self, 'exportSegStatsButton', 'clicked', lambda: exportStrucStats(self), "background-color: blue; color:white")
+    safe_btn(self, 'exportSegStrucButton', 'clicked', lambda: exportSegStruc(self), "background-color: blue; color:white")
+    safe_btn(self, 'ApplyMorphOper', 'clicked', lambda: apply_morph_oper(self), "background-color: blue; color:white")
+    safe_btn(self, 'UndoMorphOper', 'clicked', lambda: undo_morph_oper(self), "background-color: blue; color:white")
     
     # Connect the button's clicked signal to the slot function - run im processing operations
-    self.run_im_process.clicked.connect(lambda: run_image_processing(self))
-    self.run_im_process.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'run_im_process', 'clicked', lambda: run_image_processing(self), "background-color: blue; color: white;")
     
     # IrIS correction
-    self.IrIS_Load_Offset.clicked.connect(lambda: load_offset_IrIS(self))
-    self.IrIS_Load_Offset.setStyleSheet("background-color: red; color: white;")
-    self.IrIS_Load_CorrectionFrame.clicked.connect(lambda: load_CorrectionFrame_IrIS(self))
-    self.IrIS_Load_CorrectionFrame.setStyleSheet("background-color: red; color: white;")
+    safe_btn(self, 'IrIS_Load_Offset', 'clicked', lambda: load_offset_IrIS(self), "background-color: red; color: white;")
+    safe_btn(self, 'IrIS_Load_CorrectionFrame', 'clicked', lambda: load_CorrectionFrame_IrIS(self), "background-color: red; color: white;")
     
-    #  create vtk comp axes -buttom
-    from fcn_init.vtk_comparison_axes import on_grid_preset_changed
-    self.combo_grid_presets = QtWidgets.QComboBox(self.im_compare_tab)
-    self.combo_grid_presets.setObjectName("combo_grid_presets")
-    self.combo_grid_presets.addItems([
-        "Select Grid Preset",
-        "1 Row x 1 Col",
-        "1 Row x 2 Col",
-        "1 Row x 3 Col",
-        "1 Row x 4 Col",
-        "2 Rows x 1 Col",
-        "2 Rows x 2 Col",
-        "2 Rows x 3 Col",
-        "2 Rows x 4 Col",
-        "3 Rows x 1 Col",
-        "3 Rows x 2 Col",
-        "3 Rows x 3 Col",
-        "3 Rows x 4 Col"
-    ])
-    # Place it to the left of create button (replacing spacer in column 7)
-    self.gridLayout_16.addWidget(self.combo_grid_presets, 3, 7, 1, 1)
-    self.combo_grid_presets.currentIndexChanged.connect(lambda idx: on_grid_preset_changed(self, idx))
+    # create vtk comp axes -button (only if im_compare_tab has been created)
+    if hasattr(self, 'gridLayout_16') and self.gridLayout_16 is not None:
+        from fcn_init.vtk_comparison_axes import on_grid_preset_changed
+        self.combo_grid_presets = QtWidgets.QComboBox(self.im_compare_tab)
+        self.combo_grid_presets.setObjectName("combo_grid_presets")
+        self.combo_grid_presets.addItems([
+            "Select Grid Preset",
+            "1 Row x 1 Col",
+            "1 Row x 2 Col",
+            "1 Row x 3 Col",
+            "1 Row x 4 Col",
+            "2 Rows x 1 Col",
+            "2 Rows x 2 Col",
+            "2 Rows x 3 Col",
+            "2 Rows x 4 Col",
+            "3 Rows x 1 Col",
+            "3 Rows x 2 Col",
+            "3 Rows x 3 Col",
+            "3 Rows x 4 Col"
+        ])
+        # Place it to the left of create button (replacing spacer in column 7)
+        self.gridLayout_16.addWidget(self.combo_grid_presets, 3, 7, 1, 1)
+        safe_btn(self, 'combo_grid_presets', 'currentIndexChanged', lambda idx: on_grid_preset_changed(self, idx))
 
-    # Sync Checkboxes (Colormaps and Contours) in Column 2
-    from fcn_display.colormap_set import on_link_colormap_changed
-    from fcn_display.display_images_comp import on_link_contours_changed
-    
-    self.comp_sync_layout = QtWidgets.QHBoxLayout()
-    self.comp_sync_layout.setContentsMargins(0, 0, 0, 0)
-    
-    self.Comp_linkColormaps = QtWidgets.QCheckBox(self.im_compare_tab)
-    self.Comp_linkColormaps.setObjectName("Comp_linkColormaps")
-    self.Comp_linkColormaps.setText("Link colormap")
-    self.Comp_linkColormaps.setChecked(True)
-    self.comp_sync_layout.addWidget(self.Comp_linkColormaps)
-    self.Comp_linkColormaps.stateChanged.connect(lambda: on_link_colormap_changed(self))
-    
-    self.Comp_linkContours = QtWidgets.QCheckBox(self.im_compare_tab)
-    self.Comp_linkContours.setObjectName("Comp_linkContours")
-    self.Comp_linkContours.setText("Link contours")
-    self.Comp_linkContours.setChecked(True)
-    self.comp_sync_layout.addWidget(self.Comp_linkContours)
-    self.Comp_linkContours.stateChanged.connect(lambda: on_link_contours_changed(self))
+        # Sync Checkboxes (Colormaps and Contours) in Column 2
+        from fcn_display.colormap_set import on_link_colormap_changed
+        from fcn_display.display_images_comp import on_link_contours_changed
+        
+        self.comp_sync_layout = QtWidgets.QHBoxLayout()
+        self.comp_sync_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.Comp_linkColormaps = QtWidgets.QCheckBox(self.im_compare_tab)
+        self.Comp_linkColormaps.setObjectName("Comp_linkColormaps")
+        self.Comp_linkColormaps.setText("Link colormap")
+        self.Comp_linkColormaps.setChecked(True)
+        self.comp_sync_layout.addWidget(self.Comp_linkColormaps)
+        safe_btn(self, 'Comp_linkColormaps', 'stateChanged', lambda: on_link_colormap_changed(self))
+        
+        self.Comp_linkContours = QtWidgets.QCheckBox(self.im_compare_tab)
+        self.Comp_linkContours.setObjectName("Comp_linkContours")
+        self.Comp_linkContours.setText("Link contours")
+        self.Comp_linkContours.setChecked(True)
+        self.comp_sync_layout.addWidget(self.Comp_linkContours)
+        safe_btn(self, 'Comp_linkContours', 'stateChanged', lambda: on_link_contours_changed(self))
 
-    self.Comp_linkTools = QtWidgets.QCheckBox(self.im_compare_tab)
-    self.Comp_linkTools.setObjectName("Comp_linkTools")
-    self.Comp_linkTools.setText("Link tools")
-    self.Comp_linkTools.setChecked(True)
-    self.comp_sync_layout.addWidget(self.Comp_linkTools)
-    
-    self.gridLayout_16.addLayout(self.comp_sync_layout, 3, 2, 1, 1)
+        self.Comp_linkTools = QtWidgets.QCheckBox(self.im_compare_tab)
+        self.Comp_linkTools.setObjectName("Comp_linkTools")
+        self.Comp_linkTools.setText("Link tools")
+        self.Comp_linkTools.setChecked(True)
+        self.comp_sync_layout.addWidget(self.Comp_linkTools)
+        
+        self.gridLayout_16.addLayout(self.comp_sync_layout, 3, 2, 1, 1)
 
-    from fcn_display.display_images_comp import change_comp_view_orientation, sync_comp_dropdown_to_viewport
-    self.Comp_view_sel_box.currentIndexChanged.connect(lambda idx: change_comp_view_orientation(self, idx))
-    self.Comp_im_idx.valueChanged.connect(lambda idx: sync_comp_dropdown_to_viewport(self, idx))
+        from fcn_display.display_images_comp import change_comp_view_orientation, sync_comp_dropdown_to_viewport
+        safe_btn(self, 'Comp_view_sel_box', 'currentIndexChanged', lambda idx: change_comp_view_orientation(self, idx))
+        safe_btn(self, 'Comp_im_idx', 'valueChanged', lambda idx: sync_comp_dropdown_to_viewport(self, idx))
 
-    self.but_create_comp_axes.clicked.connect(lambda: create_vtk_elements_comp(self))
-    self.but_create_comp_axes.setStyleSheet("background-color: blue; color: white;")
+        safe_btn(self, 'but_create_comp_axes', 'clicked', lambda: create_vtk_elements_comp(self), "background-color: blue; color: white;")
 
-    # Modeless comparison window level histogram popup button
-    from fcn_init.view_hist import open_compare_histogram
-    self.but_hist_comp = QtWidgets.QPushButton(self.im_compare_tab)
-    self.but_hist_comp.setObjectName("but_hist_comp")
-    self.but_hist_comp.setText("Histogram")
-    self.but_hist_comp.setStyleSheet("background-color: blue; color: white;")
-    # Place it to the right of Create button (column 9)
-    self.gridLayout_16.addWidget(self.but_hist_comp, 3, 9, 1, 1)
-    self.but_hist_comp.clicked.connect(lambda: open_compare_histogram(self))
+        # Modeless comparison window level popup button
+        from fcn_init.view_hist import open_compare_histogram
+        self.but_hist_comp = QtWidgets.QPushButton(self.im_compare_tab)
+        self.but_hist_comp.setObjectName("but_hist_comp")
+        self.but_hist_comp.setText("Window")
+        self.but_hist_comp.setStyleSheet("background-color: blue; color: white;")
+        # Place it to the right of Create button (column 9)
+        self.gridLayout_16.addWidget(self.but_hist_comp, 3, 9, 1, 1)
+        safe_btn(self, 'but_hist_comp', 'clicked', lambda: open_compare_histogram(self))
+
+        # Add Ctrl+W shortcut on Compare tab to open Window dialog
+        self.shortcut_comp_window = QShortcut(QKeySequence("Ctrl+W"), self.im_compare_tab)
+        self.shortcut_comp_window.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self.shortcut_comp_window.activated.connect(lambda: open_compare_histogram(self))
 
     # 4D Display
-    self.Play4D_Buttom.toggled.connect(lambda: play_4D_sequence(self))
-    self.Play4D_Buttom.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'Play4D_Buttom', 'toggled', lambda: play_4D_sequence(self), "background-color: blue; color: white;")
 
     # 3D viewer
     # 4D video
-    self.View3D_play4D.setCheckable(True)
-    self.View3D_play4D.toggled.connect(lambda: play_4D_sequence_3D(self,1))
-    self.View3D_play4D.setStyleSheet("background-color: blue; color: white;")
-    self.View3D_clear_all.clicked.connect(self.clear_3d_axes)
-    self.View3D_clear_all.setStyleSheet("background-color: blue; color: white;")
-    self.View3D_reset_camera.clicked.connect(self.reset_3d_camera)
-    self.View3D_reset_camera.setStyleSheet("background-color: blue; color: white;")
+    if hasattr(self, 'View3D_play4D') and self.View3D_play4D is not None:
+        self.View3D_play4D.setCheckable(True)
+    safe_btn(self, 'View3D_play4D', 'toggled', lambda: play_4D_sequence_3D(self,1), "background-color: blue; color: white;")
+    safe_btn(self, 'View3D_clear_all', 'clicked', getattr(self, 'clear_3d_axes', None), "background-color: blue; color: white;")
+    safe_btn(self, 'View3D_reset_camera', 'clicked', getattr(self, 'reset_3d_camera', None), "background-color: blue; color: white;")
     
 
     # DECT
-    self.add_coll_table_mat.clicked.connect(lambda: add_coll2table(self))
-    self.add_coll_table_mat.setStyleSheet("background-color: blue; color: white;")
-    self.remove_coll_table_mat.clicked.connect(lambda: remove_coll2table(self))
-    self.remove_coll_table_mat.setStyleSheet("background-color: blue; color: white;")
-    self.add_row_table_mat.clicked.connect(lambda: add_row2table(self))
-    self.add_row_table_mat.setStyleSheet("background-color: blue; color: white;")
-    self.remove_row_table_mat.clicked.connect(lambda: remove_row2table(self))
-    self.remove_row_table_mat.setStyleSheet("background-color: blue; color: white;")
-    self.reset_table_mat.clicked.connect(lambda: reset_matTable(self))
-    self.reset_table_mat.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'add_coll_table_mat', 'clicked', lambda: add_coll2table(self), "background-color: blue; color: white;")
+    safe_btn(self, 'remove_coll_table_mat', 'clicked', lambda: remove_coll2table(self), "background-color: blue; color: white;")
+    safe_btn(self, 'add_row_table_mat', 'clicked', lambda: add_row2table(self), "background-color: blue; color: white;")
+    safe_btn(self, 'remove_row_table_mat', 'clicked', lambda: remove_row2table(self), "background-color: blue; color: white;")
+    safe_btn(self, 'reset_table_mat', 'clicked', lambda: reset_matTable(self), "background-color: blue; color: white;")
     
     # Load material composition and additional info
-    self.Load_csv_mat.clicked.connect(lambda: load_csv_mat_info(self))
-    self.Load_csv_mat.setStyleSheet("background-color: blue; color: white;")
-    self.cal_mat_ref_info.clicked.connect(lambda: calc_material_parameters(self))
-    self.cal_mat_ref_info.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'Load_csv_mat', 'clicked', lambda: load_csv_mat_info(self), "background-color: blue; color: white;")
+    safe_btn(self, 'cal_mat_ref_info', 'clicked', lambda: calc_material_parameters(self), "background-color: blue; color: white;")
     # I-value plot
-    self.Ivalue_plot.clicked.connect(lambda: plot_I_value_points(self))
-    self.Ivalue_plot.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'Ivalue_plot', 'clicked', lambda: plot_I_value_points(self), "background-color: blue; color: white;")
     # Instead of plotting from data use the providded coefficients
-    self.Ivalue_pre_calc_fit.clicked.connect(lambda: plot_I_value_precalc(self))
-    self.Ivalue_pre_calc_fit.setStyleSheet("background-color: blue; color: white;")
-    self.Ivalue_calc_fit.clicked.connect(lambda: cal_plot_I_value_points(self))
-    self.Ivalue_calc_fit.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'Ivalue_pre_calc_fit', 'clicked', lambda: plot_I_value_precalc(self), "background-color: blue; color: white;")
+    safe_btn(self, 'Ivalue_calc_fit', 'clicked', lambda: cal_plot_I_value_points(self), "background-color: blue; color: white;")
     # export mat table
-    self.export_table_mat.clicked.connect(lambda: export_matinfotable_to_csv(self))
-    self.export_table_mat.setStyleSheet("background-color: blue; color: white;")
-    self.get_HU_high.clicked.connect(lambda: c_roi_getdata_HU_high_low(self))
-    self.get_HU_high.setStyleSheet("background-color: green; color: white;")
+    safe_btn(self, 'export_table_mat', 'clicked', lambda: export_matinfotable_to_csv(self), "background-color: blue; color: white;")
+    safe_btn(self, 'get_HU_high', 'clicked', lambda: c_roi_getdata_HU_high_low(self), "background-color: green; color: white;")
     # RED
-    self.RED_get_ref.clicked.connect(lambda: RED_copy_ref_columns(self))
-    self.RED_get_ref.setStyleSheet("background-color: green; color: white;")
-    self.RED_calc_cal.clicked.connect(lambda: RED_fit_plot_fcn(self))
-    self.RED_calc_cal.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'RED_get_ref', 'clicked', lambda: RED_copy_ref_columns(self), "background-color: green; color: white;")
+    safe_btn(self, 'RED_calc_cal', 'clicked', lambda: RED_fit_plot_fcn(self), "background-color: blue; color: white;")
     
     # Zeff
-    self.Zeff_get_ref.clicked.connect(lambda: Zeff_copy_ref_columns(self))
-    self.Zeff_get_ref.setStyleSheet("background-color: green; color: white;")
-    self.Zeff_calc_cal.clicked.connect(lambda: Zeff_fit_plot_fcn(self))
-    self.Zeff_calc_cal.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'Zeff_get_ref', 'clicked', lambda: Zeff_copy_ref_columns(self), "background-color: green; color: white;")
+    safe_btn(self, 'Zeff_calc_cal', 'clicked', lambda: Zeff_fit_plot_fcn(self), "background-color: blue; color: white;")
     
     # I-value
-    self.Iv_get_ref.clicked.connect(lambda: Iv_copy_ref_columns(self))
-    self.Iv_get_ref.setStyleSheet("background-color: green; color: white;")
-    self.Iv_calc_cal.clicked.connect(lambda: Iv_fit_plot_fcn(self))
-    self.Iv_calc_cal.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'Iv_get_ref', 'clicked', lambda: Iv_copy_ref_columns(self), "background-color: green; color: white;")
+    safe_btn(self, 'Iv_calc_cal', 'clicked', lambda: Iv_fit_plot_fcn(self), "background-color: blue; color: white;")
     
     # SPR
-    self.SPR_get_ref.clicked.connect(lambda: SPR_copy_ref_columns(self))
-    self.SPR_get_ref.setStyleSheet("background-color: green; color: white;")
-    self.SPR_calc_cal.clicked.connect(lambda: SPR_fit_plot_fcn(self))
-    self.SPR_calc_cal.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'SPR_get_ref', 'clicked', lambda: SPR_copy_ref_columns(self), "background-color: green; color: white;")
+    safe_btn(self, 'SPR_calc_cal', 'clicked', lambda: SPR_fit_plot_fcn(self), "background-color: blue; color: white;")
     
     # Process Eval - DECT
-    self.Create_DECT_Images.clicked.connect(lambda: creat_DECT_derived_maps(self))
-    self.Create_DECT_Images.setStyleSheet("background-color: green; color: white;")
+    safe_btn(self, 'Create_DECT_Images', 'clicked', lambda: creat_DECT_derived_maps(self), "background-color: green; color: white;")
     #
-    self.plot_roi_scatter.clicked.connect(lambda: c_roi_scatter_plot(self))
-    self.plot_roi_scatter.setStyleSheet("background-color: green; color: white;")
+    safe_btn(self, 'plot_roi_scatter', 'clicked', lambda: c_roi_scatter_plot(self), "background-color: green; color: white;")
     
     #
-    self.export_all_DECT_tables.clicked.connect(lambda: export_all_DECT_tables(self))
-    self.export_all_DECT_tables.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'export_all_DECT_tables', 'clicked', lambda: export_all_DECT_tables(self), "background-color: blue; color: white;")
     #
-    self.DECT_exp_fit_par.clicked.connect(lambda: save_parameters_to_csv(self))
-    self.DECT_exp_fit_par.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'DECT_exp_fit_par', 'clicked', lambda: save_parameters_to_csv(self), "background-color: blue; color: white;")
     #
-    self.DECT_load_fit_par.clicked.connect(lambda: load_parameters_from_csv(self))
-    self.DECT_load_fit_par.setStyleSheet("background-color: green; color: white;")
+    safe_btn(self, 'DECT_load_fit_par', 'clicked', lambda: load_parameters_from_csv(self), "background-color: green; color: white;")
     
     # Struct
-    self.CreateMask_Structures.clicked.connect(lambda: create_contour_masks(self))  # create mask
-    self.CreateMask_Structures.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'CreateMask_Structures', 'clicked', lambda: create_contour_masks(self), "background-color: blue; color: white;")
 
     # Image registrations
-    self.Reg_manual_Tx.valueChanged.connect(lambda: update_translation_x(self))
-    self.Reg_manual_Ty.valueChanged.connect(lambda: update_translation_y(self))
-    self.Reg_manual_Tz.valueChanged.connect(lambda: update_translation_z(self))
-    self.Reg_manual_Rot_X.valueChanged.connect(lambda: update_rotation_x(self))
-    self.Reg_manual_Rot_Y.valueChanged.connect(lambda: update_rotation_y(self))
-    self.Reg_manual_Rot_Z.valueChanged.connect(lambda: update_rotation_z(self))
-    self.Manual_reg_step.valueChanged.connect(lambda: set_transformation_step(self))
+    safe_btn(self, 'Reg_manual_Tx', 'valueChanged', lambda: update_translation_x(self))
+    safe_btn(self, 'Reg_manual_Ty', 'valueChanged', lambda: update_translation_y(self))
+    safe_btn(self, 'Reg_manual_Tz', 'valueChanged', lambda: update_translation_z(self))
+    safe_btn(self, 'Reg_manual_Rot_X', 'valueChanged', lambda: update_rotation_x(self))
+    safe_btn(self, 'Reg_manual_Rot_Y', 'valueChanged', lambda: update_rotation_y(self))
+    safe_btn(self, 'Reg_manual_Rot_Z', 'valueChanged', lambda: update_rotation_z(self))
+    safe_btn(self, 'Manual_reg_step', 'valueChanged', lambda: set_transformation_step(self))
     # Flip buttons
-    self.pushButton_4.clicked.connect(lambda: flip_volume_x(self))
-    self.pushButton_5.clicked.connect(lambda: flip_volume_y(self))
-    self.pushButton_6.clicked.connect(lambda: flip_volume_z(self))
-    self.pushButton_4.setStyleSheet("background-color: blue; color: white;")
-    self.pushButton_5.setStyleSheet("background-color: blue; color: white;")
-    self.pushButton_6.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'pushButton_4', 'clicked', lambda: flip_volume_x(self))
+    safe_btn(self, 'pushButton_5', 'clicked', lambda: flip_volume_y(self))
+    safe_btn(self, 'pushButton_6', 'clicked', lambda: flip_volume_z(self))
+    safe_style(self, 'pushButton_4', "background-color: blue; color: white;")
+    safe_style(self, 'pushButton_5', "background-color: blue; color: white;")
+    safe_style(self, 'pushButton_6', "background-color: blue; color: white;")
     # Dynamic Auto Registration buttons
     from PySide6.QtWidgets import QPushButton
     self.btn_auto_registration = QPushButton("Auto Registration...", self.groupBox_12)
     self.btn_auto_registration.setObjectName("btn_auto_registration")
-    self.btn_auto_registration.setStyleSheet("background-color: darkgreen; color: white; font-weight: bold;")
+    safe_style(self, 'btn_auto_registration', "background-color: darkgreen; color: white; font-weight: bold;")
     self.gridLayout_82.addWidget(self.btn_auto_registration, 3, 1, 1, 2)
-    self.btn_auto_registration.clicked.connect(lambda: open_auto_reg_dialog(self))
+    safe_btn(self, 'btn_auto_registration', 'clicked', lambda: open_auto_reg_dialog(self))
 
     self.btn_apply_last_transform = QPushButton("Apply Last Transform", self.groupBox_12)
     self.btn_apply_last_transform.setObjectName("btn_apply_last_transform")
-    self.btn_apply_last_transform.setStyleSheet("background-color: darkgreen; color: white; font-weight: bold;")
+    safe_style(self, 'btn_apply_last_transform', "background-color: darkgreen; color: white; font-weight: bold;")
     self.gridLayout_82.addWidget(self.btn_apply_last_transform, 3, 3, 1, 2)
-    self.btn_apply_last_transform.clicked.connect(lambda: apply_last_transform_to_layer(self))
+    safe_btn(self, 'btn_apply_last_transform', 'clicked', lambda: apply_last_transform_to_layer(self))
 
     # Apply button
-    self.apply_Im_transformation.clicked.connect(lambda: apply_trasnformation(self))
-    self.apply_Im_transformation.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'apply_Im_transformation', 'clicked', lambda: apply_trasnformation(self), "background-color: blue; color: white;")
     
     # Layer selection shortcuts (Ctrl+1 to Ctrl+4)
     self.shortcut_layer_0 = QShortcut(QKeySequence("Ctrl+1"), self)
-    self.shortcut_layer_0.activated.connect(lambda: self.layer_selected.setCurrentIndex(0))
+    safe_btn(self, 'shortcut_layer_0', 'activated', lambda: self.layer_selected.setCurrentIndex(0))
     self.shortcut_layer_1 = QShortcut(QKeySequence("Ctrl+2"), self)
-    self.shortcut_layer_1.activated.connect(lambda: self.layer_selected.setCurrentIndex(1))
+    safe_btn(self, 'shortcut_layer_1', 'activated', lambda: self.layer_selected.setCurrentIndex(1))
     self.shortcut_layer_2 = QShortcut(QKeySequence("Ctrl+3"), self)
-    self.shortcut_layer_2.activated.connect(lambda: self.layer_selected.setCurrentIndex(2))
+    safe_btn(self, 'shortcut_layer_2', 'activated', lambda: self.layer_selected.setCurrentIndex(2))
     self.shortcut_layer_3 = QShortcut(QKeySequence("Ctrl+4"), self)
-    self.shortcut_layer_3.activated.connect(lambda: self.layer_selected.setCurrentIndex(3))
+    safe_btn(self, 'shortcut_layer_3', 'activated', lambda: self.layer_selected.setCurrentIndex(3))
 
     # -----------------------------------------
     # Plan
@@ -333,116 +346,104 @@ def initialize_software_buttons(self):
     # Brachy 
     #
     # spin
-    self.brachy_spinBox_01.valueChanged.connect(lambda: update_disp_brachy_plan(self))
-    self.brachy_spinBox_02.valueChanged.connect(lambda: sync_spinBox_01(self))
+    safe_btn(self, 'brachy_spinBox_01', 'valueChanged', lambda: update_disp_brachy_plan(self))
+    safe_btn(self, 'brachy_spinBox_02', 'valueChanged', lambda: sync_spinBox_01(self))
     def sync_spinBox_01(self):
         # Update brachy_spinBox_01's value to match brachy_spinBox_02
         self.brachy_spinBox_01.setValue(self.brachy_spinBox_02.value())
     #
-    self.display_dw_overlay.stateChanged.connect(lambda: on_display_dw_overlay_clicked(self))
-    self.display_brachy_channel_overlay.stateChanged.connect(lambda: on_display_dw_overlay_clicked(self))
+    safe_btn(self, 'display_dw_overlay', 'stateChanged', lambda: on_display_dw_overlay_clicked(self))
+    safe_btn(self, 'display_brachy_channel_overlay', 'stateChanged', lambda: on_display_dw_overlay_clicked(self))
     # buttom    
-    self.brachy_ch_plot.clicked.connect(lambda:  plot_brachy_dwell_channels(self))
-    self.brachy_ch_plot.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'brachy_ch_plot', 'clicked', lambda:  plot_brachy_dwell_channels(self), "background-color: blue; color: white;")
     #
-    self.brachy_export_dw_channels_csv.setStyleSheet("background-color: blue; color: white;")
-    self.brachy_export_dw_channels_csv.clicked.connect(lambda: export_all_brachy_channels_to_csv(self))
+    safe_style(self, 'brachy_export_dw_channels_csv', "background-color: blue; color: white;")
+    safe_btn(self, 'brachy_export_dw_channels_csv', 'clicked', lambda: export_all_brachy_channels_to_csv(self))
     #
-    self.Brachy_load_sources.clicked.connect(lambda: on_brachy_load_sources(self))
-    self.Brachy_load_sources.setStyleSheet("background-color: blue; color: white;")
-    self.Brachy_load_sources.clicked.connect(lambda: plot_brachy_ani(self))
-    self.brachy_source_list.currentIndexChanged.connect(lambda: on_brachy_source_selection(self))
-    self.comboBox_tg43_along_away.currentIndexChanged.connect(lambda: dose_along_away_Disp_eval(self))
+    safe_btn(self, 'Brachy_load_sources', 'clicked', lambda: on_brachy_load_sources(self), "background-color: blue; color: white;")
+    safe_btn(self, 'Brachy_load_sources', 'clicked', lambda: plot_brachy_ani(self))
+    safe_btn(self, 'brachy_source_list', 'currentIndexChanged', lambda: on_brachy_source_selection(self))
+    safe_btn(self, 'comboBox_tg43_along_away', 'currentIndexChanged', lambda: dose_along_away_Disp_eval(self))
     #
     # TG43 
-    self.Brachy_Radial_load.setStyleSheet("background-color: blue; color: white;")
-    self.Brachy_Radial_load.clicked.connect(lambda: select_Radial_file2load(self))
-    self.Brachy_Radial_table.itemChanged.connect(lambda: plot_brachy_radial_fit(self))
-    self.Brach_plot_ani.setStyleSheet("background-color: blue; color: white;")
-    self.Brach_plot_ani.clicked.connect(lambda: plot_brachy_ani(self))
-    self.Brachy_load_ani.setStyleSheet("background-color: blue; color: white;")
-    self.Brachy_load_ani.clicked.connect(lambda: select_Anisotropy_file2load(self))
+    safe_style(self, 'Brachy_Radial_load', "background-color: blue; color: white;")
+    safe_btn(self, 'Brachy_Radial_load', 'clicked', lambda: select_Radial_file2load(self))
+    safe_btn(self, 'Brachy_Radial_table', 'itemChanged', lambda: plot_brachy_radial_fit(self))
+    safe_style(self, 'Brach_plot_ani', "background-color: blue; color: white;")
+    safe_btn(self, 'Brach_plot_ani', 'clicked', lambda: plot_brachy_ani(self))
+    safe_style(self, 'Brachy_load_ani', "background-color: blue; color: white;")
+    safe_btn(self, 'Brachy_load_ani', 'clicked', lambda: select_Anisotropy_file2load(self))
 
     # using a place holder button for testing
-    self.Brachy_Calcualte_TG43.clicked.connect(lambda: calculate_TG43_plan_dose(self))
-    self.Brachy_Calcualte_TG43.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'Brachy_Calcualte_TG43', 'clicked', lambda: calculate_TG43_plan_dose(self), "background-color: blue; color: white;")
     #EQD2
-    self.calc_eqd2.clicked.connect(lambda: generate_eqd2_dose(self))
-    self.add_to_ab_list.clicked.connect(lambda: add_ab(self))
-    self.delete_from_ab_list.clicked.connect(lambda: delete_ab(self))
+    safe_btn(self, 'calc_eqd2', 'clicked', lambda: generate_eqd2_dose(self))
+    safe_btn(self, 'add_to_ab_list', 'clicked', lambda: add_ab(self))
+    safe_btn(self, 'delete_from_ab_list', 'clicked', lambda: delete_ab(self))
     
-    self.calc_eqd2_2.clicked.connect(lambda: eqd2_calc(self))
-    self.ab_matrix.clicked.connect(lambda: create_ab_matrix(self))
+    safe_btn(self, 'calc_eqd2_2', 'clicked', lambda: eqd2_calc(self))
+    safe_btn(self, 'ab_matrix', 'clicked', lambda: create_ab_matrix(self))
 
     #CT CALIBRATION--------------------------------------------------------------------------
-    self.load_ct_cal.clicked.connect(lambda: load_ct_cal_curve(self))
-    self.save_changes_ct_cal.clicked.connect(lambda: save_changes(self))
-    self.ct_cal_add_row.clicked.connect(lambda: add_row_to_ct_table(self))
-    self.Export_ct_cal.clicked.connect(lambda: export_ct_cal_to_csv(self))
-    self.ct_cal_save_copy.clicked.connect(lambda:export_ct_cal_to_csv(self,export=False))
-    self.create_density_map.clicked.connect(lambda:create_density_map(self))
-    self.create_density_map.setStyleSheet("background-color: green; color: white;")
-    self.create_density_map__from_mat_map.clicked.connect(lambda:create_density_map(self,use_mat_map=True))
-    self.create_density_map__from_mat_map.setStyleSheet("background-color: green; color: white;")
-    self.delete_density_map.clicked.connect(lambda:del_density_map(self))
-    self.delete_density_map.setStyleSheet("background-color: red; color: white;")
+    safe_btn(self, 'load_ct_cal', 'clicked', lambda: load_ct_cal_curve(self))
+    safe_btn(self, 'save_changes_ct_cal', 'clicked', lambda: save_changes(self))
+    safe_btn(self, 'ct_cal_add_row', 'clicked', lambda: add_row_to_ct_table(self))
+    safe_btn(self, 'Export_ct_cal', 'clicked', lambda: export_ct_cal_to_csv(self))
+    safe_btn(self, 'ct_cal_save_copy', 'clicked', lambda:export_ct_cal_to_csv(self,export=False))
+    safe_btn(self, 'create_density_map', 'clicked', lambda:create_density_map(self), "background-color: green; color: white;")
+    safe_btn(self, 'create_density_map__from_mat_map', 'clicked', lambda:create_density_map(self,use_mat_map=True), "background-color: green; color: white;")
+    safe_btn(self, 'delete_density_map', 'clicked', lambda:del_density_map(self), "background-color: red; color: white;")
     
     #Material assignment
-    self.Add_mat.clicked.connect(lambda: add_mat_row(self))
-    self.add_element.clicked.connect(lambda:add_element(self))
-    self.del_element.clicked.connect(lambda:del_element(self))
-    self.del_mat.clicked.connect(lambda:del_mat_row(self))
-    self.save_mat_table.clicked.connect(lambda:save_mat_db(self))
-    self.mat_to_hu.clicked.connect(lambda:mat2HU(self))
-    self.remove_mat_fromhu.clicked.connect(lambda:del_mat2HU(self))
-    self.create_mat_map.clicked.connect(lambda:generate_mat_map(self))
-    self.create_mat_map.setStyleSheet("background-color: green; color: white;")
-    self.undo_mat_tab.clicked.connect(lambda:undo_changes(self))
-    self.del_mat_map.clicked.connect(lambda:delete_mat_map(self))
-    self.del_mat_map.setStyleSheet("background-color: red; color: white;")
-    self.mat_to_struct.clicked.connect(lambda:struct2mat(self))
-    self.remove_mat_from_struct.clicked.connect(lambda: del_stuct2mat(self))
-    self.update_mat_struct_list.clicked.connect(lambda: update_mat_struct_list(self))
+    safe_btn(self, 'Add_mat', 'clicked', lambda: add_mat_row(self))
+    safe_btn(self, 'add_element', 'clicked', lambda:add_element(self))
+    safe_btn(self, 'del_element', 'clicked', lambda:del_element(self))
+    safe_btn(self, 'del_mat', 'clicked', lambda:del_mat_row(self))
+    safe_btn(self, 'save_mat_table', 'clicked', lambda:save_mat_db(self))
+    safe_btn(self, 'mat_to_hu', 'clicked', lambda:mat2HU(self))
+    safe_btn(self, 'remove_mat_fromhu', 'clicked', lambda:del_mat2HU(self))
+    safe_btn(self, 'create_mat_map', 'clicked', lambda:generate_mat_map(self), "background-color: green; color: white;")
+    safe_btn(self, 'undo_mat_tab', 'clicked', lambda:undo_changes(self))
+    safe_btn(self, 'del_mat_map', 'clicked', lambda:delete_mat_map(self), "background-color: red; color: white;")
+    safe_btn(self, 'mat_to_struct', 'clicked', lambda:struct2mat(self))
+    safe_btn(self, 'remove_mat_from_struct', 'clicked', lambda: del_stuct2mat(self))
+    safe_btn(self, 'update_mat_struct_list', 'clicked', lambda: update_mat_struct_list(self))
     
     # 3D Printing buttons connect
     # setStyleSheet("background-color: green; color: white;")
-    self.import_reference_btn.clicked.connect(lambda: hdl.import_reference_file(self))
-    self.import_tested_filaments_btn.clicked.connect(lambda: hdl.load_gammex_file(self))
-    self.load_cal_btn.clicked.connect(lambda: hdl.load_cal_file(self))
-    self.show_filaments_button.clicked.connect(lambda: hdl.show_best_matching_filaments(self))
-    self.RED_calc_button.clicked.connect(lambda: hdl.calculate_red(self))
+    safe_btn(self, 'import_reference_btn', 'clicked', lambda: hdl.import_reference_file(self))
+    safe_btn(self, 'import_tested_filaments_btn', 'clicked', lambda: hdl.load_gammex_file(self))
+    safe_btn(self, 'load_cal_btn', 'clicked', lambda: hdl.load_cal_file(self))
+    safe_btn(self, 'show_filaments_button', 'clicked', lambda: hdl.show_best_matching_filaments(self))
+    safe_btn(self, 'RED_calc_button', 'clicked', lambda: hdl.calculate_red(self))
 
 
  
     # Circle ROI -----------------------------------------------------------------------------------
     # display (or not) ROI
-    self.checkBox_circ_roi_data_2.clicked.connect(lambda: toggle_rois(self)) 
+    safe_btn(self, 'checkBox_circ_roi_data_2', 'clicked', lambda: toggle_rois(self))
     self.roi_circle_add_row.setText("Add")
-    self.roi_circle_add_row.setStyleSheet("background-color: blue; color: white;")
-    self.roi_circle_add_row.clicked.connect(lambda: roi_c_add_row(self))
+    safe_style(self, 'roi_circle_add_row', "background-color: blue; color: white;")
+    safe_btn(self, 'roi_circle_add_row', 'clicked', lambda: roi_c_add_row(self))
     self.roi_circle_remove_row.setText("Remove")
-    self.roi_circle_remove_row.setStyleSheet("background-color: blue; color: white;")
-    self.roi_circle_remove_row.clicked.connect(lambda: roi_c_remove_row(self))
-    self.circ_roi_exp_csv.clicked.connect(lambda: export_roi_circ_table_to_csv(self))
-    self.circ_roi_exp_csv.setStyleSheet("background-color: blue; color: white;")
-    self.circ_roi_load_csv.clicked.connect(lambda: import_roi_circ_table(self))
-    self.circ_roi_load_csv.setStyleSheet("background-color: green; color: white;")
-    self.get_circ_roi_data.clicked.connect(lambda: c_roi_getdata(self, ask_user=True))
-    self.get_circ_roi_data.setStyleSheet("background-color: blue; color: white;")
-    self.get_circ_roi_data2.clicked.connect(lambda: c_roi_getdata(self, ask_user=True))
-    self.get_circ_roi_data2.setStyleSheet("background-color: blue; color: white;")
-    self.checkBox_circ_roi_data_01.clicked.connect(lambda: on_all_series_checkbox_toggled(self))
+    safe_style(self, 'roi_circle_remove_row', "background-color: blue; color: white;")
+    safe_btn(self, 'roi_circle_remove_row', 'clicked', lambda: roi_c_remove_row(self))
+    safe_btn(self, 'circ_roi_exp_csv', 'clicked', lambda: export_roi_circ_table_to_csv(self), "background-color: blue; color: white;")
+    safe_btn(self, 'circ_roi_load_csv', 'clicked', lambda: import_roi_circ_table(self), "background-color: green; color: white;")
+    safe_btn(self, 'get_circ_roi_data', 'clicked', lambda: c_roi_getdata(self, ask_user=True), "background-color: blue; color: white;")
+    safe_btn(self, 'get_circ_roi_data2', 'clicked', lambda: c_roi_getdata(self, ask_user=True), "background-color: blue; color: white;")
+    safe_btn(self, 'checkBox_circ_roi_data_01', 'clicked', lambda: on_all_series_checkbox_toggled(self))
     if hasattr(self, 'holdOnROI'):
         self.holdOnROI.setVisible(False)
         
     self.btn_clear_all_rois = QPushButton("Clear All ROIs", self.tab_34)
-    self.btn_clear_all_rois.setStyleSheet("background-color: #ef4444; color: white; font-weight: bold;")
-    self.btn_clear_all_rois.clicked.connect(lambda: roi_c_clear_all_rois(self))
+    safe_style(self, 'btn_clear_all_rois', "background-color: #ef4444; color: white; font-weight: bold;")
+    safe_btn(self, 'btn_clear_all_rois', 'clicked', lambda: roi_c_clear_all_rois(self))
 
     # Create Export Voxel Values button and place it where GET DATA was (2, 1)
     self.btn_export_voxel_values = QPushButton("Export Voxel Values", self.tab_34)
-    self.btn_export_voxel_values.setStyleSheet("background-color: blue; color: white;")
-    self.btn_export_voxel_values.clicked.connect(lambda: export_all_roi_voxel_values_to_csv(self))
+    safe_style(self, 'btn_export_voxel_values', "background-color: blue; color: white;")
+    safe_btn(self, 'btn_export_voxel_values', 'clicked', lambda: export_all_roi_voxel_values_to_csv(self))
 
     # Shift GET DATA, Clear All ROIs, and All image series one column to the right
     if hasattr(self, 'get_circ_roi_data'):
@@ -458,8 +459,8 @@ def initialize_software_buttons(self):
         self.gridLayout_45.addWidget(self.checkBox_circ_roi_data_01, 2, 4, 1, 1)
 
     self.btn_clear_all_roi_data = QPushButton("Clear All Data", self.tab_35)
-    self.btn_clear_all_roi_data.setStyleSheet("background-color: #ef4444; color: white; font-weight: bold;")
-    self.btn_clear_all_roi_data.clicked.connect(lambda: roi_c_clear_all_data(self))
+    safe_style(self, 'btn_clear_all_roi_data', "background-color: #ef4444; color: white; font-weight: bold;")
+    safe_btn(self, 'btn_clear_all_roi_data', 'clicked', lambda: roi_c_clear_all_data(self))
     self.gridLayout_34.addWidget(self.btn_clear_all_roi_data, 1, 2, 1, 1)
     
     # Span data table across all 3 columns to use full width to the right
@@ -519,8 +520,7 @@ def initialize_software_buttons(self):
         """)
         grp_layout.addWidget(self.roi_direction_combo)
 
-    self.exp_csv_roi_c_values.clicked.connect(lambda: export_roi_circ_values_to_csv(self))
-    self.exp_csv_roi_c_values.setStyleSheet("background-color: blue; color: white;")
+    safe_btn(self, 'exp_csv_roi_c_values', 'clicked', lambda: export_roi_circ_values_to_csv(self), "background-color: blue; color: white;")
     self.checkBox_circ_roi_data_2.setChecked(True)
     
     

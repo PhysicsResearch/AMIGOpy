@@ -89,11 +89,11 @@ def populate_medical_image_tree(self):
     # Check for existing 'DICOM' parent item
     dicom_parent_item = _get_or_create_parent_item(self,'Medical Image')
     #
-    # Clear the clist of series menus for DECT
-    self.DECT_list_01.clear()
-    self.DECT_list_02.clear()
-    self.scatter_plot_im_01.clear()
-    self.scatter_plot_im_02.clear()
+    # Clear the list of series menus for DECT (if DECT tab is created)
+    for attr in ('DECT_list_01', 'DECT_list_02', 'scatter_plot_im_01', 'scatter_plot_im_02'):
+        w = getattr(self, attr, None)
+        if w is not None and hasattr(w, 'clear'):
+            w.clear()
     # self.Reg_target_box.clear()
     # self.Reg_moving_box.clear()
     # Dictionary to store series_label and related information
@@ -199,11 +199,11 @@ def populate_medical_image_tree(self):
                             
                             
 
-                    # Add to comboBox
-                    self.DECT_list_01.addItem(series_label)
-                    self.DECT_list_02.addItem(series_label)
-                    self.scatter_plot_im_01.addItem(series_label)
-                    self.scatter_plot_im_02.addItem(series_label)
+                    # Add to comboBox (if DECT tab is created)
+                    for attr in ('DECT_list_01', 'DECT_list_02', 'scatter_plot_im_01', 'scatter_plot_im_02'):
+                        w = getattr(self, attr, None)
+                        if w is not None and hasattr(w, 'addItem'):
+                            w.addItem(series_label)
                     # self.Reg_target_box.addItem(series_label)
                     # self.Reg_moving_box.addItem(series_label)
 

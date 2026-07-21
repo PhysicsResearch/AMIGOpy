@@ -496,8 +496,9 @@ def load_all_dcm(self, folder_path=None, progress_callback=None, update_label=No
                 modality_data = study_data.setdefault(modality, [])
                 modality_data.extend(series_list)  # append series
 
-    # Clear the segmentation structure list
-    self.segStructList.clear()
+    # Clear the segmentation structure list (if tab_seg has been created)
+    if hasattr(self, 'segStructList') and self.segStructList is not None and hasattr(self.segStructList, 'clear'):
+        self.segStructList.clear()
 
     self.DataType = "DICOM"
     populate_medical_image_tree(self)

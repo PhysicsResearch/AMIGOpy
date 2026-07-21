@@ -240,16 +240,26 @@ def rearrange_widgets_in_grid(self, rows, cols):
     # Assuming groupBox_2 is the QGroupBox you're working with
     gridLayout = self.groupBox_2.layout()
 
+    # Reset stretches
+    for r in range(3):
+        gridLayout.setRowStretch(r, 0)
+    for c in range(4):
+        gridLayout.setColumnStretch(c, 0)
+
     # Optional: Remove all widgets from the layout first if rearranging
-    # This step depends on your application's needs
     for i in reversed(range(gridLayout.count())): 
         widget = gridLayout.itemAt(i).widget()
-        gridLayout.removeWidget(widget)
-        widget.hide()  # Hide the widget temporarily
-    # Now, add the widgets back in the new configuration
+        if widget:
+            gridLayout.removeWidget(widget)
+            widget.hide()  # Hide the widget temporarily
+
+    # Now, add the widgets back in the new configuration with equal stretches
     for row in range(rows):
+        gridLayout.setRowStretch(row, 1)
         for col in range(cols):
-            widget =  self.vtkWidgetsComp[row * cols + col]
+            if row == 0:
+                gridLayout.setColumnStretch(col, 1)
+            widget = self.vtkWidgetsComp[row * cols + col]
             if widget:
                 gridLayout.addWidget(widget, row, col)
                 widget.show()  # Ensure the widget is visible   

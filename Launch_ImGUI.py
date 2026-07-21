@@ -26,7 +26,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor 
 import vtk
 from PySide6.QtWidgets import QApplication
 import qdarkstyle
-from uiImGUI import Ui_AMIGOpy
+from fcn_create_gui import setup_ui
 from fcn_load.sort_dcm import get_data_description
 from fcn_load.org_fol_dcm import organize_files_into_folders
 from fcn_display.mouse_move_slicechanges import change_sliceAxial, change_sliceSagittal, change_sliceCoronal
@@ -94,7 +94,7 @@ def _resolve_names(axis: str):
         raise ValueError(f"Bad mapping for {axis}: {names!r}")
 # ──────────────────────────────────────────────────────────────────────────────
 
-class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, QDialog/Ui_Dialog, etc.
+class MyApp(QMainWindow, VTK3DViewerMixin):
         # emmit signal when the slice changes
         # This signal can be connected to other functions to update the display when the slice changes.
     sliceChanged = Signal(str, list)
@@ -102,8 +102,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
     def __init__(self,folder_path=None):
         super(MyApp, self).__init__()
         
-        # Set up the user interface from Designer.
-        self.setupUi(self)
+        # Set up the user interface (programmatic, replaces Qt Designer).
+        setup_ui(self)
 
         self.setWindowIcon(QIcon("AMBpy.ico"))
         self.setWindowTitle("AMIGOpy")
@@ -117,10 +117,11 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         initialize_software_tables(self)
         # initialize buttons
         initialize_software_buttons(self)
-        # initialize 3D Printing Database tab
-        setup_3d_database_tab(self)
-        setup_mat_mix_tab(self)
-        setup_view_and_fit_tab(self)
+        # initialize 3D Printing Database tab (if tab_3DP has been created)
+        if hasattr(self, 'tab_18') and self.tab_18 is not None:
+            setup_3d_database_tab(self)
+            setup_mat_mix_tab(self)
+            setup_view_and_fit_tab(self)
         # initialize drop functions
         # Enable drag and drop
         initialize_drop_fcn(self)
@@ -331,7 +332,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
 
         #
         self.BrCvTab_index = 0
-        self.DuetIPAddress.setText("192.168.0.1")
+        if hasattr(self, 'DuetIPAddress') and self.DuetIPAddress is not None:
+            self.DuetIPAddress.setText("192.168.0.1")
         # Breathing curves connects/setups are now lazy loaded on tab change in ModulesTab_change.py
 
         #
@@ -353,7 +355,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.SagittalSlider.setPageStep(1)
         self.CoronalSlider.setSingleStep(1)
         self.CoronalSlider.setPageStep(1)
-        if hasattr(self, "segViewSlider"):
+        if hasattr(self, "segViewSlider") and self.segViewSlider is not None and hasattr(self.segViewSlider, 'setSingleStep'):
             self.segViewSlider.setSingleStep(1)
             self.segViewSlider.setPageStep(1)
         
@@ -364,20 +366,6 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # IrIS, Segmentation, and Histogram are now lazy loaded in ModulesTab_change.py/view_hist.py
         self._hook_vtk_dblclicks()
         
-        self.threshMinHU.setText("-200")
-        self.threshMaxHU.setText("200")
-        def run_plot_hist():
-            from fcn_segmentation.functions_segmentation import plot_hist
-            plot_hist(self)
-        self.threshMinHU.textChanged.connect(run_plot_hist)
-        self.threshMaxHU.textChanged.connect(run_plot_hist)
-        self.segSelectView.currentTextChanged.connect(lambda: update_seg_slider(self))
-        self.segViewSlider.valueChanged.connect(lambda: disp_seg_image_slice(self))
-
-        self.segBrushButton.setIcon(QIcon("./icons/brush.png"))
-        self.segEraseButton.setIcon(QIcon("./icons/eraser.png") )
-        self.undoSeg.setIcon(QIcon("./icons/undo.png"))
-        #
         # VTK Comparison module
         self.vtkWidgetsComp = []
         self.renAxComp      = []
@@ -410,7 +398,8 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         self.im_display_tab.installEventFilter(self)
         #
         # 3D view:
-        self.VTK_view_3D.installEventFilter(self)
+        if hasattr(self, 'VTK_view_3D') and self.VTK_view_3D is not None and hasattr(self.VTK_view_3D, 'installEventFilter'):
+            self.VTK_view_3D.installEventFilter(self)
         self._vtk3d_is_maximized = False
         #
         initializeMenuBar(self)

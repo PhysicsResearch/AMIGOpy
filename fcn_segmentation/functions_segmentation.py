@@ -229,7 +229,7 @@ def delete_dialog(self, name, all_series=False):
     
 
 def plot_hist(self):
-    if 0 not in self.display_seg_data:
+    if not hasattr(self, 'display_seg_data') or self.display_seg_data is None or 0 not in self.display_seg_data:
         return
 
     self.plot_fig = Figure()  # Create a figure for the first time
@@ -395,8 +395,12 @@ def update_seg_struct_list(self):
     if getattr(self, 'series_index', None) is None:
         return
 
-    self.segStructList.clear()
-    if self.segStructList.count() != 0 or not (self.DataType in ["DICOM", "Nifti"]):
+    widget = getattr(self, 'segStructList', None)
+    if widget is None or not hasattr(widget, 'clear'):
+        return
+
+    widget.clear()
+    if widget.count() != 0 or not (self.DataType in ["DICOM", "Nifti"]):
         return
 
     if self.modality not in ["CT", 'Medical']:

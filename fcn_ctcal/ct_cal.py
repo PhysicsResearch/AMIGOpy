@@ -115,48 +115,58 @@ def load_ct_cal_curve(self,fileName=None):
         i=i+1
     self.ct_cal_curves[ct_cal_name]=validated_data
     update_ct_cal_list(self)
-    self.ct_cal_list.setCurrentText(ct_cal_name)
+    combo = getattr(self, 'ct_cal_list', None)
+    if combo is not None and hasattr(combo, 'setCurrentText'):
+        combo.setCurrentText(ct_cal_name)
     return validated_data
     
     
     
 def update_ct_cal_list(self):
-    self.ct_cal_list.clear()
-    names=[k for k in self.ct_cal_curves.keys()]
-    self.ct_cal_list.addItems(['<New...>'])
-    self.ct_cal_list.addItems(names)
+    combo = getattr(self, 'ct_cal_list', None)
+    if combo is not None and hasattr(combo, 'clear'):
+        combo.clear()
+        names = [k for k in self.ct_cal_curves.keys()]
+        combo.addItems(['<New...>'])
+        combo.addItems(names)
 
 
-def update_ct_cal_table(self,ct_cal_data):
-    self.ct_cal_table.clear()
+def update_ct_cal_table(self, ct_cal_data):
+    table = getattr(self, 'ct_cal_table', None)
+    if table is None or not hasattr(table, 'setRowCount'):
+        return
+    table.clear()
 
     n_rows, n_cols = ct_cal_data.shape
-    self.ct_cal_table.setRowCount(n_rows+1)
-    self.ct_cal_table.setColumnCount(n_cols)
+    table.setRowCount(n_rows+1)
+    table.setColumnCount(n_cols)
     
     # Set column headers (e.g., 'HU', 'Density', etc.)
     header = ct_cal_data.columns.tolist()
     item0 = QTableWidgetItem(header[0])
     item0.setTextAlignment(Qt.AlignCenter)
     item0.setFlags(item0.flags() & ~Qt.ItemIsEditable)  # Make (0, 0) uneditable
-    self.ct_cal_table.setItem(0, 0, item0)
+    table.setItem(0, 0, item0)
 
     item1 = QTableWidgetItem(header[1])
     item1.setTextAlignment(Qt.AlignCenter)
-    self.ct_cal_table.setItem(0, 1, item1)  # Editable by default
+    table.setItem(0, 1, item1)
 
     # Loop through all rows and columns to make all cells editable
     for row in range(n_rows):
         for col in range(n_cols):
             item = QTableWidgetItem(str(ct_cal_data.iloc[row, col]))
             item.setTextAlignment(Qt.AlignCenter)
-            self.ct_cal_table.setItem(row+1, col, item)
+            table.setItem(row+1, col, item)
 
-    self.ct_cal_table.horizontalHeader().setVisible(False)
-    self.ct_cal_table.verticalHeader().setVisible(False)
-    self.ct_cal_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+    table.horizontalHeader().setVisible(False)
+    table.verticalHeader().setVisible(False)
+    table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
 def plot_ct_cal(self, ct_cal_data):
+    container = getattr(self, 'ct_cal_plot', None)
+    if container is None:
+        return
     # Clean up previous figure, canvas, and toolbar
     if hasattr(self, 'fig_ct_cal') and self.fig_ct_cal:
         plt.close(self.fig_ct_cal)
@@ -240,7 +250,10 @@ def plot_ct_cal(self, ct_cal_data):
             
     
 def update_ct_cal_view(self):
-    selected_text = self.ct_cal_list.currentText()
+    combo = getattr(self, 'ct_cal_list', None)
+    if combo is None or not hasattr(combo, 'currentText'):
+        return
+    selected_text = combo.currentText()
 
     if selected_text == '<New...>':
         init_ct_cal_table(self)

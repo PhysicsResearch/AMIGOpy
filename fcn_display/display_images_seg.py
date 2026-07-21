@@ -6,9 +6,10 @@ from PySide6.QtCore import Qt
 
 
 def update_seg_slider(self):
-
+    if not hasattr(self, 'segSelectView') or self.segSelectView is None:
+        return
     self.im_ori_seg = self.segSelectView.currentText().lower()
-    if 0 not in self.display_seg_data:
+    if not hasattr(self, 'display_seg_data') or self.display_seg_data is None or 0 not in self.display_seg_data:
         return
 
     if self.im_ori_seg=="axial":
@@ -32,6 +33,8 @@ def update_seg_slider(self):
 
 
 def disp_seg_image_slice(self):
+    if not hasattr(self, 'segViewSlider') or self.segViewSlider is None:
+        return
     self.current_seg_slice_index = self.segViewSlider.value()
     
     #########################
@@ -39,7 +42,7 @@ def disp_seg_image_slice(self):
     #########################
     
     # Nothing to display if image volume not available
-    if 0 not in self.display_seg_data: 
+    if not hasattr(self, 'display_seg_data') or self.display_seg_data is None or 0 not in self.display_seg_data: 
         return 
 
     # Display CT volume in layer 0

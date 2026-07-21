@@ -15,11 +15,12 @@ from fcn_load.populate_med_image_list import populate_medical_image_tree
 from PySide6.QtWidgets import QInputDialog, QMessageBox
 
 def update_material_list(self):
-    
-    mat_names=self.Mat_df['Name'].to_numpy().tolist()
-    self.Select_mat.clear()
-    self.Select_mat.addItem('...Select material...')
-    self.Select_mat.addItems(mat_names)
+    select_mat = getattr(self, 'Select_mat', None)
+    if select_mat is not None and hasattr(select_mat, 'clear'):
+        mat_names=self.Mat_df['Name'].to_numpy().tolist()
+        select_mat.clear()
+        select_mat.addItem('...Select material...')
+        select_mat.addItems(mat_names)
     
 
 

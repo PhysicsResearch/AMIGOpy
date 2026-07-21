@@ -11,185 +11,154 @@ import sys
 
 # from fcn_3Dview.Prepare_data_3D_vtk import _on_colormap_changed
 
-def populate_list_menus(self):
-    # self._imgs = {}        # layer_idx -> vtkImageData
-    # self._ctfs = {}        # layer_idx -> vtkColorTransferFunction
-    # self._otfs = {}        # layer_idx -> vtkPiecewiseFunction
-    # self._vol_props = {}   # layer_idx -> vtkVolumeProperty
-    # self._volumes = {}     # layer_idx -> vtkVolume
-    # self._play3D_index = 0
-    # cmap_list = ['Gray', 'Bone', 'Hot', 'Cool', 'Viridis',
-    #              'Plasma', 'Jet', 'Rainbow', 'Spectral', 'BlueWhiteRed']
-    # self.View3D_CMap = self.findChild(QtWidgets.QComboBox, 'View3D_colormap')
-    # self.View3D_CMap.addItems(cmap_list)
-    # self.View3D_CMap.currentIndexChanged.connect(
-    #     lambda idx: _on_colormap_changed(self)
-    # )
+def safe_combo_items(parent, attr_or_name, items, default_index=None, default_text=None, callback=None):
+    combo = getattr(parent, attr_or_name, None)
+    if combo is None and hasattr(parent, 'findChild'):
+        combo = parent.findChild(QtWidgets.QComboBox, attr_or_name)
+    if combo is not None and isinstance(combo, QtWidgets.QComboBox):
+        if combo.count() == 0:
+            combo.addItems(items)
+            if default_index is not None:
+                combo.setCurrentIndex(default_index)
+            if default_text is not None:
+                combo.setCurrentText(default_text)
+            if callback is not None:
+                combo.currentIndexChanged.connect(callback)
+    return combo
 
+def populate_list_menus(self):
     # Populate selection box
     Layers = ["1", "2", "3", "4"]
-    self.layer_selected = self.findChild(QtWidgets.QComboBox, 'Layer_sel')
-    self.layer_selected.addItems(Layers)   
-    self.layer_selected.currentIndexChanged.connect(lambda: update_layer_view(self))
+    self.layer_selected = safe_combo_items(self, 'layer_selected', Layers, callback=lambda: update_layer_view(self))
+    if self.layer_selected is None:
+        self.layer_selected = safe_combo_items(self, 'Layer_sel', Layers, callback=lambda: update_layer_view(self))
 
     # List of operations
     operations = ["none","Invert Image", "Average", "Sum","Crop","Normalize", "Threshold", "Denoise Gaussian","Denoise Median","Denoise Percentile",
                   "Denoise Min.","Denoise Max.", "Wiener", "FFT Gaussian","Gaussian Grad.","Gaussian Laplace","Sobel","Prewitt","TV Chambolle","Rolling ball","Wavelet",
                   "Bilateral","NL means","BM3D"]
-    # Get the QComboBox by its name
-    self.process_list = self.findChild(QtWidgets.QComboBox, 'Process_list')
-    # Populate the QComboBox
-    self.process_list.addItems(operations)
-    # You can also connect the selection change event to a function
-    self.process_list.currentIndexChanged.connect(lambda index: on_operation_selected(self, index))
+    self.process_list = safe_combo_items(self, 'process_list', operations, callback=lambda idx: on_operation_selected(self, idx))
+    if self.process_list is None:
+        self.process_list = safe_combo_items(self, 'Process_list', operations, callback=lambda idx: on_operation_selected(self, idx))
 
     # Breathing curves
     Separators = [",", ";", "\\t", " ", "|"]
-    self.csv_sep_list_BrCv = self.findChild(QtWidgets.QComboBox, 'selDelimCSV_BrCv')
-    self.csv_sep_list_BrCv.addItems(Separators)
-    
-    time_units = ["ms", "s"]
-    self.time_units_list_BrCv = self.findChild(QtWidgets.QComboBox, 'timeUnitCSV_BrCv')
-    self.time_units_list_BrCv.addItems(time_units)
-    
-    cv_types = ["Cosine^2", "Cosine^4", "Cosine^6"]
-    self.cv_type_list_BrCv = self.findChild(QtWidgets.QComboBox, 'cvType')
-    self.cv_type_list_BrCv.addItems(cv_types)
-    
-    self.editXAxis_list_BrCv = self.findChild(QtWidgets.QComboBox, 'editXAxis_BrCv')
-    self.editXAxis_list_BrCv.addItems(["timestamp", "time"])
+    self.csv_sep_list_BrCv = safe_combo_items(self, 'selDelimCSV_BrCv', Separators)
+    self.time_units_list_BrCv = safe_combo_items(self, 'timeUnitCSV_BrCv', ["ms", "s"])
+    self.cv_type_list_BrCv = safe_combo_items(self, 'cvType', ["Cosine^2", "Cosine^4", "Cosine^6"])
+    self.editXAxis_list_BrCv = safe_combo_items(self, 'editXAxis_BrCv', ["timestamp", "time"])
+    self.smooth_method_BrCv = safe_combo_items(self, 'smooth_method_BrCv', ["Fourier", "Uniform", "Median"])
 
-    self.smooth_method_BrCv = self.findChild(QtWidgets.QComboBox, 'smooth_method_BrCv')
-    self.smooth_method_BrCv.addItems(["Fourier", "Uniform", "Median"])
-    
-    self.fourier_cutoffs = [(x*y) for y in [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1] for x in list(range(1, 10))] 
-    self.threshFourierSlider.setMinimum(0)
-    self.threshFourierSlider.setMaximum(len(self.fourier_cutoffs) - 1)
-    self.threshFourierSlider.setValue(26)
-    
+    thresh_slider = getattr(self, 'threshFourierSlider', None)
+    if thresh_slider is not None:
+        self.fourier_cutoffs = [(x*y) for y in [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1] for x in list(range(1, 10))]
+        thresh_slider.setMinimum(0)
+        thresh_slider.setMaximum(len(self.fourier_cutoffs) - 1)
+        thresh_slider.setValue(26)
+
     # Segmentation
-    views = ["Axial", "Coronal", "Sagittal"]
-    self.views_list = self.findChild(QtWidgets.QComboBox, 'segSelectView')
-    self.views_list.addItems(views)
-
-    morph_opers = ['erosion', 'dilation', 'opening', 'closing']
-    self.morph_oper_list = self.findChild(QtWidgets.QComboBox, 'morph_oper_method')
-    self.morph_oper_list.addItems(morph_opers)
-
+    self.views_list = safe_combo_items(self, 'segSelectView', ["Axial", "Coronal", "Sagittal"])
+    self.morph_oper_list = safe_combo_items(self, 'morph_oper_method', ['erosion', 'dilation', 'opening', 'closing'])
 
     # DECT MatInfo
-    self.DECT_list_01.currentIndexChanged.connect(lambda index: on_DECT_list_selection_changed(self, index))
-    #self.DECT_list_02.currentIndexChanged.connect(on_comboBox_selection_changed)
-    
-    # DECT - RED
-    methods = ["Saito", "Hunemohr"]
-    # Get the QComboBox by its name
-    self.RED_method_list = self.findChild(QtWidgets.QComboBox, 'RED_method')
-    # Populate the QComboBox
-    self.RED_method_list.addItems(methods)
+    dect_list_01 = getattr(self, 'DECT_list_01', None)
+    if dect_list_01 is not None and hasattr(dect_list_01, 'currentIndexChanged'):
+        try:
+            dect_list_01.currentIndexChanged.connect(lambda index: on_DECT_list_selection_changed(self, index))
+        except (TypeError, RuntimeError):
+            pass
 
-    # DECT - Zeff
+    # DECT - RED, Zeff, Ivalue
     methods = ["Saito", "Hunemohr"]
-    # Get the QComboBox by its name
-    self.Zeff_method_list = self.findChild(QtWidgets.QComboBox, 'Zeff_method')
-    # Populate the QComboBox
-    self.Zeff_method_list.addItems(methods)
-    
-    # DECT - Ivalue
-    methods = ["Saito", "Hunemohr"]
-    # Get the QComboBox by its name
-    self.Ivalue_method_list = self.findChild(QtWidgets.QComboBox, 'Ivaluefit_method')
-    # Populate the QComboBox
-    self.Ivalue_method_list.addItems(methods)
-    
+    self.RED_method_list = safe_combo_items(self, 'RED_method', methods)
+    self.Zeff_method_list = safe_combo_items(self, 'Zeff_method', methods)
+    self.Ivalue_method_list = safe_combo_items(self, 'Ivaluefit_method', methods)
+
     # Iris correction
-    methods = ["Add", "Sub."]
-    # Get the QComboBox by its name
-    self.IrIS_CorrFrame_operation = self.findChild(QtWidgets.QComboBox, 'IrIS_CorrFrame_oper')
-    # Populate the QComboBox
-    self.IrIS_CorrFrame_operation.addItems(methods)
-    
-    # Brachy -----------------------------------------------------------
-    #
-    along_away = ["Reference", "Calculated", "Comparison"]
-    self.brachy_along_away_type = self.findChild(QtWidgets.QComboBox, 'comboBox_tg43_along_away')
-    self.brachy_along_away_type.addItems(along_away)
-    #
-    DoseGrid = ["0.5","1","2","3","4","5"]
-    self.brachy_tg43_dose_grid = self.findChild(QtWidgets.QComboBox, 'Tg43_dose_grid')
-    self.brachy_tg43_dose_grid.addItems(DoseGrid)
-    self.brachy_tg43_dose_grid.setCurrentIndex(1)
-    #
-    MatrixSize = ["50x50","100x100","150x150","200x200"]
-    self.brachy_tg43_matrix_size = self.findChild(QtWidgets.QComboBox, 'Tg43_matrix_size_2')
-    self.brachy_tg43_matrix_size.addItems(MatrixSize)
-    self.brachy_tg43_matrix_size.setCurrentIndex(3)
-    #
+    self.IrIS_CorrFrame_operation = safe_combo_items(self, 'IrIS_CorrFrame_oper', ["Add", "Sub."])
+
+    # Brachy
+    self.brachy_along_away_type = safe_combo_items(self, 'comboBox_tg43_along_away', ["Reference", "Calculated", "Comparison"])
+    self.brachy_tg43_dose_grid = safe_combo_items(self, 'Tg43_dose_grid', ["0.5","1","2","3","4","5"], default_index=1)
+    self.brachy_tg43_matrix_size = safe_combo_items(self, 'Tg43_matrix_size_2', ["50x50","100x100","150x150","200x200"], default_index=3)
+
     # Brachy channel or dwell view
-    # 
-    methods = ["Dwells", "Channels", "Ref. Points"]
-    # Get the QComboBox by its name
-    self.brachy_dw_ch_box_01 = self.findChild(QtWidgets.QComboBox, 'brachy_combobox_01')
-    self.brachy_dw_ch_box_02 = self.findChild(QtWidgets.QComboBox, 'brachy_combobox_02')
-    # Populate the QComboBox
-    self.brachy_dw_ch_box_01.addItems(methods)
-    self.brachy_dw_ch_box_02.addItems(methods)
-    # call back
-    def sync_box_1_to_2(index):
-        self.brachy_dw_ch_box_02.blockSignals(True)
-        self.brachy_dw_ch_box_02.setCurrentIndex(index)
-        self.brachy_dw_ch_box_02.blockSignals(False)
-        update_disp_brachy_plan(self)
+    brachy_methods = ["Dwells", "Channels", "Ref. Points"]
+    self.brachy_dw_ch_box_01 = safe_combo_items(self, 'brachy_combobox_01', brachy_methods)
+    self.brachy_dw_ch_box_02 = safe_combo_items(self, 'brachy_combobox_02', brachy_methods)
 
-    def sync_box_2_to_1(index):
-        self.brachy_dw_ch_box_01.blockSignals(True)
-        self.brachy_dw_ch_box_01.setCurrentIndex(index)
-        self.brachy_dw_ch_box_01.blockSignals(False)
-        update_disp_brachy_plan(self)
+    if self.brachy_dw_ch_box_01 is not None and self.brachy_dw_ch_box_02 is not None:
+        def sync_box_1_to_2(index):
+            if self.brachy_dw_ch_box_02 is not None:
+                self.brachy_dw_ch_box_02.blockSignals(True)
+                self.brachy_dw_ch_box_02.setCurrentIndex(index)
+                self.brachy_dw_ch_box_02.blockSignals(False)
+                update_disp_brachy_plan(self)
 
-    self.brachy_dw_ch_box_01.currentIndexChanged.connect(sync_box_1_to_2)
-    self.brachy_dw_ch_box_02.currentIndexChanged.connect(sync_box_2_to_1)
+        def sync_box_2_to_1(index):
+            if self.brachy_dw_ch_box_01 is not None:
+                self.brachy_dw_ch_box_01.blockSignals(True)
+                self.brachy_dw_ch_box_01.setCurrentIndex(index)
+                self.brachy_dw_ch_box_01.blockSignals(False)
+                update_disp_brachy_plan(self)
 
+        try:
+            self.brachy_dw_ch_box_01.currentIndexChanged.connect(sync_box_1_to_2)
+            self.brachy_dw_ch_box_02.currentIndexChanged.connect(sync_box_2_to_1)
+        except (TypeError, RuntimeError):
+            pass
 
     # Color
-    methods = ["Black", "Blue", "Green", "Red", "White"]
-    # Get the QComboBox by its name
-    self.brachy_dw_sel_col   = self.findChild(QtWidgets.QComboBox, 'brachy_dw_color')
-    self.brachy_lin_sel_col  = self.findChild(QtWidgets.QComboBox, 'brachy_line_color')
-    self.brachy_p1_sel_col  = self.findChild(QtWidgets.QComboBox, 'brachy_ch_p1_color')
-    # Populate the QComboBox
-    self.brachy_dw_sel_col.addItems(methods)
-    self.brachy_lin_sel_col.addItems(methods)
-    self.brachy_p1_sel_col.addItems(methods)
-    # Set default selections
-    self.brachy_dw_sel_col.setCurrentText("Red")      # First combo box starts with "Green"
-    self.brachy_lin_sel_col.setCurrentText("White")   # Second combo box starts with "Blue"
-    self.brachy_p1_sel_col.setCurrentText("Blue")     # Third combo box starts with "Red"
-     
-    
-    #Eqd2
-    self.dose_list.addItems(['None'])
-    self.eqd2_struct_list.addItems(['None'])
-    self.eqd2_struct_list.currentTextChanged.connect(lambda: on_struct_list_change(self))
-    
+    color_methods = ["Black", "Blue", "Green", "Red", "White"]
+    self.brachy_dw_sel_col   = safe_combo_items(self, 'brachy_dw_color', color_methods, default_text="Red")
+    self.brachy_lin_sel_col  = safe_combo_items(self, 'brachy_line_color', color_methods, default_text="White")
+    self.brachy_p1_sel_col   = safe_combo_items(self, 'brachy_ch_p1_color', color_methods, default_text="Blue")
 
-    #Ct calibration
-    self.ct_cal_list.currentTextChanged.connect(lambda: update_ct_cal_view(self))
-    #Initialize a list to store the CT calibration curves
-    self.ct_cal_curves={}
+    # Eqd2
+    dose_list = getattr(self, 'dose_list', None)
+    if dose_list is not None and hasattr(dose_list, 'addItems'):
+        if dose_list.count() == 0:
+            dose_list.addItems(['None'])
+
+    eqd2_struct_list = getattr(self, 'eqd2_struct_list', None)
+    if eqd2_struct_list is not None and hasattr(eqd2_struct_list, 'addItems'):
+        if eqd2_struct_list.count() == 0:
+            eqd2_struct_list.addItems(['None'])
+            try:
+                eqd2_struct_list.currentTextChanged.connect(lambda: on_struct_list_change(self))
+            except (TypeError, RuntimeError):
+                pass
+
+    # Ct calibration
+    ct_cal_list = getattr(self, 'ct_cal_list', None)
+    if ct_cal_list is not None and hasattr(ct_cal_list, 'currentTextChanged'):
+        try:
+            ct_cal_list.currentTextChanged.connect(lambda: update_ct_cal_view(self))
+        except (TypeError, RuntimeError):
+            pass
+
+    self.ct_cal_curves = {}
     ct_cal_dir = get_appdata_ct_cal_dir()
-    ct_cal_files = os.listdir(ct_cal_dir)
-    for file in ct_cal_files:
-        file_path = os.path.join(ct_cal_dir, file)
-        ct_cal_data = load_ct_cal_curve(self, fileName=file_path)
-        update_ct_cal_table(self,ct_cal_data)
-        update_ct_cal_view(self)
-    
-    
-    #Material assignment
-    self.Select_mat.currentTextChanged.connect(lambda: on_material_change(self))
-    self.Struct_list_mat.clear()
-    self.Struct_list_mat.addItem('...Select Structure...')
+    if os.path.exists(ct_cal_dir):
+        ct_cal_files = os.listdir(ct_cal_dir)
+        for file in ct_cal_files:
+            file_path = os.path.join(ct_cal_dir, file)
+            ct_cal_data = load_ct_cal_curve(self, fileName=file_path)
+            update_ct_cal_table(self, ct_cal_data)
+            update_ct_cal_view(self)
+
+    # Material assignment
+    select_mat = getattr(self, 'Select_mat', None)
+    if select_mat is not None and hasattr(select_mat, 'currentTextChanged'):
+        try:
+            select_mat.currentTextChanged.connect(lambda: on_material_change(self))
+        except (TypeError, RuntimeError):
+            pass
+
+    struct_list_mat = getattr(self, 'Struct_list_mat', None)
+    if struct_list_mat is not None and hasattr(struct_list_mat, 'addItem'):
+        if struct_list_mat.count() == 0:
+            struct_list_mat.addItem('...Select Structure...')
     
     
 
