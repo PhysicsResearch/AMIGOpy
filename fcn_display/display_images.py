@@ -416,66 +416,114 @@ def disp_roi_axial(self):
             sli_ini      = self.table_circ_roi.item(row, 3)
             sli_fin      = self.table_circ_roi.item(row, 4)
             transparency = self.table_circ_roi.item(row, 5)
-            R            = self.table_circ_roi.item(row, 6)
-            G            = self.table_circ_roi.item(row, 7)
-            B            = self.table_circ_roi.item(row, 8)
+            R_item = self.table_circ_roi.item(row, 8) or self.table_circ_roi.item(row, 7) or self.table_circ_roi.item(row, 6)
+            G_item = self.table_circ_roi.item(row, 9) or self.table_circ_roi.item(row, 8) or self.table_circ_roi.item(row, 7)
+            B_item = self.table_circ_roi.item(row, 10) or self.table_circ_roi.item(row, 9) or self.table_circ_roi.item(row, 8)
             
-            if (item_x is None or item_y is None or item_radius is None or sli_ini is None or sli_fin is None
-                or transparency is None or R is None or G is None or B is None):
-                print(f'Skipping row {row} due to missing data')
+            if (item_x is None or item_y is None or item_radius is None or sli_ini is None or sli_fin is None or transparency is None):
                 continue
 
-            sli_ini        = float(sli_ini.text())
-            sli_fin        = float(sli_fin.text())
-            
-          
-            if self.current_axial_slice_index[0] < sli_ini or self.current_axial_slice_index[0] > sli_fin:
-                continue
-
+            sli_ini_val = float(sli_ini.text())
+            sli_fin_val = float(sli_fin.text())
             center_x_pixel = float(item_x.text())
             center_y_pixel = float(item_y.text())
-            radius         = float(item_radius.text())
-            transparency   = float(transparency.text())
-            R              = float(R.text())
-            G              = float(G.text())
-            B              = float(B.text())
-            # Convert pixel coordinates to physical coordinates
-            center_x = center_x_pixel * self.pixel_spac[0, 0]  #+ self.Im_Offset[i, 0]
-            center_y = center_y_pixel * self.pixel_spac[0, 1]  #+ self.Im_Offset[i, 1]
-            radius   = radius * self.pixel_spac[0, 0]
-         
-            if row < len(self.circle_actors_ax):
-                # Update existing circle actor
-                circle_actor = self.circle_actors_ax[row]
+            radius = float(item_radius.text())
+            transparency_val = float(transparency.text())
+            R = float(R_item.text()) if R_item is not None else 1.0
+            G = float(G_item.text()) if G_item is not None else 0.0
+            B = float(B_item.text()) if B_item is not None else 0.0
+
+            dir_widget = self.table_circ_roi.cellWidget(row, 7)
+            if dir_widget is not None and hasattr(dir_widget, 'currentText'):
+                row_dir = dir_widget.currentText()
+            else:
+                row_dir = item_x.data(Qt.UserRole + 1) if item_x is not None else "Axial"
+            if not row_dir:
+                row_dir = "Axial"
+
+            curr_ax = self.current_axial_slice_index[0]
+
+            if row_dir == "Axial":
+                if curr_ax < sli_ini_val or curr_ax > sli_fin_val:
+                    if row < len(self.circle_actors_ax):
+                        renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+                        actor_to_remove = self.circle_actors_ax.pop(row)
+                        renderer.RemoveActor(actor_to_remove)
+                        self.vtkWidgetAxial.GetRenderWindow().Render()
+                    continue
+
+                center_x = center_x_pixel * self.pixel_spac[0, 0]
+                center_y = center_y_pixel * self.pixel_spac[0, 1]
+                radius_phys = radius * self.pixel_spac[0, 0]
+
                 circle_source = vtk.vtkRegularPolygonSource()
                 circle_source.SetNumberOfSides(50)
-                circle_source.SetRadius(radius)
+                circle_source.SetRadius(radius_phys)
                 circle_source.SetCenter(center_x, center_y, 0)
 
                 mapper = vtk.vtkPolyDataMapper()
                 mapper.SetInputConnection(circle_source.GetOutputPort())
-                circle_actor.SetMapper(mapper)
-                circle_actor.GetProperty().SetOpacity(1 - transparency)
+
+                if row < len(self.circle_actors_ax):
+                    circle_actor = self.circle_actors_ax[row]
+                    circle_actor.SetMapper(mapper)
+                    circle_actor.GetProperty().SetColor(R, G, B)
+                    circle_actor.GetProperty().SetOpacity(1 - transparency_val)
+                else:
+                    actor = vtk.vtkActor()
+                    actor.SetMapper(mapper)
+                    actor.GetProperty().SetColor(R, G, B)
+                    actor.GetProperty().SetLineWidth(2)
+                    actor.GetProperty().SetOpacity(1 - transparency_val)
+                    actor.SetPosition(0, 0, 1)
+                    self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(actor)
+                    self.circle_actors_ax.append(actor)
             else:
-                # Create new circle actor
-                circle_source = vtk.vtkRegularPolygonSource()
-                circle_source.SetNumberOfSides(50)  # More sides for a smoother circle
-                circle_source.SetRadius(radius)
-                circle_source.SetCenter(center_x, center_y, 0)  # Assuming 2D, set z to 0
+                if curr_ax < (center_y_pixel - radius) or curr_ax > (center_y_pixel + radius):
+                    if row < len(self.circle_actors_ax):
+                        renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+                        actor_to_remove = self.circle_actors_ax.pop(row)
+                        renderer.RemoveActor(actor_to_remove)
+                        self.vtkWidgetAxial.GetRenderWindow().Render()
+                    continue
+
+                dist = abs(curr_ax - center_y_pixel)
+                width = 2 * math.sqrt(max(0, radius**2 - dist**2)) * self.pixel_spac[0, 0]
+                height = (sli_fin_val - sli_ini_val + 1) * self.pixel_spac[0, 1]
+
+                cube_source = vtk.vtkCubeSource()
+                if row_dir == "Coronal":
+                    cube_source.SetXLength(width)
+                    cube_source.SetYLength(height)
+                    cx_phys = center_x_pixel * self.pixel_spac[0, 0]
+                    cy_phys = (sli_ini_val + sli_fin_val) / 2 * self.pixel_spac[0, 1]
+                else:
+                    cube_source.SetXLength(height)
+                    cube_source.SetYLength(width)
+                    cx_phys = (sli_ini_val + sli_fin_val) / 2 * self.pixel_spac[0, 0]
+                    cy_phys = center_x_pixel * self.pixel_spac[0, 1]
+                cube_source.SetZLength(1)
+                cube_source.SetCenter(cx_phys, cy_phys, 0)
 
                 mapper = vtk.vtkPolyDataMapper()
-                mapper.SetInputConnection(circle_source.GetOutputPort())
+                mapper.SetInputConnection(cube_source.GetOutputPort())
 
-                actor = vtk.vtkActor()
-                actor.SetMapper(mapper)
-                actor.GetProperty().SetColor(R, G, B)  # Set color to red
-                actor.GetProperty().SetLineWidth(2)  # Set line width
-                actor.GetProperty().SetOpacity(transparency)  # Set transparency
-                # Set Z position slightly above the image layer
-                actor.SetPosition(0, 0, 1)
-                self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(actor)
-                self.circle_actors_ax.append(actor)
-        except ValueError:
+                if row < len(self.circle_actors_ax):
+                    rect_actor = self.circle_actors_ax[row]
+                    rect_actor.SetMapper(mapper)
+                    rect_actor.GetProperty().SetColor(R, G, B)
+                    rect_actor.GetProperty().SetOpacity(1 - transparency_val)
+                else:
+                    actor = vtk.vtkActor()
+                    actor.SetMapper(mapper)
+                    actor.GetProperty().SetColor(R, G, B)
+                    actor.GetProperty().SetOpacity(1 - transparency_val)
+                    actor.SetPosition(0, 0, 1)
+                    self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(actor)
+                    self.circle_actors_ax.append(actor)
+        except Exception as e:
+            print(f"Skipping row {row} in disp_roi_axial due to error: {e}")
+            continue
             print(f'Skipping row {row} due to invalid data')
             continue  
 
@@ -1079,93 +1127,122 @@ def disp_roi_coronal(self):
             sli_ini = self.table_circ_roi.item(row, 3)
             sli_fin = self.table_circ_roi.item(row, 4)
             transparency = self.table_circ_roi.item(row, 5)
-            R = self.table_circ_roi.item(row, 6)
-            G = self.table_circ_roi.item(row, 7)
-            B = self.table_circ_roi.item(row, 8)
+            R_item = self.table_circ_roi.item(row, 8) or self.table_circ_roi.item(row, 7) or self.table_circ_roi.item(row, 6)
+            G_item = self.table_circ_roi.item(row, 9) or self.table_circ_roi.item(row, 8) or self.table_circ_roi.item(row, 7)
+            B_item = self.table_circ_roi.item(row, 10) or self.table_circ_roi.item(row, 9) or self.table_circ_roi.item(row, 8)
 
-            if (item_x is None or item_y is None or item_radius is None or sli_ini is None or sli_fin is None
-                    or transparency is None or R is None or G is None or B is None):
-                print(f'Skipping row {row} due to missing data')
+            if (item_x is None or item_y is None or item_radius is None or sli_ini is None or sli_fin is None or transparency is None):
                 continue
 
-            sli_ini = float(sli_ini.text())
-            sli_fin = float(sli_fin.text())
+            sli_ini_val = float(sli_ini.text())
+            sli_fin_val = float(sli_fin.text())
             center_x_pixel = float(item_x.text())
             center_y_pixel = float(item_y.text())
             radius = float(item_radius.text())
-            transparency = float(transparency.text())
-            R = float(R.text())
-            G = float(G.text())
-            B = float(B.text())
-            
-            
-            if self.current_coronal_slice_index[0] < (center_y_pixel-radius) or self.current_coronal_slice_index[0] > (center_y_pixel+radius):
-                # Remove the specific actor corresponding to this row
+            transparency_val = float(transparency.text())
+            R = float(R_item.text()) if R_item is not None else 1.0
+            G = float(G_item.text()) if G_item is not None else 0.0
+            B = float(B_item.text()) if B_item is not None else 0.0
+
+            dir_widget = self.table_circ_roi.cellWidget(row, 7)
+            if dir_widget is not None and hasattr(dir_widget, 'currentText'):
+                row_dir = dir_widget.currentText()
+            else:
+                row_dir = item_x.data(Qt.UserRole + 1) if item_x is not None else "Axial"
+            if not row_dir:
+                row_dir = "Axial"
+
+            curr_co = self.current_coronal_slice_index[0]
+
+            if row_dir == "Coronal":
+                if curr_co < sli_ini_val or curr_co > sli_fin_val:
+                    if row < len(self.circle_actors_co):
+                        renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+                        actor_to_remove = self.circle_actors_co.pop(row)
+                        renderer.RemoveActor(actor_to_remove)
+                        self.vtkWidgetCoronal.GetRenderWindow().Render()
+                    continue
+
+                center_x_phys = center_x_pixel * self.pixel_spac[0, 0]
+                center_y_phys = center_y_pixel * self.slice_thick[0]
+                radius_phys = radius * self.pixel_spac[0, 0]
+
+                circle_source = vtk.vtkRegularPolygonSource()
+                circle_source.SetNumberOfSides(50)
+                circle_source.SetRadius(radius_phys)
+                circle_source.SetCenter(center_x_phys, center_y_phys, 1)
+
+                mapper = vtk.vtkPolyDataMapper()
+                mapper.SetInputConnection(circle_source.GetOutputPort())
+
                 if row < len(self.circle_actors_co):
-                    renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
-                    actor_to_remove = self.circle_actors_co.pop(row)
-                    renderer.RemoveActor(actor_to_remove)
-                    self.vtkWidgetCoronal.GetRenderWindow().Render()
-                continue
-           
+                    circle_actor = self.circle_actors_co[row]
+                    circle_actor.SetMapper(mapper)
+                    circle_actor.GetProperty().SetColor(R, G, B)
+                    circle_actor.GetProperty().SetOpacity(1 - transparency_val)
+                else:
+                    actor = vtk.vtkActor()
+                    actor.SetMapper(mapper)
+                    actor.GetProperty().SetColor(R, G, B)
+                    actor.GetProperty().SetLineWidth(2)
+                    actor.GetProperty().SetOpacity(1 - transparency_val)
+                    self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(actor)
+                    self.circle_actors_co.append(actor)
 
-
-            # Convert pixel coordinates to physical coordinates
-            center_z = center_x_pixel    * self.pixel_spac[0, 0]
-            height = (sli_fin - sli_ini) * self.slice_thick[0]
-            
-            # Calculate the distance from the center of the cylinder to the current slice
-            current_slice_position = self.current_coronal_slice_index[0]
-            center_slice_position  = (sli_ini + sli_fin) / 2 
-
-            distance_from_center   = abs(self.current_coronal_slice_index[0] - center_y_pixel)
-            # Calculate the width of the rectangle based on the distance from the center of the cylinder
-            if distance_from_center > radius+1:
-                width = 0
-                
             else:
-                width = 2 * math.sqrt(radius**2 - distance_from_center**2) * self.pixel_spac[0, 0]  
+                if row_dir == "Axial":
+                    if curr_co < (center_y_pixel - radius) or curr_co > (center_y_pixel + radius):
+                        if row < len(self.circle_actors_co):
+                            renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+                            actor_to_remove = self.circle_actors_co.pop(row)
+                            renderer.RemoveActor(actor_to_remove)
+                            self.vtkWidgetCoronal.GetRenderWindow().Render()
+                        continue
 
-            if row < len(self.circle_actors_co):
-                # Update existing rectangle actor
-                rect_actor = self.circle_actors_co[row]
+                    dist = abs(curr_co - center_y_pixel)
+                    width = 2 * math.sqrt(max(0, radius**2 - dist**2)) * self.pixel_spac[0, 0]
+                    height = (sli_fin_val - sli_ini_val + 1) * self.slice_thick[0]
+                    cx_phys = center_x_pixel * self.pixel_spac[0, 0]
+                    cy_phys = (sli_ini_val + sli_fin_val) / 2 * self.slice_thick[0]
+                else: # Sagittal
+                    if curr_co < (center_x_pixel - radius) or curr_co > (center_x_pixel + radius):
+                        if row < len(self.circle_actors_co):
+                            renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+                            actor_to_remove = self.circle_actors_co.pop(row)
+                            renderer.RemoveActor(actor_to_remove)
+                            self.vtkWidgetCoronal.GetRenderWindow().Render()
+                        continue
+
+                    dist = abs(curr_co - center_x_pixel)
+                    width = (sli_fin_val - sli_ini_val + 1) * self.pixel_spac[0, 0]
+                    height = 2 * math.sqrt(max(0, radius**2 - dist**2)) * self.slice_thick[0]
+                    cx_phys = (sli_ini_val + sli_fin_val) / 2 * self.pixel_spac[0, 0]
+                    cy_phys = center_y_pixel * self.slice_thick[0]
+
                 cube_source = vtk.vtkCubeSource()
                 cube_source.SetXLength(width)
                 cube_source.SetYLength(height)
-                cube_source.SetZLength(1)  # Assuming the thickness of 1 voxel
-
-                center_y = (sli_ini + sli_fin) / 2 * self.slice_thick[0]
-
-                cube_source.SetCenter(center_z, center_y, 0)
-
-                mapper = vtk.vtkPolyDataMapper()
-                mapper.SetInputConnection(cube_source.GetOutputPort())
-                rect_actor.SetMapper(mapper)
-                rect_actor.GetProperty().SetOpacity(transparency)
-            else:
-                # Create new rectangle actor
-                cube_source = vtk.vtkCubeSource()
-                cube_source.SetXLength(width)
-                cube_source.SetYLength(height)
-                cube_source.SetZLength(1)  # Assuming the thickness of 1 voxel
-
-                center_y = (sli_ini + sli_fin) / 2 * self.slice_thick[0]
-
-                cube_source.SetCenter(center_z, center_y, 0)
+                cube_source.SetZLength(1)
+                cube_source.SetCenter(cx_phys, cy_phys, 1)
 
                 mapper = vtk.vtkPolyDataMapper()
                 mapper.SetInputConnection(cube_source.GetOutputPort())
 
-                actor = vtk.vtkActor()
-                actor.SetMapper(mapper)
-                actor.GetProperty().SetColor(R, G, B)
-                actor.GetProperty().SetOpacity(transparency)
+                if row < len(self.circle_actors_co):
+                    rect_actor = self.circle_actors_co[row]
+                    rect_actor.SetMapper(mapper)
+                    rect_actor.GetProperty().SetColor(R, G, B)
+                    rect_actor.GetProperty().SetOpacity(1 - transparency_val)
+                else:
+                    actor = vtk.vtkActor()
+                    actor.SetMapper(mapper)
+                    actor.GetProperty().SetColor(R, G, B)
+                    actor.GetProperty().SetOpacity(1 - transparency_val)
+                    self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(actor)
+                    self.circle_actors_co.append(actor)
 
-                self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(actor)
-                self.circle_actors_co.append(actor)
-
-        except ValueError:
-            print(f'Skipping row {row} due to invalid data')
+        except Exception as e:
+            print(f"Skipping row {row} in disp_roi_coronal due to error: {e}")
             continue  
     
 
@@ -1751,93 +1828,122 @@ def disp_roi_sagittal(self):
             sli_ini = self.table_circ_roi.item(row, 3)
             sli_fin = self.table_circ_roi.item(row, 4)
             transparency = self.table_circ_roi.item(row, 5)
-            R = self.table_circ_roi.item(row, 6)
-            G = self.table_circ_roi.item(row, 7)
-            B = self.table_circ_roi.item(row, 8)
+            R_item = self.table_circ_roi.item(row, 8) or self.table_circ_roi.item(row, 7) or self.table_circ_roi.item(row, 6)
+            G_item = self.table_circ_roi.item(row, 9) or self.table_circ_roi.item(row, 8) or self.table_circ_roi.item(row, 7)
+            B_item = self.table_circ_roi.item(row, 10) or self.table_circ_roi.item(row, 9) or self.table_circ_roi.item(row, 8)
 
-            if (item_x is None or item_y is None or item_radius is None or sli_ini is None or sli_fin is None
-                    or transparency is None or R is None or G is None or B is None):
-                print(f'Skipping row {row} due to missing data')
+            if (item_x is None or item_y is None or item_radius is None or sli_ini is None or sli_fin is None or transparency is None):
                 continue
 
-            sli_ini = float(sli_ini.text())
-            sli_fin = float(sli_fin.text())
+            sli_ini_val = float(sli_ini.text())
+            sli_fin_val = float(sli_fin.text())
             center_x_pixel = float(item_x.text())
             center_y_pixel = float(item_y.text())
             radius = float(item_radius.text())
-            transparency = float(transparency.text())
-            R = float(R.text())
-            G = float(G.text())
-            B = float(B.text())
-            
-            
-            if self.current_sagittal_slice_index[0] < (center_x_pixel-radius) or self.current_sagittal_slice_index[0] > (center_x_pixel+radius):
-                # Remove the specific actor corresponding to this row
+            transparency_val = float(transparency.text())
+            R = float(R_item.text()) if R_item is not None else 1.0
+            G = float(G_item.text()) if G_item is not None else 0.0
+            B = float(B_item.text()) if B_item is not None else 0.0
+
+            dir_widget = self.table_circ_roi.cellWidget(row, 7)
+            if dir_widget is not None and hasattr(dir_widget, 'currentText'):
+                row_dir = dir_widget.currentText()
+            else:
+                row_dir = item_x.data(Qt.UserRole + 1) if item_x is not None else "Axial"
+            if not row_dir:
+                row_dir = "Axial"
+
+            curr_sa = self.current_sagittal_slice_index[0]
+
+            if row_dir == "Sagittal":
+                if curr_sa < sli_ini_val or curr_sa > sli_fin_val:
+                    if row < len(self.circle_actors_sa):
+                        renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+                        actor_to_remove = self.circle_actors_sa.pop(row)
+                        renderer.RemoveActor(actor_to_remove)
+                        self.vtkWidgetSagittal.GetRenderWindow().Render()
+                    continue
+
+                center_x_phys = center_x_pixel * self.pixel_spac[0, 1]
+                center_y_phys = center_y_pixel * self.slice_thick[0]
+                radius_phys = radius * self.pixel_spac[0, 1]
+
+                circle_source = vtk.vtkRegularPolygonSource()
+                circle_source.SetNumberOfSides(50)
+                circle_source.SetRadius(radius_phys)
+                circle_source.SetCenter(center_x_phys, center_y_phys, 1)
+
+                mapper = vtk.vtkPolyDataMapper()
+                mapper.SetInputConnection(circle_source.GetOutputPort())
+
                 if row < len(self.circle_actors_sa):
-                    renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
-                    actor_to_remove = self.circle_actors_sa.pop(row)
-                    renderer.RemoveActor(actor_to_remove)
-                    self.vtkWidgetSagittal.GetRenderWindow().Render()
-                continue
-           
+                    circle_actor = self.circle_actors_sa[row]
+                    circle_actor.SetMapper(mapper)
+                    circle_actor.GetProperty().SetColor(R, G, B)
+                    circle_actor.GetProperty().SetOpacity(1 - transparency_val)
+                else:
+                    actor = vtk.vtkActor()
+                    actor.SetMapper(mapper)
+                    actor.GetProperty().SetColor(R, G, B)
+                    actor.GetProperty().SetLineWidth(2)
+                    actor.GetProperty().SetOpacity(1 - transparency_val)
+                    self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(actor)
+                    self.circle_actors_sa.append(actor)
 
-
-            # Convert pixel coordinates to physical coordinates
-            center_z = center_y_pixel    * self.pixel_spac[0, 0]
-            height = (sli_fin - sli_ini) * self.slice_thick[0]
-            
-            # Calculate the distance from the center of the cylinder to the current slice
-            current_slice_position = self.current_sagittal_slice_index[0]
-            center_slice_position  = (sli_ini + sli_fin) / 2 
-
-            distance_from_center   = abs(self.current_sagittal_slice_index[0] - center_x_pixel)
-            # Calculate the width of the rectangle based on the distance from the center of the cylinder
-            if distance_from_center > radius+1:
-                width = 0
-                
             else:
-                width = 2 * math.sqrt(radius**2 - distance_from_center**2) * self.pixel_spac[0, 0]  
+                if row_dir == "Axial":
+                    if curr_sa < (center_x_pixel - radius) or curr_sa > (center_x_pixel + radius):
+                        if row < len(self.circle_actors_sa):
+                            renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+                            actor_to_remove = self.circle_actors_sa.pop(row)
+                            renderer.RemoveActor(actor_to_remove)
+                            self.vtkWidgetSagittal.GetRenderWindow().Render()
+                        continue
 
-            if row < len(self.circle_actors_sa):
-                # Update existing rectangle actor
-                rect_actor = self.circle_actors_sa[row]
+                    dist = abs(curr_sa - center_x_pixel)
+                    width = 2 * math.sqrt(max(0, radius**2 - dist**2)) * self.pixel_spac[0, 1]
+                    height = (sli_fin_val - sli_ini_val + 1) * self.slice_thick[0]
+                    cx_phys = center_y_pixel * self.pixel_spac[0, 1]
+                    cy_phys = (sli_ini_val + sli_fin_val) / 2 * self.slice_thick[0]
+                else: # Coronal
+                    if curr_sa < (center_x_pixel - radius) or curr_sa > (center_x_pixel + radius):
+                        if row < len(self.circle_actors_sa):
+                            renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+                            actor_to_remove = self.circle_actors_sa.pop(row)
+                            renderer.RemoveActor(actor_to_remove)
+                            self.vtkWidgetSagittal.GetRenderWindow().Render()
+                        continue
+
+                    dist = abs(curr_sa - center_x_pixel)
+                    width = (sli_fin_val - sli_ini_val + 1) * self.pixel_spac[0, 1]
+                    height = 2 * math.sqrt(max(0, radius**2 - dist**2)) * self.slice_thick[0]
+                    cx_phys = (sli_ini_val + sli_fin_val) / 2 * self.pixel_spac[0, 1]
+                    cy_phys = center_y_pixel * self.slice_thick[0]
+
                 cube_source = vtk.vtkCubeSource()
                 cube_source.SetXLength(width)
                 cube_source.SetYLength(height)
-                cube_source.SetZLength(1)  # Assuming the thickness of 1 voxel
-
-                center_y = (sli_ini + sli_fin) / 2 * self.slice_thick[0]
-
-                cube_source.SetCenter(center_z, center_y, 0)
-
-                mapper = vtk.vtkPolyDataMapper()
-                mapper.SetInputConnection(cube_source.GetOutputPort())
-                rect_actor.SetMapper(mapper)
-                rect_actor.GetProperty().SetOpacity(transparency)
-            else:
-                # Create new rectangle actor
-                cube_source = vtk.vtkCubeSource()
-                cube_source.SetXLength(width)
-                cube_source.SetYLength(height)
-                cube_source.SetZLength(1)  # Assuming the thickness of 1 voxel
-
-                center_y = (sli_ini + sli_fin) / 2 * self.slice_thick[0]
-
-                cube_source.SetCenter(center_z, center_y, 0)
+                cube_source.SetZLength(1)
+                cube_source.SetCenter(cx_phys, cy_phys, 1)
 
                 mapper = vtk.vtkPolyDataMapper()
                 mapper.SetInputConnection(cube_source.GetOutputPort())
 
-                actor = vtk.vtkActor()
-                actor.SetMapper(mapper)
-                actor.GetProperty().SetColor(R, G, B)
-                actor.GetProperty().SetOpacity(transparency)
+                if row < len(self.circle_actors_sa):
+                    rect_actor = self.circle_actors_sa[row]
+                    rect_actor.SetMapper(mapper)
+                    rect_actor.GetProperty().SetColor(R, G, B)
+                    rect_actor.GetProperty().SetOpacity(1 - transparency_val)
+                else:
+                    actor = vtk.vtkActor()
+                    actor.SetMapper(mapper)
+                    actor.GetProperty().SetColor(R, G, B)
+                    actor.GetProperty().SetOpacity(1 - transparency_val)
+                    self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(actor)
+                    self.circle_actors_sa.append(actor)
 
-                self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(actor)
-                self.circle_actors_sa.append(actor)
-
-        except ValueError:
-            print(f'Skipping row {row} due to invalid data')
+        except Exception as e:
+            print(f"Skipping row {row} in disp_roi_sagittal due to error: {e}")
             continue
 
 

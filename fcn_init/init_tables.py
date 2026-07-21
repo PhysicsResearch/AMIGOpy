@@ -28,17 +28,30 @@ def initialize_software_tables(self):
     
     
     # Adjust source calibration table ----------------------
-    column_names = ["X Cent. (Px)", "Y Cent. (Px)", "Rad. (Px)", "Init. Slice", "Last. Slice", "Trasnp.","R","G","B", "Actions"]
-    self.table_circ_roi.setColumnCount(10)
+    column_names = ["X Cent. (Px)", "Y Cent. (Px)", "Rad. (Px)", "Init. Slice", "Last. Slice", "Trasnp.", "Color", "Dir.", "R", "G", "B", "Actions"]
+    self.table_circ_roi.setColumnCount(12)
     self.table_circ_roi.setRowCount(0)
     self.table_circ_roi.setSelectionBehavior(QAbstractItemView.SelectRows)
     self.table_circ_roi.setSelectionMode(QAbstractItemView.SingleSelection)
-    #
     self.table_circ_roi.setHorizontalHeaderLabels(column_names)
-    # Adjust the column width to fit the content or header
-    self.table_circ_roi.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-    #
-    self.table_circ_roi.itemChanged.connect(lambda item: on_roitable_item_changed(self,item))
+    self.table_circ_roi.setColumnHidden(8, True)
+    self.table_circ_roi.setColumnHidden(9, True)
+    self.table_circ_roi.setColumnHidden(10, True)
+    self.table_circ_roi.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+    self.table_circ_roi.horizontalHeader().setStretchLastSection(True)
+    if hasattr(self, 'table_roi_c_values'):
+        self.table_roi_c_values.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.table_roi_c_values.horizontalHeader().setStretchLastSection(True)
+    from fcn_processing.roi_circle import on_roitable_item_changed, on_roi_table_selection_changed
+    self.table_circ_roi.itemChanged.connect(lambda item: on_roitable_item_changed(self, item))
+    self.table_circ_roi.itemSelectionChanged.connect(lambda: on_roi_table_selection_changed(self))
+    self.table_circ_roi.setStyleSheet("""
+        QTableWidget::item:selected {
+            background-color: #3b82f6;
+            color: #ffffff;
+            font-weight: bold;
+        }
+    """)
     
     # Adjust DECT RED table ----------------------
     column_names = ["Material","RED Ref.", "RED fit", "Diff.", "Diff. (%)"]

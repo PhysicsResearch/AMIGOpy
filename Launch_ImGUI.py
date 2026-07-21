@@ -41,7 +41,7 @@ from fcn_init.ModulesTab_change       import set_fcn_tabModules_changed
 from fcn_init.init_variables          import initialize_software_variables
 from fcn_init.init_tables             import initialize_software_tables
 from fcn_init.init_buttons            import initialize_software_buttons
-from fcn_init.create_3D_database_tab  import setup_3d_database_tab, setup_mat_mix_tab
+from fcn_init.create_3D_database_tab  import setup_3d_database_tab, setup_mat_mix_tab, setup_view_and_fit_tab
 from fcn_init.init_load_files         import load_Source_cal_csv_file
 from fcn_init.init_list_menus         import populate_list_menus
 from fcn_init.init_drop_options       import initialize_drop_fcn
@@ -120,6 +120,7 @@ class MyApp(QMainWindow, Ui_AMIGOpy, VTK3DViewerMixin):  # or QWidget/Ui_Form, Q
         # initialize 3D Printing Database tab
         setup_3d_database_tab(self)
         setup_mat_mix_tab(self)
+        setup_view_and_fit_tab(self)
         # initialize drop functions
         # Enable drag and drop
         initialize_drop_fcn(self)

@@ -401,9 +401,9 @@ def c_roi_scatter_plot(self):
                 item_radius = self.table_circ_roi.item(row, 2)
                 sli_ini = self.table_circ_roi.item(row, 3)
                 sli_fin = self.table_circ_roi.item(row, 4)
-                item_r = self.table_circ_roi.item(row, 6)
-                item_g = self.table_circ_roi.item(row, 7)
-                item_b = self.table_circ_roi.item(row, 8)
+                item_r = self.table_circ_roi.item(row, 7) or self.table_circ_roi.item(row, 6)
+                item_g = self.table_circ_roi.item(row, 8) or self.table_circ_roi.item(row, 7)
+                item_b = self.table_circ_roi.item(row, 9) or self.table_circ_roi.item(row, 8)
     
                 if item_x is None or item_y is None or item_radius is None or sli_ini is None or sli_fin is None or item_r is None or item_g is None or item_b is None:
                     print(f'Skipping row {row} due to missing data')

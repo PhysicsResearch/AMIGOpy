@@ -9,7 +9,7 @@ from fcn_IrIS.FindDwell_IrIS import add_row_dw_table, remove_row_dw_table
 from fcn_processing.Im_process_list import image_processing_undo, run_image_processing
 from fcn_processing.split_dcm_series import shift_and_split_3D_matrix
 from fcn_processing.roi_circle import (toggle_rois, roi_c_add_row, roi_c_remove_row, export_roi_circ_table_to_csv, import_roi_circ_table, 
-                                       c_roi_getdata, export_roi_circ_values_to_csv)
+                                       c_roi_getdata, export_roi_circ_values_to_csv, export_all_roi_voxel_values_to_csv, on_all_series_checkbox_toggled, roi_c_clear_all_rois, roi_c_clear_all_data)
 from fcn_IrIS.Load_CorrectionFrames import load_offset_IrIS, load_CorrectionFrame_IrIS
 from fcn_DECT.DECT_table_disp        import remove_coll2table, add_row2table, remove_row2table, reset_matTable, add_coll2table, calc_material_parameters, load_csv_mat_info
 from fcn_4DCT.disp_4D import play_4D_sequence
@@ -427,10 +427,45 @@ def initialize_software_buttons(self):
     self.circ_roi_exp_csv.setStyleSheet("background-color: blue; color: white;")
     self.circ_roi_load_csv.clicked.connect(lambda: import_roi_circ_table(self))
     self.circ_roi_load_csv.setStyleSheet("background-color: green; color: white;")
-    self.get_circ_roi_data.clicked.connect(lambda: c_roi_getdata(self))
+    self.get_circ_roi_data.clicked.connect(lambda: c_roi_getdata(self, ask_user=True))
     self.get_circ_roi_data.setStyleSheet("background-color: blue; color: white;")
-    self.get_circ_roi_data2.clicked.connect(lambda: c_roi_getdata(self))
+    self.get_circ_roi_data2.clicked.connect(lambda: c_roi_getdata(self, ask_user=True))
     self.get_circ_roi_data2.setStyleSheet("background-color: blue; color: white;")
+    self.checkBox_circ_roi_data_01.clicked.connect(lambda: on_all_series_checkbox_toggled(self))
+    if hasattr(self, 'holdOnROI'):
+        self.holdOnROI.setVisible(False)
+        
+    self.btn_clear_all_rois = QPushButton("Clear All ROIs", self.tab_34)
+    self.btn_clear_all_rois.setStyleSheet("background-color: #ef4444; color: white; font-weight: bold;")
+    self.btn_clear_all_rois.clicked.connect(lambda: roi_c_clear_all_rois(self))
+
+    # Create Export Voxel Values button and place it where GET DATA was (2, 1)
+    self.btn_export_voxel_values = QPushButton("Export Voxel Values", self.tab_34)
+    self.btn_export_voxel_values.setStyleSheet("background-color: blue; color: white;")
+    self.btn_export_voxel_values.clicked.connect(lambda: export_all_roi_voxel_values_to_csv(self))
+
+    # Shift GET DATA, Clear All ROIs, and All image series one column to the right
+    if hasattr(self, 'get_circ_roi_data'):
+        self.gridLayout_45.removeWidget(self.get_circ_roi_data)
+    if hasattr(self, 'checkBox_circ_roi_data_01'):
+        self.gridLayout_45.removeWidget(self.checkBox_circ_roi_data_01)
+
+    self.gridLayout_45.addWidget(self.btn_export_voxel_values, 2, 1, 1, 1)
+    if hasattr(self, 'get_circ_roi_data'):
+        self.gridLayout_45.addWidget(self.get_circ_roi_data, 2, 2, 1, 1)
+    self.gridLayout_45.addWidget(self.btn_clear_all_rois, 2, 3, 1, 1)
+    if hasattr(self, 'checkBox_circ_roi_data_01'):
+        self.gridLayout_45.addWidget(self.checkBox_circ_roi_data_01, 2, 4, 1, 1)
+
+    self.btn_clear_all_roi_data = QPushButton("Clear All Data", self.tab_35)
+    self.btn_clear_all_roi_data.setStyleSheet("background-color: #ef4444; color: white; font-weight: bold;")
+    self.btn_clear_all_roi_data.clicked.connect(lambda: roi_c_clear_all_data(self))
+    self.gridLayout_34.addWidget(self.btn_clear_all_roi_data, 1, 2, 1, 1)
+    
+    # Span data table across all 3 columns to use full width to the right
+    if hasattr(self, 'table_roi_c_values'):
+        self.gridLayout_34.removeWidget(self.table_roi_c_values)
+        self.gridLayout_34.addWidget(self.table_roi_c_values, 0, 0, 1, 3)
     
     # Create programmatically the ROI configuration inputs (pixel size, slices)
     from PySide6.QtWidgets import QHBoxLayout, QLabel, QSpinBox
@@ -455,6 +490,34 @@ def initialize_software_buttons(self):
     roi_config_layout.addWidget(self.roi_slices)
     
     self.gridLayout_45.addWidget(self.roi_config_widget, 1, 3, 1, 1)
+
+    # Populate Direction dropdown inside groupBox_8
+    from PySide6.QtWidgets import QVBoxLayout, QComboBox, QPushButton
+    if hasattr(self, 'groupBox_8') and self.groupBox_8 is not None:
+        if not self.groupBox_8.layout():
+            grp_layout = QVBoxLayout(self.groupBox_8)
+            grp_layout.setContentsMargins(4, 4, 4, 4)
+        else:
+            grp_layout = self.groupBox_8.layout()
+
+        self.roi_direction_combo = QComboBox(self.groupBox_8)
+        self.roi_direction_combo.addItems(["Axial", "Sagittal", "Coronal"])
+        self.roi_direction_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #1e1e24;
+                color: #ffffff;
+                border: 1px solid #3c4450;
+                border-radius: 3px;
+                padding: 2px;
+                font-weight: bold;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #1e1e24;
+                color: #ffffff;
+                selection-background-color: #3b82f6;
+            }
+        """)
+        grp_layout.addWidget(self.roi_direction_combo)
 
     self.exp_csv_roi_c_values.clicked.connect(lambda: export_roi_circ_values_to_csv(self))
     self.exp_csv_roi_c_values.setStyleSheet("background-color: blue; color: white;")

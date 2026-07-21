@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QPushButton, QScrollArea, QLabel, QDialog, QFormLayout, QLineEdit,
     QDoubleSpinBox, QMessageBox, QAbstractItemView, QGridLayout, QFrame, QHeaderView,
     QStyledItemDelegate, QDateEdit, QTabWidget, QTextEdit, QMenu, QApplication,
-    QSpinBox, QComboBox, QFileDialog
+    QSpinBox, QComboBox, QFileDialog, QTreeWidget, QTreeWidgetItem, QListWidget, QListWidgetItem, QGroupBox
 )
 from PySide6.QtCore import Qt, QDate, QObject, QEvent, QTimer
 from PySide6.QtGui import QColor, QFont, QKeySequence
@@ -295,6 +295,10 @@ class ClipboardTableWidget(QTableWidget):
             item.setText(val_str)
         self.blockSignals(False)
         self.setSortingEnabled(True)
+        
+        handler = getattr(self, "post_paste_handler", None)
+        if handler:
+            handler()
 
     # Column header context menu
     def show_header_context_menu(self, pos):
@@ -1355,6 +1359,7 @@ def setup_mat_mix_tab(self):
             update_row_predictions(self, r, n_mats, comp_reds, comp_zeffs)
         self.table_mix_z_red.blockSignals(False)
         update_mix_graph(self)
+        auto_save_all_databases(self)
     self.table_mix_calibration_info.post_paste_handler = sync_after_paste_calibration
     
     def sync_after_paste_z_red():
@@ -1426,6 +1431,7 @@ def setup_mat_mix_tab(self):
             update_row_predictions(self, r, n_mats, comp_reds, comp_zeffs)
         self.table_mix_calibration_info.blockSignals(False)
         update_mix_graph(self)
+        auto_save_all_databases(self)
     self.table_mix_z_red.post_paste_handler = sync_after_paste_z_red
     
     # Buttons for Mix Calibration
@@ -1663,6 +1669,75 @@ def setup_mat_mix_tab(self):
     # Create a daily backup on first access each day
     create_daily_backup(self)
 
+def refresh_mix_graphs_tree(self):
+    if not hasattr(self, "tree_mix_graphs_datasets"):
+        return
+        
+    self.tree_mix_graphs_datasets.blockSignals(True)
+    
+    # Save current checked states
+    checked_items = set()
+    root = self.tree_mix_graphs_datasets.invisibleRootItem()
+    for i in range(root.childCount()):
+        item = root.child(i)
+        if item.childCount() > 0: # Parent node of Mix RED combinations
+            for j in range(item.childCount()):
+                child = item.child(j)
+                if child.checkState(0) == Qt.Checked:
+                    checked_items.add(child.text(0))
+        else:
+            if item.checkState(0) == Qt.Checked:
+                checked_items.add(item.text(0))
+                
+    self.tree_mix_graphs_datasets.clear()
+    
+    mix_id = getattr(self, "current_viewed_mix_id", None)
+    if mix_id is None:
+        self.tree_mix_graphs_datasets.blockSignals(False)
+        return
+        
+    # Add "Main Mix Data"
+    main_item = QTreeWidgetItem(self.tree_mix_graphs_datasets)
+    main_item.setText(0, "Main Mix Data")
+    main_item.setFlags(main_item.flags() | Qt.ItemIsUserCheckable)
+    if not checked_items or "Main Mix Data" in checked_items:
+        main_item.setCheckState(0, Qt.Checked)
+    else:
+        main_item.setCheckState(0, Qt.Unchecked)
+        
+    # Add "Mix RED Combinations" folder
+    folder_item = QTreeWidgetItem(self.tree_mix_graphs_datasets)
+    folder_item.setText(0, "Mix RED Combinations")
+    folder_item.setExpanded(True)
+    
+    start_row = -1
+    total_rows = self.table_mat_mix.rowCount()
+    for r in range(total_rows):
+        spin = self.table_mat_mix.cellWidget(r, 0)
+        if isinstance(spin, QSpinBox) and spin.property("mix_id") == mix_id:
+            start_row = r
+            group_size = spin.value()
+            break
+            
+    if start_row != -1:
+        mat_names = get_materials_in_mix(self, start_row, group_size)
+        mix_red_data = self.mix_red_cache.get(mix_id, [])
+        for idx, combo in enumerate(mix_red_data):
+            ratios = combo["percentage"]
+            item_text = format_ratio_string(mat_names, ratios)
+            
+            child = QTreeWidgetItem(folder_item)
+            child.setText(0, item_text)
+            child.setData(0, Qt.UserRole, ("mix_red", idx))
+            child.setFlags(child.flags() | Qt.ItemIsUserCheckable)
+            
+            if item_text in checked_items:
+                child.setCheckState(0, Qt.Checked)
+            else:
+                child.setCheckState(0, Qt.Unchecked)
+                
+    self.tree_mix_graphs_datasets.blockSignals(False)
+
 def on_mix_tab_changed(self, index):
     # Tab 4 is the Graphs tab
     if index == 4:
@@ -1755,13 +1830,51 @@ def initialize_mix_graph(self):
     self.check_show_equation.stateChanged.connect(lambda state: update_mix_graph(self))
     graph_ctrl_layout.addWidget(self.check_show_equation)
     
+    graph_ctrl_layout.addSpacing(15)
+    
+    self.check_show_legend = QtWidgets.QCheckBox("Show Legend")
+    self.check_show_legend.setStyleSheet("color: #e5e7eb; font-weight: bold;")
+    self.check_show_legend.setChecked(True)
+    self.check_show_legend.stateChanged.connect(lambda state: update_mix_graph(self))
+    graph_ctrl_layout.addWidget(self.check_show_legend)
+    
     graph_ctrl_layout.addStretch()
     self.mix_graphs_layout.addLayout(graph_ctrl_layout)
+    
+    self.splitter_mix_graphs = QSplitter(Qt.Horizontal)
+    
+    # Left: Tree Widget for toggling visible curves
+    self.tree_mix_graphs_datasets = QTreeWidget()
+    self.tree_mix_graphs_datasets.setHeaderLabel("Datasets / Curves")
+    self.tree_mix_graphs_datasets.setStyleSheet("""
+        QTreeWidget {
+            background-color: #1e1e24;
+            color: #ffffff;
+            border: 1px solid #3c4450;
+            border-radius: 4px;
+        }
+        QTreeWidget::item {
+            padding: 4px;
+        }
+        QTreeWidget::item:hover {
+            background-color: #2b2b36;
+        }
+        QTreeWidget::item:selected {
+            background-color: #3b82f6;
+        }
+    """)
+    self.tree_mix_graphs_datasets.itemChanged.connect(lambda item, col: update_mix_graph(self))
+    self.splitter_mix_graphs.addWidget(self.tree_mix_graphs_datasets)
+    
+    # Right: Graph canvas and toolbar container
+    self.widget_mix_graph_right = QWidget()
+    right_layout = QVBoxLayout(self.widget_mix_graph_right)
+    right_layout.setContentsMargins(0, 0, 0, 0)
     
     self.graph_figure = Figure(facecolor="#1e1e24")
     self.graph_canvas = FigureCanvas(self.graph_figure)
     self.graph_canvas.setStyleSheet("background-color: #1e1e24;")
-    self.mix_graphs_layout.addWidget(self.graph_canvas)
+    right_layout.addWidget(self.graph_canvas)
     
     # Add Navigation Toolbar
     if NavigationToolbar is not None:
@@ -1783,8 +1896,12 @@ def initialize_mix_graph(self):
                 background-color: #3b82f6;
             }
         """)
-        self.mix_graphs_layout.addWidget(self.graph_toolbar)
+        right_layout.addWidget(self.graph_toolbar)
         
+    self.splitter_mix_graphs.addWidget(self.widget_mix_graph_right)
+    self.splitter_mix_graphs.setSizes([200, 600])
+    self.mix_graphs_layout.addWidget(self.splitter_mix_graphs)
+    
     # Re-trigger display details so that the dropdown variables are populated for the first time
     # (Since on startup they were skipped as graph_canvas did not exist yet)
     self.combo_graph_x.blockSignals(True)
@@ -1816,7 +1933,11 @@ def initialize_mix_graph(self):
                 ("Diff. Zeff", ("property", "Diff. Zeff")),
                 ("RED", ("property", "RED")),
                 ("Pred. RED", ("property", "Pred. RED")),
-                ("Diff. RED", ("property", "Diff. RED"))
+                ("Diff. RED", ("property", "Diff. RED")),
+                ("Infill %", ("property", "Infill %")),
+                ("Flow", ("property", "Flow")),
+                ("HU-Low", ("property", "HU-Low")),
+                ("HU-High", ("property", "HU-High"))
             ]
             for label, val in props:
                 self.combo_graph_x.addItem(label, val)
@@ -1832,6 +1953,7 @@ def initialize_mix_graph(self):
     self.combo_graph_x.blockSignals(False)
     self.combo_graph_y.blockSignals(False)
     
+    refresh_mix_graphs_tree(self)
     update_mix_graph(self)
 
 def display_selected_filament_details(self):
@@ -1989,6 +2111,7 @@ def load_3d_database(self):
     self.table_3d_db.setSortingEnabled(True)
     if hasattr(self, "table_mat_mix"):
         update_mat_mix_comboboxes(self)
+    populate_view_and_fit_list(self)
 
 def save_3d_database(self):
     db_path = get_db_path()
@@ -2010,6 +2133,8 @@ def save_3d_database(self):
                 writer.writerow(row_data)
     except Exception as e:
         print(f"Error saving 3D database: {e}")
+        
+    populate_view_and_fit_list(self)
 
 def load_all_calibration_data(self):
     self.calibration_data_cache = {}
@@ -2061,6 +2186,8 @@ def load_all_calibration_data(self):
                 self.notes_cache = json.load(f)
         except Exception as e:
             print(f"Error loading notes database: {e}")
+            
+    populate_view_and_fit_list(self)
 
 def save_calibration_database(self):
     cal_db_path = get_cal_db_path()
@@ -2928,6 +3055,8 @@ def save_mix_database(self):
                     r += 1
     except Exception as e:
         print(f"Error saving mixed materials database: {e}")
+        
+    populate_view_and_fit_list(self)
 
 # Load MatMix CSV
 def load_mix_database(self):
@@ -2980,6 +3109,7 @@ def load_mix_database(self):
     update_group_borders_and_properties(self)
     self._force_combobox_update = True
     update_mat_mix_comboboxes(self)
+    populate_view_and_fit_list(self)
 
 # Save Mix Action Wrapper
 def save_mix_database_action(self):
@@ -3298,7 +3428,11 @@ def display_selected_mix_details(self):
             ("Diff. Zeff", ("property", "Diff. Zeff")),
             ("RED", ("property", "RED")),
             ("Pred. RED", ("property", "Pred. RED")),
-            ("Diff. RED", ("property", "Diff. RED"))
+            ("Diff. RED", ("property", "Diff. RED")),
+            ("Infill %", ("property", "Infill %")),
+            ("Flow", ("property", "Flow")),
+            ("HU-Low", ("property", "HU-Low")),
+            ("HU-High", ("property", "HU-High"))
         ]
         for label, val in props:
             self.combo_graph_x.addItem(label, val)
@@ -3324,6 +3458,7 @@ def display_selected_mix_details(self):
         self.combo_graph_x.blockSignals(False)
         self.combo_graph_y.blockSignals(False)
         
+        refresh_mix_graphs_tree(self)
         update_mix_graph(self)
 
 # Dynamic Plot Canvas Refresher
@@ -3372,10 +3507,7 @@ def update_mix_graph(self):
     n_mats = len(mat_names)
     
     num_rows = self.table_mix_z_red.rowCount()
-    if num_rows == 0:
-        self.graph_canvas.draw()
-        return
-        
+    
     sel_idx_x = self.combo_graph_x.currentIndex()
     sel_idx_y = self.combo_graph_y.currentIndex()
     if sel_idx_x < 0 or sel_idx_y < 0:
@@ -3388,144 +3520,347 @@ def update_mix_graph(self):
         self.graph_canvas.draw()
         return
         
-    x_data = []
-    y_data = []
-    x_err = []
-    y_err = []
+    # Read checked selections from the tree list
+    show_main = True
+    checked_mix_red_indices = []
     
+    if hasattr(self, "tree_mix_graphs_datasets"):
+        show_main = False
+        root = self.tree_mix_graphs_datasets.invisibleRootItem()
+        for i in range(root.childCount()):
+            item = root.child(i)
+            if item.text(0) == "Main Mix Data":
+                if item.checkState(0) == Qt.Checked:
+                    show_main = True
+            elif item.text(0) == "Mix RED Combinations":
+                for j in range(item.childCount()):
+                    child = item.child(j)
+                    if child.checkState(0) == Qt.Checked:
+                        child_data = child.data(0, Qt.UserRole)
+                        if child_data and child_data[0] == "mix_red":
+                            checked_mix_red_indices.append(child_data[1])
+                            
+    def get_main_mix_data():
+        x_data = []
+        y_data = []
+        x_err = []
+        y_err = []
+        
+        for r in range(num_rows):
+            ratios = []
+            for c in range(n_mats):
+                val_raw = safe_get_cell_value(self.table_mix_z_red, r, c, Qt.EditRole)
+                try:
+                    val = float(val_raw) if val_raw is not None else 0.0
+                except (ValueError, TypeError):
+                    val = 0.0
+                ratios.append(val)
+                
+            val_z_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats, Qt.EditRole)
+            try:
+                val_z = float(val_z_raw) if val_z_raw is not None else 0.0
+            except (ValueError, TypeError):
+                val_z = 0.0
+                
+            val_zstd_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 1, Qt.EditRole)
+            try:
+                val_zstd = float(val_zstd_raw) if val_zstd_raw is not None else 0.0
+            except (ValueError, TypeError):
+                val_zstd = 0.0
+                
+            val_pz_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 2, Qt.EditRole)
+            try:
+                val_pz = float(val_pz_raw) if val_pz_raw is not None else 0.0
+            except (ValueError, TypeError):
+                val_pz = 0.0
+                
+            val_dz_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 3, Qt.EditRole)
+            try:
+                val_dz = float(val_dz_raw) if val_dz_raw is not None else 0.0
+            except (ValueError, TypeError):
+                val_dz = 0.0
+                
+            val_red_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 4, Qt.EditRole)
+            try:
+                val_red = float(val_red_raw) if val_red_raw is not None else 0.0
+            except (ValueError, TypeError):
+                val_red = 0.0
+                
+            val_red_std_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 5, Qt.EditRole)
+            try:
+                val_red_std = float(val_red_std_raw) if val_red_std_raw is not None else 0.0
+            except (ValueError, TypeError):
+                val_red_std = 0.0
+                
+            val_pr_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 6, Qt.EditRole)
+            try:
+                val_pr = float(val_pr_raw) if val_pr_raw is not None else 0.0
+            except (ValueError, TypeError):
+                val_pr = 0.0
+                
+            val_dr_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 7, Qt.EditRole)
+            try:
+                val_dr = float(val_dr_raw) if val_dr_raw is not None else 0.0
+            except (ValueError, TypeError):
+                val_dr = 0.0
+
+            # Extract X
+            if user_data_x[0] == "ratio":
+                mat_idx = user_data_x[1]
+                x_val = ratios[mat_idx]
+                x_err_val = 0.0
+            else:
+                prop_name = user_data_x[1]
+                if prop_name == "Zeff":
+                    x_val = val_z
+                    x_err_val = val_zstd
+                elif prop_name == "Pred. Zeff":
+                    x_val = val_pz
+                    x_err_val = 0.0
+                elif prop_name == "Diff. Zeff":
+                    x_val = val_dz
+                    x_err_val = 0.0
+                elif prop_name == "RED":
+                    x_val = val_red
+                    x_err_val = val_red_std
+                elif prop_name == "Pred. RED":
+                    x_val = val_pr
+                    x_err_val = 0.0
+                elif prop_name == "Diff. RED":
+                    x_val = val_dr
+                    x_err_val = 0.0
+                elif prop_name == "Infill %":
+                    val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 11, Qt.EditRole)
+                    x_val = safe_float(val_raw)
+                    x_err_val = 0.0
+                elif prop_name == "Flow":
+                    val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 17, Qt.EditRole)
+                    x_val = safe_float(val_raw)
+                    x_err_val = 0.0
+                elif prop_name == "HU-Low":
+                    val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 2, Qt.EditRole)
+                    x_val = safe_float(val_raw)
+                    std_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 3, Qt.EditRole)
+                    x_err_val = safe_float(std_raw)
+                elif prop_name == "HU-High":
+                    val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 4, Qt.EditRole)
+                    x_val = safe_float(val_raw)
+                    std_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 5, Qt.EditRole)
+                    x_err_val = safe_float(std_raw)
+                else:
+                    x_val = 0.0
+                    x_err_val = 0.0
+
+            # Extract Y
+            if user_data_y[0] == "ratio":
+                mat_idx = user_data_y[1]
+                y_val = ratios[mat_idx]
+                y_err_val = 0.0
+            else:
+                prop_name = user_data_y[1]
+                if prop_name == "Zeff":
+                    y_val = val_z
+                    y_err_val = val_zstd
+                elif prop_name == "Pred. Zeff":
+                    y_val = val_pz
+                    y_err_val = 0.0
+                elif prop_name == "Diff. Zeff":
+                    y_val = val_dz
+                    y_err_val = 0.0
+                elif prop_name == "RED":
+                    y_val = val_red
+                    y_err_val = val_red_std
+                elif prop_name == "Pred. RED":
+                    y_val = val_pr
+                    y_err_val = 0.0
+                elif prop_name == "Diff. RED":
+                    y_val = val_dr
+                    y_err_val = 0.0
+                elif prop_name == "Infill %":
+                    val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 11, Qt.EditRole)
+                    y_val = safe_float(val_raw)
+                    y_err_val = 0.0
+                elif prop_name == "Flow":
+                    val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 17, Qt.EditRole)
+                    y_val = safe_float(val_raw)
+                    y_err_val = 0.0
+                elif prop_name == "HU-Low":
+                    val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 2, Qt.EditRole)
+                    y_val = safe_float(val_raw)
+                    std_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 3, Qt.EditRole)
+                    y_err_val = safe_float(std_raw)
+                elif prop_name == "HU-High":
+                    val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 4, Qt.EditRole)
+                    y_val = safe_float(val_raw)
+                    std_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 5, Qt.EditRole)
+                    y_err_val = safe_float(std_raw)
+                else:
+                    y_val = 0.0
+                    y_err_val = 0.0
+
+            x_data.append(x_val)
+            y_data.append(y_val)
+            x_err.append(x_err_val)
+            y_err.append(y_err_val)
+            
+        return x_data, y_data, x_err, y_err
+        
+    def get_mix_red_combo_data(combo_idx):
+        x_data = []
+        y_data = []
+        x_err = []
+        y_err = []
+        
+        mix_red_data = self.mix_red_cache.get(mix_id, [])
+        if combo_idx >= len(mix_red_data):
+            return x_data, y_data, x_err, y_err
+            
+        combo = mix_red_data[combo_idx]
+        ratios = combo["percentage"]
+        rows = combo["rows"]
+        
+        for row_vals in rows:
+            if len(row_vals) < 14:
+                continue
+                
+            val_infill = safe_float(row_vals[0])
+            val_flow = safe_float(row_vals[1])
+            val_hulow = safe_float(row_vals[2])
+            val_hulow_std = safe_float(row_vals[3])
+            val_huhig = safe_float(row_vals[4])
+            val_huhig_std = safe_float(row_vals[5])
+            val_red = safe_float(row_vals[6])
+            val_red_std = safe_float(row_vals[7])
+            val_pr = safe_float(row_vals[8])
+            val_z = safe_float(row_vals[9])
+            val_zstd = safe_float(row_vals[10])
+            val_pz = safe_float(row_vals[11])
+            
+            val_dz = val_z - val_pz
+            val_dr = val_red - val_pr
+
+            # Extract X
+            if user_data_x[0] == "ratio":
+                mat_idx = user_data_x[1]
+                x_val = ratios[mat_idx] if mat_idx < len(ratios) else 0.0
+                x_err_val = 0.0
+            else:
+                prop_name = user_data_x[1]
+                if prop_name == "Zeff":
+                    x_val = val_z
+                    x_err_val = val_zstd
+                elif prop_name == "Pred. Zeff":
+                    x_val = val_pz
+                    x_err_val = 0.0
+                elif prop_name == "Diff. Zeff":
+                    x_val = val_dz
+                    x_err_val = 0.0
+                elif prop_name == "RED":
+                    x_val = val_red
+                    x_err_val = val_red_std
+                elif prop_name == "Pred. RED":
+                    x_val = val_pr
+                    x_err_val = 0.0
+                elif prop_name == "Diff. RED":
+                    x_val = val_dr
+                    x_err_val = 0.0
+                elif prop_name == "Infill %":
+                    x_val = val_infill
+                    x_err_val = 0.0
+                elif prop_name == "Flow":
+                    x_val = val_flow
+                    x_err_val = 0.0
+                elif prop_name == "HU-Low":
+                    x_val = val_hulow
+                    x_err_val = val_hulow_std
+                elif prop_name == "HU-High":
+                    x_val = val_huhig
+                    x_err_val = val_huhig_std
+                else:
+                    x_val = 0.0
+                    x_err_val = 0.0
+
+            # Extract Y
+            if user_data_y[0] == "ratio":
+                mat_idx = user_data_y[1]
+                y_val = ratios[mat_idx] if mat_idx < len(ratios) else 0.0
+                y_err_val = 0.0
+            else:
+                prop_name = user_data_y[1]
+                if prop_name == "Zeff":
+                    y_val = val_z
+                    y_err_val = val_zstd
+                elif prop_name == "Pred. Zeff":
+                    y_val = val_pz
+                    y_err_val = 0.0
+                elif prop_name == "Diff. Zeff":
+                    y_val = val_dz
+                    y_err_val = 0.0
+                elif prop_name == "RED":
+                    y_val = val_red
+                    y_err_val = val_red_std
+                elif prop_name == "Pred. RED":
+                    y_val = val_pr
+                    y_err_val = 0.0
+                elif prop_name == "Diff. RED":
+                    y_val = val_dr
+                    y_err_val = 0.0
+                elif prop_name == "Infill %":
+                    y_val = val_infill
+                    y_err_val = 0.0
+                elif prop_name == "Flow":
+                    y_val = val_flow
+                    y_err_val = 0.0
+                elif prop_name == "HU-Low":
+                    y_val = val_hulow
+                    y_err_val = val_hulow_std
+                elif prop_name == "HU-High":
+                    y_val = val_huhig
+                    y_err_val = val_huhig_std
+                else:
+                    y_val = 0.0
+                    y_err_val = 0.0
+
+            x_data.append(x_val)
+            y_data.append(y_val)
+            x_err.append(x_err_val)
+            y_err.append(y_err_val)
+            
+        return x_data, y_data, x_err, y_err
+        
     x_label = ""
     y_label = ""
-    
-    # Extract data series
-    for r in range(num_rows):
-        ratios = []
-        for c in range(n_mats):
-            val_raw = safe_get_cell_value(self.table_mix_z_red, r, c, Qt.EditRole)
-            try:
-                val = float(val_raw) if val_raw is not None else 0.0
-            except (ValueError, TypeError):
-                val = 0.0
-            ratios.append(val)
-            
-        val_z_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats, Qt.EditRole)
-        try:
-            val_z = float(val_z_raw) if val_z_raw is not None else 0.0
-        except (ValueError, TypeError):
-            val_z = 0.0
-            
-        val_zstd_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 1, Qt.EditRole)
-        try:
-            val_zstd = float(val_zstd_raw) if val_zstd_raw is not None else 0.0
-        except (ValueError, TypeError):
-            val_zstd = 0.0
-            
-        val_pz_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 2, Qt.EditRole)
-        try:
-            val_pz = float(val_pz_raw) if val_pz_raw is not None else 0.0
-        except (ValueError, TypeError):
-            val_pz = 0.0
-            
-        val_dz_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 3, Qt.EditRole)
-        try:
-            val_dz = float(val_dz_raw) if val_dz_raw is not None else 0.0
-        except (ValueError, TypeError):
-            val_dz = 0.0
-            
-        val_red_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 4, Qt.EditRole)
-        try:
-            val_red = float(val_red_raw) if val_red_raw is not None else 0.0
-        except (ValueError, TypeError):
-            val_red = 0.0
-            
-        val_red_std_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 5, Qt.EditRole)
-        try:
-            val_red_std = float(val_red_std_raw) if val_red_std_raw is not None else 0.0
-        except (ValueError, TypeError):
-            val_red_std = 0.0
-            
-        val_pr_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 6, Qt.EditRole)
-        try:
-            val_pr = float(val_pr_raw) if val_pr_raw is not None else 0.0
-        except (ValueError, TypeError):
-            val_pr = 0.0
-            
-        val_dr_raw = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 7, Qt.EditRole)
-        try:
-            val_dr = float(val_dr_raw) if val_dr_raw is not None else 0.0
-        except (ValueError, TypeError):
-            val_dr = 0.0
-        
-        # Extract X Axis Value
-        if user_data_x[0] == "ratio":
-            mat_idx = user_data_x[1]
-            x_val = ratios[mat_idx]
-            x_err_val = 0.0
+    if user_data_x[0] == "ratio":
+        mat_idx = user_data_x[1]
+        if mat_idx < len(mat_names):
             x_label = f"% {mat_names[mat_idx]}"
-        else:
-            prop_name = user_data_x[1]
-            x_label = prop_name
-            if prop_name == "Zeff":
-                x_val = val_z
-                x_err_val = val_zstd
-            elif prop_name == "Pred. Zeff":
-                x_val = val_pz
-                x_err_val = 0.0
-            elif prop_name == "Diff. Zeff":
-                x_val = val_dz
-                x_err_val = 0.0
-            elif prop_name == "RED":
-                x_val = val_red
-                x_err_val = val_red_std
-            elif prop_name == "Pred. RED":
-                x_val = val_pr
-                x_err_val = 0.0
-            elif prop_name == "Diff. RED":
-                x_val = val_dr
-                x_err_val = 0.0
-            else:
-                x_val = 0.0
-                x_err_val = 0.0
-                
-        # Extract Y Axis Value
-        if user_data_y[0] == "ratio":
-            mat_idx = user_data_y[1]
-            y_val = ratios[mat_idx]
-            y_err_val = 0.0
+    else:
+        x_label = user_data_x[1]
+        
+    if user_data_y[0] == "ratio":
+        mat_idx = user_data_y[1]
+        if mat_idx < len(mat_names):
             y_label = f"% {mat_names[mat_idx]}"
-        else:
-            prop_name = user_data_y[1]
-            y_label = prop_name
-            if prop_name == "Zeff":
-                y_val = val_z
-                y_err_val = val_zstd
-            elif prop_name == "Pred. Zeff":
-                y_val = val_pz
-                y_err_val = 0.0
-            elif prop_name == "Diff. Zeff":
-                y_val = val_dz
-                y_err_val = 0.0
-            elif prop_name == "RED":
-                y_val = val_red
-                y_err_val = val_red_std
-            elif prop_name == "Pred. RED":
-                y_val = val_pr
-                y_err_val = 0.0
-            elif prop_name == "Diff. RED":
-                y_val = val_dr
-                y_err_val = 0.0
-            else:
-                y_val = 0.0
-                y_err_val = 0.0
+    else:
+        y_label = user_data_y[1]
+
+    datasets_to_plot = []
+    
+    if show_main and num_rows > 0:
+        x_main, y_main, x_err_main, y_err_main = get_main_mix_data()
+        if x_main:
+            datasets_to_plot.append(("Main Mix Data", x_main, y_main, x_err_main, y_err_main))
+            
+    mix_red_data = self.mix_red_cache.get(mix_id, [])
+    for combo_idx in checked_mix_red_indices:
+        if combo_idx < len(mix_red_data):
+            combo = mix_red_data[combo_idx]
+            ratios = combo["percentage"]
+            lbl = format_ratio_string(mat_names, ratios)
+            x_combo, y_combo, x_err_combo, y_err_combo = get_mix_red_combo_data(combo_idx)
+            if x_combo:
+                datasets_to_plot.append((lbl, x_combo, y_combo, x_err_combo, y_err_combo))
                 
-        x_data.append(x_val)
-        y_data.append(y_val)
-        x_err.append(x_err_val)
-        y_err.append(y_err_val)
-        
-    if not x_data:
-        self.graph_canvas.draw()
-        return
-        
     # Read layout details from Figures menu bar states
     color_map = {
         "blue": "#3b82f6",
@@ -3540,9 +3875,17 @@ def update_mix_graph(self):
         "black": "#000000"
     }
     sel_color = color_map.get(getattr(self, "selected_line_color", "red").lower(), "#ef4444")
+    default_colors = ["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#eab308"]
+    if sel_color in default_colors:
+        default_colors.remove(sel_color)
+    color_list = [sel_color] + default_colors
     
     font_family = "sans-serif"
     font_size = getattr(self, "selected_font_size", 10)
+    font_settings = {
+        'family': font_family,
+        'size': font_size
+    }
     
     marker_map = {
         "circle": "o",
@@ -3563,103 +3906,132 @@ def update_mix_graph(self):
     }
     line_style = style_map.get(getattr(self, "selected_line_style", "solid").lower(), "-")
     line_width = getattr(self, "selected_line_width", 2.0)
+    
+    if not datasets_to_plot:
+        ax.text(
+            0.5, 0.5, "No datasets selected.\nPlease check one or more in the list on the side.",
+            transform=ax.transAxes,
+            verticalalignment='center',
+            horizontalalignment='center',
+            color=text_color,
+            fontsize=font_size + 2
+        )
+        ax.set_title(f"{y_label} vs {x_label}", fontdict=font_settings, color=text_color, pad=10)
+        ax.set_xlabel(x_label, fontdict=font_settings, color=text_color)
+        ax.set_ylabel(y_label, fontdict=font_settings, color=text_color)
         
-    sorted_pairs = sorted(zip(x_data, y_data, x_err, y_err))
-    x_sorted = [p[0] for p in sorted_pairs]
-    y_sorted = [p[1] for p in sorted_pairs]
-    x_err_sorted = [p[2] for p in sorted_pairs]
-    y_err_sorted = [p[3] for p in sorted_pairs]
-    
-    font_settings = {
-        'family': font_family,
-        'size': font_size
-    }
-    
-    has_x_err = any(e > 0 for e in x_err_sorted)
-    has_y_err = any(e > 0 for e in y_err_sorted)
-    
-    xerr_arg = x_err_sorted if has_x_err else None
-    yerr_arg = y_err_sorted if has_y_err else None
-    
-    ax.errorbar(
-        x_sorted, y_sorted, xerr=xerr_arg, yerr=yerr_arg,
-        color=sel_color, marker=marker_sym, markersize=marker_sz,
-        linestyle=line_style, linewidth=line_width, ecolor="#9ca3af", elinewidth=1, capsize=3,
-        label="Data"
-    )
-    
-    # Check if a polynomial fit is requested
+        ax.tick_params(axis='both', colors=text_color, labelsize=font_size)
+        for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+            label.set_fontfamily(font_family)
+            
+        for spine in ax.spines.values():
+            spine.set_color(spine_color)
+            
+        ax.grid(True, color=grid_color, linestyle='--', linewidth=0.5)
+        self.graph_figure.tight_layout()
+        self.graph_canvas.draw()
+        return
+        
     fit_deg = 0
     if hasattr(self, "combo_graph_fit"):
         fit_deg = self.combo_graph_fit.currentData()
         
-    if fit_deg > 0 and len(x_sorted) > fit_deg:
-        import numpy as np
-        try:
-            x_arr = np.array(x_sorted, dtype=float)
-            y_arr = np.array(y_sorted, dtype=float)
-            valid = np.isfinite(x_arr) & np.isfinite(y_arr)
-            if np.sum(valid) > fit_deg:
-                x_valid = x_arr[valid]
-                y_valid = y_arr[valid]
-                
-                # Fit polynomial
-                coefs = np.polyfit(x_valid, y_valid, fit_deg)
-                p = np.poly1d(coefs)
-                
-                # Calculate R^2
-                y_pred = p(x_valid)
-                y_mean = np.mean(y_valid)
-                ss_res = np.sum((y_valid - y_pred) ** 2)
-                ss_tot = np.sum((y_valid - y_mean) ** 2)
-                r2 = 1.0 - (ss_res / ss_tot) if ss_tot != 0 else 1.0
-                
-                # Format polynomial equation
-                terms = []
-                for power, coef in enumerate(coefs[::-1]):
-                    if abs(coef) < 1e-4:
-                        continue
-                    if power == 0:
-                        terms.append(f"{coef:+.4f}")
-                    elif power == 1:
-                        terms.append(f"{coef:+.4f}x")
-                    else:
-                        terms.append(f"{coef:+.4f}x$^{power}$")
-                equation_str = " ".join(terms[::-1]).strip()
-                if equation_str.startswith("+"):
-                    equation_str = equation_str[1:]
-                if not equation_str:
-                    equation_str = "0.0000"
-                full_display_str = f"$y = {equation_str}$\n$R^2 = {r2:.4f}$"
-                
-                # Generate smooth curve points for plotting
-                x_fit = np.linspace(min(x_valid), max(x_valid), 100)
-                y_fit = p(x_fit)
-                
-                # Draw the fit line as a dashed line
-                ax.plot(
-                    x_fit, y_fit,
-                    color=sel_color, linestyle="--", linewidth=line_width * 0.8,
-                    label=f"Fit (deg {fit_deg})"
-                )
-                
-                # Display equation and R^2 box if selected
-                if hasattr(self, "check_show_equation") and self.check_show_equation.isChecked():
-                    ax.text(
-                        0.05, 0.95, full_display_str,
-                        transform=ax.transAxes,
-                        verticalalignment='top',
-                        horizontalalignment='left',
-                        bbox=dict(boxstyle='round,pad=0.5', facecolor=bg, edgecolor=spine_color, alpha=0.8),
-                        color=text_color,
-                        fontsize=font_size
+    for plot_idx, (label, x_data, y_data, x_err, y_err) in enumerate(datasets_to_plot):
+        color = color_list[plot_idx % len(color_list)]
+        
+        sorted_pairs = sorted(zip(x_data, y_data, x_err, y_err))
+        x_sorted = [p[0] for p in sorted_pairs]
+        y_sorted = [p[1] for p in sorted_pairs]
+        x_err_sorted = [p[2] for p in sorted_pairs]
+        y_err_sorted = [p[3] for p in sorted_pairs]
+        
+        has_x_err = any(e > 0 for e in x_err_sorted)
+        has_y_err = any(e > 0 for e in y_err_sorted)
+        
+        xerr_arg = x_err_sorted if has_x_err else None
+        yerr_arg = y_err_sorted if has_y_err else None
+        
+        ax.errorbar(
+            x_sorted, y_sorted, xerr=xerr_arg, yerr=yerr_arg,
+            color=color, marker=marker_sym, markersize=marker_sz,
+            linestyle=line_style, linewidth=line_width, ecolor="#9ca3af", elinewidth=1, capsize=3,
+            label=label
+        )
+        
+        # Fit polynomial if requested
+        if fit_deg > 0 and len(x_sorted) > fit_deg:
+            import numpy as np
+            try:
+                x_arr = np.array(x_sorted, dtype=float)
+                y_arr = np.array(y_sorted, dtype=float)
+                valid = np.isfinite(x_arr) & np.isfinite(y_arr)
+                if np.sum(valid) > fit_deg:
+                    x_valid = x_arr[valid]
+                    y_valid = y_arr[valid]
+                    
+                    coefs = np.polyfit(x_valid, y_valid, fit_deg)
+                    p = np.poly1d(coefs)
+                    
+                    y_pred = p(x_valid)
+                    y_mean = np.mean(y_valid)
+                    ss_res = np.sum((y_valid - y_pred) ** 2)
+                    ss_tot = np.sum((y_valid - y_mean) ** 2)
+                    r2 = 1.0 - (ss_res / ss_tot) if ss_tot != 0 else 1.0
+                    
+                    terms = []
+                    for power, coef in enumerate(coefs[::-1]):
+                        if abs(coef) < 1e-4:
+                            continue
+                        if power == 0:
+                            terms.append(f"{coef:+.4f}")
+                        elif power == 1:
+                            terms.append(f"{coef:+.4f}x")
+                        else:
+                            terms.append(f"{coef:+.4f}x$^{power}$")
+                    equation_str = " ".join(terms[::-1]).strip()
+                    if equation_str.startswith("+"):
+                        equation_str = equation_str[1:]
+                    if not equation_str:
+                        equation_str = "0.0000"
+                    
+                    full_display_str = f"{label} Fit:\n$y = {equation_str}$\n$R^2 = {r2:.4f}$"
+                    
+                    x_fit = np.linspace(min(x_valid), max(x_valid), 100)
+                    y_fit = p(x_fit)
+                    
+                    # Draw fit curve with dashed line matching the dataset color
+                    ax.plot(
+                        x_fit, y_fit,
+                        color=color, linestyle="--", linewidth=line_width * 0.8,
+                        label=f"{label} Fit"
                     )
+                    
+                    # Display equation if selected. Since we can have multiple curves,
+                    # displaying multiple equations stacked is helpful!
+                    if hasattr(self, "check_show_equation") and self.check_show_equation.isChecked():
+                        # Stack them vertically based on plot_idx
+                        y_pos = 0.95 - (plot_idx * 0.15)
+                        ax.text(
+                            0.05, y_pos, full_display_str,
+                            transform=ax.transAxes,
+                            verticalalignment='top',
+                            horizontalalignment='left',
+                            bbox=dict(boxstyle='round,pad=0.4', facecolor=bg, edgecolor=spine_color, alpha=0.8),
+                            color=text_color,
+                            fontsize=font_size - 1
+                        )
+            except Exception as e:
+                print(f"Error computing polynomial fit for {label}: {e}")
                 
-                if getattr(self, "selected_legend_on_off", "On") == "On":
-                    ax.legend(facecolor=bg, edgecolor=spine_color, labelcolor=text_color)
-        except Exception as e:
-            print(f"Error computing polynomial fit: {e}")
-    
+    show_legend = True
+    if hasattr(self, "check_show_legend"):
+        show_legend = self.check_show_legend.isChecked()
+    else:
+        show_legend = (getattr(self, "selected_legend_on_off", "On") == "On")
+        
+    if show_legend:
+        ax.legend(facecolor=bg, edgecolor=spine_color, labelcolor=text_color)
+        
     ax.set_title(f"{y_label} vs {x_label}", fontdict=font_settings, color=text_color, pad=10)
     ax.set_xlabel(x_label, fontdict=font_settings, color=text_color)
     ax.set_ylabel(y_label, fontdict=font_settings, color=text_color)
@@ -4180,6 +4552,8 @@ def refresh_mix_red_ratios_list(self):
         self.list_mix_red_ratios.addItem(item_text)
         
     self.list_mix_red_ratios.blockSignals(False)
+    refresh_mix_graphs_tree(self)
+    populate_view_and_fit_list(self)
 
 def display_selected_mix_red_ratio_details(self, idx):
     self.table_mix_red_cal.blockSignals(True)
@@ -4390,12 +4764,12 @@ def add_mix_red_cal_row(self):
     defaults = [
         ("100.0000", "Infill %"),
         ("100.0000", "Flow"),
-        ("100.0000", "HU_low"),
-        ("5.0000", "HU_low_STD"),
-        ("150.0000", "HU_hig"),
-        ("5.0000", "HU_hig_STD"),
-        ("1.0000", "RED"),
-        ("0.0200", "RED_STD"),
+        ("0.0000", "HU_low"),
+        ("0.0000", "HU_low_STD"),
+        ("0.0000", "HU_hig"),
+        ("0.0000", "HU_hig_STD"),
+        ("0.0000", "RED"),
+        ("0.0000", "RED_STD"),
     ]
     
     for c, (val_str, name) in enumerate(defaults):
@@ -4412,16 +4786,16 @@ def add_mix_red_cal_row(self):
     pred_item.setText(f"{pred_red:.4f}")
     self.table_mix_red_cal.setItem(row_idx, 8, pred_item)
     
-    # Zeff in col 9 (default 6.0)
+    # Zeff in col 9 (default 0.0)
     item_zeff = QTableWidgetItem()
-    item_zeff.setData(Qt.EditRole, 6.0)
-    item_zeff.setText("6.0000")
+    item_zeff.setData(Qt.EditRole, 0.0)
+    item_zeff.setText("0.0000")
     self.table_mix_red_cal.setItem(row_idx, 9, item_zeff)
     
-    # Zeff STD in col 10 (default 0.1)
+    # Zeff STD in col 10 (default 0.0)
     item_zeff_std = QTableWidgetItem()
-    item_zeff_std.setData(Qt.EditRole, 0.1)
-    item_zeff_std.setText("0.1000")
+    item_zeff_std.setData(Qt.EditRole, 0.0)
+    item_zeff_std.setText("0.0000")
     self.table_mix_red_cal.setItem(row_idx, 10, item_zeff_std)
     
     # Pred. Zeff in col 11
@@ -5508,3 +5882,668 @@ def restore_3dp_database_action(self):
     except Exception as e:
         self._is_loading = False
         QMessageBox.critical(self, "Error", f"Failed to restore 3DP Database:\n{e}")
+
+def setup_view_and_fit_tab(self):
+    # Create the tab widget
+    self.tab_view_and_fit = QWidget()
+    self.D3.insertTab(2, self.tab_view_and_fit, "View and Fit")
+    
+    # Layout
+    layout_fit = QVBoxLayout(self.tab_view_and_fit)
+    layout_fit.setContentsMargins(10, 10, 10, 10)
+    
+    # Splitter
+    self.splitter_fit = QSplitter(Qt.Horizontal)
+    layout_fit.addWidget(self.splitter_fit)
+    
+    # Left widget: List and search bar
+    left_widget = QWidget()
+    left_layout = QVBoxLayout(left_widget)
+    left_layout.setContentsMargins(0, 0, 0, 0)
+    
+    lbl_list_title = QLabel("Select Material / Mix Combination:")
+    lbl_list_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #3b82f6;")
+    left_layout.addWidget(lbl_list_title)
+    
+    self.txt_fit_search = QLineEdit()
+    self.txt_fit_search.setPlaceholderText("Search materials / mixes...")
+    self.txt_fit_search.setStyleSheet("background-color: #2b2b36; border: 1px solid #4b5563; border-radius: 4px; color: #ffffff; padding: 4px;")
+    self.txt_fit_search.textChanged.connect(lambda: filter_view_and_fit_list(self))
+    left_layout.addWidget(self.txt_fit_search)
+    
+    self.list_fit_materials = QListWidget()
+    self.list_fit_materials.setStyleSheet("""
+        QListWidget {
+            background-color: #1e1e24;
+            color: #ffffff;
+            border: 1px solid #3c4450;
+            border-radius: 4px;
+        }
+        QListWidget::item {
+            padding: 5px;
+            border-bottom: 1px solid #2b2b36;
+        }
+        QListWidget::item:hover {
+            background-color: #2b2b36;
+        }
+        QListWidget::item:selected {
+            background-color: #3b82f6;
+            color: white;
+            font-weight: bold;
+        }
+    """)
+    self.list_fit_materials.currentRowChanged.connect(lambda idx: on_fit_material_changed(self))
+    self.list_fit_materials.itemChanged.connect(lambda item: update_fit_graph_and_calculators(self))
+    left_layout.addWidget(self.list_fit_materials)
+    
+    self.splitter_fit.addWidget(left_widget)
+    
+    # Right widget: Plot & fit calculations
+    right_widget = QWidget()
+    right_layout = QVBoxLayout(right_widget)
+    right_layout.setContentsMargins(0, 0, 0, 0)
+    
+    # Fit Controls Layout
+    fit_ctrl_layout = QHBoxLayout()
+    
+    lbl_x = QLabel("X Axis:")
+    lbl_x.setStyleSheet("font-weight: bold; color: #e5e7eb; margin-right: 5px;")
+    fit_ctrl_layout.addWidget(lbl_x)
+    
+    self.combo_fit_x = FocusComboBox()
+    self.combo_fit_x.setStyleSheet("background-color: #2b2b36; border: 1px solid #4b5563; border-radius: 4px; color: #ffffff; padding: 4px; min-width: 120px;")
+    fit_ctrl_layout.addWidget(self.combo_fit_x)
+    
+    fit_ctrl_layout.addSpacing(10)
+    
+    lbl_y = QLabel("Y Axis:")
+    lbl_y.setStyleSheet("font-weight: bold; color: #e5e7eb; margin-right: 5px;")
+    fit_ctrl_layout.addWidget(lbl_y)
+    
+    self.combo_fit_y = FocusComboBox()
+    self.combo_fit_y.setStyleSheet("background-color: #2b2b36; border: 1px solid #4b5563; border-radius: 4px; color: #ffffff; padding: 4px; min-width: 120px;")
+    fit_ctrl_layout.addWidget(self.combo_fit_y)
+    
+    fit_ctrl_layout.addSpacing(10)
+    
+    lbl_fit = QLabel("Fit Degree:")
+    lbl_fit.setStyleSheet("font-weight: bold; color: #e5e7eb; margin-right: 5px;")
+    fit_ctrl_layout.addWidget(lbl_fit)
+    
+    self.combo_fit_deg = FocusComboBox()
+    self.combo_fit_deg.setStyleSheet("background-color: #2b2b36; border: 1px solid #4b5563; border-radius: 4px; color: #ffffff; padding: 4px; min-width: 100px;")
+    self.combo_fit_deg.addItem("None", 0)
+    self.combo_fit_deg.addItem("Linear (Degree 1)", 1)
+    self.combo_fit_deg.addItem("Degree 2", 2)
+    self.combo_fit_deg.addItem("Degree 3", 3)
+    self.combo_fit_deg.addItem("Degree 4", 4)
+    self.combo_fit_deg.setCurrentIndex(1) # default to linear fit
+    fit_ctrl_layout.addWidget(self.combo_fit_deg)
+    
+    fit_ctrl_layout.addStretch()
+    right_layout.addLayout(fit_ctrl_layout)
+    
+    # Populate dropdown choices
+    fit_vars = ["Infill %", "Flow", "HU-Low", "HU-High", "RED", "Zeff"]
+    for var in fit_vars:
+        self.combo_fit_x.addItem(var, var)
+        self.combo_fit_y.addItem(var, var)
+        
+    self.combo_fit_x.setCurrentText("Infill %")
+    self.combo_fit_y.setCurrentText("RED")
+    
+    # Connect dropdown triggers to redraw plot
+    self.combo_fit_x.currentTextChanged.connect(lambda: update_fit_graph_and_calculators(self))
+    self.combo_fit_y.currentTextChanged.connect(lambda: update_fit_graph_and_calculators(self))
+    self.combo_fit_deg.currentTextChanged.connect(lambda: update_fit_graph_and_calculators(self))
+    
+    # Matplotlib Graph Setup
+    import_matplotlib_lazy()
+    self.fit_figure = Figure(facecolor="#1e1e24")
+    self.fit_canvas = FigureCanvas(self.fit_figure)
+    self.fit_canvas.setStyleSheet("background-color: #1e1e24;")
+    right_layout.addWidget(self.fit_canvas)
+    
+    if NavigationToolbar is not None:
+        self.fit_toolbar = NavigationToolbar(self.fit_canvas, self.tab_view_and_fit)
+        self.fit_toolbar.setStyleSheet("""
+            QToolBar {
+                background-color: #1e1e24;
+                border: none;
+                spacing: 5px;
+            }
+            QToolButton {
+                background-color: #2b2b36;
+                color: #ffffff;
+                border: 1px solid #4b5563;
+                border-radius: 4px;
+                padding: 2px;
+            }
+            QToolButton:hover {
+                background-color: #3b82f6;
+            }
+        """)
+        right_layout.addWidget(self.fit_toolbar)
+        
+    # Calculators bottom layout
+    calc_layout = QHBoxLayout()
+    
+    # Forward Evaluator GroupBox (Y = f(X))
+    self.grp_forward = QGroupBox("Forward Calculator (Y = f(X))")
+    self.grp_forward.setStyleSheet("QGroupBox { color: #3b82f6; font-weight: bold; border: 1px solid #3c4450; border-radius: 4px; margin-top: 10px; padding: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }")
+    forward_form = QFormLayout(self.grp_forward)
+    
+    self.lbl_calc_x_prompt = QLabel("Enter X (Infill %):")
+    self.lbl_calc_x_prompt.setStyleSheet("color: #e5e7eb; font-weight: bold;")
+    self.txt_fit_calc_x = QLineEdit()
+    self.txt_fit_calc_x.setPlaceholderText("e.g. 50.0")
+    self.txt_fit_calc_x.setStyleSheet("background-color: #2b2b36; border: 1px solid #4b5563; border-radius: 4px; color: #ffffff; padding: 4px;")
+    
+    self.btn_calc_y = QPushButton("Calculate Y")
+    self.btn_calc_y.setStyleSheet("background-color: #3b82f6; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_calc_y.clicked.connect(lambda: evaluate_forward_fit(self))
+    
+    self.lbl_fit_calc_y_res_label = QLabel("Result Y:")
+    self.lbl_fit_calc_y_res_label.setStyleSheet("color: #e5e7eb; font-weight: bold;")
+    self.lbl_fit_calc_y_res = QLabel("N/A")
+    self.lbl_fit_calc_y_res.setStyleSheet("font-size: 14px; font-weight: bold; color: #3b82f6;")
+    
+    forward_form.addRow(self.lbl_calc_x_prompt, self.txt_fit_calc_x)
+    forward_form.addRow(self.btn_calc_y)
+    forward_form.addRow(self.lbl_fit_calc_y_res_label, self.lbl_fit_calc_y_res)
+    
+    calc_layout.addWidget(self.grp_forward)
+    
+    # Inverse Evaluator GroupBox (X = f⁻¹(Y))
+    self.grp_inverse = QGroupBox("Inverse Calculator (X = f⁻¹(Y))")
+    self.grp_inverse.setStyleSheet("QGroupBox { color: #10b981; font-weight: bold; border: 1px solid #3c4450; border-radius: 4px; margin-top: 10px; padding: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }")
+    inverse_form = QFormLayout(self.grp_inverse)
+    
+    self.lbl_calc_y_prompt = QLabel("Enter Y (RED):")
+    self.lbl_calc_y_prompt.setStyleSheet("color: #e5e7eb; font-weight: bold;")
+    self.txt_fit_calc_y = QLineEdit()
+    self.txt_fit_calc_y.setPlaceholderText("e.g. 1.25")
+    self.txt_fit_calc_y.setStyleSheet("background-color: #2b2b36; border: 1px solid #4b5563; border-radius: 4px; color: #ffffff; padding: 4px;")
+    
+    self.btn_calc_x = QPushButton("Calculate X")
+    self.btn_calc_x.setStyleSheet("background-color: #10b981; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_calc_x.clicked.connect(lambda: evaluate_inverse_fit(self))
+    
+    self.lbl_fit_calc_x_res_label = QLabel("Result X:")
+    self.lbl_fit_calc_x_res_label.setStyleSheet("color: #e5e7eb; font-weight: bold;")
+    self.lbl_fit_calc_x_res = QLabel("N/A")
+    self.lbl_fit_calc_x_res.setStyleSheet("font-size: 14px; font-weight: bold; color: #10b981;")
+    
+    inverse_form.addRow(self.lbl_calc_y_prompt, self.txt_fit_calc_y)
+    inverse_form.addRow(self.btn_calc_x)
+    inverse_form.addRow(self.lbl_fit_calc_x_res_label, self.lbl_fit_calc_x_res)
+    
+    calc_layout.addWidget(self.grp_inverse)
+    
+    right_layout.addLayout(calc_layout)
+    self.splitter_fit.addWidget(right_widget)
+    self.splitter_fit.setSizes([250, 550])
+    
+    # Populate the list widget on load
+    populate_view_and_fit_list(self)
+
+def populate_view_and_fit_list(self):
+    if not hasattr(self, "list_fit_materials"):
+        return
+        
+    self.list_fit_materials.blockSignals(True)
+    
+    # Save currently checked roles
+    checked_roles = set()
+    for idx in range(self.list_fit_materials.count()):
+        item = self.list_fit_materials.item(idx)
+        if item.checkState() == Qt.Checked:
+            checked_roles.add(item.data(Qt.UserRole))
+            
+    self.list_fit_materials.clear()
+    
+    # Helper to add checkable list item
+    def add_checkable_item(text, role):
+        item = QListWidgetItem(text)
+        item.setData(Qt.UserRole, role)
+        item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+        if checked_roles:
+            if role in checked_roles:
+                item.setCheckState(Qt.Checked)
+            else:
+                item.setCheckState(Qt.Unchecked)
+        else:
+            # Default: check the first item added
+            if self.list_fit_materials.count() == 0:
+                item.setCheckState(Qt.Checked)
+            else:
+                item.setCheckState(Qt.Unchecked)
+        self.list_fit_materials.addItem(item)
+    
+    # 1. Original Materials from the active software database (self.table_3d_db)
+    active_materials = []
+    if hasattr(self, "table_3d_db"):
+        for r in range(self.table_3d_db.rowCount()):
+            item_mat = self.table_3d_db.item(r, 0)
+            if item_mat:
+                mat_name = item_mat.text().strip()
+                if mat_name and mat_name not in active_materials:
+                    active_materials.append(mat_name)
+                    
+    for mat_name in sorted(active_materials):
+        add_checkable_item(f"Material: {mat_name}", ("material", mat_name))
+            
+    # 2. Mixes and indented Mix RED Combinations from active mixes of self.table_mat_mix
+    active_mixes = {}
+    if hasattr(self, "table_mat_mix"):
+        for r in range(self.table_mat_mix.rowCount()):
+            spin = self.table_mat_mix.cellWidget(r, 0)
+            if isinstance(spin, QSpinBox):
+                mix_id = spin.property("mix_id")
+                if mix_id is not None:
+                    name_item = self.table_mat_mix.item(r, 2)
+                    name_str = name_item.text().strip() if name_item else f"Mix {mix_id}"
+                    if not name_str:
+                        name_str = f"Mix {mix_id}"
+                    active_mixes[mix_id] = name_str
+
+    if hasattr(self, "mix_red_cache"):
+        for mix_id in sorted(active_mixes.keys()):
+            mix_name = active_mixes[mix_id]
+            # Add parent mix item
+            add_checkable_item(f"Mix: {mix_name}", ("mix_main", mix_id))
+            
+            # Find material names for this mix_id
+            start_row = -1
+            group_size = 1
+            total_rows = self.table_mat_mix.rowCount()
+            for r in range(total_rows):
+                spin = self.table_mat_mix.cellWidget(r, 0)
+                if isinstance(spin, QSpinBox) and spin.property("mix_id") == mix_id:
+                    start_row = r
+                    group_size = spin.value()
+                    break
+            
+            mat_names = []
+            if start_row != -1:
+                mat_names = get_materials_in_mix(self, start_row, group_size)
+            
+            combos = self.mix_red_cache.get(mix_id, [])
+            for combo_idx, combo in enumerate(combos):
+                ratios = combo["percentage"]
+                combo_text = format_ratio_string(mat_names, ratios)
+                # Indented child combo item
+                add_checkable_item(f"    - {combo_text}", ("mix_red", mix_id, combo_idx))
+                
+    self.list_fit_materials.blockSignals(False)
+    
+    # Select first item by default if any exists
+    if self.list_fit_materials.count() > 0:
+        self.list_fit_materials.setCurrentRow(0)
+
+def filter_view_and_fit_list(self):
+    if not hasattr(self, "list_fit_materials") or not hasattr(self, "txt_fit_search"):
+        return
+        
+    search_text = self.txt_fit_search.text().strip().lower()
+    for idx in range(self.list_fit_materials.count()):
+        item = self.list_fit_materials.item(idx)
+        if not search_text:
+            item.setHidden(False)
+        else:
+            item.setHidden(search_text not in item.text().lower())
+
+def on_fit_material_changed(self):
+    if hasattr(self, "lbl_fit_calc_y_res"):
+        self.lbl_fit_calc_y_res.setText("N/A")
+    if hasattr(self, "lbl_fit_calc_x_res"):
+        self.lbl_fit_calc_x_res.setText("N/A")
+    if hasattr(self, "txt_fit_calc_x"):
+        self.txt_fit_calc_x.clear()
+    if hasattr(self, "txt_fit_calc_y"):
+        self.txt_fit_calc_y.clear()
+        
+    if hasattr(self, "combo_fit_x") and hasattr(self, "lbl_calc_x_prompt"):
+        self.lbl_calc_x_prompt.setText(f"Enter X ({self.combo_fit_x.currentText()}):")
+    if hasattr(self, "combo_fit_y") and hasattr(self, "lbl_calc_y_prompt"):
+        self.lbl_calc_y_prompt.setText(f"Enter Y ({self.combo_fit_y.currentText()}):")
+        
+    update_fit_graph_and_calculators(self)
+
+def update_fit_graph_and_calculators(self):
+    if not hasattr(self, "fit_canvas") or not hasattr(self, "list_fit_materials"):
+        return
+        
+    self.fit_figure.clear()
+    ax = self.fit_figure.add_subplot(111)
+    
+    # Retrieve background color dynamically
+    background_color = getattr(self, "selected_background", "Transparent")
+    if background_color.lower() == 'transparent':
+        text_color = 'white'
+        bg = '#1e1e24'
+        spine_color = '#4b5563'
+        grid_color = '#2b2b36'
+    elif background_color.lower() == 'white':
+        text_color = 'black'
+        bg = 'white'
+        spine_color = '#cccccc'
+        grid_color = '#e5e7eb'
+    else:
+        text_color = 'black'
+        bg = background_color
+        spine_color = '#cccccc'
+        grid_color = '#e5e7eb'
+        
+    ax.set_facecolor(bg)
+    self.fit_figure.patch.set_facecolor(bg)
+    self.fit_canvas.setStyleSheet(f"background-color: {bg};")
+    
+    # Identify active items to plot (checked items, fallback to current/selected item)
+    active_items = []
+    for idx in range(self.list_fit_materials.count()):
+        item = self.list_fit_materials.item(idx)
+        if item.checkState() == Qt.Checked:
+            active_items.append(item)
+            
+    if not active_items:
+        curr = self.list_fit_materials.currentItem()
+        if curr:
+            active_items = [curr]
+            
+    x_var = self.combo_fit_x.currentText()
+    y_var = self.combo_fit_y.currentText()
+    fit_deg = self.combo_fit_deg.currentData()
+    
+    # Update evaluator label prompts dynamically
+    self.lbl_calc_x_prompt.setText(f"Enter X ({x_var}):")
+    self.lbl_calc_y_prompt.setText(f"Enter Y ({y_var}):")
+    
+    # Clear cached fit parameters
+    self._current_active_fits = []
+    
+    if not active_items:
+        self.fit_canvas.draw()
+        return
+        
+    color_list = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#eab308"]
+    eq_texts = []
+    
+    def extract_val_by_name(var_name, row_map):
+        return row_map.get(var_name, 0.0)
+        
+    for plot_idx, item in enumerate(active_items):
+        item_text = item.text().strip()
+        item_data = item.data(Qt.UserRole)
+        if not item_data:
+            continue
+            
+        color = color_list[plot_idx % len(color_list)]
+        
+        # Extract data points
+        x_data = []
+        y_data = []
+        
+        if item_data[0] == "material":
+            mat_name = item_data[1]
+            rows = self.calibration_data_cache.get(mat_name, [])
+            for row in rows:
+                if len(row) < 20:
+                    continue
+                row_map = {
+                    "Infill %": safe_float(row[12]),
+                    "Flow": safe_float(row[15]),
+                    "HU-Low": safe_float(row[2]),
+                    "HU-High": safe_float(row[4]),
+                    "RED": safe_float(row[6]),
+                    "Zeff": safe_float(row[8])
+                }
+                x_data.append(extract_val_by_name(x_var, row_map))
+                y_data.append(extract_val_by_name(y_var, row_map))
+                
+        elif item_data[0] == "mix_red":
+            mix_id = item_data[1]
+            combo_idx = item_data[2]
+            mix_red_data = self.mix_red_cache.get(mix_id, [])
+            if combo_idx < len(mix_red_data):
+                combo = mix_red_data[combo_idx]
+                rows = combo["rows"]
+                for row_vals in rows:
+                    if len(row_vals) < 14:
+                        continue
+                    row_map = {
+                        "Infill %": safe_float(row_vals[0]),
+                        "Flow": safe_float(row_vals[1]),
+                        "HU-Low": safe_float(row_vals[2]),
+                        "HU-High": safe_float(row_vals[4]),
+                        "RED": safe_float(row_vals[6]),
+                        "Zeff": safe_float(row_vals[9])
+                    }
+                    x_data.append(extract_val_by_name(x_var, row_map))
+                    y_data.append(extract_val_by_name(y_var, row_map))
+                    
+        elif item_data[0] == "mix_main":
+            mix_id = item_data[1]
+            rows = self.mix_calibration_cache.get(mix_id, [])
+            for row in rows:
+                if len(row) < 20:
+                    continue
+                row_map = {
+                    "Infill %": safe_float(row[12]),
+                    "Flow": safe_float(row[18]),
+                    "HU-Low": safe_float(row[3]),
+                    "HU-High": safe_float(row[5]),
+                    "RED": safe_float(row[7]),
+                    "Zeff": safe_float(row[9])
+                }
+                x_data.append(extract_val_by_name(x_var, row_map))
+                y_data.append(extract_val_by_name(y_var, row_map))
+                
+        if not x_data or not y_data:
+            continue
+            
+        # Clean up labels for visual clarity in legend and textbox
+        clean_label = item_text.strip()
+        if clean_label.startswith("- "):
+            clean_label = clean_label[2:]
+        elif clean_label.startswith("    - "):
+            clean_label = clean_label[6:]
+            
+        # Plot data points
+        ax.scatter(x_data, y_data, color=color, s=50, label=clean_label, zorder=3)
+        
+        coefs = None
+        bounds = (min(x_data), max(x_data))
+        
+        # Calculate fit
+        if fit_deg > 0 and len(x_data) > fit_deg:
+            import numpy as np
+            try:
+                x_arr = np.array(x_data, dtype=float)
+                y_arr = np.array(y_data, dtype=float)
+                valid = np.isfinite(x_arr) & np.isfinite(y_arr)
+                if np.sum(valid) > fit_deg:
+                    x_valid = x_arr[valid]
+                    y_valid = y_arr[valid]
+                    
+                    coefs = np.polyfit(x_valid, y_valid, fit_deg)
+                    p = np.poly1d(coefs)
+                    
+                    # R2
+                    y_pred = p(x_valid)
+                    y_mean = np.mean(y_valid)
+                    ss_res = np.sum((y_valid - y_pred) ** 2)
+                    ss_tot = np.sum((y_valid - y_mean) ** 2)
+                    r2 = 1.0 - (ss_res / ss_tot) if ss_tot != 0 else 1.0
+                    
+                    # Format equation
+                    terms = []
+                    for power, coef in enumerate(coefs[::-1]):
+                        if abs(coef) < 1e-4:
+                            continue
+                        if power == 0:
+                            terms.append(f"{coef:+.4f}")
+                        elif power == 1:
+                            terms.append(f"{coef:+.4f}x")
+                        else:
+                            terms.append(f"{coef:+.4f}x$^{power}$")
+                    equation_str = " ".join(terms[::-1]).strip()
+                    if equation_str.startswith("+"):
+                        equation_str = equation_str[1:]
+                    if not equation_str:
+                        equation_str = "0.0000"
+                        
+                    # Plot fit curve
+                    x_fit = np.linspace(min(x_valid), max(x_valid), 100)
+                    y_fit = p(x_fit)
+                    ax.plot(x_fit, y_fit, color=color, linestyle="--", linewidth=2)
+                    
+                    eq_texts.append(f"{clean_label}:\n$y = {equation_str}$ ($R^2 = {r2:.4f}$)")
+            except Exception as e:
+                print(f"Error computing polynomial fit on View and Fit tab: {e}")
+                
+        # Cache this fit for calculators
+        self._current_active_fits.append({
+            "name": clean_label,
+            "coefs": coefs,
+            "bounds": bounds
+        })
+        
+    if not self._current_active_fits:
+        ax.text(0.5, 0.5, "No calibration data available for this selection.",
+                transform=ax.transAxes, verticalalignment='center', horizontalalignment='center',
+                color=text_color, fontsize=11)
+        ax.set_title(f"{y_var} vs {x_var}", color=text_color)
+        ax.set_xlabel(x_var, color=text_color)
+        ax.set_ylabel(y_var, color=text_color)
+        ax.grid(True, color=grid_color, linestyle='--', linewidth=0.5)
+        self.fit_canvas.draw()
+        return
+        
+    if eq_texts:
+        full_display_str = "\n\n".join(eq_texts)
+        ax.text(
+            0.05, 0.95, full_display_str,
+            transform=ax.transAxes,
+            verticalalignment='top',
+            horizontalalignment='left',
+            bbox=dict(boxstyle='round,pad=0.4', facecolor=bg, edgecolor=spine_color, alpha=0.8),
+            color=text_color,
+            fontsize=8
+        )
+        
+    ax.legend(facecolor=bg, edgecolor=spine_color, labelcolor=text_color)
+    ax.set_title(f"{y_var} vs {x_var}", color=text_color, pad=10)
+    ax.set_xlabel(x_var, color=text_color)
+    ax.set_ylabel(y_var, color=text_color)
+    
+    ax.tick_params(axis='both', colors=text_color)
+    for spine in ax.spines.values():
+        spine.set_color(spine_color)
+    ax.grid(True, color=grid_color, linestyle='--', linewidth=0.5)
+    
+    self.fit_figure.tight_layout()
+    self.fit_canvas.draw()
+
+def evaluate_forward_fit(self):
+    if not hasattr(self, "_current_active_fits") or not self._current_active_fits:
+        self.lbl_fit_calc_y_res.setText("Fit not computed yet")
+        return
+        
+    input_str = self.txt_fit_calc_x.text().strip().replace(',', '.')
+    if not input_str:
+        self.lbl_fit_calc_y_res.setText("Enter a value")
+        return
+        
+    try:
+        x_val = float(input_str)
+    except ValueError:
+        self.lbl_fit_calc_y_res.setText("Invalid number")
+        return
+        
+    import numpy as np
+    results_html = []
+    
+    for fit in self._current_active_fits:
+        name = fit["name"]
+        coefs = fit["coefs"]
+        bounds = fit["bounds"]
+        
+        if coefs is None:
+            results_html.append(f"{name}: <b>No fit computed</b>")
+            continue
+            
+        p = np.poly1d(coefs)
+        y_val = p(x_val)
+        
+        status_str = ""
+        if bounds:
+            if x_val < bounds[0] or x_val > bounds[1]:
+                status_str = " (Extrapolated)"
+            else:
+                status_str = " (Interpolated)"
+                
+        results_html.append(f"{name}: <b>{y_val:.4f}</b>{status_str}")
+        
+    self.lbl_fit_calc_y_res.setText("<br/>".join(results_html))
+
+def evaluate_inverse_fit(self):
+    if not hasattr(self, "_current_active_fits") or not self._current_active_fits:
+        self.lbl_fit_calc_x_res.setText("Fit not computed yet")
+        return
+        
+    input_str = self.txt_fit_calc_y.text().strip().replace(',', '.')
+    if not input_str:
+        self.lbl_fit_calc_x_res.setText("Enter a value")
+        return
+        
+    try:
+        y_val = float(input_str)
+    except ValueError:
+        self.lbl_fit_calc_x_res.setText("Invalid number")
+        return
+        
+    import numpy as np
+    results_html = []
+    
+    for fit in self._current_active_fits:
+        name = fit["name"]
+        coefs = fit["coefs"]
+        bounds = fit["bounds"]
+        
+        if coefs is None:
+            results_html.append(f"{name}: <b>No fit computed</b>")
+            continue
+            
+        coefs_temp = list(coefs)
+        coefs_temp[-1] -= y_val
+        
+        try:
+            roots = np.roots(coefs_temp)
+            real_roots = [r.real for r in roots if abs(r.imag) < 1e-6]
+            
+            if not real_roots:
+                results_html.append(f"{name}: <b>No real solution</b>")
+                continue
+                
+            best_root = None
+            best_status = ""
+            
+            if bounds:
+                inside_roots = [r for r in real_roots if bounds[0] <= r <= bounds[1]]
+                if inside_roots:
+                    best_root = inside_roots[0]
+                    best_status = " (Interpolated)"
+                else:
+                    best_root = min(real_roots, key=lambda r: min(abs(r - bounds[0]), abs(r - bounds[1])))
+                    best_status = " (Extrapolated)"
+            else:
+                best_root = real_roots[0]
+                best_status = ""
+                
+            results_html.append(f"{name}: <b>{best_root:.4f}</b>{best_status}")
+        except Exception as e:
+            results_html.append(f"{name}: <b>Calculation error</b>")
+            
+    self.lbl_fit_calc_x_res.setText("<br/>".join(results_html))
+
