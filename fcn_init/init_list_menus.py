@@ -13,8 +13,6 @@ import sys
 
 def safe_combo_items(parent, attr_or_name, items, default_index=None, default_text=None, callback=None):
     combo = getattr(parent, attr_or_name, None)
-    if combo is None and hasattr(parent, 'findChild'):
-        combo = parent.findChild(QtWidgets.QComboBox, attr_or_name)
     if combo is not None and isinstance(combo, QtWidgets.QComboBox):
         if combo.count() == 0:
             combo.addItems(items)

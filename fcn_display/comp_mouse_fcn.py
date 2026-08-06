@@ -19,6 +19,25 @@ def left_button_presscomp_event(self, caller, event):
 def left_button_releasecomp_event(self, caller, event):
     self.left_but_pressed[0] = 0
 
+def right_button_presscomp_event(self, caller, event):
+    Caller_id = self.interactor_to_index.get(caller)
+    if Caller_id is not None:
+        self.Comp_im_idx.setValue(Caller_id)
+        if not hasattr(self, 'right_but_pressed'):
+            self.right_but_pressed = [0, 0]
+        self.right_but_pressed[0] = 1
+        self.right_but_pressed[1] = Caller_id
+        # Sync dropdown
+        ori = int(self.im_ori_comp[Caller_id])
+        self.Comp_view_sel_box.blockSignals(True)
+        self.Comp_view_sel_box.setCurrentIndex(ori)
+        self.Comp_view_sel_box.blockSignals(False)
+
+def right_button_releasecomp_event(self, caller, event):
+    if hasattr(self, 'right_but_pressed'):
+        self.right_but_pressed[0] = 0
+
+
         
 def on_scroll_backwardcomp(self, caller, event):
     Caller_id = self.interactor_to_index.get(caller)
@@ -131,7 +150,7 @@ def onMouseMovecomp(self, caller, event):
         self.textActorAxCom[Ax_idx, 2].SetInput(final_text)
         
         # Adjust Window/Level
-        if self.left_but_pressed[0] == 1 and getattr(self, '_text_dragging', False) == False:
+        if self.left_but_pressed[0] == 1 and getattr(self, '_text_dragging', False) == False and Ax_idx == self.left_but_pressed[1]:
             x0, y0 = caller.GetLastEventPosition()
             current_window = self.windowLevelAxComp[self.left_but_pressed[1], active_layer].GetWindow()
             current_level  = self.windowLevelAxComp[self.left_but_pressed[1], active_layer].GetLevel()
@@ -146,5 +165,27 @@ def onMouseMovecomp(self, caller, event):
                
             set_window(self, Window, Level)
             set_color_map(self)
+            
+        # Adjust Zoom
+        if getattr(self, 'right_but_pressed', [0, 0])[0] == 1 and Ax_idx == self.right_but_pressed[1]:
+            x0, y0 = caller.GetLastEventPosition()
+            dy = y - y0
+            if dy != 0:
+                ren = self.renAxComp[self.right_but_pressed[1]]
+                camera = ren.GetActiveCamera()
+                factor = 10.0 ** (dy / 400.0) 
+                
+                if camera.GetParallelProjection():
+                    scale = camera.GetParallelScale()
+                    camera.SetParallelScale(scale / factor)
+                else:
+                    camera.Dolly(factor)
+                    ren.ResetCameraClippingRange()
+                
+                if self.comp_link_zoom.isChecked():
+                    for r in self.renAxComp:
+                        r.GetRenderWindow().Render()
+                else:
+                    ren.GetRenderWindow().Render()
             
         self.renAxComp[Ax_idx].GetRenderWindow().Render()

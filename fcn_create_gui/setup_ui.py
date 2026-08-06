@@ -77,25 +77,27 @@ def _on_tab_changed(w, index):
         w.tabModules.removeTab(tab_idx)
         w.tabModules.insertTab(tab_idx, real_widget, tab_text)
         w.tabModules.setCurrentIndex(tab_idx)
-    w.tabModules.blockSignals(False)
+    w.setUpdatesEnabled(False)
+    try:
+        if attr_name == "tab_3DP":
+            from fcn_init.create_3D_database_tab import setup_3d_database_tab, setup_mat_mix_tab, setup_view_and_fit_tab
+            setup_3d_database_tab(w)
+            setup_mat_mix_tab(w)
+            setup_view_and_fit_tab(w)
 
-    # Apply translations for newly created widgets
-    retranslate_ui(w)
+        # Apply translations for newly created widgets
+        retranslate_ui(w)
 
-    # Re-run initializations for the newly instantiated tab
-    from fcn_init.init_list_menus import populate_list_menus
-    from fcn_init.init_buttons import initialize_software_buttons
-    from fcn_init.init_tables import initialize_software_tables
-    
-    populate_list_menus(w)
-    initialize_software_tables(w)
-    initialize_software_buttons(w)
-
-    if attr_name == "tab_3DP":
-        from fcn_init.create_3D_database_tab import setup_3d_database_tab, setup_mat_mix_tab, setup_view_and_fit_tab
-        setup_3d_database_tab(w)
-        setup_mat_mix_tab(w)
-        setup_view_and_fit_tab(w)
+        # Re-run initializations for the newly instantiated tab
+        from fcn_init.init_list_menus import populate_list_menus
+        from fcn_init.init_buttons import initialize_software_buttons
+        from fcn_init.init_tables import initialize_software_tables
+        
+        populate_list_menus(w)
+        initialize_software_tables(w)
+        initialize_software_buttons(w)
+    finally:
+        w.setUpdatesEnabled(True)
 
 
 def setup_ui(w):

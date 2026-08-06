@@ -53,8 +53,6 @@ from fcn_reg.auto_reg_dialog import open_auto_reg_dialog, apply_last_transform_t
 
 def safe_btn(parent, attr_name, signal_name, callback, style=None):
     btn = getattr(parent, attr_name, None)
-    if btn is None and hasattr(parent, 'findChild'):
-        btn = parent.findChild(QtWidgets.QWidget, attr_name)
     if btn is not None and hasattr(btn, signal_name):
         try:
             signal = getattr(btn, signal_name)
@@ -72,8 +70,6 @@ def safe_btn(parent, attr_name, signal_name, callback, style=None):
 
 def safe_style(parent, attr_name, style):
     btn = getattr(parent, attr_name, None)
-    if btn is None and hasattr(parent, 'findChild'):
-        btn = parent.findChild(QtWidgets.QWidget, attr_name)
     if btn is not None and hasattr(btn, 'setStyleSheet'):
         try:
             btn.setStyleSheet(style)

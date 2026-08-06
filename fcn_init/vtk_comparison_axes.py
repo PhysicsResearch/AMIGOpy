@@ -4,7 +4,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from PySide6.QtWidgets import QVBoxLayout, QInputDialog
 from PySide6 import QtWidgets
 # from fcn_display.mouse_move_slicechanges import onMouseMoveCoronal, onMouseMoveSagittal, onMouseMoveAxial, left_button_pressaxial_event, left_button_releaseaxial_event
-from fcn_display.comp_mouse_fcn import left_button_presscomp_event, left_button_releasecomp_event, on_scroll_backwardcomp, on_scroll_forwardcomp, onMouseMovecomp
+from fcn_display.comp_mouse_fcn import left_button_presscomp_event, left_button_releasecomp_event, right_button_presscomp_event, right_button_releasecomp_event, on_scroll_backwardcomp, on_scroll_forwardcomp, onMouseMovecomp
 from fcn_display.comp_link_zoom       import toggle_camera_linking
 from fcn_display.display_images_comp import disp_comp_image_slice
 from fcn_display.win_level import set_window
@@ -190,10 +190,14 @@ def setup_vtk_comp(self,N_im):
                 interactor_styleAxial.AddObserver("MouseWheelBackwardEvent", lambda caller, event: on_scroll_backwardcomp(self, caller, event))
                 interactor_styleAxial.AddObserver("LeftButtonReleaseEvent", lambda caller, event: left_button_releasecomp_event(self, caller, event))
                 interactor_styleAxial.AddObserver("LeftButtonPressEvent", lambda caller, event: left_button_presscomp_event(self, caller, event))
+                interactor_styleAxial.AddObserver("RightButtonPressEvent", lambda caller, event: right_button_presscomp_event(self, caller, event))
+                interactor_styleAxial.AddObserver("RightButtonReleaseEvent", lambda caller, event: right_button_releasecomp_event(self, caller, event))
                 #
                 #
                 self.vtkWidgetsComp[i].AddObserver("LeftButtonPressEvent", lambda caller, event: left_button_presscomp_event(self, caller, event),0)
                 self.vtkWidgetsComp[i].AddObserver("LeftButtonReleaseEvent",lambda caller, event:left_button_releasecomp_event(self, caller, event),0)
+                self.vtkWidgetsComp[i].AddObserver("RightButtonPressEvent", lambda caller, event: right_button_presscomp_event(self, caller, event),0)
+                self.vtkWidgetsComp[i].AddObserver("RightButtonReleaseEvent",lambda caller, event:right_button_releasecomp_event(self, caller, event),0)
                 # mouse
                 # self.vtkWidgetsComp[i].AddObserver("MouseWheelForwardEvent", lambda caller, event: on_scroll_forwardcomp(self, caller, event))
                 # self.vtkWidgetsComp[i].AddObserver("MouseWheelBackwardEvent", lambda caller, event: on_scroll_backwardcomp(self, caller, event))

@@ -815,6 +815,16 @@ if __name__ == "__main__":
     splash.show()
     app.processEvents()  # let the splash paint immediately
 
+    # --- Pre-warm Matplotlib asynchronously in background during splash screen ---
+    import threading
+    def prewarm_matplotlib():
+        try:
+            from fcn_init.create_3D_database_tab import import_matplotlib_lazy
+            import_matplotlib_lazy()
+        except Exception:
+            pass
+    threading.Thread(target=prewarm_matplotlib, daemon=True).start()
+
     # --- Create main window (keep __init__ as-is for now) ---
     paths = sys.argv[1:] if len(sys.argv) > 1 else []
     folder_path = paths if len(paths) > 1 else (paths[0] if len(paths) == 1 else None)

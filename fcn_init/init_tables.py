@@ -7,8 +7,6 @@ from fcn_materialassignment.material_assignment_properties import create_datafra
 
 def safe_table(parent, attr_name):
     t = getattr(parent, attr_name, None)
-    if t is None and hasattr(parent, 'findChild'):
-        t = parent.findChild(QTableWidget, attr_name)
     if t is not None and hasattr(t, 'setColumnCount'):
         return t
     return None
