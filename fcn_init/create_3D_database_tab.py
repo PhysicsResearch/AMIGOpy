@@ -2228,6 +2228,17 @@ def save_calibration_database(self):
     except Exception as e:
         print(f"Error saving notes database: {e}")
 def auto_save_all_databases(self):
+    if getattr(self, "_is_loading", False):
+        return
+    # Debounce: collapse rapid signal cascades into a single save
+    if not hasattr(self, '_auto_save_timer'):
+        self._auto_save_timer = QTimer(self)
+        self._auto_save_timer.setSingleShot(True)
+        self._auto_save_timer.setInterval(300)
+        self._auto_save_timer.timeout.connect(lambda: _do_auto_save(self))
+    self._auto_save_timer.start()
+
+def _do_auto_save(self):
     if getattr(self, "_is_loading", False) or getattr(self, "_is_autosaving", False):
         return
     self._is_autosaving = True
@@ -2826,14 +2837,16 @@ def on_mix_material_changed(self, combo, text):
     auto_save_all_databases(self)
         
     if hasattr(self, "current_viewed_mix_id") and self.current_viewed_mix_id is not None:
-        start_row = row
-        while start_row > 0:
-            if isinstance(self.table_mat_mix.cellWidget(start_row, 0), QSpinBox):
-                break
-            start_row -= 1
-        spin = self.table_mat_mix.cellWidget(start_row, 0)
-        if isinstance(spin, QSpinBox) and spin.property("mix_id") == self.current_viewed_mix_id:
-            display_selected_mix_details(self)
+        # Skip detail refresh if triggered by auto-save/combo-update cascade
+        if not getattr(self, "_is_autosaving", False):
+            start_row = row
+            while start_row > 0:
+                if isinstance(self.table_mat_mix.cellWidget(start_row, 0), QSpinBox):
+                    break
+                start_row -= 1
+            spin = self.table_mat_mix.cellWidget(start_row, 0)
+            if isinstance(spin, QSpinBox) and spin.property("mix_id") == self.current_viewed_mix_id:
+                display_selected_mix_details(self)
 
 # Handles changing spinbox mix values
 def on_mix_size_changed(self, spin, newVal):
@@ -3506,6 +3519,9 @@ def display_selected_mix_details(self):
 # Dynamic Plot Canvas Refresher
 def update_mix_graph(self):
     if not hasattr(self, "graph_canvas") or not hasattr(self, "combo_graph_x") or not hasattr(self, "combo_graph_y"):
+        return
+    # Skip redraw if the Graphs tab is not currently visible
+    if hasattr(self, "tabWidget_mix_detail") and self.tabWidget_mix_detail.currentIndex() != 4:
         return
         
     self.graph_figure.clear()

@@ -88,14 +88,17 @@ def _on_tab_changed(w, index):
         # Apply translations for newly created widgets
         retranslate_ui(w)
 
-        # Re-run initializations for the newly instantiated tab
-        from fcn_init.init_list_menus import populate_list_menus
-        from fcn_init.init_buttons import initialize_software_buttons
-        from fcn_init.init_tables import initialize_software_tables
-        
-        populate_list_menus(w)
-        initialize_software_tables(w)
-        initialize_software_buttons(w)
+        # Re-run initializations for the newly instantiated tab.
+        # Skip for tab_3DP because its setup functions already handle all
+        # widget creation, signal connections, and data loading internally.
+        if attr_name != "tab_3DP":
+            from fcn_init.init_list_menus import populate_list_menus
+            from fcn_init.init_buttons import initialize_software_buttons
+            from fcn_init.init_tables import initialize_software_tables
+            
+            populate_list_menus(w)
+            initialize_software_tables(w)
+            initialize_software_buttons(w)
     finally:
         w.setUpdatesEnabled(True)
 
