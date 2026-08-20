@@ -939,9 +939,14 @@ def setup_3d_database_tab(self):
     self.btn_3d_db_remove = QPushButton("Remove")
     self.btn_3d_db_remove.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_3d_db_remove.clicked.connect(lambda: remove_selected_material(self))
+
+    self.btn_3d_db_save = QPushButton("Save Database")
+    self.btn_3d_db_save.setStyleSheet("background-color: #16a34a; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_3d_db_save.clicked.connect(lambda: save_3d_database_action(self))
     
     btn_layout.addWidget(self.btn_3d_db_add)
     btn_layout.addWidget(self.btn_3d_db_remove)
+    btn_layout.addWidget(self.btn_3d_db_save)
     btn_layout.addStretch()
     top_layout.addLayout(btn_layout)
     
@@ -1122,10 +1127,15 @@ def setup_mat_mix_tab(self):
     self.btn_mix_create = QPushButton("Mix Helper")
     self.btn_mix_create.setStyleSheet("background-color: #16a34a; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_create.clicked.connect(lambda: open_create_mix_dialog(self))
+
+    self.btn_mix_save = QPushButton("Save Mix Database")
+    self.btn_mix_save.setStyleSheet("background-color: #16a34a; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_save.clicked.connect(lambda: save_mix_database_action(self))
     
     btn_layout.addWidget(self.btn_mix_add)
     btn_layout.addWidget(self.btn_mix_remove)
     btn_layout.addWidget(self.btn_mix_create)
+    btn_layout.addWidget(self.btn_mix_save)
     btn_layout.addStretch()
     top_layout.addLayout(btn_layout)
     
@@ -2014,7 +2024,7 @@ def display_selected_filament_details(self):
             if c in [0, 1]:
                 continue
             item = QTableWidgetItem()
-            val_str = row_data[c]
+            val_str = row_data[c] if c < len(row_data) else ""
             if c in numeric_indices:
                 try:
                     float_val = float(val_str)
@@ -2037,6 +2047,8 @@ def display_selected_filament_details(self):
 
 def save_current_active_material_cache(self):
     if hasattr(self, "current_viewed_filament") and self.current_viewed_filament:
+        if hasattr(self, "table_calibration_info") and self.table_calibration_info.state() == QAbstractItemView.EditingState:
+            self.table_calibration_info.closePersistentEditor(self.table_calibration_info.currentItem())
         rows = []
         for r in range(self.table_calibration_info.rowCount()):
             row_data = []
@@ -3156,6 +3168,11 @@ def load_mix_database(self):
                     name_item = self.table_mat_mix.item(row_idx, 2)
                     if name_item:
                         name_item.setText(row_data[3])
+                        
+                    for col_idx, data_idx in enumerate(range(4, 10), start=3):
+                        item = self.table_mat_mix.item(row_idx, col_idx)
+                        if item and len(row_data) > data_idx:
+                            item.setText(row_data[data_idx])
     except Exception as e:
         print(f"Error loading mixed materials database: {e}")
     finally:
@@ -3218,12 +3235,15 @@ def get_materials_in_mix(self, start_row, group_size):
     mat_names = []
     for i in range(group_size):
         r = start_row + i
-        if r >= self.table_mat_mix.rowCount():
-            break
-        combo = self.table_mat_mix.cellWidget(r, 1)
-        text = safe_get_combo_text(combo)
-        if text:
-            mat_names.append(text)
+        text = ""
+        if r < self.table_mat_mix.rowCount():
+            combo = self.table_mat_mix.cellWidget(r, 1)
+            text = safe_get_combo_text(combo)
+            if not text and isinstance(combo, QComboBox):
+                saved_sel = combo.property("saved_selection")
+                if saved_sel:
+                    text = str(saved_sel).strip()
+        mat_names.append(text if text else f"Material {i+1}")
     return mat_names
 
 def display_selected_mix_details(self):
@@ -4109,6 +4129,11 @@ def update_mix_graph(self):
 def save_current_active_mix_cache(self):
     if hasattr(self, "current_viewed_mix_id") and self.current_viewed_mix_id is not None:
         mix_id = self.current_viewed_mix_id
+        
+        if hasattr(self, "table_mix_calibration_info") and self.table_mix_calibration_info.state() == QAbstractItemView.EditingState:
+            self.table_mix_calibration_info.closePersistentEditor(self.table_mix_calibration_info.currentItem())
+        if hasattr(self, "table_mix_z_red") and self.table_mix_z_red.state() == QAbstractItemView.EditingState:
+            self.table_mix_z_red.closePersistentEditor(self.table_mix_z_red.currentItem())
         
         # Save active Mix RED table to cache
         if hasattr(self, "list_mix_red_ratios"):
