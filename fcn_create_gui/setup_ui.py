@@ -71,12 +71,15 @@ def _on_tab_changed(w, index):
     # Replace the placeholder in tabModules with the real widget safely
     real_widget = getattr(w, attr_name)
     w.tabModules.blockSignals(True)
-    tab_idx = w.tabModules.indexOf(old_placeholder)
-    if tab_idx >= 0:
-        tab_text = w.tabModules.tabText(tab_idx)
-        w.tabModules.removeTab(tab_idx)
-        w.tabModules.insertTab(tab_idx, real_widget, tab_text)
-        w.tabModules.setCurrentIndex(tab_idx)
+    try:
+        tab_idx = w.tabModules.indexOf(old_placeholder)
+        if tab_idx >= 0:
+            tab_text = w.tabModules.tabText(tab_idx)
+            w.tabModules.removeTab(tab_idx)
+            w.tabModules.insertTab(tab_idx, real_widget, tab_text)
+            w.tabModules.setCurrentIndex(tab_idx)
+    finally:
+        w.tabModules.blockSignals(False)
     w.setUpdatesEnabled(False)
     try:
         if attr_name == "tab_3DP":
