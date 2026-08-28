@@ -520,7 +520,10 @@ def retranslate_ui(w):
     if hasattr(w, 'BrachytabWidget_2'):
         w.BrachytabWidget_2.setTabText(w.BrachytabWidget_2.indexOf(w.Br_tab_43), QCoreApplication.translate("w", u"TG43", None))
     if hasattr(w, 'Plan_tabs'):
-        w.Plan_tabs.setTabText(w.Plan_tabs.indexOf(w.Brachy_plan_tab), QCoreApplication.translate("w", u"Brachy", None))
+        if hasattr(w, 'Brachy_plan_tab'):
+            w.Plan_tabs.setTabText(w.Plan_tabs.indexOf(w.Brachy_plan_tab), QCoreApplication.translate("w", u"Brachy", None))
+        if hasattr(w, 'ebrt_ph_tab'):
+            w.Plan_tabs.setTabText(w.Plan_tabs.indexOf(w.ebrt_ph_tab), QCoreApplication.translate("w", u"EBRT-Ph", None))
     if hasattr(w, 'dose_matri_to_eqd2'):
         w.dose_matri_to_eqd2.setTitle(QCoreApplication.translate("w", u"Convert dose matrix to EQD2", None))
     if hasattr(w, 'eqd2_lab1'):

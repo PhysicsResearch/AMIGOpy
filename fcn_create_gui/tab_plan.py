@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 tab_plan.py - AMIGOpy GUI Module
 ===================================
@@ -806,6 +806,57 @@ def create_tab_plan(w):
     w.gridLayout_43.addWidget(w.BrachytabWidget_2, 0, 1, 1, 1)
 
     w.Plan_tabs.addTab(w.Brachy_plan_tab, "")
+
+    w.ebrt_ph_tab = QWidget()
+    w.ebrt_ph_tab.setObjectName(u"ebrt_ph_tab")
+    w.ebrt_ph_layout = QHBoxLayout(w.ebrt_ph_tab)
+    w.ebrt_ph_layout.setObjectName(u"ebrt_ph_layout")
+    
+    # Left side: Tree widget to show Plan -> Beam -> Control Points
+    w.ebrt_tree = QTreeWidget(w.ebrt_ph_tab)
+    w.ebrt_tree.setObjectName(u"ebrt_tree")
+    w.ebrt_tree.setHeaderLabels(["Field / Parameter", "Value", "Display", "Color"])
+    w.ebrt_tree.setColumnWidth(0, 300)
+    w.ebrt_tree.setColumnWidth(2, 60)
+    w.ebrt_tree.setColumnWidth(3, 60)
+    w.ebrt_ph_layout.addWidget(w.ebrt_tree, 1)
+    
+    # Right side: empty widget for graphs
+    w.ebrt_graphs_widget = QWidget(w.ebrt_ph_tab)
+    w.ebrt_graphs_widget.setObjectName(u"ebrt_graphs_widget")
+    w.ebrt_graphs_layout = QVBoxLayout(w.ebrt_graphs_widget)
+    
+    # Control Panel
+    w.ebrt_control_panel = QWidget(w.ebrt_graphs_widget)
+    w.ebrt_control_layout = QHBoxLayout(w.ebrt_control_panel)
+    w.ebrt_control_layout.setContentsMargins(0, 0, 0, 0)
+    
+    w.ebrt_x_label = QLabel("X Axis:", w.ebrt_control_panel)
+    w.ebrt_x_combo = QComboBox(w.ebrt_control_panel)
+    w.ebrt_x_combo.addItems(["Beam", "Gantry Angle", "Collimator Angle", "Couch Angle", "Time Cumulative", "CP Index", "Cumulative MU"])
+    
+    w.ebrt_y_label = QLabel("Y Axis:", w.ebrt_control_panel)
+    w.ebrt_y_combo = QComboBox(w.ebrt_control_panel)
+    w.ebrt_y_combo.addItems(["Gantry Angle", "Collimator Angle", "Couch Angle", "MU per CP", "Cumulative MU", "Time per CP", "Dose Rate"])
+    
+    w.ebrt_polar_check = QCheckBox("Polar Plot", w.ebrt_control_panel)
+    
+    w.ebrt_control_layout.addWidget(w.ebrt_x_label)
+    w.ebrt_control_layout.addWidget(w.ebrt_x_combo)
+    w.ebrt_control_layout.addWidget(w.ebrt_y_label)
+    w.ebrt_control_layout.addWidget(w.ebrt_y_combo)
+    w.ebrt_control_layout.addWidget(w.ebrt_polar_check)
+    
+    w.ebrt_graphs_layout.addWidget(w.ebrt_control_panel, 0)
+    
+    # Plot Canvas Container
+    w.ebrt_plot_container = QWidget(w.ebrt_graphs_widget)
+    w.ebrt_plot_layout = QVBoxLayout(w.ebrt_plot_container)
+    w.ebrt_plot_layout.setContentsMargins(0, 0, 0, 0)
+    w.ebrt_graphs_layout.addWidget(w.ebrt_plot_container, 1)
+    w.ebrt_ph_layout.addWidget(w.ebrt_graphs_widget, 2)
+    
+    w.Plan_tabs.addTab(w.ebrt_ph_tab, "")
     w.eqd2 = QWidget()
     w.eqd2.setObjectName(u"eqd2")
     w.dose_matri_to_eqd2 = QGroupBox(w.eqd2)
