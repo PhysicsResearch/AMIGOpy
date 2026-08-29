@@ -57,21 +57,6 @@ class RulerWidget:
         prop.SetRenderLinesAsTubes(True)    # optional, to draw on top
         self.renderer.AddActor(self.lineActor)
 
-        # endpoint circles
-        for idx in (1, 2):
-            poly = vtk.vtkRegularPolygonSource()
-            poly.SetNumberOfSides(20)
-            poly.SetRadius(3)
-            setattr(self, f'poly{idx}', poly)
-            pm = vtk.vtkPolyDataMapper()
-            pm.SetInputConnection(poly.GetOutputPort())
-            actor = vtk.vtkActor()
-            actor.SetMapper(pm)
-            actor.GetProperty().SetColor(1, 0, 0)
-            actor.GetProperty().SetOpacity(0.5)
-            setattr(self, f'actor{idx}', actor)
-            self.renderer.AddActor(actor)
-
         # handles
         for idx in (1, 2):
             rep = vtk.vtkPointHandleRepresentation3D()
@@ -145,8 +130,6 @@ class RulerWidget:
         else:
             self.lineSource.SetPoint2(pos)
         self.lineSource.Modified()
-        getattr(self, f'poly{idx}').SetCenter(pos)
-        getattr(self, f'actor{idx}').SetPosition(0, 0, 0)
         self._update_measure()
 
         # Link tools synchronization
@@ -173,8 +156,6 @@ class RulerWidget:
                             else:
                                 other.lineSource.SetPoint2(pos)
                             other.lineSource.Modified()
-                            getattr(other, f'poly{idx}').SetCenter(pos)
-                            getattr(other, f'actor{idx}').SetPosition(0, 0, 0)
                             other._update_measure()
                             other.renWin.Render()
                 finally:
@@ -196,11 +177,6 @@ class RulerWidget:
         self.lineSource.SetPoint1(p1)
         self.lineSource.SetPoint2(p2)
         self.lineSource.Modified()
-        # reposition circles
-        self.poly1.SetCenter(p1)
-        self.actor1.SetPosition(0, 0, 0)
-        self.poly2.SetCenter(p2)
-        self.actor2.SetPosition(0, 0, 0)
         # reposition handles
         self.handle1.GetRepresentation().SetWorldPosition(p1)
         self.handle2.GetRepresentation().SetWorldPosition(p2)
@@ -216,8 +192,9 @@ class RulerWidget:
         newVis = not self.is_visible
         if newVis:
             self._recenter_line()
-        for name in ('lineActor', 'actor1', 'actor2', 'textActor'):
-            getattr(self, name).SetVisibility(newVis)
+        for name in ('lineActor', 'textActor', 'actor1', 'actor2'):
+            if hasattr(self, name):
+                getattr(self, name).SetVisibility(newVis)
         if newVis:
             self.handle1.On()
             self.handle2.On()
