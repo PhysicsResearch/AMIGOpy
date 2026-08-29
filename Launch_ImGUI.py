@@ -543,35 +543,41 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
                 return True
 
             # --- your existing logic follows ---
-            if watched is self.im_display_tab:
+            im_disp = getattr(self, 'im_display_tab', None)
+            if im_disp is not None and watched is im_disp:
                 self.set_view_mode("all")
                 return True
 
-            if watched is self.VTK_view_3D or (hasattr(self, 'vtk3dWidget') and watched is self.vtk3dWidget):
-                parent = self.VTK_view_3D.parentWidget()
+            vtk3d = getattr(self, 'VTK_view_3D', None) or getattr(self, 'vtk3dWidget', None)
+            if vtk3d is not None and watched is vtk3d:
+                parent = vtk3d.parentWidget()
                 current_tab = self.tabModules.tabText(self.tabModules.currentIndex())
-                if current_tab == "_3Dview":
+                if current_tab == "_3Dview" and parent is not None:
                     layout = parent.layout()
-                    if not getattr(self, '_vtk3d_is_maximized', False):
-                        # Store original grid layout position
-                        row, col, rowSpan, colSpan = _find_widget_in_gridlayout(layout, self.VTK_view_3D)
-                        self._vtk3d_orig_grid = (row, col, rowSpan, colSpan)
-                        self._vtk3d_orig_parent = parent
-                        self._vtk3d_orig_geometry = self.VTK_view_3D.geometry()
-                        # Maximize widget to fill parent
-                        self.VTK_view_3D.setParent(parent)
-                        self.VTK_view_3D.raise_()
-                        self.VTK_view_3D.setGeometry(parent.rect())
-                        self.VTK_view_3D.show()
-                        self._vtk3d_is_maximized = True
-                    else:
-                        # Restore to original grid position and span
-                        row, col, rowSpan, colSpan = self._vtk3d_orig_grid
-                        layout.addWidget(self.VTK_view_3D, row, col, rowSpan, colSpan)
-                        self.VTK_view_3D.setParent(parent)
-                        self.VTK_view_3D.setMinimumSize(0, 0)  # Reset min size
-                        self.VTK_view_3D.updateGeometry()
-                        self._vtk3d_is_maximized = False
+                    if layout is not None:
+                        if not getattr(self, '_vtk3d_is_maximized', False):
+                            # Store original grid layout position
+                            res = _find_widget_in_gridlayout(layout, vtk3d)
+                            if res is not None:
+                                row, col, rowSpan, colSpan = res
+                                self._vtk3d_orig_grid = (row, col, rowSpan, colSpan)
+                                self._vtk3d_orig_parent = parent
+                                self._vtk3d_orig_geometry = vtk3d.geometry()
+                                # Maximize widget to fill parent
+                                vtk3d.setParent(parent)
+                                vtk3d.raise_()
+                                vtk3d.setGeometry(parent.rect())
+                                vtk3d.show()
+                                self._vtk3d_is_maximized = True
+                        else:
+                            # Restore to original grid position and span
+                            if hasattr(self, '_vtk3d_orig_grid'):
+                                row, col, rowSpan, colSpan = self._vtk3d_orig_grid
+                                layout.addWidget(vtk3d, row, col, rowSpan, colSpan)
+                            vtk3d.setParent(parent)
+                            vtk3d.setMinimumSize(0, 0)  # Reset min size
+                            vtk3d.updateGeometry()
+                            self._vtk3d_is_maximized = False
                 return True
 
             if hasattr(watched, "_axis_name"):

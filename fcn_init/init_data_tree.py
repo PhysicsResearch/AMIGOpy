@@ -56,6 +56,12 @@ def on_tree_context_menu(self, pos):
     # -------------------------
     if Type == "Medical Image" and len(hierarchy) == 5:
         menu = QMenu()
+
+        reg_prop_action = None
+        if Modality == "REG":
+            reg_prop_action = menu.addAction("Reg. properties...")
+            menu.addSeparator()
+
         open_action        = menu.addAction("Open…")
 
         currentTabText = self.tabModules.tabText(self.tabModules.currentIndex())
@@ -68,7 +74,11 @@ def on_tree_context_menu(self, pos):
         delete_action      = menu.addAction("Delete series")
 
         action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
-        if action == open_action:
+        if reg_prop_action and action == reg_prop_action:
+            from fcn_reg.reg_properties_dialog import RegPropertiesDialog
+            dialog = RegPropertiesDialog(self, Patient, Study, Series)
+            dialog.exec_()
+        elif action == open_action:
             on_DataTreeView_clicked(self, idx)
         elif reset_view and action == reset_view:
             adjust_reset_view(self)
@@ -79,11 +89,11 @@ def on_tree_context_menu(self, pos):
             populate_medical_image_tree(self)
         elif action == exp_action_dcm:
             meta_data   = self.medical_image[Patient][Study][Modality][Series]['metadata'].get('DCM_Info')
-            data        = self.medical_image[Patient][Study][Modality][Series]['3DMatrix']
-            slice_thick = self.medical_image[Patient][Study][Modality][Series]['metadata']['SliceThickness']
+            data        = self.medical_image[Patient][Study][Modality][Series].get('3DMatrix')
+            slice_thick = self.medical_image[Patient][Study][Modality][Series]['metadata'].get('SliceThickness', 1.0)
             if meta_data is None:
                 print("No DICOM header available for export (likely NIfTI-derived).")
-            else:
+            elif data is not None:
                 export_dicom_series(meta_data, data, slice_thick, output_folder=None)
         elif action == exp_action_nii:
             export_nifti(self, Patient, Study, Modality, Series,output_folder=None, file_name=None)
