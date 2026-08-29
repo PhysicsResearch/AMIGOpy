@@ -115,15 +115,18 @@ def populate_medical_image_tree(self):
                 modality_item = QStandardItem(f"Modality: {modality}")
                 study_item.appendRow(modality_item)
                 for item_index, series_data in enumerate(modality_data):  # Iterating over the list
-                    if   modality == 'RTPLAN':
-                        Plan_label = series_data['metadata']['RTPlanLabel']
+                    if modality == 'RTPLAN':
+                        Plan_label = series_data['metadata'].get('RTPlanLabel') or series_data['metadata'].get('RTPlanName') or 'Plan'
                         series_label = f"{Plan_label}_Series: {series_data['SeriesNumber']}"
-                        #
                         series_item = QStandardItem(series_label)
                         modality_item.appendRow(series_item)
                     elif modality == 'RTSTRUCT':
-                        Struct_label = series_data['metadata']['StructureSetLabel']
-                        series_label = f"{Struct_label}_Series: {series_data['SeriesNumber']}"
+                        Struct_label = series_data['metadata'].get('StructureSetLabel') or series_data['metadata'].get('StructureSetName') or 'Struct'
+                        struct_date = series_data['metadata'].get('StructureSetDate')
+                        if struct_date and struct_date != 'N/A':
+                            series_label = f"{Struct_label} ({struct_date})_Series: {series_data['SeriesNumber']}"
+                        else:
+                            series_label = f"{Struct_label}_Series: {series_data['SeriesNumber']}"
                         series_item = QStandardItem(series_label)
                         modality_item.appendRow(series_item)
                         # If structures exist, add them as a sublevel
@@ -136,9 +139,30 @@ def populate_medical_image_tree(self):
                                 structures_parent_item.appendRow(structure_item)
 
                     elif modality == 'RTDOSE':
-                        Dose_label = series_data['metadata']['SeriesDescription']
-                        series_label = f"{Dose_label}_Series: {series_data['SeriesNumber']}"
+                        Dose_label = series_data['metadata'].get('SeriesDescription') or series_data['metadata'].get('DoseSummationType') or 'Dose'
+                        ref_plan_uid = series_data['metadata'].get('ReferencedRTPlanSOPInstanceUID')
+                        plan_name = None
+                        if ref_plan_uid and 'RTPLAN' in study_data:
+                            for p in study_data['RTPLAN']:
+                                if p['metadata'].get('SOPInstanceUID') == ref_plan_uid:
+                                    plan_name = p['metadata'].get('RTPlanLabel') or p['metadata'].get('RTPlanName')
+                                    break
+                        if plan_name:
+                            series_label = f"{Dose_label} ({plan_name})_Series: {series_data['SeriesNumber']}"
+                        else:
+                            series_label = f"{Dose_label}_Series: {series_data['SeriesNumber']}"
                         series_item = QStandardItem(series_label)
+                        modality_item.appendRow(series_item)
+                    elif modality == 'REG':
+                        reg_label = series_data['metadata'].get('ContentLabel') or series_data['metadata'].get('SeriesDescription') or 'Registration'
+                        series_label = f"{reg_label}_Series: {series_data['SeriesNumber']}"
+                        series_item = QStandardItem(series_label)
+                        mat_list = series_data['metadata'].get('RegistrationMatrixList', [])
+                        if mat_list:
+                            tt = f"Registration ({len(mat_list)} matrices)\n"
+                            for m_idx, m_info in enumerate(mat_list):
+                                tt += f"Matrix {m_idx+1}: Type={m_info.get('MatrixType')} -> TargetFoR={m_info.get('TargetFrameOfReferenceUID')[:20]}...\n"
+                            series_item.setToolTip(tt.strip())
                         modality_item.appendRow(series_item)
                     elif modality == 'Operation':
                         Op_label = series_data['metadata'].get('SeriesDescription', 'Operation')
@@ -147,9 +171,13 @@ def populate_medical_image_tree(self):
                         modality_item.appendRow(series_item)
                     else:
                         LUT = series_data['metadata']
-                        Acq_number = series_data['metadata']['AcquisitionNumber']
-                        series_label = f"Acq_{Acq_number}_Series: {series_data['SeriesNumber']}"
-                        if LUT['LUTLabel'] != 'N/A':
+                        Acq_number = series_data['metadata'].get('AcquisitionNumber', 'N/A')
+                        series_desc = series_data['metadata'].get('SeriesDescription', '')
+                        if series_desc:
+                            series_label = f"{series_desc}_Series: {series_data['SeriesNumber']}"
+                        else:
+                            series_label = f"Acq_{Acq_number}_Series: {series_data['SeriesNumber']}"
+                        if LUT.get('LUTLabel', 'N/A') != 'N/A':
                             series_label += f" {LUT['LUTLabel']} {LUT['LUTExplanation']}"
 
                         series_item = QStandardItem(series_label)
@@ -268,7 +296,7 @@ def select_first_image_series(self):
                     if not series_item: continue
                     
                     index = series_item.index()
-                    if modality not in ("RTPLAN", "RTSTRUCT"):
+                    if modality not in ("RTPLAN", "RTSTRUCT", "REG"):
                         trigger_tree_click(self, index)
                         return
                     elif first_fallback_index is None:

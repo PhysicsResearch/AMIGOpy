@@ -32,70 +32,91 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
             file_info['LUTExplanation'], file_info['LUTLabel']
         )
         
-        
         if (modality != 'RTIMAGE' and modality != 'CT' and modality != 'MR' and modality != 'RTDOSE' and modality != 'RTPLAN'
-            and modality != 'RTSTRUCT'):
-            #
+            and modality != 'RTSTRUCT' and modality != 'REG'):
             non_im_files.append(file_info)
             continue
 
-        #
-        dicom_file    = pydicom.dcmread(file_path)
+        dicom_file    = pydicom.dcmread(file_path, force=True)
         patient_data  = structured_data.setdefault(patient_id, {})
         study_data    = patient_data.setdefault(study_id, {})
         modality_data = study_data.setdefault(modality, [])
         
-        if (modality == 'RTIMAGE' or modality == 'CT' or modality == 'MR' or modality== 'RTDOSE'):
-            
+        if (modality == 'RTIMAGE' or modality == 'CT' or modality == 'MR' or modality == 'RTDOSE'):
             image = dicom_file.pixel_array
-            #
-            #
             instance_number = getattr(dicom_file, "InstanceNumber", None)
             if instance_number is None:
-                instance_number = file_info['InstanceNumber']
-            instance_number = int(instance_number)
-            image_position_patient    = getattr(dicom_file, "ImagePositionPatient", [0,0,0])
+                instance_number = file_info.get('InstanceNumber', 1)
+            try:
+                instance_number = int(instance_number)
+            except (ValueError, TypeError):
+                instance_number = 1
+            image_position_patient = getattr(dicom_file, "ImagePositionPatient", [0, 0, 0])
               
             # slice thickness it not always available specially for RTDose so this needs to be considered 
             sli_thick = getattr(dicom_file, "SliceThickness", None)
             if sli_thick is None or sli_thick == 0 or sli_thick == '':
-               # calculate the slice thickness usin additional info if available
-               vect = getattr(dicom_file, "GridFrameOffsetVector", None)
-               if vect is None or vect == 0 or vect == '':
-                   sli_thick = np.float32(1)
-               else:
-                   sli_thick = vect[1]-vect[0]
+                # calculate the slice thickness using additional info if available
+                vect = getattr(dicom_file, "GridFrameOffsetVector", None)
+                if vect is None or vect == 0 or vect == '' or len(vect) < 2:
+                    sli_thick = np.float32(1)
+                else:
+                    sli_thick = np.float32(abs(vect[1] - vect[0]))
         
-        # Check if the current series_number already exists in the modality_data list.
-        # For CT, MR, and RTIMAGE we group files by SeriesNumber (since they are split across multiple files).
-        # For RTDOSE, RTPLAN, and RTSTRUCT, each file is a self-contained, independent object,
-        # so we should treat them as separate series even if they share the same SeriesNumber.
+        # Check if the current series already exists in the modality_data list.
+        # For CT, MR, and RTIMAGE we group files by SeriesInstanceUID (or SeriesNumber if UID missing).
+        # For RTDOSE, RTPLAN, RTSTRUCT, and REG, each file is a self-contained object,
+        # so we treat them as separate entries even if they share the same SeriesNumber.
         if modality in ['CT', 'MR', 'RTIMAGE']:
-            existing_series_data = next((s for s in modality_data if s.get('SeriesNumber') == series_number), None)
+            series_uid = getattr(dicom_file, "SeriesInstanceUID", file_info.get('SeriesInstanceUID', 'N/A'))
+            if series_uid and series_uid != 'N/A':
+                existing_series_data = next((s for s in modality_data if s.get('metadata', {}).get('SeriesInstanceUID') == series_uid), None)
+            else:
+                existing_series_data = next((s for s in modality_data if s.get('SeriesNumber') == series_number), None)
         else:
             existing_series_data = None
+
         if not existing_series_data:
-            if (modality == 'CT' or modality == 'MR' or modality== 'RTDOSE'):
-                Header = Header = pydicom.dcmread(file_path,stop_before_pixels=True)
+            if (modality == 'CT' or modality == 'MR' or modality == 'RTDOSE'):
+                Header = pydicom.dcmread(file_path, stop_before_pixels=True, force=True)
+                
+                # Check RTDOSE specific references
+                ref_plan_uid = "N/A"
+                if hasattr(dicom_file, "ReferencedRTPlanSequence") and len(dicom_file.ReferencedRTPlanSequence) > 0:
+                    ref_plan_uid = getattr(dicom_file.ReferencedRTPlanSequence[0], "ReferencedSOPInstanceUID", "N/A")
+                ref_struct_uid = "N/A"
+                if hasattr(dicom_file, "ReferencedStructureSetSequence") and len(dicom_file.ReferencedStructureSetSequence) > 0:
+                    ref_struct_uid = getattr(dicom_file.ReferencedStructureSetSequence[0], "ReferencedSOPInstanceUID", "N/A")
+
                 existing_series_data = {
                     'SeriesNumber': series_number,
                     'metadata': {
-                        'PixelSpacing': getattr(dicom_file, "PixelSpacing", 1),
+                        'PixelSpacing': getattr(dicom_file, "PixelSpacing", [1.0, 1.0]),
                         'SliceThickness': sli_thick,
                         'LUTExplanation': LUTExplanation,
                         'LUTLabel': LUTLabel,
                         'ImageOrientationPatient': getattr(dicom_file, "ImageOrientationPatient", "N/A"),
-                        'ImagePositionPatient': getattr(dicom_file, "ImagePositionPatient", [0,0,0]),
+                        'ImagePositionPatient': getattr(dicom_file, "ImagePositionPatient", [0, 0, 0]),
                         'RescaleSlope': getattr(dicom_file, "RescaleSlope", "N/A"),
                         'RescaleIntercept': getattr(dicom_file, "RescaleIntercept", "N/A"),
                         'WindowWidth': getattr(dicom_file, "WindowWidth", "N/A"),
                         'WindowCenter': getattr(dicom_file, "WindowCenter", "N/A"),
-                        'SeriesDescription':getattr(dicom_file, "SeriesDescription", ''),
+                        'SeriesDescription': getattr(dicom_file, "SeriesDescription", ''),
                         'StudyDescription': getattr(dicom_file, "StudyDescription", ''),
                         'ImageComments': getattr(dicom_file, "ImageComments", ''),
                         'DoseGridScaling': getattr(dicom_file, "DoseGridScaling", "N/A"),
+                        'DoseSummationType': getattr(dicom_file, "DoseSummationType", "N/A"),
+                        'DoseType': getattr(dicom_file, "DoseType", "N/A"),
+                        'ReferencedRTPlanSOPInstanceUID': ref_plan_uid,
+                        'ReferencedStructureSetSOPInstanceUID': ref_struct_uid,
                         'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),
                         'PatientPosition': getattr(dicom_file, "PatientPosition", "N/A"),
+                        'SeriesInstanceUID': getattr(dicom_file, "SeriesInstanceUID", file_info.get('SeriesInstanceUID', 'N/A')),
+                        'StudyInstanceUID': getattr(dicom_file, "StudyInstanceUID", file_info.get('StudyInstanceUID', 'N/A')),
+                        'FrameOfReferenceUID': getattr(dicom_file, "FrameOfReferenceUID", file_info.get('FrameOfReferenceUID', 'N/A')),
+                        'SOPInstanceUID': getattr(dicom_file, "SOPInstanceUID", file_info.get('SOPInstanceUID', 'N/A')),
+                        'StudyDate': getattr(dicom_file, "StudyDate", file_info.get('AcquisitionDate', '')),
+                        'SeriesDate': getattr(dicom_file, "SeriesDate", ''),
                         'DataType': 'DICOM',
                         'Modality': modality,
                         'DCM_Info': Header,
@@ -107,33 +128,37 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                     },
                     'images': {},
                     'ImagePositionPatients': [],
-                    'SliceImageComments':{},
+                    'SliceImageComments': {},
                     'AM_name': None,  # name defined (auto) in populate tree function 
                     'US_name': None,  # name that could be defined by the user in the interface (manual)
                 }
-            if (modality == 'RTIMAGE'):
-                # RTIMAGE files can have different tags for pixel spacing and slice thickness, depending on the software that created them.
-                # It also includes table position and other info not yet handled by MAIGO but that should be included here in the futrue
-                Header = Header = pydicom.dcmread(file_path,stop_before_pixels=True)
+            elif (modality == 'RTIMAGE'):
+                Header = pydicom.dcmread(file_path, stop_before_pixels=True, force=True)
                 existing_series_data = {
                     'SeriesNumber': series_number,
                     'metadata': {
-                        'PixelSpacing': getattr(dicom_file, "ImagePlanePixelSpacing", 1),
+                        'PixelSpacing': getattr(dicom_file, "ImagePlanePixelSpacing", [1.0, 1.0]),
                         'SliceThickness': sli_thick,
                         'LUTExplanation': LUTExplanation,
                         'LUTLabel': LUTLabel,
                         'ImageOrientationPatient': getattr(dicom_file, "ImageOrientationPatient", "N/A"),
-                        'ImagePositionPatient': getattr(dicom_file, "ImagePositionPatient", [0,0,0]),
+                        'ImagePositionPatient': getattr(dicom_file, "ImagePositionPatient", [0, 0, 0]),
                         'RescaleSlope': getattr(dicom_file, "RescaleSlope", "N/A"),
                         'RescaleIntercept': getattr(dicom_file, "RescaleIntercept", "N/A"),
                         'WindowWidth': getattr(dicom_file, "WindowWidth", "N/A"),
                         'WindowCenter': getattr(dicom_file, "WindowCenter", "N/A"),
-                        'SeriesDescription':getattr(dicom_file, "SeriesDescription", ''),
+                        'SeriesDescription': getattr(dicom_file, "SeriesDescription", ''),
                         'StudyDescription': getattr(dicom_file, "StudyDescription", ''),
                         'ImageComments': getattr(dicom_file, "ImageComments", ''),
                         'DoseGridScaling': getattr(dicom_file, "DoseGridScaling", "N/A"),
                         'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),
                         'PatientPosition': getattr(dicom_file, "PatientPosition", "N/A"),
+                        'SeriesInstanceUID': getattr(dicom_file, "SeriesInstanceUID", file_info.get('SeriesInstanceUID', 'N/A')),
+                        'StudyInstanceUID': getattr(dicom_file, "StudyInstanceUID", file_info.get('StudyInstanceUID', 'N/A')),
+                        'FrameOfReferenceUID': getattr(dicom_file, "FrameOfReferenceUID", file_info.get('FrameOfReferenceUID', 'N/A')),
+                        'SOPInstanceUID': getattr(dicom_file, "SOPInstanceUID", file_info.get('SOPInstanceUID', 'N/A')),
+                        'StudyDate': getattr(dicom_file, "StudyDate", file_info.get('AcquisitionDate', '')),
+                        'SeriesDate': getattr(dicom_file, "SeriesDate", ''),
                         'DataType': 'DICOM',
                         'Modality': modality,
                         'DCM_Info': Header,
@@ -145,36 +170,46 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                     },
                     'images': {},
                     'ImagePositionPatients': [],
-                    'SliceImageComments':{},
+                    'SliceImageComments': {},
                     'AM_name': None,  # name defined (auto) in populate tree function 
                     'US_name': None,  # name that could be defined by the user in the interface (manual)
                 }
             elif modality == 'RTPLAN':
                 # Define the private creator tag explicitly - Used in ONCENTRA so it is not always available
                 private_creator_tag = Tag(0x300b, 0x0010) # NuCLETRON if created using ONCENTRA/ACE
-                # Different software versions can use different TAGs ... so far I found (300b,0010) and (300f,0010)
                 creator_value = dicom_file.get(Tag(0x300b, 0x0010), '').value if Tag(0x300b, 0x0010) in dicom_file else ''
                 if creator_value == '':
                     creator_value = dicom_file.get(Tag(0x300f, 0x0010), '').value if Tag(0x300f, 0x0010) in dicom_file else ''
-                    #
-                private_channels    = Tag(0x300f, 0x1000) # Cathether position if created using ONCENTRA/ACE
+                
+                private_channels = Tag(0x300f, 0x1000) # Cathether position if created using ONCENTRA/ACE
                 existing_series_data = {
                     'SeriesNumber': series_number,
                     'metadata': {
                         'Modality': modality,
                         'Manufacturer': getattr(dicom_file, "Manufacturer", "N/A"),
                         'BrachyTreatmentType': getattr(dicom_file, "BrachyTreatmentType", "N/A"),
-                        'LUTLabel': "N/A",                                                      # just to create the field as this is checked later
-                        'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),   # just to create the field as this is checked later
+                        'LUTLabel': "N/A",
+                        'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),
                         'RTPlanLabel': getattr(dicom_file, "RTPlanLabel", ''),
+                        'RTPlanName': getattr(dicom_file, "RTPlanName", ''),
+                        'RTPlanDescription': getattr(dicom_file, "RTPlanDescription", ''),
+                        'RTPlanDate': getattr(dicom_file, "RTPlanDate", getattr(dicom_file, "SeriesDate", '')),
                         'StudyDescription': getattr(dicom_file, "StudyDescription", ''),
                         'ReferencedStructureSetSequence': getattr(dicom_file, "ReferencedStructureSetSequence", []),
                         'ApplicationSetupSequence': getattr(dicom_file, "ApplicationSetupSequence", []),
+                        'BeamSequence': getattr(dicom_file, "BeamSequence", []),
+                        'FractionGroupSequence': getattr(dicom_file, "FractionGroupSequence", []),
                         'SourceSequence': getattr(dicom_file, "SourceSequence", []),
                         'PrivateCreator': creator_value,
                         'CatOnc': getattr(dicom_file, 'get', lambda *args: [])(Tag(0x300f, 0x1000), []),
                         'DoseReferenceSequence': getattr(dicom_file, "DoseReferenceSequence", "N/A"),
                         'TreatmentProtocols': getattr(dicom_file, "TreatmentProtocols", "N/A"),
+                        'SeriesInstanceUID': getattr(dicom_file, "SeriesInstanceUID", file_info.get('SeriesInstanceUID', 'N/A')),
+                        'StudyInstanceUID': getattr(dicom_file, "StudyInstanceUID", file_info.get('StudyInstanceUID', 'N/A')),
+                        'FrameOfReferenceUID': getattr(dicom_file, "FrameOfReferenceUID", file_info.get('FrameOfReferenceUID', 'N/A')),
+                        'SOPInstanceUID': getattr(dicom_file, "SOPInstanceUID", file_info.get('SOPInstanceUID', 'N/A')),
+                        'StudyDate': getattr(dicom_file, "StudyDate", ''),
+                        'SeriesDate': getattr(dicom_file, "SeriesDate", ''),
                         'DCM_Info': dicom_file,
                         'OriginalFilePath': file_path,
                     },
@@ -187,21 +222,76 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                     'SeriesNumber': series_number,
                     'metadata': {
                         'Modality': modality,
-                        'LUTLabel': "N/A",                                                      # just to create the field as this is checked later
-                        'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),   # just to create the field as this is checked later
+                        'LUTLabel': "N/A",
+                        'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),
                         'StudyDescription': getattr(dicom_file, "StudyDescription", ''),
                         'StructureSetLabel': getattr(dicom_file, "StructureSetLabel", ''),
-                        'SOPInstanceUID': getattr(dicom_file, "SOPInstanceUID", ''),
-                        'ReferencedFrameOfReferenceSequence': getattr(dicom_file, "ReferencedFrameOfReferenceSequence", ''),
-                        'ROIContourSequence': getattr(dicom_file,"ROIContourSequence",''),
-                        'RTROIObservationsSequence': getattr(dicom_file,"RTROIObservationsSequence",''),
-                        'StructureSetROISequence': getattr(dicom_file,"StructureSetROISequence",''),
+                        'StructureSetName': getattr(dicom_file, "StructureSetName", ''),
+                        'StructureSetDate': getattr(dicom_file, "StructureSetDate", getattr(dicom_file, "SeriesDate", '')),
+                        'SOPInstanceUID': getattr(dicom_file, "SOPInstanceUID", file_info.get('SOPInstanceUID', 'N/A')),
+                        'SeriesInstanceUID': getattr(dicom_file, "SeriesInstanceUID", file_info.get('SeriesInstanceUID', 'N/A')),
+                        'StudyInstanceUID': getattr(dicom_file, "StudyInstanceUID", file_info.get('StudyInstanceUID', 'N/A')),
+                        'FrameOfReferenceUID': getattr(dicom_file, "FrameOfReferenceUID", file_info.get('FrameOfReferenceUID', 'N/A')),
+                        'ReferencedFrameOfReferenceSequence': getattr(dicom_file, "ReferencedFrameOfReferenceSequence", []),
+                        'ROIContourSequence': getattr(dicom_file, "ROIContourSequence", []),
+                        'RTROIObservationsSequence': getattr(dicom_file, "RTROIObservationsSequence", []),
+                        'StructureSetROISequence': getattr(dicom_file, "StructureSetROISequence", []),
+                        'StudyDate': getattr(dicom_file, "StudyDate", ''),
+                        'SeriesDate': getattr(dicom_file, "SeriesDate", ''),
                         'DCM_Info': dicom_file,
                         'OriginalFilePath': file_path,
                     },
                     'images': {},
                     'ImagePositionPatients': [],
-                    'SliceImageComments':{},
+                    'SliceImageComments': {},
+                }
+            elif modality == 'REG':
+                # Parse Spatial Registration / Registration Sequence
+                matrix_list = []
+                reg_seq = getattr(dicom_file, "RegistrationSequence", None)
+                if reg_seq is None:
+                    reg_seq = getattr(dicom_file, "SpatialRegistrationSequence", [])
+                
+                for item in reg_seq:
+                    item_for = getattr(item, "FrameOfReferenceUID", "N/A")
+                    mat_reg_seq = getattr(item, "MatrixRegistrationSequence", [])
+                    for mr in mat_reg_seq:
+                        m_seq = getattr(mr, "MatrixSequence", [])
+                        for ms in m_seq:
+                            m_type = getattr(ms, "FrameOfReferenceTransformationMatrixType", "N/A")
+                            mat = getattr(ms, "FrameOfReferenceTransformationMatrix", None)
+                            if mat is None and (0x3006, 0x00c6) in ms:
+                                mat = ms[0x3006, 0x00c6].value
+                            if mat is not None:
+                                matrix_list.append({
+                                    "TargetFrameOfReferenceUID": item_for,
+                                    "MatrixType": m_type,
+                                    "Matrix": mat
+                                })
+
+                existing_series_data = {
+                    'SeriesNumber': series_number,
+                    'metadata': {
+                        'Modality': modality,
+                        'SeriesDescription': getattr(dicom_file, "SeriesDescription", 'Image Registration'),
+                        'StudyDescription': getattr(dicom_file, "StudyDescription", ''),
+                        'ContentLabel': getattr(dicom_file, "ContentLabel", 'REGISTRATION'),
+                        'ContentDescription': getattr(dicom_file, "ContentDescription", ''),
+                        'SOPInstanceUID': getattr(dicom_file, "SOPInstanceUID", file_info.get('SOPInstanceUID', 'N/A')),
+                        'SeriesInstanceUID': getattr(dicom_file, "SeriesInstanceUID", file_info.get('SeriesInstanceUID', 'N/A')),
+                        'StudyInstanceUID': getattr(dicom_file, "StudyInstanceUID", file_info.get('StudyInstanceUID', 'N/A')),
+                        'FrameOfReferenceUID': getattr(dicom_file, "FrameOfReferenceUID", file_info.get('FrameOfReferenceUID', 'N/A')),
+                        'StudyDate': getattr(dicom_file, "StudyDate", ''),
+                        'SeriesDate': getattr(dicom_file, "SeriesDate", ''),
+                        'RegistrationMatrixList': matrix_list,
+                        'RegistrationSequence': reg_seq,
+                        'DCM_Info': dicom_file,
+                        'DataType': 'DICOM',
+                        'OriginalFilePath': file_path,
+                    },
+                    'images': {},
+                    'ImagePositionPatients': [],
+                    'SliceImageComments': {},
                 }
                 
             modality_data.append(existing_series_data)
@@ -269,11 +359,25 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                                 series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=2)
                                 normalized = True
                             #
-                            if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] >0):
+                            if len(sorted_image_data) >= 2:
+                                p0 = sorted_image_data[0][1]['ImagePositionPatient']
+                                p1 = sorted_image_data[1][1]['ImagePositionPatient']
+                                iop = series_data['metadata'].get('ImageOrientationPatient')
+                                if iop is not None and len(iop) == 6:
+                                    row_v = np.array(iop[:3], dtype=np.float64)
+                                    col_v = np.array(iop[3:], dtype=np.float64)
+                                    norm_v = np.cross(row_v, col_v)
+                                    step_dz = abs(float(np.dot(np.array(p1) - np.array(p0), norm_v)))
+                                else:
+                                    step_dz = abs(float(p1[2] - p0[2]))
+                                if step_dz > 0:
+                                    series_data['metadata']['SliceThickness'] = float(step_dz)
+
+                            if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] > 0):
                                 series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
-                                series_data['metadata']['ImagePositionPatient']  =sorted_image_data[-1][1]['ImagePositionPatient']
+                                series_data['metadata']['ImagePositionPatient'] = sorted_image_data[-1][1]['ImagePositionPatient']
                             else:
-                                series_data['metadata']['ImagePositionPatient']=sorted_image_data[0][1]['ImagePositionPatient']
+                                series_data['metadata']['ImagePositionPatient'] = sorted_image_data[0][1]['ImagePositionPatient']
                             series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
                             #
                         elif modality == 'RTIMAGE':
@@ -292,11 +396,25 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                             sorted_image_data = sorted(series_data['images'].items(), key=lambda x: x[0])
                             series_data['3DMatrix'] = np.stack([item[1]['ImageData'] for item in sorted_image_data], axis=0)
                             series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
-                            if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] >0):
+                            if len(sorted_image_data) >= 2:
+                                p0 = sorted_image_data[0][1]['ImagePositionPatient']
+                                p1 = sorted_image_data[1][1]['ImagePositionPatient']
+                                iop = series_data['metadata'].get('ImageOrientationPatient')
+                                if iop is not None and len(iop) == 6:
+                                    row_v = np.array(iop[:3], dtype=np.float64)
+                                    col_v = np.array(iop[3:], dtype=np.float64)
+                                    norm_v = np.cross(row_v, col_v)
+                                    step_dz = abs(float(np.dot(np.array(p1) - np.array(p0), norm_v)))
+                                else:
+                                    step_dz = abs(float(p1[2] - p0[2]))
+                                if step_dz > 0:
+                                    series_data['metadata']['SliceThickness'] = float(step_dz)
+
+                            if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] > 0):
                                 series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
-                                series_data['metadata']['ImagePositionPatient']  =sorted_image_data[-1][1]['ImagePositionPatient']
+                                series_data['metadata']['ImagePositionPatient'] = sorted_image_data[-1][1]['ImagePositionPatient']
                             else:
-                                series_data['metadata']['ImagePositionPatient']=sorted_image_data[0][1]['ImagePositionPatient']
+                                series_data['metadata']['ImagePositionPatient'] = sorted_image_data[0][1]['ImagePositionPatient']
                             series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
                             #
                         elif modality == 'RTDOSE':
@@ -307,12 +425,12 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                             dicom_file_ref = series_data['metadata']['DCM_Info']
                             vect = getattr(dicom_file_ref, "GridFrameOffsetVector", None)
                             if vect is not None and len(vect) >= 2:
+                                series_data['metadata']['SliceThickness'] = float(abs(vect[1] - vect[0]))
                                 if vect[1] - vect[0] < 0:
                                     series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
                                     orig = list(series_data['metadata']['ImagePositionPatient'])
                                     orig[2] = float(dicom_file_ref.ImagePositionPatient[2] + vect[-1])
                                     series_data['metadata']['ImagePositionPatient'] = orig
-                                    series_data['metadata']['SliceThickness'] = float(abs(vect[1] - vect[0]))
                                     
                             series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
                             series_data['3DMatrix'] = series_data['3DMatrix']*series_data['metadata']['DoseGridScaling']
@@ -355,20 +473,21 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         if 'images' in series_data:
                             del series_data['images']
                         #
-                        if series_data['metadata']['LUTLabel']== "SPR":
-                             series_data['3DMatrix'] = (series_data['3DMatrix']/1000)+1
-                             series_data['metadata']['WindowWidth'] = 0.5
-                             series_data['metadata']['WindowCenter']= 1.0
-                        elif series_data['metadata']['LUTLabel']== "EFF_ATOMIC_NUM":
-                                 # series_data['3DMatrix'] = (series_data['3DMatrix']/10)
-                             series_data['metadata']['WindowWidth'] = 4
-                             series_data['metadata']['WindowCenter']= 8 
-                        elif series_data['metadata']['LUTLabel']== "ELECTRON_DENSITY":
-                             series_data['3DMatrix'] = (series_data['3DMatrix']/1000)+1
-                             series_data['metadata']['WindowWidth'] = 0.5
-                             series_data['metadata']['WindowCenter']= 1.0  
-                        elif (modality != 'RTDOSE' and modality != 'RTIMAGE' and '3DMatrix' in series_data and series_data['3DMatrix'] is not None) :
-                             series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.int16)
+                        lut_label = series_data['metadata'].get('LUTLabel', 'N/A')
+                        if '3DMatrix' in series_data and series_data['3DMatrix'] is not None:
+                            if lut_label == "SPR":
+                                series_data['3DMatrix'] = (series_data['3DMatrix'] / 1000) + 1
+                                series_data['metadata']['WindowWidth'] = 0.5
+                                series_data['metadata']['WindowCenter'] = 1.0
+                            elif lut_label == "EFF_ATOMIC_NUM":
+                                series_data['metadata']['WindowWidth'] = 4
+                                series_data['metadata']['WindowCenter'] = 8 
+                            elif lut_label == "ELECTRON_DENSITY":
+                                series_data['3DMatrix'] = (series_data['3DMatrix'] / 1000) + 1
+                                series_data['metadata']['WindowWidth'] = 0.5
+                                series_data['metadata']['WindowCenter'] = 1.0  
+                            elif modality != 'RTDOSE' and modality != 'RTIMAGE':
+                                series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.int16)
                         
                         valid_series.append(series_data)
                     except Exception as e:

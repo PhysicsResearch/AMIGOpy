@@ -32,20 +32,26 @@ def find_matching_series(self, Ref):
             # If the next level is a list, iterate accordingly
             if isinstance(modality_data, list):
                 for series_index, series_data in enumerate(modality_data):
-                    # Extract the UID, compare to Ref
                     metadata = series_data.get('metadata', {})
                     dcm_info = metadata.get('DCM_Info', {})
-                    series_uid = dcm_info.get('SeriesInstanceUID')
+                    series_uid = metadata.get('SeriesInstanceUID')
+                    if not series_uid or series_uid == 'N/A':
+                        series_uid = getattr(dcm_info, 'SeriesInstanceUID', None)
+                        if series_uid is None and isinstance(dcm_info, dict):
+                            series_uid = dcm_info.get('SeriesInstanceUID')
 
                     if series_uid == Ref:
-                        Acq_number   = metadata.get('AcquisitionNumber')
-                        matches={
+                        Acq_number   = metadata.get('AcquisitionNumber', 'N/A')
+                        ser_desc     = metadata.get('SeriesDescription', '')
+                        ser_lbl      = f"{ser_desc}_Series: {series_data.get('SeriesNumber')}" if ser_desc else f"Acq_{Acq_number}_Series: {series_data.get('SeriesNumber')}"
+                        matches = {
                             'studyID'      : studyID,
                             'modality'     : modality,
                             'series_index' : series_index,
-                            'series_label' : f"Acq_{Acq_number}_Series: {series_data.get('SeriesNumber')}"
+                            'series_label' : ser_lbl
                         }
-                        self.StructRefSeries.setText(f"Acq_{Acq_number}_Series: {series_data.get('SeriesNumber')}")
+                        if hasattr(self, 'StructRefSeries') and self.StructRefSeries is not None:
+                            self.StructRefSeries.setText(ser_lbl)
                         break
             else:
                 # Unexpected structure; handle or ignore
@@ -187,7 +193,10 @@ def create_contour_masks(self):
     # Compute actual z-spacing from per-slice positions when available
     # SliceThickness tag often differs from real inter-slice distance
     ipp_list = target.get('ImagePositionPatients', [])
-    if len(ipp_list) >= 2:
+    target_meta_st = target.get('metadata', {}).get('SliceThickness')
+    if target_meta_st and target_meta_st > 0:
+        z_sp = float(target_meta_st)
+    elif len(ipp_list) >= 2:
         z_positions = sorted([float(pos[2]) for pos in ipp_list])
         z_sp = abs(z_positions[1] - z_positions[0])
     else:

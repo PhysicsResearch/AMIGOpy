@@ -296,18 +296,35 @@ def on_DataTreeView_clicked(self,index):
                                                 mode=0)
                 # find reference series
                 Ref = None
-                if 'ReferencedFrameOfReferenceSequence' in self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']:
-                    if 'RTReferencedStudySequence' in self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']['ReferencedFrameOfReferenceSequence'][0]:
-                        if 'RTReferencedSeriesSequence' in self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']['ReferencedFrameOfReferenceSequence'][0]['RTReferencedStudySequence'][0]:
-                            Ref = self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata']['DCM_Info']['ReferencedFrameOfReferenceSequence'][0]['RTReferencedStudySequence'][0]['RTReferencedSeriesSequence'][0].get('SeriesInstanceUID')
+                dcm_info_struct = self.medical_image[self.patientID_struct][self.studyID_struct][self.modality_struct][self.series_index_struct]['metadata'].get('DCM_Info')
+                if dcm_info_struct is not None and hasattr(dcm_info_struct, 'ReferencedFrameOfReferenceSequence'):
+                    try:
+                        rfor_seq = dcm_info_struct.ReferencedFrameOfReferenceSequence
+                        if len(rfor_seq) > 0 and hasattr(rfor_seq[0], 'RTReferencedStudySequence'):
+                            rstd_seq = rfor_seq[0].RTReferencedStudySequence
+                            if len(rstd_seq) > 0 and hasattr(rstd_seq[0], 'RTReferencedSeriesSequence'):
+                                rser_seq = rstd_seq[0].RTReferencedSeriesSequence
+                                if len(rser_seq) > 0:
+                                    Ref = getattr(rser_seq[0], 'SeriesInstanceUID', None)
+                    except Exception as ref_err:
+                        print(f"Could not extract ReferencedSeriesInstanceUID: {ref_err}")
                 
                 if Ref is not None:
                     ref_series = find_matching_series(self, Ref)
 
                 # Select the struct tab
-                self.tabView01.setCurrentIndex(3)
+                if hasattr(self, 'tabView01'):
+                    self.tabView01.setCurrentIndex(3)
                 if currentTabText != "_3Dview":
                     return
+
+            if self.modality == 'REG':
+                self.modality_metadata = self.modality
+                reg_meta = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
+                dicom_ds = reg_meta.get('DCM_Info')
+                if dicom_ds is not None:
+                    update_meta_view_table_dicom(self, dicom_ds)
+                return
                 
             if currentTabText != "_3Dview":
                 # Assign data and display init image

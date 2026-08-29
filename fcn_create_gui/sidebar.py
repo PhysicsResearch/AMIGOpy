@@ -75,6 +75,7 @@ def create_sidebar(w):
     w.Layer_1_alpha_sli = QSlider(w.groupBox)
     w.Layer_1_alpha_sli.setObjectName(u"Layer_1_alpha_sli")
     w.Layer_1_alpha_sli.setMaximum(100)
+    w.Layer_1_alpha_sli.setValue(50)
     w.Layer_1_alpha_sli.setOrientation(Qt.Orientation.Horizontal)
 
     w.gridLayout_14.addWidget(w.Layer_1_alpha_sli, 6, 2, 1, 4)
@@ -82,6 +83,7 @@ def create_sidebar(w):
     w.Layer_2_alpha_sli = QSlider(w.groupBox)
     w.Layer_2_alpha_sli.setObjectName(u"Layer_2_alpha_sli")
     w.Layer_2_alpha_sli.setMaximum(100)
+    w.Layer_2_alpha_sli.setValue(50)
     w.Layer_2_alpha_sli.setOrientation(Qt.Orientation.Horizontal)
 
     w.gridLayout_14.addWidget(w.Layer_2_alpha_sli, 7, 2, 1, 4)
@@ -89,7 +91,8 @@ def create_sidebar(w):
     w.Layer_3_alpha_spin = QDoubleSpinBox(w.groupBox)
     w.Layer_3_alpha_spin.setObjectName(u"Layer_3_alpha_spin")
     w.Layer_3_alpha_spin.setMaximum(1.000000000000000)
-    w.Layer_3_alpha_spin.setSingleStep(5.000000000000000)
+    w.Layer_3_alpha_spin.setSingleStep(0.050000000000000)
+    w.Layer_3_alpha_spin.setValue(0.500000000000000)
 
     w.gridLayout_14.addWidget(w.Layer_3_alpha_spin, 8, 6, 1, 1)
 
@@ -134,6 +137,7 @@ def create_sidebar(w):
     w.Layer_3_alpha_sli = QSlider(w.groupBox)
     w.Layer_3_alpha_sli.setObjectName(u"Layer_3_alpha_sli")
     w.Layer_3_alpha_sli.setMaximum(100)
+    w.Layer_3_alpha_sli.setValue(50)
     w.Layer_3_alpha_sli.setOrientation(Qt.Orientation.Horizontal)
 
     w.gridLayout_14.addWidget(w.Layer_3_alpha_sli, 8, 2, 1, 4)
@@ -168,6 +172,7 @@ def create_sidebar(w):
     w.Layer_1_alpha_spin.setObjectName(u"Layer_1_alpha_spin")
     w.Layer_1_alpha_spin.setMaximum(1.000000000000000)
     w.Layer_1_alpha_spin.setSingleStep(0.050000000000000)
+    w.Layer_1_alpha_spin.setValue(0.500000000000000)
 
     w.gridLayout_14.addWidget(w.Layer_1_alpha_spin, 6, 6, 1, 1)
 
@@ -197,6 +202,7 @@ def create_sidebar(w):
     w.Layer_2_alpha_spin.setObjectName(u"Layer_2_alpha_spin")
     w.Layer_2_alpha_spin.setMaximum(1.000000000000000)
     w.Layer_2_alpha_spin.setSingleStep(0.050000000000000)
+    w.Layer_2_alpha_spin.setValue(0.500000000000000)
 
     w.gridLayout_14.addWidget(w.Layer_2_alpha_spin, 7, 6, 1, 1)
 

@@ -2116,53 +2116,53 @@ def display_brachy_channel_overlay_sa(self):
 
 
 def update_layer_view(self):
+    if not hasattr(self, 'layer_selected') or self.layer_selected is None:
+        return
     idx = self.layer_selected.currentIndex()
     tabName = self.tabModules.tabText(self.tabModules.currentIndex())
-    self.layerTab[tabName] = idx
+    if hasattr(self, 'layerTab'):
+        self.layerTab[tabName] = idx
     if tabName == "Compare":
         if hasattr(self, '_comp_hist_dialog') and self._comp_hist_dialog is not None and self._comp_hist_dialog.isVisible():
             self._comp_hist_dialog.update_histogram()
         return
         
-    if self.tabModules.tabText(self.tabModules.currentIndex()) != "segmentation":
-        if self.slice_thick[idx] !=0:
+    if tabName != "segmentation":
+        if idx in self.display_data and self.display_data[idx] is not None and self.slice_thick[idx] != 0:
             # Update the slider's value to match the current slice index
-            #
             Ax_s = self.current_axial_slice_index[idx]
             Sa_s = self.current_sagittal_slice_index[idx]
             Co_s = self.current_coronal_slice_index[idx]
             # check if the current slice is in the range of the layer
-            if Ax_s<0:
-                Ax_s = 0
-            elif Ax_s > self.display_data[idx].shape[0]-1:
-                Ax_s = self.display_data[idx].shape[0] - 1
-            #
-            if    Sa_s < 0:
-                Sa_s = 0
-            elif Sa_s > self.display_data[idx].shape[2]-1:
-                Sa_s = self.display_data[idx].shape[2]-1
-            #
-            if Co_s<0:
-                Co_s =0
-            elif Co_s > self.display_data[idx].shape[1] - 1:
-                Co_s = self.display_data[idx].shape[1] - 1
-            #
-            # Update the slider that will update the view    
-            #
+            Ax_s = max(0, min(Ax_s, self.display_data[idx].shape[0] - 1))
+            Sa_s = max(0, min(Sa_s, self.display_data[idx].shape[2] - 1))
+            Co_s = max(0, min(Co_s, self.display_data[idx].shape[1] - 1))
+            
+            # Update the sliders
             self.AxialSlider.setMaximum(self.display_data[idx].shape[0] - 1)
             self.SagittalSlider.setMaximum(self.display_data[idx].shape[2] - 1)
             self.CoronalSlider.setMaximum(self.display_data[idx].shape[1] - 1)
-            #
+            
             self.AxialSlider.setValue(Ax_s)
             self.SagittalSlider.setValue(Sa_s)
             self.CoronalSlider.setValue(Co_s)
-            #
+
+            # Explicitly refresh all 3 orthogonal views
+            displayaxial(self)
+            displaysagittal(self)
+            displaycoronal(self)
+            
             from fcn_init.view_hist import set_vtk_histogran_fig
-            if idx in self.display_data and self.display_data[idx] is not None:
-                try:
-                    set_vtk_histogran_fig(self)
-                except Exception as e:
-                    print(f"Error updating histogram: {e}")
+            try:
+                set_vtk_histogran_fig(self)
+            except Exception as e:
+                print(f"Error updating histogram: {e}")
+
+        if hasattr(self, 'combo_colormap') and self.combo_colormap is not None and hasattr(self, 'CmapIDX'):
+            if len(self.CmapIDX) > idx:
+                self.combo_colormap.blockSignals(True)
+                self.combo_colormap.setCurrentIndex(int(self.CmapIDX[idx]))
+                self.combo_colormap.blockSignals(False)
 
 
 def create_cross_actor(x_c, y_c, z_c, size, color, thickness=2.0):

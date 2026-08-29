@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QToolButton, QLabel, QLineEdit
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QToolButton, QLabel, QLineEdit, QComboBox
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
@@ -73,7 +73,7 @@ def init_histogram_ui(self):
     h.addWidget(self._xy_label, 0, Qt.AlignLeft)
     h.addStretch(1)
 
-    # Bottom row: manual min/max W/L inputs
+    # Bottom row: manual min/max W/L inputs + Colormap dropdown
     bot_row = QWidget(self.hist_container_01)
     h_bot = QHBoxLayout(bot_row)
     h_bot.setContentsMargins(4, 0, 4, 4); h_bot.setSpacing(8)
@@ -88,15 +88,35 @@ def init_histogram_ui(self):
     self.txt_max_wl.setFixedWidth(80)
     self.txt_max_wl.setPlaceholderText("Max")
 
+    lbl_cmap = QLabel("Color Map:", bot_row)
+    self.combo_colormap = QComboBox(bot_row)
+    self.combo_colormap.setObjectName("combo_colormap")
+    cmap_options = ["Gray", "Bone", "Hot", "Cold", "Jet", "Viridis", "CoolWarm", "Rainbow", "Magma", "Cividis", "Red", "Green", "Blue"]
+    self.combo_colormap.addItems(cmap_options)
+    self.combo_colormap.setFixedWidth(100)
+
     h_bot.addWidget(lbl_min)
     h_bot.addWidget(self.txt_min_wl)
     h_bot.addWidget(lbl_max)
     h_bot.addWidget(self.txt_max_wl)
+    h_bot.addSpacing(10)
+    h_bot.addWidget(lbl_cmap)
+    h_bot.addWidget(self.combo_colormap)
     h_bot.addStretch(1)
 
     lay_container.addWidget(top_row, 0)
     lay_container.addWidget(self.canvas_Hist_01, 1)
     lay_container.addWidget(bot_row, 0)
+
+    # Connect colormap dropdown
+    def _on_combo_cmap_changed(idx_cmap):
+        layer_idx = self.layer_selected.currentIndex() if hasattr(self, 'layer_selected') and self.layer_selected is not None else 0
+        if hasattr(self, 'CmapIDX') and len(self.CmapIDX) > layer_idx:
+            self.CmapIDX[layer_idx] = idx_cmap
+        from fcn_display.colormap_set import set_color_map
+        set_color_map(self)
+
+    self.combo_colormap.currentIndexChanged.connect(_on_combo_cmap_changed)
 
     # Connect manual inputs
     def _on_manual_wl_change():
@@ -287,6 +307,13 @@ def update_histogram_wl_lines(self, Window, Level):
         self.txt_min_wl.setText(f"{low_x:.1f}")
     if hasattr(self, 'txt_max_wl') and not self.txt_max_wl.hasFocus():
         self.txt_max_wl.setText(f"{high_x:.1f}")
+
+    if hasattr(self, 'combo_colormap') and self.combo_colormap is not None:
+        idx = self.layer_selected.currentIndex() if hasattr(self, 'layer_selected') and self.layer_selected is not None else 0
+        if hasattr(self, 'CmapIDX') and len(self.CmapIDX) > idx:
+            self.combo_colormap.blockSignals(True)
+            self.combo_colormap.setCurrentIndex(int(self.CmapIDX[idx]))
+            self.combo_colormap.blockSignals(False)
 
     self.canvas_Hist_01.draw_idle()
 

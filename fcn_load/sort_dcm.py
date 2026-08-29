@@ -108,6 +108,12 @@ def extract_file_info(all_files, progress_callback=None, total_steps=None):
         series_time = getattr(dicom_file, "SeriesTime", "N/A")
         instance_number = getattr(dicom_file, "InstanceNumber", "N/A")
         sop_instance_uid = getattr(dicom_file, "SOPInstanceUID", "N/A")
+        series_instance_uid = getattr(dicom_file, "SeriesInstanceUID", "N/A")
+        study_instance_uid = getattr(dicom_file, "StudyInstanceUID", "N/A")
+        frame_of_reference_uid = getattr(dicom_file, "FrameOfReferenceUID", "N/A")
+        series_description = getattr(dicom_file, "SeriesDescription", "")
+        study_description = getattr(dicom_file, "StudyDescription", "")
+        content_label = getattr(dicom_file, "ContentLabel", getattr(dicom_file, "StructureSetLabel", getattr(dicom_file, "RTPlanLabel", "")))
         acquisition_date = getattr(dicom_file, "AcquisitionDate", "N/A")
         acquisition_time = getattr(dicom_file, "AcquisitionTime", "N/A")
         acquisition_number = getattr(dicom_file, "AcquisitionNumber", "N/A")
@@ -131,6 +137,12 @@ def extract_file_info(all_files, progress_callback=None, total_steps=None):
             "StudyID": study_id,
             "SeriesNumber": series_number,
             "Modality": modality,
+            "SeriesInstanceUID": series_instance_uid,
+            "StudyInstanceUID": study_instance_uid,
+            "FrameOfReferenceUID": frame_of_reference_uid,
+            "SeriesDescription": series_description,
+            "StudyDescription": study_description,
+            "ContentLabel": content_label,
             "LUTExplanation": study_LUTExplanation,
             "LUTLabel": study_LUTLabel,
             "AcquisitionDate": acquisition_date,
@@ -144,7 +156,11 @@ def extract_file_info(all_files, progress_callback=None, total_steps=None):
         }
         detailed_files_info.append(file_info)
         # Create a unique key for each combination
-        unique_combination_key = (patient_id, study_id, series_number, modality)
+        if modality in ['CT', 'MR', 'RTIMAGE']:
+            unique_combination_key = (patient_id, study_id, series_instance_uid if series_instance_uid != 'N/A' else series_number, modality)
+        else:
+            unique_combination_key = (patient_id, study_id, sop_instance_uid if sop_instance_uid != 'N/A' else series_number, modality)
+
         if unique_combination_key not in seen_combinations:
             seen_combinations.add(unique_combination_key)
             unique_files_info.append(file_info)  # Add the current file's info to the unique list
@@ -159,7 +175,7 @@ def extract_file_info(all_files, progress_callback=None, total_steps=None):
         x['PatientID'], 
         x['StudyID'], 
         x['Modality'], 
-        x['SeriesNumber'], 
+        str(x['SeriesNumber']), 
         x['AcquisitionTime']
     ))
 
@@ -186,12 +202,12 @@ def extract_file_info(all_files, progress_callback=None, total_steps=None):
 
     series_groups = defaultdict(list)
     for file_info in detailed_files_info:
-        series_key = (
-            file_info['PatientID'],
-            file_info['StudyID'],
-            file_info['Modality'],
-            file_info['SeriesNumber']
-        )
+        # Group by series_instance_uid if available to keep distinct series separated
+        uid_key = file_info.get('SeriesInstanceUID')
+        if uid_key and uid_key != 'N/A':
+            series_key = (file_info['PatientID'], file_info['StudyID'], file_info['Modality'], uid_key)
+        else:
+            series_key = (file_info['PatientID'], file_info['StudyID'], file_info['Modality'], file_info['SeriesNumber'])
         series_groups[series_key].append(file_info)
 
     for series_files in series_groups.values():

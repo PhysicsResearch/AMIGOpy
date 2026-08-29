@@ -327,14 +327,20 @@ def initialize_software_buttons(self):
     safe_btn(self, 'apply_Im_transformation', 'clicked', lambda: apply_trasnformation(self), "background-color: blue; color: white;")
     
     # Layer selection shortcuts (Ctrl+1 to Ctrl+4)
-    self.shortcut_layer_0 = QShortcut(QKeySequence("Ctrl+1"), self)
-    safe_btn(self, 'shortcut_layer_0', 'activated', lambda: self.layer_selected.setCurrentIndex(0))
-    self.shortcut_layer_1 = QShortcut(QKeySequence("Ctrl+2"), self)
-    safe_btn(self, 'shortcut_layer_1', 'activated', lambda: self.layer_selected.setCurrentIndex(1))
-    self.shortcut_layer_2 = QShortcut(QKeySequence("Ctrl+3"), self)
-    safe_btn(self, 'shortcut_layer_2', 'activated', lambda: self.layer_selected.setCurrentIndex(2))
-    self.shortcut_layer_3 = QShortcut(QKeySequence("Ctrl+4"), self)
-    safe_btn(self, 'shortcut_layer_3', 'activated', lambda: self.layer_selected.setCurrentIndex(3))
+    def _switch_layer(parent, target_idx):
+        if hasattr(parent, 'set_active_layer'):
+            parent.set_active_layer(target_idx)
+        elif hasattr(parent, 'layer_selected') and parent.layer_selected is not None:
+            if 0 <= target_idx < parent.layer_selected.count():
+                parent.layer_selected.setCurrentIndex(target_idx)
+                from fcn_display.display_images import update_layer_view
+                update_layer_view(parent)
+
+    for l_idx, key_seq in enumerate(["Ctrl+1", "Ctrl+2", "Ctrl+3", "Ctrl+4"]):
+        sc = QShortcut(QKeySequence(key_seq), self)
+        sc.setContext(Qt.ApplicationShortcut)
+        sc.activated.connect(lambda idx=l_idx: _switch_layer(self, idx))
+        setattr(self, f"shortcut_layer_{l_idx}", sc)
 
     # -----------------------------------------
     # Plan

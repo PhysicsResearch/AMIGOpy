@@ -139,6 +139,11 @@ def set_color_map(self):
     lut = create_lookup_table_with_transparency(self, windowLevel, windowWidth, self.CmapIDX)
     apply_custom_colormap(self,lut)
 
+    if hasattr(self, 'combo_colormap') and self.combo_colormap is not None:
+        self.combo_colormap.blockSignals(True)
+        self.combo_colormap.setCurrentIndex(int(self.CmapIDX[idx]))
+        self.combo_colormap.blockSignals(False)
+
     # Update color intensity scale (colorbar) actors across all views
     actors = ['scalarBarActorAxial', 'scalarBarActorSagittal', 'scalarBarActorCoronal']
     show_scale = getattr(self, 'show_intensity_scale', False)

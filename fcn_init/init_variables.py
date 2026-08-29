@@ -18,9 +18,7 @@ def initialize_software_variables(self):
     self._text_dragging    = False
     #
     self.CmapIDX     = np.zeros(4)
-    self.LayerAlpha  = np.zeros(4)
-    #
-    self.LayerAlpha[0]  = 1
+    self.LayerAlpha  = np.array([1.0, 0.5, 0.5, 0.5], dtype=np.float32)
     #
     # 
     self._opacities = np.ones(4)

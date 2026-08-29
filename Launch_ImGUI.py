@@ -294,25 +294,25 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
         self.transTab = {}
         #
         self.layerTab['View']               = 0
-        self.transTab['View']               = [1,0,0,0]
+        self.transTab['View']               = [1.0, 0.5, 0.5, 0.5]
         self.layerTab['_3Dview']            = 0
-        self.transTab['_3Dview']            = [1,0,0,0]
+        self.transTab['_3Dview']            = [1.0, 0.5, 0.5, 0.5]
         self.layerTab['Compare']            = 0
-        self.transTab['Compare']            = [1,0,0,0]
+        self.transTab['Compare']            = [1.0, 0.5, 0.5, 0.5]
         self.layerTab['IrIS']               = 0
-        self.transTab['IrIS']               = [1,0,0,0]
+        self.transTab['IrIS']               = [1.0, 0.5, 0.5, 0.5]
         self.layerTab['DECT']               = 0
-        self.transTab['DECT']               = [1,0,0,0]
+        self.transTab['DECT']               = [1.0, 0.5, 0.5, 0.5]
         self.layerTab['Plan']               = 0
-        self.transTab['Plan']               = [1,0,0,0]
+        self.transTab['Plan']               = [1.0, 0.5, 0.5, 0.5]
         self.layerTab['CSV Files']          = 0
-        self.transTab['CSV Files']          = [1,0,0,0]
+        self.transTab['CSV Files']          = [1.0, 0.5, 0.5, 0.5]
         self.layerTab['Breathing curves']   = 0
-        self.transTab['Breathing curves']   = [1,0,0,0]
+        self.transTab['Breathing curves']   = [1.0, 0.5, 0.5, 0.5]
         self.layerTab['Segmentation']       = 0
-        self.transTab['Segmentation']       = [1,0.99,0.99,0]
+        self.transTab['Segmentation']       = [1.0, 0.99, 0.99, 0.5]
         self.layerTab['3D Printing']        = 0
-        self.transTab['3D Printing']        = [1,0,0,0]
+        self.transTab['3D Printing']        = [1.0, 0.5, 0.5, 0.5]
         #
 
 
@@ -467,7 +467,28 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
         # Set the slice index based on the slider value.
         self.current_coronal_slice_index[idx] = self.CoronalSlider.value()
         change_sliceCoronal(self,0)
-                    
+
+    def set_active_layer(self, layer_idx):
+        if hasattr(self, 'layer_selected') and self.layer_selected is not None:
+            if 0 <= layer_idx < self.layer_selected.count():
+                self.layer_selected.setCurrentIndex(layer_idx)
+                from fcn_display.display_images import update_layer_view
+                update_layer_view(self)
+
+    def keyPressEvent(self, event):
+        if event.modifiers() & Qt.ControlModifier:
+            key_map = {
+                Qt.Key_1: 0,
+                Qt.Key_2: 1,
+                Qt.Key_3: 2,
+                Qt.Key_4: 3
+            }
+            if event.key() in key_map:
+                self.set_active_layer(key_map[event.key()])
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
     def on_scroll_forwardAxial(self, obj, ev):
         change_sliceAxial(self,1)
     
