@@ -178,7 +178,7 @@ def disp_structure_overlay_axial(self):
         except Exception:
             return (1.0, 1.0, 1.0)
 
-    warn_dlg = None
+
 
     # ─── main loop over selected structures ───────────────────────────
     for i in range(n):
@@ -200,16 +200,6 @@ def disp_structure_overlay_axial(self):
 
         # First-time creation of actors dict
         if "VTKActors2D" not in s_data:
-            if warn_dlg is None:
-                warn_dlg = QProgressDialog(
-                    "Pre-loading contours… it may take a few seconds",
-                    None, 0, 0, self
-                )
-                warn_dlg.setWindowTitle("Please wait")
-                warn_dlg.setWindowModality(Qt.WindowModal)
-                warn_dlg.setAutoClose(False)
-                warn_dlg.setMinimumDuration(0)
-                warn_dlg.show()
             s_data["VTKActors2D"] = {}
 
         # Build contours if missing or marked modified
@@ -251,9 +241,7 @@ def disp_structure_overlay_axial(self):
         renderer.AddActor(actor)
         self.structure_actors_ax.append(actor)
 
-    # ─── CLOSE THE WARNDLG ──────────────────────────────────────────
-    if warn_dlg is not None and warn_dlg.isVisible():
-        warn_dlg.close()
+
 
     renderer.ResetCameraClippingRange()
     self.vtkWidgetAxial.GetRenderWindow().Render()
@@ -1038,7 +1026,7 @@ def disp_structure_overlay_coronal(self):
         except Exception:
             return (1.0, 1.0, 1.0)
 
-    warn_dlg = None
+
 
     # ─── loop over selected structures ───────────────────────────────
     for i in range(n):
@@ -1059,16 +1047,6 @@ def disp_structure_overlay_coronal(self):
 
         # First-time actors dict
         if "VTKActors2D" not in s_data:
-            if warn_dlg is None:
-                warn_dlg = QProgressDialog(
-                    "Pre-loading contours… it may take a few seconds",
-                    None, 0, 0, self
-                )
-                warn_dlg.setWindowTitle("Please wait")
-                warn_dlg.setWindowModality(Qt.WindowModal)
-                warn_dlg.setAutoClose(False)
-                warn_dlg.setMinimumDuration(0)
-                warn_dlg.show()
             s_data["VTKActors2D"] = {}
 
         # Build contours if missing or modified
@@ -1110,9 +1088,7 @@ def disp_structure_overlay_coronal(self):
         renderer.AddActor(actor)
         self.structure_actors_co.append(actor)
 
-    # ─── CLOSE THE WARNDLG ──────────────────────────────────────────
-    if warn_dlg is not None and warn_dlg.isVisible():
-        warn_dlg.close()
+
 
     renderer.ResetCameraClippingRange()
     self.vtkWidgetCoronal.GetRenderWindow().Render()
@@ -1738,7 +1714,7 @@ def disp_structure_overlay_sagittal(self):
         except Exception:
             return (1.0, 1.0, 1.0)
 
-    warn_dlg = None
+
 
     # ─── main loop over selected structures ───────────────────────────
     for i in range(n):
@@ -1759,16 +1735,6 @@ def disp_structure_overlay_sagittal(self):
 
         # First-time creation of actors dict
         if "VTKActors2D" not in s_data:
-            if warn_dlg is None:
-                warn_dlg = QProgressDialog(
-                    "Pre-loading contours… it may take a few seconds",
-                    None, 0, 0, self
-                )
-                warn_dlg.setWindowTitle("Please wait")
-                warn_dlg.setWindowModality(Qt.WindowModal)
-                warn_dlg.setAutoClose(False)
-                warn_dlg.setMinimumDuration(0)
-                warn_dlg.show()
             s_data["VTKActors2D"] = {}
 
         # Build contours if missing or marked modified
@@ -1810,9 +1776,7 @@ def disp_structure_overlay_sagittal(self):
         renderer.AddActor(actor)
         self.structure_actors_sa.append(actor)
 
-    # ─── CLOSE THE WARNDLG ──────────────────────────────────────────
-    if warn_dlg is not None and warn_dlg.isVisible():
-        warn_dlg.close()
+
 
         
     renderer.ResetCameraClippingRange()

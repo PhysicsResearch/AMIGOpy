@@ -8,7 +8,7 @@ from fcn_RTFiles.process_mevion import read_proton_plan
 
 from PySide6.QtWidgets import (
     QWidget, QCheckBox, QLabel, QPushButton, QHBoxLayout,
-    QVBoxLayout, QColorDialog, QDoubleSpinBox, QListWidgetItem,
+    QVBoxLayout, QColorDialog, QDoubleSpinBox, QListWidgetItem, QApplication,
 )
 from PySide6.QtGui import QColor
 from PySide6.QtCore import Qt
@@ -144,8 +144,107 @@ class set_struct_table(QWidget):
 
 
 def _refresh_all_views(self):
-    from fcn_display.display_images  import (disp_structure_overlay_axial, disp_structure_overlay_coronal, disp_structure_overlay_sagittal,
-                                            _update_axial_mask_overlay,_update_sagittal_mask_overlay,_update_coronal_mask_overlay)
+    from fcn_display.display_images import (disp_structure_overlay_axial, disp_structure_overlay_coronal, disp_structure_overlay_sagittal,
+                                            _update_axial_mask_overlay, _update_sagittal_mask_overlay, _update_coronal_mask_overlay)
+    from fcn_RTFiles.process_contours import build_contours_for_structure
+
+    # ─── Check if any visible structure needs contour pre-computation ──
+    series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
+    structures = series_dict.get('structures', {})
+    keys = series_dict.get('structures_keys', [])
+    view = series_dict.get('structures_view', [0] * len(keys))
+
+    pending = []  # list of (key, s_data) that need contour computation
+    for i, key in enumerate(keys):
+        if i < len(view) and view[i] == 1:
+            s_data = structures.get(key, {})
+            if s_data and (not s_data.get('Contours2D', {}).get('axial') or s_data.get('Modified', 0) == 1):
+                pending.append((key, s_data))
+
+    # ─── If contour pre-computation is needed, do it in a thread ───────
+    if pending:
+        from PySide6.QtWidgets import QProgressDialog
+
+        total_slices = 0
+        for _, s_data in pending:
+            mask = s_data.get('Mask3D')
+            if mask is not None:
+                total_slices += mask.shape[0] + mask.shape[1] + mask.shape[2]
+
+        prog_dlg = QProgressDialog(
+            "Pre-computing contours for first-time display…\nThis only happens once per structure.",
+            "Cancel", 0, total_slices, self
+        )
+        prog_dlg.setWindowTitle("Computing Contours")
+        prog_dlg.setWindowModality(Qt.WindowModal)
+        prog_dlg.setAutoClose(True)
+        prog_dlg.setMinimumDuration(0)
+        prog_dlg.setValue(0)
+
+        cancelled = False
+        processed = 0
+
+        for key, s_data in pending:
+            if cancelled:
+                break
+            mask = s_data.get('Mask3D')
+            if mask is None:
+                continue
+
+            contours = {'axial': {}, 'sagittal': {}, 'coronal': {}}
+            from fcn_RTFiles.process_contours import extract_contours_from_binary_slice
+
+            # axial slices
+            for z in range(mask.shape[0]):
+                if prog_dlg.wasCanceled():
+                    cancelled = True
+                    break
+                c = extract_contours_from_binary_slice(mask[z])
+                if c:
+                    contours['axial'][z] = c
+                processed += 1
+                prog_dlg.setValue(processed)
+                QApplication.processEvents()
+
+            if cancelled:
+                break
+
+            # sagittal slices
+            for x in range(mask.shape[2]):
+                if prog_dlg.wasCanceled():
+                    cancelled = True
+                    break
+                c = extract_contours_from_binary_slice(mask[:, :, x])
+                if c:
+                    contours['sagittal'][x] = c
+                processed += 1
+                prog_dlg.setValue(processed)
+                QApplication.processEvents()
+
+            if cancelled:
+                break
+
+            # coronal slices
+            for y in range(mask.shape[1]):
+                if prog_dlg.wasCanceled():
+                    cancelled = True
+                    break
+                c = extract_contours_from_binary_slice(mask[:, y, :])
+                if c:
+                    contours['coronal'][y] = c
+                processed += 1
+                prog_dlg.setValue(processed)
+                QApplication.processEvents()
+
+            if not cancelled:
+                s_data['Contours2D'] = contours
+
+        prog_dlg.close()
+
+        if cancelled:
+            return  # user cancelled, don't refresh views
+
+    # ─── Now do the actual VTK display (fast, contours are cached) ─────
     _update_sagittal_mask_overlay(self)
     disp_structure_overlay_sagittal(self)
     _update_coronal_mask_overlay(self)

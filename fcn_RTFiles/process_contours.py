@@ -183,7 +183,17 @@ def create_contour_masks(self):
     # ─── 3) geometry ●───────────────────────────────────────────────
     volume_3d = target.get('3DMatrix', None)
     mask_shape = volume_3d.shape
-    z_sp, yx_sp = slice_thick, pixel_spac[0, :2]
+    
+    # Compute actual z-spacing from per-slice positions when available
+    # SliceThickness tag often differs from real inter-slice distance
+    ipp_list = target.get('ImagePositionPatients', [])
+    if len(ipp_list) >= 2:
+        z_positions = sorted([float(pos[2]) for pos in ipp_list])
+        z_sp = abs(z_positions[1] - z_positions[0])
+    else:
+        z_sp = float(slice_thick)
+    
+    yx_sp = pixel_spac[0, :2]
     spacing = (z_sp, *yx_sp)
     origin  = tuple(Im_PatPosition)
 
@@ -227,13 +237,9 @@ def create_contour_masks(self):
 
     worker.finished.connect(thread.quit)
     worker.finished.connect(prog_dlg.close)
-    worker.finished.connect(lambda: populate_medical_image_tree(self))
 
     worker.canceled.connect(thread.quit)
     worker.canceled.connect(prog_dlg.close)
-    worker.canceled.connect(lambda:
-        QMessageBox.information(self, "Cancelled", "Contour generation cancelled.")
-    )
 
     thread.started.connect(worker.run)
     thread.finished.connect(worker.deleteLater)
@@ -242,14 +248,16 @@ def create_contour_masks(self):
     # ─── 8) start! ●──────────────────────────────────────────────────
     thread.start()
     prog_dlg.exec_()
-    # """Uncheck every checkbox in the STRUCTlist."""
+    
+    # Uncheck every checkbox in the STRUCTlist.
     for i in range(self.STRUCTlist.count()):
         item = self.STRUCTlist.item(i)
         widget = self.STRUCTlist.itemWidget(item)
-        # assume widget.checkbox is your QCheckBox
         if hasattr(widget, 'checkbox'):
             widget.checkbox.setChecked(False)
-    populate_medical_image_tree(self)
+    
+    if not worker._is_cancelled:
+        populate_medical_image_tree(self)
     #update_mat_struct_list(self)
 
 

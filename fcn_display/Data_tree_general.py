@@ -243,6 +243,10 @@ def on_DataTreeView_clicked(self,index):
             #
             #
             if self.modality == 'RTPLAN':
+                # Switch to Plan tab to ensure UI is instantiated BEFORE we populate
+                if hasattr(self, 'tabModules'):
+                    self.tabModules.setCurrentIndex(4)  # Index 4 is the Plan tab
+                
                 # keep track of the last selected plan ... if user chose and image or dose this will not change
                 self.patientID_plan    = hierarchy[1].replace("PatientID: ", "")
                 self.studyID_plan      = hierarchy[2].replace("StudyID: ", "")
@@ -368,8 +372,11 @@ def on_DataTreeView_clicked(self,index):
                     elif hierarchy[5]=='Material maps':
                        self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['mat_maps'][hierarchy[6]]['3DMatrix']
                         
-                if len(hierarchy)==6:#ab values
-                    self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['ab_matrix']
+                if len(hierarchy)==6:
+                    if hierarchy[5] == "α/β":
+                        self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['ab_matrix']
+                    else:
+                        self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['3DMatrix']
                     
                 adjust_data_type_input(self,idx)
                 #

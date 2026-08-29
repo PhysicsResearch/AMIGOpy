@@ -18,6 +18,9 @@ import pandas as pd
 
 
 def update_plan_tables(self):
+    if not hasattr(self, 'brachy_N_channels'):
+        return
+        
     if 'Plan_Brachy_Channels' in self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
         N_channels = len(self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels'])
         #
