@@ -75,28 +75,20 @@ def retranslate_ui(w):
         w.apply_Im_transformation.setText(QCoreApplication.translate("w", u"Apply", None))
     if hasattr(w, 'lineEdit_89'):
         w.lineEdit_89.setText(QCoreApplication.translate("w", u"Fill val.", None))
-    if hasattr(w, 'tabWidget_10'):
-        w.tabWidget_10.setTabText(w.tabWidget_10.indexOf(w.tab_44), QCoreApplication.translate("w", u"Transform_01", None))
     if hasattr(w, 'groupBox_14'):
         w.groupBox_14.setTitle(QCoreApplication.translate("w", u"Resolution", None))
     if hasattr(w, 'pushButton_2'):
         w.pushButton_2.setText(QCoreApplication.translate("w", u"Apply", None))
     if hasattr(w, 'groupBox_16'):
         w.groupBox_16.setTitle(QCoreApplication.translate("w", u"Crop", None))
-    if hasattr(w, 'tabWidget_10'):
-        w.tabWidget_10.setTabText(w.tabWidget_10.indexOf(w.tab_17), QCoreApplication.translate("w", u"Transform_02", None))
     if hasattr(w, 'run_im_process'):
         w.run_im_process.setText(QCoreApplication.translate("w", u"Run", None))
     if hasattr(w, 'ImageUndo_operation'):
         w.ImageUndo_operation.setText(QCoreApplication.translate("w", u"UNDO", None))
     if hasattr(w, 'ProcessSetBox'):
         w.ProcessSetBox.setTitle(QCoreApplication.translate("w", u"Settings", None))
-    if hasattr(w, 'tabWidget_10'):
-        w.tabWidget_10.setTabText(w.tabWidget_10.indexOf(w.tab_45), QCoreApplication.translate("w", u"Process", None))
     if hasattr(w, 'tabView01'):
         w.tabView01.setTabText(w.tabView01.indexOf(w.tab_5), QCoreApplication.translate("w", u"View", None))
-    if hasattr(w, 'tabView01'):
-        w.tabView01.setTabText(w.tabView01.indexOf(w.tab_6), QCoreApplication.translate("w", u"DOSE", None))
     if hasattr(w, 'display_brachy_channel_overlay'):
         w.display_brachy_channel_overlay.setText(QCoreApplication.translate("w", u"Show channel", None))
     if hasattr(w, 'brachy_export_dw_channels_csv'):
@@ -163,8 +155,6 @@ def retranslate_ui(w):
         w.tabView01.setTabText(w.tabView01.indexOf(w.tab_9), QCoreApplication.translate("w", u"IrIS", None))
     if hasattr(w, 'lineEdit_64'):
         w.lineEdit_64.setText(QCoreApplication.translate("w", u"Search", None))
-    if hasattr(w, 'tabView01'):
-        w.tabView01.setTabText(w.tabView01.indexOf(w.tab_13), QCoreApplication.translate("w", u"MetaData", None))
     if hasattr(w, 'Play4D_Buttom'):
         w.Play4D_Buttom.setText(QCoreApplication.translate("w", u"Play 4DCT", None))
     if hasattr(w, 'lineEdit_5'):

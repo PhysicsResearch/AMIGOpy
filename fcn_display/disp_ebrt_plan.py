@@ -175,8 +175,12 @@ def update_disp_ebrt_plan(self):
     table.setRowCount(len(self.ebrt_beams_data))
 
     header = table.horizontalHeader()
-    header.setSectionResizeMode(QHeaderView.ResizeToContents)
-    header.setSectionResizeMode(3, QHeaderView.Stretch) # Name stretches
+    header.setSectionResizeMode(QHeaderView.Interactive)
+    table.resizeColumnsToContents()
+    for c in range(table.columnCount()):
+        table.setColumnWidth(c, max(table.columnWidth(c), 65))
+    table.setColumnWidth(3, max(table.columnWidth(3), 140))  # Name column
+    table.setColumnWidth(10, max(table.columnWidth(10), 160)) # Isocenter column
 
     for row, beam in enumerate(self.ebrt_beams_data):
         # 0: Show Checkbox

@@ -189,7 +189,6 @@ def setup_ui(w):
     # --- Set initial tab indices ---
     w.tabModules.setCurrentIndex(0)
     w.tabView01.setCurrentIndex(0)
-    w.tabWidget_10.setCurrentIndex(0)
     w.tabWidget_3.setCurrentIndex(0)
     w.tabWidget_4.setCurrentIndex(0)
     w.tabWidget_8.setCurrentIndex(0)

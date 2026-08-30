@@ -243,10 +243,6 @@ def on_DataTreeView_clicked(self,index):
             #
             #
             if self.modality == 'RTPLAN':
-                # Switch to Plan tab to ensure UI is instantiated BEFORE we populate
-                if hasattr(self, 'tabModules'):
-                    self.tabModules.setCurrentIndex(4)  # Index 4 is the Plan tab
-                
                 # keep track of the last selected plan ... if user chose and image or dose this will not change
                 self.patientID_plan    = hierarchy[1].replace("PatientID: ", "")
                 self.studyID_plan      = hierarchy[2].replace("StudyID: ", "")
@@ -256,29 +252,47 @@ def on_DataTreeView_clicked(self,index):
                 
                 dicom_ds = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['DCM_Info']
                 update_meta_view_table_dicom(self, dicom_ds)
+
+                is_on_view = False
+                if hasattr(self, 'tabModules'):
+                    cur_idx = self.tabModules.currentIndex()
+                    is_on_view = (cur_idx == 0 or (hasattr(self, 'im_display_tab') and self.tabModules.widget(cur_idx) == self.im_display_tab))
                 
                 # Brachy Plan
                 if 'Plan_Brachy_Channels' in self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
                     update_plan_tables(self)
-                    if hasattr(self, 'tabWidget_3'):
-                        self.tabWidget_3.setCurrentIndex(0) # Brachy tab
-                    if hasattr(self, 'tabView01') and hasattr(self, 'tab_14'):
-                        self.tabView01.setCurrentIndex(self.tabView01.indexOf(self.tab_14))
+                    if is_on_view:
+                        if hasattr(self, 'tabWidget_3'):
+                            self.tabWidget_3.setCurrentIndex(0) # Brachy tab under View -> PLAN
+                        if hasattr(self, 'tabView01') and hasattr(self, 'tab_14'):
+                            self.tabView01.setCurrentIndex(self.tabView01.indexOf(self.tab_14))
+                    else:
+                        if hasattr(self, 'tabModules'):
+                            self.tabModules.setCurrentIndex(4)  # Plan top tab
+                        if hasattr(self, 'Plan_tabs') and hasattr(self, 'Brachy_plan_tab'):
+                            self.Plan_tabs.setCurrentIndex(self.Plan_tabs.indexOf(self.Brachy_plan_tab))
                     return
                     
-                # EBRT Photon Plan (if not brachy, we assume EBRT Photons for now)
-                if hasattr(dicom_ds, 'BeamSequence'):
+                # EBRT Photon/Electron/Proton Plan
+                if hasattr(dicom_ds, 'BeamSequence') or hasattr(dicom_ds, 'IonBeamSequence'):
                     from fcn_display.disp_ebrt_plan import update_disp_ebrt_plan
                     update_disp_ebrt_plan(self)
 
-                    # Activate EBRT-Plan tab under View -> PLAN
-                    if hasattr(self, 'tabWidget_3'):
-                        self.tabWidget_3.setCurrentIndex(1) # EBRT-Plan tab
-                    if hasattr(self, 'tabView01') and hasattr(self, 'tab_14'):
-                        self.tabView01.setCurrentIndex(self.tabView01.indexOf(self.tab_14))
-
                     from fcn_RTFiles.process_ebrt_photons import populate_ebrt_tab
                     populate_ebrt_tab(self, dicom_ds)
+
+                    if is_on_view:
+                        # Activate EBRT-Plan tab under View -> PLAN
+                        if hasattr(self, 'tabWidget_3'):
+                            self.tabWidget_3.setCurrentIndex(1) # EBRT-Plan tab under View -> PLAN
+                        if hasattr(self, 'tabView01') and hasattr(self, 'tab_14'):
+                            self.tabView01.setCurrentIndex(self.tabView01.indexOf(self.tab_14))
+                    else:
+                        # Switch to top-level Plan module tab -> EBRT-Ph tab directly!
+                        if hasattr(self, 'tabModules'):
+                            self.tabModules.setCurrentIndex(4)  # Plan top tab
+                        if hasattr(self, 'Plan_tabs') and hasattr(self, 'ebrt_ph_tab'):
+                            self.Plan_tabs.setCurrentIndex(self.Plan_tabs.indexOf(self.ebrt_ph_tab))
                     return
 
             if self.modality == 'RTSTRUCT':
@@ -415,30 +429,27 @@ def on_DataTreeView_clicked(self,index):
                 self.pixel_spac[idx, :2]      = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
                 self.Im_PatPosition[idx, :3]  = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
                 #
-                # Update image transformation tab
-                with ExitStack() as stack:
-                    # set values without triggering signals for the reference and moving image
-
-                    for w in (self.Reg_manual_Tx, self.Reg_manual_Ty, self.Reg_manual_Tz):
-                        stack.enter_context(QtCore.QSignalBlocker(w))
-                    self.Reg_manual_Tx.setValue(float(self.Im_PatPosition[idx, 0]))
-                    self.Reg_manual_Ty.setValue(float(self.Im_PatPosition[idx, 2]))  # Swap Y to Z
-                    self.Reg_manual_Tz.setValue(-float(self.Im_PatPosition[idx, 1])) # Swap Z to Y, and flip Y
-                    self.Reg_manual_Refx.setValue(float(self.Im_PatPosition[0, 0]))
-                    self.Reg_manual_Refy.setValue(float(self.Im_PatPosition[0, 2]))  # Swap Y to Z
-                    self.Reg_manual_Refz.setValue(-float(self.Im_PatPosition[0, 1])) # Swap Z to Y, and flip Y
-                    self.Reg_manual_Rot_X.setValue(float(0))
-                    self.Reg_manual_Rot_Y.setValue(float(0))
-                    self.Reg_manual_Rot_Z.setValue(float(0))
-                    self.Manual_reg_step.setValue(float(1))
-                    #
-                    self._ax = float(self.Reg_manual_Rot_X.value())
-                    self._ay = float(self.Reg_manual_Rot_Y.value())
-                    self._az = float(self.Reg_manual_Rot_Z.value())
-                    #
-                    #
-                    for sb in (self.Reg_manual_Rot_X, self.Reg_manual_Rot_Y, self.Reg_manual_Rot_Z):
-                        sb.setKeyboardTracking(False)  # only emit when editing finished or arrows used
+                # Update image transformation tab if present
+                if hasattr(self, 'Reg_manual_Tx') and self.Reg_manual_Tx is not None:
+                    with ExitStack() as stack:
+                        for w in (self.Reg_manual_Tx, self.Reg_manual_Ty, self.Reg_manual_Tz):
+                            stack.enter_context(QtCore.QSignalBlocker(w))
+                        self.Reg_manual_Tx.setValue(float(self.Im_PatPosition[idx, 0]))
+                        self.Reg_manual_Ty.setValue(float(self.Im_PatPosition[idx, 2]))  # Swap Y to Z
+                        self.Reg_manual_Tz.setValue(-float(self.Im_PatPosition[idx, 1])) # Swap Z to Y, and flip Y
+                        if hasattr(self, 'Reg_manual_Refx') and self.Reg_manual_Refx is not None:
+                            self.Reg_manual_Refx.setValue(float(self.Im_PatPosition[0, 0]))
+                            self.Reg_manual_Refy.setValue(float(self.Im_PatPosition[0, 2]))  # Swap Y to Z
+                            self.Reg_manual_Refz.setValue(-float(self.Im_PatPosition[0, 1])) # Swap Z to Y, and flip Y
+                        if hasattr(self, 'Reg_manual_Rot_X') and self.Reg_manual_Rot_X is not None:
+                            self.Reg_manual_Rot_X.setValue(float(0))
+                            self.Reg_manual_Rot_Y.setValue(float(0))
+                            self.Reg_manual_Rot_Z.setValue(float(0))
+                            self._ax = float(self.Reg_manual_Rot_X.value())
+                            self._ay = float(self.Reg_manual_Rot_Y.value())
+                            self._az = float(self.Reg_manual_Rot_Z.value())
+                        if hasattr(self, 'Manual_reg_step') and self.Manual_reg_step is not None:
+                            self.Manual_reg_step.setValue(float(1))
 
                 if idx>0 and 0 in self.display_data and self.display_data[0] is not None:
                     self.Im_Offset[idx,0]   = (self.Im_PatPosition[idx,0]-self.Im_PatPosition[0,0])

@@ -1,5 +1,8 @@
 import vtk
-from PySide6.QtWidgets import QApplication, QPushButton, QWidget, QVBoxLayout
+from PySide6.QtWidgets import (
+    QApplication, QPushButton, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QSpinBox, QComboBox
+)
 from PySide6.QtGui import QAction, QShortcut
 from PySide6 import QtWidgets  # Import the correct module for QMessageBox
 from PySide6.QtGui import QKeySequence
@@ -293,38 +296,6 @@ def initialize_software_buttons(self):
     
     # Struct
     safe_btn(self, 'CreateMask_Structures', 'clicked', lambda: create_contour_masks(self), "background-color: blue; color: white;")
-
-    # Image registrations
-    safe_btn(self, 'Reg_manual_Tx', 'valueChanged', lambda: update_translation_x(self))
-    safe_btn(self, 'Reg_manual_Ty', 'valueChanged', lambda: update_translation_y(self))
-    safe_btn(self, 'Reg_manual_Tz', 'valueChanged', lambda: update_translation_z(self))
-    safe_btn(self, 'Reg_manual_Rot_X', 'valueChanged', lambda: update_rotation_x(self))
-    safe_btn(self, 'Reg_manual_Rot_Y', 'valueChanged', lambda: update_rotation_y(self))
-    safe_btn(self, 'Reg_manual_Rot_Z', 'valueChanged', lambda: update_rotation_z(self))
-    safe_btn(self, 'Manual_reg_step', 'valueChanged', lambda: set_transformation_step(self))
-    # Flip buttons
-    safe_btn(self, 'pushButton_4', 'clicked', lambda: flip_volume_x(self))
-    safe_btn(self, 'pushButton_5', 'clicked', lambda: flip_volume_y(self))
-    safe_btn(self, 'pushButton_6', 'clicked', lambda: flip_volume_z(self))
-    safe_style(self, 'pushButton_4', "background-color: blue; color: white;")
-    safe_style(self, 'pushButton_5', "background-color: blue; color: white;")
-    safe_style(self, 'pushButton_6', "background-color: blue; color: white;")
-    # Dynamic Auto Registration buttons
-    from PySide6.QtWidgets import QPushButton
-    self.btn_auto_registration = QPushButton("Auto Registration...", self.groupBox_12)
-    self.btn_auto_registration.setObjectName("btn_auto_registration")
-    safe_style(self, 'btn_auto_registration', "background-color: darkgreen; color: white; font-weight: bold;")
-    self.gridLayout_82.addWidget(self.btn_auto_registration, 3, 1, 1, 2)
-    safe_btn(self, 'btn_auto_registration', 'clicked', lambda: open_auto_reg_dialog(self))
-
-    self.btn_apply_last_transform = QPushButton("Apply Last Transform", self.groupBox_12)
-    self.btn_apply_last_transform.setObjectName("btn_apply_last_transform")
-    safe_style(self, 'btn_apply_last_transform', "background-color: darkgreen; color: white; font-weight: bold;")
-    self.gridLayout_82.addWidget(self.btn_apply_last_transform, 3, 3, 1, 2)
-    safe_btn(self, 'btn_apply_last_transform', 'clicked', lambda: apply_last_transform_to_layer(self))
-
-    # Apply button
-    safe_btn(self, 'apply_Im_transformation', 'clicked', lambda: apply_trasnformation(self), "background-color: blue; color: white;")
     
     # Layer selection shortcuts (Ctrl+1 to Ctrl+4)
     def _switch_layer(parent, target_idx):
@@ -483,7 +454,6 @@ def initialize_software_buttons(self):
         self.gridLayout_34.addWidget(self.table_roi_c_values, 0, 0, 1, 3)
     
     # Create programmatically the ROI configuration inputs (pixel size, slices)
-    from PySide6.QtWidgets import QHBoxLayout, QLabel, QSpinBox
     self.roi_config_widget = QtWidgets.QWidget(self.tab_34)
     roi_config_layout = QHBoxLayout(self.roi_config_widget)
     roi_config_layout.setContentsMargins(0, 0, 0, 0)
@@ -507,7 +477,6 @@ def initialize_software_buttons(self):
     self.gridLayout_45.addWidget(self.roi_config_widget, 1, 3, 1, 1)
 
     # Populate Direction dropdown inside groupBox_8
-    from PySide6.QtWidgets import QVBoxLayout, QComboBox, QPushButton
     if hasattr(self, 'groupBox_8') and self.groupBox_8 is not None:
         if not self.groupBox_8.layout():
             grp_layout = QVBoxLayout(self.groupBox_8)

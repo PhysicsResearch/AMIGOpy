@@ -2366,12 +2366,15 @@ def _compute_ebrt_beam_3d_geom(beam):
     """
     Computes 3D geometry coordinates (in DICOM patient space) for an EBRT beam:
     - Isocenter position
-    - Central Axis (CAX) entry and exit endpoints
+    - Central Axis (CAX) entry and exit endpoints (Start and End if Arc)
     - Collimator jaw aperture corners at isocenter distance (SAD)
     - 4 Diverging boundary rays from entry to exit
+    - Arc circular trajectory around the patient if dynamic / arc
     """
     iso = np.array(beam.get('Isocenter', [0.0, 0.0, 0.0]), dtype=float)
     g_deg = float(beam.get('GantryAngleStart', 0.0))
+    g_end_deg = float(beam.get('GantryAngleEnd', g_deg))
+    g_dir = str(beam.get('GantryDirection', 'NONE')).upper()
     c_deg = float(beam.get('CouchAngle', 0.0))
     col_deg = float(beam.get('CollimatorAngle', 0.0))
     sad = float(beam.get('SAD', 1000.0) or 1000.0)
@@ -2382,7 +2385,7 @@ def _compute_ebrt_beam_3d_geom(beam):
     c_rad = np.radians(c_deg)
     col_rad = np.radians(col_deg)
 
-    # Unit vectors in DICOM IEC space
+    # Unit vectors in DICOM IEC space for Start field
     u_beam = np.array([-np.sin(g_rad) * np.cos(c_rad), np.cos(g_rad), -np.sin(g_rad) * np.sin(c_rad)], dtype=float)
     u_cross = np.array([np.cos(g_rad), np.sin(g_rad), 0.0], dtype=float)
     u_long = np.array([0.0, 0.0, 1.0], dtype=float)
@@ -2410,7 +2413,7 @@ def _compute_ebrt_beam_3d_geom(beam):
     entry_corners = _corner_pts(d_ent)
     exit_corners = _corner_pts(d_exit)
 
-    return {
+    geom = {
         'Isocenter': iso,
         'CAX': (cax_entry, cax_exit),
         'IsoCorners': iso_corners,
@@ -2421,8 +2424,38 @@ def _compute_ebrt_beam_3d_geom(beam):
             (entry_corners[1], exit_corners[1]),
             (entry_corners[2], exit_corners[2]),
             (entry_corners[3], exit_corners[3]),
-        ]
+        ],
+        'IsArc': False
     }
+
+    # Check if beam is an Arc (VMAT / Dynamic Arc / Conformal Arc)
+    is_arc = (beam.get('BeamType') == 'DYNAMIC' or abs(g_end_deg - g_deg) > 0.1 or g_dir in ['CW', 'CCW']) and (g_dir != 'NONE' or abs(g_end_deg - g_deg) > 0.5)
+
+    if is_arc:
+        geom['IsArc'] = True
+        if g_dir == 'CW':
+            span = (g_end_deg - g_deg) if (g_end_deg > g_deg) else ((360.0 - g_deg) + g_end_deg if g_end_deg < g_deg else 360.0)
+            n_steps = max(int(span / 2.0), 25)
+            arc_angles = (g_deg + np.linspace(0.0, span, n_steps)) % 360.0
+        elif g_dir == 'CCW':
+            span = (g_deg - g_end_deg) if (g_deg > g_end_deg) else ((360.0 - g_end_deg) + g_deg if g_deg < g_end_deg else 360.0)
+            n_steps = max(int(span / 2.0), 25)
+            arc_angles = (g_deg - np.linspace(0.0, span, n_steps)) % 360.0
+        else:
+            diff = g_end_deg - g_deg
+            n_steps = max(int(abs(diff) / 2.0), 25)
+            arc_angles = np.linspace(g_deg, g_end_deg, n_steps)
+
+        # Generate smooth circular arc trajectory at R = 350 mm around isocenter (around the patient body)
+        r_arc = 350.0
+        arc_pts = []
+        for a in arc_angles:
+            a_rad = np.radians(a)
+            u_a = np.array([-np.sin(a_rad) * np.cos(c_rad), np.cos(a_rad), -np.sin(a_rad) * np.sin(c_rad)], dtype=float)
+            arc_pts.append(iso - r_arc * u_a)
+        geom['ArcTrajectory'] = arc_pts
+
+    return geom
 
 
 def _create_vtk_line_actor(p1, p2, color, line_width=2, opacity=0.9, stipple=False):
@@ -2448,6 +2481,73 @@ def _create_vtk_line_actor(p1, p2, color, line_width=2, opacity=0.9, stipple=Fal
     actor.GetProperty().SetOpacity(opacity)
     if stipple:
         actor.GetProperty().SetLineStipplePattern(0xF0F0)
+    return actor
+
+
+def _create_vtk_polyline_actor(pts, color, line_width=3, opacity=0.9, stipple=False):
+    """Helper to create a VTK open polyline actor connecting a sequence of 2D/3D points."""
+    vtk_pts = vtk.vtkPoints()
+    n = len(pts)
+    if n < 2:
+        return None
+    for p in pts:
+        vtk_pts.InsertNextPoint(p[0], p[1], p[2] if len(p) > 2 else 0.6)
+        
+    lines = vtk.vtkCellArray()
+    for i in range(n - 1):
+        lines.InsertNextCell(2, [i, i + 1])
+        
+    pd = vtk.vtkPolyData()
+    pd.SetPoints(vtk_pts)
+    pd.SetLines(lines)
+    
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(pd)
+    
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(color[0], color[1], color[2])
+    actor.GetProperty().SetLineWidth(line_width)
+    actor.GetProperty().SetOpacity(opacity)
+    if stipple:
+        actor.GetProperty().SetLineStipplePattern(0xAAAA)
+    return actor
+
+
+def _create_vtk_arrow_actor(p_end, p_prev, color, arrow_len=14.0, line_width=3.0, opacity=1.0):
+    """Creates an arrowhead at p_end pointing along (p_end - p_prev)."""
+    dx = p_end[0] - p_prev[0]
+    dy = p_end[1] - p_prev[1]
+    norm = np.hypot(dx, dy)
+    if norm < 1e-3:
+        return None
+    u_t = np.array([dx / norm, dy / norm])
+    u_n = np.array([-u_t[1], u_t[0]])
+    
+    w1 = np.array(p_end[:2]) - arrow_len * u_t + 0.5 * arrow_len * u_n
+    w2 = np.array(p_end[:2]) - arrow_len * u_t - 0.5 * arrow_len * u_n
+    
+    pts = vtk.vtkPoints()
+    pts.InsertNextPoint(w1[0], w1[1], 0.7)
+    pts.InsertNextPoint(p_end[0], p_end[1], 0.7)
+    pts.InsertNextPoint(w2[0], w2[1], 0.7)
+    
+    lines = vtk.vtkCellArray()
+    lines.InsertNextCell(2, [0, 1])
+    lines.InsertNextCell(2, [1, 2])
+    
+    pd = vtk.vtkPolyData()
+    pd.SetPoints(pts)
+    pd.SetLines(lines)
+    
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(pd)
+    
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(color[0], color[1], color[2])
+    actor.GetProperty().SetLineWidth(line_width)
+    actor.GetProperty().SetOpacity(opacity)
     return actor
 
 
@@ -2508,7 +2608,7 @@ def _create_vtk_crosshair_actor(center_x, center_y, color, size=10.0, line_width
 
 def display_ebrt_fields_ax(self):
     """
-    Renders 2D EBRT beam geometries (isocenter, central axis, and field boundaries)
+    Renders 2D EBRT beam geometries (isocenter, central axis, field boundaries, and Arc trajectory)
     on the Axial viewport for the current slice.
     """
     if not hasattr(self, 'vtkWidgetAxial') or not hasattr(self, 'ebrt_beams_data'):
@@ -2559,7 +2659,7 @@ def display_ebrt_fields_ax(self):
             renderer.AddActor(act_iso)
             self.ebrt_actors_ax.append(act_iso)
 
-        # 2. Central Axis (CAX)
+        # 2. Central Axis (CAX) - Start field
         if show_cax:
             p1_v = to_vtk_ax(geom['CAX'][0])
             p2_v = to_vtk_ax(geom['CAX'][1])
@@ -2569,9 +2669,8 @@ def display_ebrt_fields_ax(self):
                 renderer.AddActor(act_cax)
                 self.ebrt_actors_ax.append(act_cax)
 
-        # 3. Field Outline & Boundary Rays
+        # 3. Field Outline & Boundary Rays - Start field
         if show_fan:
-            # 4 Corner Diverging Rays
             for r_entry, r_exit in geom['Rays']:
                 p_s = to_vtk_ax(r_entry)
                 p_e = to_vtk_ax(r_exit)
@@ -2581,13 +2680,28 @@ def display_ebrt_fields_ax(self):
                     renderer.AddActor(act_ray)
                     self.ebrt_actors_ax.append(act_ray)
 
-            # Aperture Outline at Isocenter
             iso_2d_corners = [to_vtk_ax(c) for c in geom['IsoCorners']]
             diag = np.hypot(iso_2d_corners[2][0] - iso_2d_corners[0][0], iso_2d_corners[2][1] - iso_2d_corners[0][1])
             if diag > 2.0:
                 act_box = _create_vtk_closed_polygon_actor(iso_2d_corners, color, line_width=2.8, opacity=1.0 if is_near_iso else 0.6)
                 renderer.AddActor(act_box)
                 self.ebrt_actors_ax.append(act_box)
+
+        # 4. Arc Trajectory around the patient
+        if geom.get('IsArc', False):
+            arc_3d = geom.get('ArcTrajectory', [])
+            if len(arc_3d) >= 2:
+                arc_2d = [to_vtk_ax(p) for p in arc_3d]
+                act_arc = _create_vtk_polyline_actor(arc_2d, color, line_width=3.2, opacity=0.95)
+                if act_arc:
+                    renderer.AddActor(act_arc)
+                    self.ebrt_actors_ax.append(act_arc)
+
+                # Arrowhead at end of arc indicating rotation direction
+                act_arrow = _create_vtk_arrow_actor(arc_2d[-1], arc_2d[-2], color, arrow_len=14.0, line_width=3.0, opacity=1.0)
+                if act_arrow:
+                    renderer.AddActor(act_arrow)
+                    self.ebrt_actors_ax.append(act_arrow)
 
     self.vtkWidgetAxial.GetRenderWindow().Render()
 
@@ -2655,7 +2769,6 @@ def display_ebrt_fields_co(self):
 
         # 3. Field Outline & Boundary Rays
         if show_fan:
-            # 4 Corner Diverging Rays
             for r_entry, r_exit in geom['Rays']:
                 p_s = to_vtk_co(r_entry)
                 p_e = to_vtk_co(r_exit)
@@ -2665,13 +2778,22 @@ def display_ebrt_fields_co(self):
                     renderer.AddActor(act_ray)
                     self.ebrt_actors_co.append(act_ray)
 
-            # Aperture Outline at Isocenter
             iso_2d_corners = [to_vtk_co(c) for c in geom['IsoCorners']]
             diag = np.hypot(iso_2d_corners[2][0] - iso_2d_corners[0][0], iso_2d_corners[2][1] - iso_2d_corners[0][1])
             if diag > 2.0:
                 act_box = _create_vtk_closed_polygon_actor(iso_2d_corners, color, line_width=2.8, opacity=1.0 if is_near_iso else 0.6)
                 renderer.AddActor(act_box)
                 self.ebrt_actors_co.append(act_box)
+
+        # 4. Arc Trajectory
+        if geom.get('IsArc', False):
+            arc_3d = geom.get('ArcTrajectory', [])
+            if len(arc_3d) >= 2:
+                arc_2d = [to_vtk_co(p) for p in arc_3d]
+                act_arc = _create_vtk_polyline_actor(arc_2d, color, line_width=3.2, opacity=0.95)
+                if act_arc:
+                    renderer.AddActor(act_arc)
+                    self.ebrt_actors_co.append(act_arc)
 
     self.vtkWidgetCoronal.GetRenderWindow().Render()
 
@@ -2739,7 +2861,6 @@ def display_ebrt_fields_sa(self):
 
         # 3. Field Outline & Boundary Rays
         if show_fan:
-            # 4 Corner Diverging Rays
             for r_entry, r_exit in geom['Rays']:
                 p_s = to_vtk_sa(r_entry)
                 p_e = to_vtk_sa(r_exit)
@@ -2749,12 +2870,21 @@ def display_ebrt_fields_sa(self):
                     renderer.AddActor(act_ray)
                     self.ebrt_actors_sa.append(act_ray)
 
-            # Aperture Outline at Isocenter
             iso_2d_corners = [to_vtk_sa(c) for c in geom['IsoCorners']]
             diag = np.hypot(iso_2d_corners[2][0] - iso_2d_corners[0][0], iso_2d_corners[2][1] - iso_2d_corners[0][1])
             if diag > 2.0:
                 act_box = _create_vtk_closed_polygon_actor(iso_2d_corners, color, line_width=2.8, opacity=1.0 if is_near_iso else 0.6)
                 renderer.AddActor(act_box)
                 self.ebrt_actors_sa.append(act_box)
+
+        # 4. Arc Trajectory
+        if geom.get('IsArc', False):
+            arc_3d = geom.get('ArcTrajectory', [])
+            if len(arc_3d) >= 2:
+                arc_2d = [to_vtk_sa(p) for p in arc_3d]
+                act_arc = _create_vtk_polyline_actor(arc_2d, color, line_width=3.2, opacity=0.95)
+                if act_arc:
+                    renderer.AddActor(act_arc)
+                    self.ebrt_actors_sa.append(act_arc)
 
     self.vtkWidgetSagittal.GetRenderWindow().Render()

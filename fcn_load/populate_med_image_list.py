@@ -117,7 +117,29 @@ def populate_medical_image_tree(self):
                 for item_index, series_data in enumerate(modality_data):  # Iterating over the list
                     if modality == 'RTPLAN':
                         Plan_label = series_data['metadata'].get('RTPlanLabel') or series_data['metadata'].get('RTPlanName') or 'Plan'
-                        series_label = f"{Plan_label}_Series: {series_data['SeriesNumber']}"
+                        meta = series_data.get('metadata', {})
+                        dcm_info = meta.get('DCM_Info', None)
+                        is_brachy = (
+                            'Plan_Brachy_Channels' in meta or
+                            meta.get('BrachyTreatmentType', 'N/A') not in ['N/A', '', None] or
+                            meta.get('BrachyPlan') is True or
+                            (dcm_info is not None and hasattr(dcm_info, 'ApplicationSetupSequence') and len(getattr(dcm_info, 'ApplicationSetupSequence', [])) > 0)
+                        )
+                        has_beams = (
+                            (dcm_info is not None and (
+                                (hasattr(dcm_info, 'BeamSequence') and len(getattr(dcm_info, 'BeamSequence', [])) > 0) or
+                                (hasattr(dcm_info, 'IonBeamSequence') and len(getattr(dcm_info, 'IonBeamSequence', [])) > 0)
+                            )) or
+                            meta.get('TreatmentProtocols', 'N/A') not in ['N/A', '', None]
+                        )
+                        if is_brachy:
+                            type_tag = "[Brachy]"
+                        elif has_beams:
+                            type_tag = "[EBRT]"
+                        else:
+                            type_tag = "[Plan]"
+
+                        series_label = f"{type_tag} {Plan_label}_Series: {series_data['SeriesNumber']}"
                         series_item = QStandardItem(series_label)
                         modality_item.appendRow(series_item)
                     elif modality == 'RTSTRUCT':

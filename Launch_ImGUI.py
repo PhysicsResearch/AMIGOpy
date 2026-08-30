@@ -245,11 +245,11 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
 
         # -------------------------------------------------------------
         # Restructure View tab in tabView01 (bottom area) with a horizontal splitter
-        # between the histogram (left) and the transform tabs (right)
+        # between the histogram (left) and the DICOM metadata viewer (right)
         # -------------------------------------------------------------
         # Remove widgets from the gridLayout_81 on tab_5
         self.gridLayout_81.removeWidget(self.hist_container_01)
-        self.gridLayout_81.removeWidget(self.tabWidget_10)
+        self.gridLayout_81.removeWidget(self.metadata_container)
         
         # Delete old gridLayout_81
         shiboken6.delete(self.gridLayout_81)
@@ -261,11 +261,11 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
         
         # Set minimum sizes to 1 to allow smooth intermediate steps
         self.hist_container_01.setMinimumWidth(1)
-        self.tabWidget_10.setMinimumWidth(1)
+        self.metadata_container.setMinimumWidth(1)
         
         # Add components to the splitter
         self.bottom_view_splitter.addWidget(self.hist_container_01)
-        self.bottom_view_splitter.addWidget(self.tabWidget_10)
+        self.bottom_view_splitter.addWidget(self.metadata_container)
         
         # Set stretch factors & initial sizes
         self.bottom_view_splitter.setStretchFactor(0, 2)
