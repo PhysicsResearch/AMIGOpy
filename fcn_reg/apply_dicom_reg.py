@@ -227,7 +227,11 @@ def apply_and_duplicate_registered_series(
     matrix4x4,
     target_studyID=None,
     target_modality=None,
-    target_series_idx=None
+    target_series_idx=None,
+    precomputed_volume=None,
+    precomputed_origin=None,
+    precomputed_spacing=None,
+    precomputed_thick=None
 ):
     """
     Applies the registration matrix to the selected moving series, creates a registered
@@ -245,10 +249,21 @@ def apply_and_duplicate_registered_series(
         except Exception:
             reference_series = None
 
-    # Resample volume
-    new_vol, new_origin, new_pixel_spacing, new_slice_thickness, new_ipp_list = resample_volume_with_matrix(
-        source_series, matrix4x4, reference_series
-    )
+    if precomputed_volume is not None:
+        # Use the already resampled, verified volume from the registration viewer
+        orig_dtype = source_series['3DMatrix'].dtype
+        new_vol = precomputed_volume.astype(orig_dtype)
+        new_origin = list(np.array(precomputed_origin, dtype=float))
+        new_pixel_spacing = list(np.array(precomputed_spacing, dtype=float))
+        new_slice_thickness = float(precomputed_thick)
+        new_ipp_list = []
+        for k in range(new_vol.shape[0]):
+            new_ipp_list.append([new_origin[0], new_origin[1], new_origin[2] + k * new_slice_thickness])
+    else:
+        # Resample volume using 4x4 matrix
+        new_vol, new_origin, new_pixel_spacing, new_slice_thickness, new_ipp_list = resample_volume_with_matrix(
+            source_series, matrix4x4, reference_series
+        )
     
     # Deep copy metadata
     orig_meta = source_series.get('metadata', {})
@@ -294,6 +309,40 @@ def apply_and_duplicate_registered_series(
     # Append to study modality list
     parent.medical_image[patientID][source_studyID][source_modality].append(new_series_dict)
     
+    # Also create a DICOM Spatial Registration (REG) entry in medical_image
+    if 'REG' not in parent.medical_image[patientID][source_studyID]:
+        parent.medical_image[patientID][source_studyID]['REG'] = []
+    
+    reg_series_num = 900 + len(parent.medical_image[patientID][source_studyID]['REG'])
+    mat_flattened = list(np.array(matrix4x4, dtype=float).flatten())
+    
+    target_tag_study = f"Study {target_studyID}" if target_studyID is not None else "Reference"
+    reg_entry = {
+        'SeriesNumber': reg_series_num,
+        'metadata': {
+            'Modality': 'REG',
+            'SeriesDescription': f"Spatial Reg [Study {source_studyID} -> {target_tag_study}]",
+            'StudyDescription': orig_meta.get('StudyDescription', ''),
+            'ContentLabel': 'REGISTRATION',
+            'ContentDescription': f"Spatial Registration from Study {source_studyID} to {target_tag_study}",
+            'SOPInstanceUID': f"1.2.840.10008.5.1.4.1.1.66.1.{np.random.randint(100000, 999999)}",
+            'SeriesInstanceUID': f"1.2.840.10008.5.1.4.1.1.66.2.{np.random.randint(100000, 999999)}",
+            'StudyInstanceUID': orig_meta.get('StudyInstanceUID', ''),
+            'FrameOfReferenceUID': target_for_uid or orig_meta.get('FrameOfReferenceUID', ''),
+            'StudyDate': orig_meta.get('StudyDate', ''),
+            'SeriesDate': orig_meta.get('SeriesDate', ''),
+            'RegistrationMatrixList': [{
+                'TargetFrameOfReferenceUID': target_for_uid,
+                'MatrixType': 'RIGID',
+                'Matrix': mat_flattened
+            }]
+        },
+        'images': {},
+        'ImagePositionPatients': [],
+        'SliceImageComments': {}
+    }
+    parent.medical_image[patientID][source_studyID]['REG'].append(reg_entry)
+
     # Refresh data tree if GUI is active
     if hasattr(parent, 'DataTreeView') and parent.DataTreeView is not None:
         from fcn_load.populate_med_image_list import populate_medical_image_tree

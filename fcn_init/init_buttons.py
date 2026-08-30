@@ -367,6 +367,18 @@ def initialize_software_buttons(self):
     safe_btn(self, 'brachy_source_list', 'currentIndexChanged', lambda: on_brachy_source_selection(self))
     safe_btn(self, 'comboBox_tg43_along_away', 'currentIndexChanged', lambda: dose_along_away_Disp_eval(self))
     #
+    # EBRT Plan
+    #
+    from fcn_display.disp_ebrt_plan import on_ebrt_overlay_toggled, on_ebrt_all_fields_toggled, export_ebrt_beams_to_csv
+    safe_btn(self, 'display_ebrt_fields_overlay', 'stateChanged', lambda: on_ebrt_overlay_toggled(self))
+    safe_btn(self, 'display_ebrt_isocenter', 'stateChanged', lambda: on_ebrt_overlay_toggled(self))
+    safe_btn(self, 'display_ebrt_cax', 'stateChanged', lambda: on_ebrt_overlay_toggled(self))
+    safe_btn(self, 'display_ebrt_beam_fan', 'stateChanged', lambda: on_ebrt_overlay_toggled(self))
+    safe_btn(self, 'ebrt_overlay_all_fields', 'stateChanged', lambda: on_ebrt_all_fields_toggled(self))
+    safe_style(self, 'ebrt_export_csv', "background-color: blue; color: white;")
+    safe_btn(self, 'ebrt_export_csv', 'clicked', lambda: export_ebrt_beams_to_csv(self))
+
+    #
     # TG43 
     safe_style(self, 'Brachy_Radial_load', "background-color: blue; color: white;")
     safe_btn(self, 'Brachy_Radial_load', 'clicked', lambda: select_Radial_file2load(self))

@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 tab_view.py - AMIGOpy GUI Module
 ===================================
@@ -714,6 +714,48 @@ def create_tab_view(w):
     w.tabWidget_3.addTab(w.tab_37, "")
     w.tab_38 = QWidget()
     w.tab_38.setObjectName(u"tab_38")
+    w.gridLayout_ebrt = QGridLayout(w.tab_38)
+    w.gridLayout_ebrt.setObjectName(u"gridLayout_ebrt")
+
+    w.display_ebrt_fields_overlay = QCheckBox(w.tab_38)
+    w.display_ebrt_fields_overlay.setObjectName(u"display_ebrt_fields_overlay")
+    w.display_ebrt_fields_overlay.setChecked(True)
+    w.gridLayout_ebrt.addWidget(w.display_ebrt_fields_overlay, 0, 0, 1, 1)
+
+    w.display_ebrt_isocenter = QCheckBox(w.tab_38)
+    w.display_ebrt_isocenter.setObjectName(u"display_ebrt_isocenter")
+    w.display_ebrt_isocenter.setChecked(True)
+    w.gridLayout_ebrt.addWidget(w.display_ebrt_isocenter, 0, 1, 1, 1)
+
+    w.display_ebrt_cax = QCheckBox(w.tab_38)
+    w.display_ebrt_cax.setObjectName(u"display_ebrt_cax")
+    w.display_ebrt_cax.setChecked(True)
+    w.gridLayout_ebrt.addWidget(w.display_ebrt_cax, 0, 2, 1, 1)
+
+    w.display_ebrt_beam_fan = QCheckBox(w.tab_38)
+    w.display_ebrt_beam_fan.setObjectName(u"display_ebrt_beam_fan")
+    w.display_ebrt_beam_fan.setChecked(True)
+    w.gridLayout_ebrt.addWidget(w.display_ebrt_beam_fan, 0, 3, 1, 1)
+
+    w.ebrt_overlay_all_fields = QCheckBox(w.tab_38)
+    w.ebrt_overlay_all_fields.setObjectName(u"ebrt_overlay_all_fields")
+    w.ebrt_overlay_all_fields.setChecked(True)
+    w.gridLayout_ebrt.addWidget(w.ebrt_overlay_all_fields, 1, 0, 1, 1)
+
+    w.ebrt_plan_info_label = QLabel(w.tab_38)
+    w.ebrt_plan_info_label.setObjectName(u"ebrt_plan_info_label")
+    w.ebrt_plan_info_label.setText("No Plan Selected")
+    w.gridLayout_ebrt.addWidget(w.ebrt_plan_info_label, 1, 1, 1, 2)
+
+    w.ebrt_export_csv = QPushButton(w.tab_38)
+    w.ebrt_export_csv.setObjectName(u"ebrt_export_csv")
+    w.gridLayout_ebrt.addWidget(w.ebrt_export_csv, 1, 3, 1, 1)
+
+    w.ebrt_table_01 = QTableWidget(w.tab_38)
+    w.ebrt_table_01.setObjectName(u"ebrt_table_01")
+    w.ebrt_table_01.setFont(font2)
+    w.gridLayout_ebrt.addWidget(w.ebrt_table_01, 2, 0, 1, 4)
+
     w.tabWidget_3.addTab(w.tab_38, "")
 
     w.gridLayout_44.addWidget(w.tabWidget_3, 0, 0, 1, 1)

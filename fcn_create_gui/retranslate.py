@@ -110,7 +110,19 @@ def retranslate_ui(w):
     if hasattr(w, 'tabWidget_3'):
         w.tabWidget_3.setTabText(w.tabWidget_3.indexOf(w.tab_37), QCoreApplication.translate("w", u"Brachy", None))
     if hasattr(w, 'tabWidget_3'):
-        w.tabWidget_3.setTabText(w.tabWidget_3.indexOf(w.tab_38), QCoreApplication.translate("w", u"Tab 2", None))
+        w.tabWidget_3.setTabText(w.tabWidget_3.indexOf(w.tab_38), QCoreApplication.translate("w", u"EBRT-Plan", None))
+    if hasattr(w, 'display_ebrt_fields_overlay'):
+        w.display_ebrt_fields_overlay.setText(QCoreApplication.translate("w", u"Show fields", None))
+    if hasattr(w, 'display_ebrt_isocenter'):
+        w.display_ebrt_isocenter.setText(QCoreApplication.translate("w", u"Isocenter", None))
+    if hasattr(w, 'display_ebrt_cax'):
+        w.display_ebrt_cax.setText(QCoreApplication.translate("w", u"Central axis", None))
+    if hasattr(w, 'display_ebrt_beam_fan'):
+        w.display_ebrt_beam_fan.setText(QCoreApplication.translate("w", u"Field outline", None))
+    if hasattr(w, 'ebrt_overlay_all_fields'):
+        w.ebrt_overlay_all_fields.setText(QCoreApplication.translate("w", u"All fields", None))
+    if hasattr(w, 'ebrt_export_csv'):
+        w.ebrt_export_csv.setText(QCoreApplication.translate("w", u"Export CSV", None))
     if hasattr(w, 'tabView01'):
         w.tabView01.setTabText(w.tabView01.indexOf(w.tab_14), QCoreApplication.translate("w", u"PLAN", None))
     if hasattr(w, 'lineEdit_66'):

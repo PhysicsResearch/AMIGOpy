@@ -48,6 +48,15 @@ def displayaxial(self, Im = None):
                 for actor in self.dwell_actors_ax:
                     renderer.RemoveActor(actor)
                 self.dwell_actors_ax.clear()
+
+            # EBRT Fields overlay
+            if hasattr(self, 'display_ebrt_fields_overlay') and self.display_ebrt_fields_overlay.isChecked():
+                display_ebrt_fields_ax(self)
+            else:
+                if hasattr(self, 'ebrt_actors_ax'):
+                    for actor in self.ebrt_actors_ax:
+                        renderer.RemoveActor(actor)
+                    self.ebrt_actors_ax.clear()
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in medical_image
                 display_brachy_channel_overlay_ax(self)
@@ -762,6 +771,15 @@ def displaycoronal(self, Im = None):
                 for actor in self.dwell_actors_co:
                     renderer.RemoveActor(actor)
                 self.dwell_actors_co.clear()
+
+            # EBRT Fields overlay
+            if hasattr(self, 'display_ebrt_fields_overlay') and self.display_ebrt_fields_overlay.isChecked():
+                display_ebrt_fields_co(self)
+            else:
+                if hasattr(self, 'ebrt_actors_co'):
+                    for actor in self.ebrt_actors_co:
+                        renderer.RemoveActor(actor)
+                    self.ebrt_actors_co.clear()
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in medical_image
                 display_brachy_channel_overlay_co(self)
@@ -1472,6 +1490,15 @@ def displaysagittal(self,Im = None):
                 for actor in self.dwell_actors_sa:
                     renderer.RemoveActor(actor)
                 self.dwell_actors_sa.clear()
+
+            # EBRT Fields overlay
+            if hasattr(self, 'display_ebrt_fields_overlay') and self.display_ebrt_fields_overlay.isChecked():
+                display_ebrt_fields_sa(self)
+            else:
+                if hasattr(self, 'ebrt_actors_sa'):
+                    for actor in self.ebrt_actors_sa:
+                        renderer.RemoveActor(actor)
+                    self.ebrt_actors_sa.clear()
         if i == 3 and  self.display_brachy_channel_overlay.isChecked():
             # Check if the required fields exist in medical_image
                 display_brachy_channel_overlay_sa(self)    
@@ -2188,7 +2215,6 @@ def create_cross_actor(x_c, y_c, z_c, size, color, thickness=2.0):
     actor.SetMapper(mapper)
     actor.GetProperty().SetColor(*color)
     actor.GetProperty().SetLineWidth(thickness)
-    
     return actor
 
 
@@ -2336,3 +2362,399 @@ def display_ref_points_sa(self):
     self.vtkWidgetSagittal.GetRenderWindow().Render()
 
 
+def _compute_ebrt_beam_3d_geom(beam):
+    """
+    Computes 3D geometry coordinates (in DICOM patient space) for an EBRT beam:
+    - Isocenter position
+    - Central Axis (CAX) entry and exit endpoints
+    - Collimator jaw aperture corners at isocenter distance (SAD)
+    - 4 Diverging boundary rays from entry to exit
+    """
+    iso = np.array(beam.get('Isocenter', [0.0, 0.0, 0.0]), dtype=float)
+    g_deg = float(beam.get('GantryAngleStart', 0.0))
+    c_deg = float(beam.get('CouchAngle', 0.0))
+    col_deg = float(beam.get('CollimatorAngle', 0.0))
+    sad = float(beam.get('SAD', 1000.0) or 1000.0)
+    jaw_x = beam.get('JawX', [-50.0, 50.0])
+    jaw_y = beam.get('JawY', [-50.0, 50.0])
+
+    g_rad = np.radians(g_deg)
+    c_rad = np.radians(c_deg)
+    col_rad = np.radians(col_deg)
+
+    # Unit vectors in DICOM IEC space
+    u_beam = np.array([-np.sin(g_rad) * np.cos(c_rad), np.cos(g_rad), -np.sin(g_rad) * np.sin(c_rad)], dtype=float)
+    u_cross = np.array([np.cos(g_rad), np.sin(g_rad), 0.0], dtype=float)
+    u_long = np.array([0.0, 0.0, 1.0], dtype=float)
+
+    e_x = np.cos(col_rad) * u_cross + np.sin(col_rad) * u_long
+    e_y = -np.sin(col_rad) * u_cross + np.cos(col_rad) * u_long
+
+    S = iso - sad * u_beam
+
+    def _corner_pts(d):
+        scale = d / sad
+        p1 = S + d * u_beam + scale * (jaw_x[0] * e_x + jaw_y[1] * e_y) # Top-Left
+        p2 = S + d * u_beam + scale * (jaw_x[1] * e_x + jaw_y[1] * e_y) # Top-Right
+        p3 = S + d * u_beam + scale * (jaw_x[1] * e_x + jaw_y[0] * e_y) # Bottom-Right
+        p4 = S + d * u_beam + scale * (jaw_x[0] * e_x + jaw_y[0] * e_y) # Bottom-Left
+        return [p1, p2, p3, p4]
+
+    d_ent = min(sad, max(sad - 250.0, 400.0))
+    d_exit = sad + 200.0
+
+    cax_entry = S + d_ent * u_beam
+    cax_exit = S + d_exit * u_beam
+
+    iso_corners = _corner_pts(sad)
+    entry_corners = _corner_pts(d_ent)
+    exit_corners = _corner_pts(d_exit)
+
+    return {
+        'Isocenter': iso,
+        'CAX': (cax_entry, cax_exit),
+        'IsoCorners': iso_corners,
+        'EntryCorners': entry_corners,
+        'ExitCorners': exit_corners,
+        'Rays': [
+            (entry_corners[0], exit_corners[0]),
+            (entry_corners[1], exit_corners[1]),
+            (entry_corners[2], exit_corners[2]),
+            (entry_corners[3], exit_corners[3]),
+        ]
+    }
+
+
+def _create_vtk_line_actor(p1, p2, color, line_width=2, opacity=0.9, stipple=False):
+    """Helper to create a VTK line actor between two points in display coordinates."""
+    pts = vtk.vtkPoints()
+    pts.InsertNextPoint(p1[0], p1[1], p1[2] if len(p1) > 2 else 0.6)
+    pts.InsertNextPoint(p2[0], p2[1], p2[2] if len(p2) > 2 else 0.6)
+    
+    lines = vtk.vtkCellArray()
+    lines.InsertNextCell(2, [0, 1])
+    
+    pd = vtk.vtkPolyData()
+    pd.SetPoints(pts)
+    pd.SetLines(lines)
+    
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(pd)
+    
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(color[0], color[1], color[2])
+    actor.GetProperty().SetLineWidth(line_width)
+    actor.GetProperty().SetOpacity(opacity)
+    if stipple:
+        actor.GetProperty().SetLineStipplePattern(0xF0F0)
+    return actor
+
+
+def _create_vtk_closed_polygon_actor(pts_2d, color, line_width=2, opacity=0.85, stipple=False):
+    """Helper to create a closed polygon outline actor connecting a sequence of 2D points."""
+    pts = vtk.vtkPoints()
+    n = len(pts_2d)
+    for p in pts_2d:
+        pts.InsertNextPoint(p[0], p[1], 0.6)
+        
+    lines = vtk.vtkCellArray()
+    for i in range(n):
+        lines.InsertNextCell(2, [i, (i + 1) % n])
+        
+    pd = vtk.vtkPolyData()
+    pd.SetPoints(pts)
+    pd.SetLines(lines)
+    
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(pd)
+    
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(color[0], color[1], color[2])
+    actor.GetProperty().SetLineWidth(line_width)
+    actor.GetProperty().SetOpacity(opacity)
+    if stipple:
+        actor.GetProperty().SetLineStipplePattern(0xF0F0)
+    return actor
+
+
+def _create_vtk_crosshair_actor(center_x, center_y, color, size=10.0, line_width=3, opacity=1.0):
+    """Helper to create an isocenter crosshair actor."""
+    pts = vtk.vtkPoints()
+    pts.InsertNextPoint(center_x - size, center_y, 0.7)
+    pts.InsertNextPoint(center_x + size, center_y, 0.7)
+    pts.InsertNextPoint(center_x, center_y - size, 0.7)
+    pts.InsertNextPoint(center_x, center_y + size, 0.7)
+    
+    lines = vtk.vtkCellArray()
+    lines.InsertNextCell(2, [0, 1])
+    lines.InsertNextCell(2, [2, 3])
+    
+    pd = vtk.vtkPolyData()
+    pd.SetPoints(pts)
+    pd.SetLines(lines)
+    
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(pd)
+    
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(color[0], color[1], color[2])
+    actor.GetProperty().SetLineWidth(line_width)
+    actor.GetProperty().SetOpacity(opacity)
+    return actor
+
+
+def display_ebrt_fields_ax(self):
+    """
+    Renders 2D EBRT beam geometries (isocenter, central axis, and field boundaries)
+    on the Axial viewport for the current slice.
+    """
+    if not hasattr(self, 'vtkWidgetAxial') or not hasattr(self, 'ebrt_beams_data'):
+        return
+    renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    if renderer is None:
+        return
+
+    # Clear previous axial EBRT actors
+    for actor in getattr(self, 'ebrt_actors_ax', []):
+        renderer.RemoveActor(actor)
+    self.ebrt_actors_ax.clear()
+
+    if not self.ebrt_beams_data or not hasattr(self, 'display_data') or not self.display_data:
+        return
+
+    curr_slice_idx = self.current_axial_slice_index[0]
+    curr_z = self.Im_PatPosition[0, 2] + curr_slice_idx * self.slice_thick[0]
+
+    show_iso = getattr(self, 'display_ebrt_isocenter', None) is None or self.display_ebrt_isocenter.isChecked()
+    show_cax = getattr(self, 'display_ebrt_cax', None) is None or self.display_ebrt_cax.isChecked()
+    show_fan = getattr(self, 'display_ebrt_beam_fan', None) is None or self.display_ebrt_beam_fan.isChecked()
+
+    def to_vtk_ax(p):
+        vx = p[0] - self.Im_PatPosition[0, 0] + self.Im_Offset[0, 0]
+        vy = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (p[1] - self.Im_PatPosition[0, 1]) + self.Im_Offset[0, 1]
+        return vx, vy
+
+    for beam in self.ebrt_beams_data:
+        if not beam.get('Visible', True):
+            continue
+
+        qcol = QColor(beam.get('Color', '#e53935'))
+        color = (qcol.redF(), qcol.greenF(), qcol.blueF())
+
+        geom = _compute_ebrt_beam_3d_geom(beam)
+        iso = geom['Isocenter']
+        iso_dist_z = abs(curr_z - iso[2])
+        is_near_iso = (iso_dist_z <= max(self.slice_thick[0] * 2.0, 4.0))
+
+        # 1. Isocenter Crosshair
+        if show_iso:
+            ivx, ivy = to_vtk_ax(iso)
+            op = 1.0 if is_near_iso else 0.5
+            lw = 4 if is_near_iso else 2
+            sz = 13.0 if is_near_iso else 8.0
+            act_iso = _create_vtk_crosshair_actor(ivx, ivy, color, size=sz, line_width=lw, opacity=op)
+            renderer.AddActor(act_iso)
+            self.ebrt_actors_ax.append(act_iso)
+
+        # 2. Central Axis (CAX)
+        if show_cax:
+            p1_v = to_vtk_ax(geom['CAX'][0])
+            p2_v = to_vtk_ax(geom['CAX'][1])
+            cax_len = np.hypot(p2_v[0] - p1_v[0], p2_v[1] - p1_v[1])
+            if cax_len > 2.0:
+                act_cax = _create_vtk_line_actor(p1_v, p2_v, color, line_width=3.0, opacity=0.95, stipple=False)
+                renderer.AddActor(act_cax)
+                self.ebrt_actors_ax.append(act_cax)
+
+        # 3. Field Outline & Boundary Rays
+        if show_fan:
+            # 4 Corner Diverging Rays
+            for r_entry, r_exit in geom['Rays']:
+                p_s = to_vtk_ax(r_entry)
+                p_e = to_vtk_ax(r_exit)
+                ray_len = np.hypot(p_e[0] - p_s[0], p_e[1] - p_s[1])
+                if ray_len > 2.0:
+                    act_ray = _create_vtk_line_actor(p_s, p_e, color, line_width=2.0, opacity=0.85, stipple=True)
+                    renderer.AddActor(act_ray)
+                    self.ebrt_actors_ax.append(act_ray)
+
+            # Aperture Outline at Isocenter
+            iso_2d_corners = [to_vtk_ax(c) for c in geom['IsoCorners']]
+            diag = np.hypot(iso_2d_corners[2][0] - iso_2d_corners[0][0], iso_2d_corners[2][1] - iso_2d_corners[0][1])
+            if diag > 2.0:
+                act_box = _create_vtk_closed_polygon_actor(iso_2d_corners, color, line_width=2.8, opacity=1.0 if is_near_iso else 0.6)
+                renderer.AddActor(act_box)
+                self.ebrt_actors_ax.append(act_box)
+
+    self.vtkWidgetAxial.GetRenderWindow().Render()
+
+
+def display_ebrt_fields_co(self):
+    """
+    Renders 2D EBRT beam geometries on the Coronal viewport for the current slice.
+    """
+    if not hasattr(self, 'vtkWidgetCoronal') or not hasattr(self, 'ebrt_beams_data'):
+        return
+    renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    if renderer is None:
+        return
+
+    for actor in getattr(self, 'ebrt_actors_co', []):
+        renderer.RemoveActor(actor)
+    self.ebrt_actors_co.clear()
+
+    if not self.ebrt_beams_data or not hasattr(self, 'display_data') or not self.display_data:
+        return
+
+    curr_slice_idx = self.current_coronal_slice_index[0]
+    curr_y = self.Im_PatPosition[0, 1] + (self.display_data[0].shape[1] - 1 - curr_slice_idx) * self.pixel_spac[0, 0]
+
+    show_iso = getattr(self, 'display_ebrt_isocenter', None) is None or self.display_ebrt_isocenter.isChecked()
+    show_cax = getattr(self, 'display_ebrt_cax', None) is None or self.display_ebrt_cax.isChecked()
+    show_fan = getattr(self, 'display_ebrt_beam_fan', None) is None or self.display_ebrt_beam_fan.isChecked()
+
+    def to_vtk_co(p):
+        vx = p[0] - self.Im_PatPosition[0, 0] + self.Im_Offset[0, 0]
+        vy = p[2] - self.Im_PatPosition[0, 2] + self.Im_Offset[0, 2]
+        return vx, vy
+
+    for beam in self.ebrt_beams_data:
+        if not beam.get('Visible', True):
+            continue
+
+        qcol = QColor(beam.get('Color', '#e53935'))
+        color = (qcol.redF(), qcol.greenF(), qcol.blueF())
+
+        geom = _compute_ebrt_beam_3d_geom(beam)
+        iso = geom['Isocenter']
+        iso_dist_y = abs(curr_y - iso[1])
+        is_near_iso = (iso_dist_y <= max(self.pixel_spac[0, 0] * 2.0, 4.0))
+
+        # 1. Isocenter Crosshair
+        if show_iso:
+            ivx, ivy = to_vtk_co(iso)
+            op = 1.0 if is_near_iso else 0.5
+            lw = 4 if is_near_iso else 2
+            sz = 13.0 if is_near_iso else 8.0
+            act_iso = _create_vtk_crosshair_actor(ivx, ivy, color, size=sz, line_width=lw, opacity=op)
+            renderer.AddActor(act_iso)
+            self.ebrt_actors_co.append(act_iso)
+
+        # 2. Central Axis (CAX)
+        if show_cax:
+            p1_v = to_vtk_co(geom['CAX'][0])
+            p2_v = to_vtk_co(geom['CAX'][1])
+            cax_len = np.hypot(p2_v[0] - p1_v[0], p2_v[1] - p1_v[1])
+            if cax_len > 2.0:
+                act_cax = _create_vtk_line_actor(p1_v, p2_v, color, line_width=3.0, opacity=0.95, stipple=False)
+                renderer.AddActor(act_cax)
+                self.ebrt_actors_co.append(act_cax)
+
+        # 3. Field Outline & Boundary Rays
+        if show_fan:
+            # 4 Corner Diverging Rays
+            for r_entry, r_exit in geom['Rays']:
+                p_s = to_vtk_co(r_entry)
+                p_e = to_vtk_co(r_exit)
+                ray_len = np.hypot(p_e[0] - p_s[0], p_e[1] - p_s[1])
+                if ray_len > 2.0:
+                    act_ray = _create_vtk_line_actor(p_s, p_e, color, line_width=2.0, opacity=0.85, stipple=True)
+                    renderer.AddActor(act_ray)
+                    self.ebrt_actors_co.append(act_ray)
+
+            # Aperture Outline at Isocenter
+            iso_2d_corners = [to_vtk_co(c) for c in geom['IsoCorners']]
+            diag = np.hypot(iso_2d_corners[2][0] - iso_2d_corners[0][0], iso_2d_corners[2][1] - iso_2d_corners[0][1])
+            if diag > 2.0:
+                act_box = _create_vtk_closed_polygon_actor(iso_2d_corners, color, line_width=2.8, opacity=1.0 if is_near_iso else 0.6)
+                renderer.AddActor(act_box)
+                self.ebrt_actors_co.append(act_box)
+
+    self.vtkWidgetCoronal.GetRenderWindow().Render()
+
+
+def display_ebrt_fields_sa(self):
+    """
+    Renders 2D EBRT beam geometries on the Sagittal viewport for the current slice.
+    """
+    if not hasattr(self, 'vtkWidgetSagittal') or not hasattr(self, 'ebrt_beams_data'):
+        return
+    renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    if renderer is None:
+        return
+
+    for actor in getattr(self, 'ebrt_actors_sa', []):
+        renderer.RemoveActor(actor)
+    self.ebrt_actors_sa.clear()
+
+    if not self.ebrt_beams_data or not hasattr(self, 'display_data') or not self.display_data:
+        return
+
+    curr_slice_idx = self.current_sagittal_slice_index[0]
+    curr_x = self.Im_PatPosition[0, 0] + curr_slice_idx * self.pixel_spac[0, 1]
+
+    show_iso = getattr(self, 'display_ebrt_isocenter', None) is None or self.display_ebrt_isocenter.isChecked()
+    show_cax = getattr(self, 'display_ebrt_cax', None) is None or self.display_ebrt_cax.isChecked()
+    show_fan = getattr(self, 'display_ebrt_beam_fan', None) is None or self.display_ebrt_beam_fan.isChecked()
+
+    def to_vtk_sa(p):
+        vx = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (p[1] - self.Im_PatPosition[0, 1]) + self.Im_Offset[0, 1]
+        vy = p[2] - self.Im_PatPosition[0, 2] + self.Im_Offset[0, 2]
+        return vx, vy
+
+    for beam in self.ebrt_beams_data:
+        if not beam.get('Visible', True):
+            continue
+
+        qcol = QColor(beam.get('Color', '#e53935'))
+        color = (qcol.redF(), qcol.greenF(), qcol.blueF())
+
+        geom = _compute_ebrt_beam_3d_geom(beam)
+        iso = geom['Isocenter']
+        iso_dist_x = abs(curr_x - iso[0])
+        is_near_iso = (iso_dist_x <= max(self.pixel_spac[0, 1] * 2.0, 4.0))
+
+        # 1. Isocenter Crosshair
+        if show_iso:
+            ivx, ivy = to_vtk_sa(iso)
+            op = 1.0 if is_near_iso else 0.5
+            lw = 4 if is_near_iso else 2
+            sz = 13.0 if is_near_iso else 8.0
+            act_iso = _create_vtk_crosshair_actor(ivx, ivy, color, size=sz, line_width=lw, opacity=op)
+            renderer.AddActor(act_iso)
+            self.ebrt_actors_sa.append(act_iso)
+
+        # 2. Central Axis (CAX)
+        if show_cax:
+            p1_v = to_vtk_sa(geom['CAX'][0])
+            p2_v = to_vtk_sa(geom['CAX'][1])
+            cax_len = np.hypot(p2_v[0] - p1_v[0], p2_v[1] - p1_v[1])
+            if cax_len > 2.0:
+                act_cax = _create_vtk_line_actor(p1_v, p2_v, color, line_width=3.0, opacity=0.95, stipple=False)
+                renderer.AddActor(act_cax)
+                self.ebrt_actors_sa.append(act_cax)
+
+        # 3. Field Outline & Boundary Rays
+        if show_fan:
+            # 4 Corner Diverging Rays
+            for r_entry, r_exit in geom['Rays']:
+                p_s = to_vtk_sa(r_entry)
+                p_e = to_vtk_sa(r_exit)
+                ray_len = np.hypot(p_e[0] - p_s[0], p_e[1] - p_s[1])
+                if ray_len > 2.0:
+                    act_ray = _create_vtk_line_actor(p_s, p_e, color, line_width=2.0, opacity=0.85, stipple=True)
+                    renderer.AddActor(act_ray)
+                    self.ebrt_actors_sa.append(act_ray)
+
+            # Aperture Outline at Isocenter
+            iso_2d_corners = [to_vtk_sa(c) for c in geom['IsoCorners']]
+            diag = np.hypot(iso_2d_corners[2][0] - iso_2d_corners[0][0], iso_2d_corners[2][1] - iso_2d_corners[0][1])
+            if diag > 2.0:
+                act_box = _create_vtk_closed_polygon_actor(iso_2d_corners, color, line_width=2.8, opacity=1.0 if is_near_iso else 0.6)
+                renderer.AddActor(act_box)
+                self.ebrt_actors_sa.append(act_box)
+
+    self.vtkWidgetSagittal.GetRenderWindow().Render()

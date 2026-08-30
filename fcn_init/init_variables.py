@@ -138,5 +138,9 @@ def initialize_software_variables(self):
     self.circle_actors_ax = []
     self.circle_actors_co = []
     self.circle_actors_sa = []
-   
-        
+
+    # EBRT Beams / Fields --------------------------------------------------------------------------
+    self.ebrt_actors_ax = []
+    self.ebrt_actors_co = []
+    self.ebrt_actors_sa = []
+    self.ebrt_beams_data = []

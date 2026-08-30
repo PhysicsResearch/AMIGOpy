@@ -260,24 +260,25 @@ def on_DataTreeView_clicked(self,index):
                 # Brachy Plan
                 if 'Plan_Brachy_Channels' in self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
                     update_plan_tables(self)
+                    if hasattr(self, 'tabWidget_3'):
+                        self.tabWidget_3.setCurrentIndex(0) # Brachy tab
+                    if hasattr(self, 'tabView01') and hasattr(self, 'tab_14'):
+                        self.tabView01.setCurrentIndex(self.tabView01.indexOf(self.tab_14))
                     return
                     
                 # EBRT Photon Plan (if not brachy, we assume EBRT Photons for now)
                 if hasattr(dicom_ds, 'BeamSequence'):
+                    from fcn_display.disp_ebrt_plan import update_disp_ebrt_plan
+                    update_disp_ebrt_plan(self)
+
+                    # Activate EBRT-Plan tab under View -> PLAN
+                    if hasattr(self, 'tabWidget_3'):
+                        self.tabWidget_3.setCurrentIndex(1) # EBRT-Plan tab
+                    if hasattr(self, 'tabView01') and hasattr(self, 'tab_14'):
+                        self.tabView01.setCurrentIndex(self.tabView01.indexOf(self.tab_14))
+
                     from fcn_RTFiles.process_ebrt_photons import populate_ebrt_tab
                     populate_ebrt_tab(self, dicom_ds)
-                    
-                    # Ensure the tab exists and switch to it
-                    if hasattr(self, 'Plan_tabs') and hasattr(self, 'ebrt_ph_tab'):
-                        idx = self.Plan_tabs.indexOf(self.ebrt_ph_tab)
-                        if idx >= 0:
-                            self.Plan_tabs.setCurrentIndex(idx)
-                            
-                    # Make sure main tab is set to Plan module
-                    if hasattr(self, 'tabModules'):
-                        plan_idx = self.tabModules.indexOf(self.Plan_tab)
-                        if plan_idx >= 0:
-                            self.tabModules.setCurrentIndex(plan_idx)
                     return
 
             if self.modality == 'RTSTRUCT':

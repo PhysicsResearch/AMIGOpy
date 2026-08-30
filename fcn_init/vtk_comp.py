@@ -1,3 +1,4 @@
+import math
 import vtk
 import numpy as np
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
@@ -426,77 +427,148 @@ def init_coord_ref_ax(self):
     self.orientationWidgetCoronal.InteractiveOff()
     self.orientationWidgetCoronal.SetViewport(0.85, 0., 1.05, 0.25)  # adjust this for position and size
 
+class DashedLineSource:
+    """
+    Drop-in replacement for vtkLineSource that generates real dashed segments
+    with dash length and gap length in world units (mm).
+    """
+    def __init__(self, dash_len=8.0, gap_len=6.0):
+        self.p1 = [0.0, 0.0, 0.0]
+        self.p2 = [0.0, 0.0, 0.0]
+        self.dash_len = float(dash_len)
+        self.gap_len = float(gap_len)
+        self._poly_data = vtk.vtkPolyData()
+
+    def SetPoint1(self, *args):
+        if len(args) == 1 and hasattr(args[0], '__iter__'):
+            coords = list(args[0])
+        else:
+            coords = list(args)
+        while len(coords) < 3:
+            coords.append(0.0)
+        self.p1 = [float(coords[0]), float(coords[1]), float(coords[2])]
+        self._rebuild()
+
+    def SetPoint2(self, *args):
+        if len(args) == 1 and hasattr(args[0], '__iter__'):
+            coords = list(args[0])
+        else:
+            coords = list(args)
+        while len(coords) < 3:
+            coords.append(0.0)
+        self.p2 = [float(coords[0]), float(coords[1]), float(coords[2])]
+        self._rebuild()
+
+    def Modified(self):
+        self._rebuild()
+
+    def GetPolyData(self):
+        return self._poly_data
+
+    def _rebuild(self):
+        dx = self.p2[0] - self.p1[0]
+        dy = self.p2[1] - self.p1[1]
+        dz = self.p2[2] - self.p1[2]
+        total_len = math.hypot(dx, dy, dz)
+
+        pts = vtk.vtkPoints()
+        lines = vtk.vtkCellArray()
+
+        if total_len > 0.001:
+            ux = dx / total_len
+            uy = dy / total_len
+            uz = dz / total_len
+
+            s = 0.0
+            pt_idx = 0
+            period = self.dash_len + self.gap_len
+            while s < total_len:
+                s_end = min(s + self.dash_len, total_len)
+
+                p_start = (self.p1[0] + s * ux, self.p1[1] + s * uy, self.p1[2] + s * uz)
+                p_finish = (self.p1[0] + s_end * ux, self.p1[1] + s_end * uy, self.p1[2] + s_end * uz)
+
+                pts.InsertNextPoint(p_start[0], p_start[1], p_start[2])
+                pts.InsertNextPoint(p_finish[0], p_finish[1], p_finish[2])
+
+                lines.InsertNextCell(2, [pt_idx, pt_idx + 1])
+                pt_idx += 2
+
+                s += period
+
+        self._poly_data.SetPoints(pts)
+        self._poly_data.SetLines(lines)
+        self._poly_data.Modified()
+
+
 def init_axial_lines(self):
-    # Set the interactor style to vtkInteractorStyleImage'
-    # Initialize line source, mapper, and actor for the axial line
     # Line that shows coronal position in the axial view
-    self.axialLineSource = vtk.vtkLineSource()
+    self.axialLineSource = DashedLineSource(dash_len=8.0, gap_len=6.0)
     self.axialLineMapper = vtk.vtkPolyDataMapper()
-    self.axialLineMapper.SetInputConnection(self.axialLineSource.GetOutputPort())
+    self.axialLineMapper.SetInputData(self.axialLineSource.GetPolyData())
     self.axialLineActor = vtk.vtkActor()
     self.axialLineActor.SetMapper(self.axialLineMapper)
-    self.axialLineActor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Blue
-    self.axialLineActor.GetProperty().SetLineStipplePattern(0xF0F0)  # Dashed
+    self.axialLineActor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Light Blue
+    self.axialLineActor.GetProperty().SetOpacity(0.70)                    # Opacity 0.7
     self.axialLineActor.GetProperty().SetLineWidth(1)
     self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(self.axialLineActor)
 
-    # Initialize line source, mapper, and actor for the axial line
     # Line to display sagittal position in the axial view
-    self.axialLine2Source = vtk.vtkLineSource()
+    self.axialLine2Source = DashedLineSource(dash_len=8.0, gap_len=6.0)
     self.axialLine2Mapper = vtk.vtkPolyDataMapper()
-    self.axialLine2Mapper.SetInputConnection(self.axialLine2Source.GetOutputPort())
+    self.axialLine2Mapper.SetInputData(self.axialLine2Source.GetPolyData())
     self.axialLine2Actor = vtk.vtkActor()
     self.axialLine2Actor.SetMapper(self.axialLine2Mapper)
-    self.axialLine2Actor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Blue
-    self.axialLine2Actor.GetProperty().SetLineStipplePattern(0xF0F0)  # Dashed
+    self.axialLine2Actor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Light Blue
+    self.axialLine2Actor.GetProperty().SetOpacity(0.70)                    # Opacity 0.7
     self.axialLine2Actor.GetProperty().SetLineWidth(1)
     self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(self.axialLine2Actor)
     
     
 def init_sagittal_lines(self):
-    # Initialize line source, mapper, and actor for the axial line
-    self.sagittalLineSource = vtk.vtkLineSource()
+    # Line that shows coronal position in the sagittal view
+    self.sagittalLineSource = DashedLineSource(dash_len=8.0, gap_len=6.0)
     self.sagittalLineMapper = vtk.vtkPolyDataMapper()
-    self.sagittalLineMapper.SetInputConnection(self.sagittalLineSource.GetOutputPort())
+    self.sagittalLineMapper.SetInputData(self.sagittalLineSource.GetPolyData())
     self.sagittalLineActor = vtk.vtkActor()
     self.sagittalLineActor.SetMapper(self.sagittalLineMapper)
-    self.sagittalLineActor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Blue
-    self.sagittalLineActor.GetProperty().SetLineStipplePattern(0xF0F0)  # Dashed
+    self.sagittalLineActor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Light Blue
+    self.sagittalLineActor.GetProperty().SetOpacity(0.70)                    # Opacity 0.7
     self.sagittalLineActor.GetProperty().SetLineWidth(1)
     self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(self.sagittalLineActor)
     
-    
-    self.sagittalLine2Source = vtk.vtkLineSource()
+    # Line that shows axial position in the sagittal view
+    self.sagittalLine2Source = DashedLineSource(dash_len=8.0, gap_len=6.0)
     self.sagittalLine2Mapper = vtk.vtkPolyDataMapper()
-    self.sagittalLine2Mapper.SetInputConnection(self.sagittalLine2Source.GetOutputPort())
+    self.sagittalLine2Mapper.SetInputData(self.sagittalLine2Source.GetPolyData())
     self.sagittalLine2Actor = vtk.vtkActor()
     self.sagittalLine2Actor.SetMapper(self.sagittalLine2Mapper)
-    self.sagittalLine2Actor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Blue
-    self.sagittalLine2Actor.GetProperty().SetLineStipplePattern(0xF0F0)  # Dashed
+    self.sagittalLine2Actor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Light Blue
+    self.sagittalLine2Actor.GetProperty().SetOpacity(0.70)                    # Opacity 0.7
     self.sagittalLine2Actor.GetProperty().SetLineWidth(1)
     self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(self.sagittalLine2Actor)
     
     
 def init_coronal_lines(self): 
-    # Line that shows coronal position in the axial view
-    # shows axial position in the coronal view.
-    self.coronalLineSource = vtk.vtkLineSource()
+    # Line that shows sagittal position in the coronal view
+    self.coronalLineSource = DashedLineSource(dash_len=8.0, gap_len=6.0)
     self.coronalLineMapper = vtk.vtkPolyDataMapper()
-    self.coronalLineMapper.SetInputConnection(self.coronalLineSource.GetOutputPort())
+    self.coronalLineMapper.SetInputData(self.coronalLineSource.GetPolyData())
     self.coronalLineActor = vtk.vtkActor()
     self.coronalLineActor.SetMapper(self.coronalLineMapper)
-    self.coronalLineActor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Blue
-    self.coronalLineActor.GetProperty().SetLineStipplePattern(0xF0F0)  # Dashed
+    self.coronalLineActor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Light Blue
+    self.coronalLineActor.GetProperty().SetOpacity(0.70)                    # Opacity 0.7
     self.coronalLineActor.GetProperty().SetLineWidth(1)
     self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(self.coronalLineActor)
     
-    self.coronalLine2Source = vtk.vtkLineSource()
+    # Line that shows axial position in the coronal view
+    self.coronalLine2Source = DashedLineSource(dash_len=8.0, gap_len=6.0)
     self.coronalLine2Mapper = vtk.vtkPolyDataMapper()
-    self.coronalLine2Mapper.SetInputConnection(self.coronalLine2Source.GetOutputPort())
+    self.coronalLine2Mapper.SetInputData(self.coronalLine2Source.GetPolyData())
     self.coronalLine2Actor = vtk.vtkActor()
     self.coronalLine2Actor.SetMapper(self.coronalLine2Mapper)
-    self.coronalLine2Actor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Blue
-    self.coronalLine2Actor.GetProperty().SetLineStipplePattern(0xF0F0)  # Dashed
+    self.coronalLine2Actor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Light Blue
+    self.coronalLine2Actor.GetProperty().SetOpacity(0.70)                    # Opacity 0.7
     self.coronalLine2Actor.GetProperty().SetLineWidth(1)
     self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(self.coronalLine2Actor)
     # Set the interactor style to vtkInteractorStyleImage
