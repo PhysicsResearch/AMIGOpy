@@ -1,7 +1,12 @@
-name: Build AMIGOpy (Pre-Release)
+name: Build AMIGOpy Pre-Release (Nightly)
 
 on:
-  workflow_dispatch: # Manually triggered on demand from GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: "Pre-release version tag, e.g. nightly"
+        required: true
+        default: "nightly"
 
 permissions:
   contents: write
@@ -9,7 +14,6 @@ permissions:
 
 jobs:
   build-and-release:
-    name: Compile, Package & Publish Pre-Release
     runs-on: windows-latest
 
     env:
@@ -21,21 +25,10 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      - name: Checkout repository
+      - name: Checkout main
         uses: actions/checkout@v4
         with:
           ref: main
-
-      - name: Prepare Build Metadata
-        id: prep_meta
-        shell: powershell
-        run: |
-          $dateStr = (Get-Date -Format "yyyy-MM-dd")
-          $shaShort = ("${{ github.sha }}").Substring(0, 7)
-          Write-Host "Build Date: $dateStr"
-          Write-Host "Commit SHA: $shaShort"
-          echo "date=$dateStr" >> $env:GITHUB_OUTPUT
-          echo "sha=$shaShort" >> $env:GITHUB_OUTPUT
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -47,7 +40,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .nuitka-cache
-          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', '.github/workflows/nightly.yml') }}
+          key: ${{ runner.os }}-nuitka-${{ hashFiles('**/*.py', '.github/workflows/main.yml') }}
           restore-keys: ${{ runner.os }}-nuitka-
 
       - name: Build with Nuitka
@@ -63,50 +56,39 @@ jobs:
           $oldPath = $env:Path
           $env:Path = "$venvScripts;$env:SystemRoot\system32;$env:SystemRoot"
           python -m pip install --upgrade pip wheel setuptools
-          
           pip install `
             "PySide6==6.7.3" `
             "PySide6-Addons==6.7.3" `
             "PySide6-Essentials==6.7.3" `
             "shiboken6==6.7.3"
-            
           pip install "numpy==1.26.*" "scipy==1.12.*"
           pip install pillow pydicom
           pip install "scikit-image==0.22.*" "nibabel==5.*" "SimpleITK==2.5.*"
           pip install "opencv-python-headless==4.10.*"
-          
           pip install "qdarkstyle>=3.1" "qstylizer>=0.2.2"
           pip install "vtk==9.3.1"
           pip install "matplotlib==3.8.*"
-          
           pip install "requests>=2.31" certifi
           pip install "joblib>=1.3,<2"
           pip install "openpyxl>=3.1"
-          
           pip install "pandas==2.2.*"
           pip install "numexpr>=2.10,<3"
-          pip install "pyarrow==14.*"
-          
+          pip install "zstandard>=0.22"
           pip install "nuitka>=2.2" ordered-set zstandard
-          
           python -c "import PySide6.QtCore as QC; from PySide6 import QtWebEngineCore as QW; print('PySide6:', QC.__file__); print('QtWebEngineCore:', QW.__file__)"
-          
           $vtkSrc = python -c "import os, vtkmodules; print(os.path.dirname(vtkmodules.__file__))"
           $vtkSrc = ($vtkSrc.Trim() -replace '\\','/')
           $vtkDataArg = "--include-data-dir=$vtkSrc=vtkmodules"
-          
           $qtBase = python -c "import os, PySide6; print(os.path.join(os.path.dirname(PySide6.__file__),'Qt'))"
           $qtBase = ($qtBase.Trim() -replace '\\','/')
           $qtRes  = "$qtBase/resources"
           $qtTr   = "$qtBase/translations"
           $qtExec = "$qtBase/libexec"
-          
           $qtArgs = @()
           if (Test-Path $qtRes)  { $qtArgs += "--include-data-dir=$qtRes=PySide6/Qt/resources" }
           if (Test-Path $qtTr)   { $qtArgs += "--include-data-dir=$qtTr=PySide6/Qt/translations" }
           if (Test-Path $qtExec) { $qtArgs += "--include-data-dir=$qtExec=PySide6/Qt/libexec" }
-          
-          $nuitkaArgs = @(
+          $args = @(
             "Launch_ImGUI.py",
             "--standalone",
             "--remove-output",
@@ -114,6 +96,7 @@ jobs:
             "--enable-plugin=pyside6",
             "--include-qt-plugins=platforms,imageformats,styles",
             "--windows-console-mode=force",
+            "---report=dist\AMIGOpy\build_report.html".Replace("---","--"),
             "--assume-yes-for-downloads",
             "--include-package=pydicom",
             "--include-package-data=pydicom",
@@ -168,15 +151,12 @@ jobs:
             "--include-data-dir=fcn_ctcal\ct_cal_curves=fcn_ctcal\ct_cal_curves",
             "--include-data-files=fcn_materialassignment\materials_db.csv=fcn_materialassignment\materials_db.csv"
           )
-          $nuitkaArgs += $vtkDataArg
-          $nuitkaArgs += $qtArgs
-          
+          $args += $vtkDataArg
+          $args += $qtArgs
           $oldQtConf = $env:PYSIDE_DISABLE_INTERNAL_QT_CONF
           $env:PYSIDE_DISABLE_INTERNAL_QT_CONF = ""
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          
-          python -m nuitka @nuitkaArgs
-          
+          python -m nuitka @args
           $env:PYSIDE_DISABLE_INTERNAL_QT_CONF = $oldQtConf
           $env:Path = $oldPath
 
@@ -198,7 +178,33 @@ jobs:
             throw "Launch_ImGUI.exe missing"
           }
 
-      - name: Build AMIGOpy installer with Inno Setup
+      - name: Zip portable build
+        shell: powershell
+        run: |
+          Compress-Archive `
+            -Path "dist/AMIGOpy/*" `
+            -DestinationPath "AMIGOpy-win-portable-${{ github.event.inputs.app_version }}.zip" `
+            -Force
+
+      - name: Ensure Inno Setup is installed
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+            if (!(Test-Path $iscc)) {
+              $isccAlt = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+              if (Test-Path $isccAlt) {
+                $iscc = $isccAlt
+              } else {
+                throw "ISCC.exe not found after install."
+              }
+            }
+          }
+          $global:LASTEXITCODE = 0
+
+      - name: Build AMIGOpy installer
         shell: powershell
         run: |
           $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
@@ -206,28 +212,31 @@ jobs:
             $iscc = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
           }
           & $iscc AMIGOpy.iss
-          
-          New-Item -ItemType Directory -Path "release_assets" -Force | Out-Null
-          Copy-Item "Output\AMIGOpy-Setup.exe" "release_assets\AMIGOpy_Setup_nightly.exe"
 
-      - name: Publish / Update Pre-Release on GitHub Releases
+      - name: Prepare installer for release
+        shell: powershell
+        run: |
+          if (!(Test-Path "Output\AMIGOpy-Setup.exe")) { throw "Output\AMIGOpy-Setup.exe not found" }
+          Copy-Item "Output\AMIGOpy-Setup.exe" "AMIGOpy_Setup_${{ github.event.inputs.app_version }}.exe"
+
+      - name: Create / Update GitHub Pre-Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: nightly
-          name: AMIGOpy Nightly Build (${{ steps.prep_meta.outputs.date }})
+          tag_name: ${{ github.event.inputs.app_version }}
+          name: AMIGOpy Pre-Release (${{ github.event.inputs.app_version }})
           draft: false
           prerelease: true
           make_latest: false
           body: |
-            ## 🌙 AMIGOpy Nightly / Development Build
+            ## 🌙 AMIGOpy Pre-Release / Development Build
             
-            This is an automated **pre-release build** compiled directly from the latest `main` branch.
+            * **Release Tag:** `${{ github.event.inputs.app_version }}`
+            * **Commit:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            * **Status:** ⚠️ Bleeding-edge pre-release build (Unsigned).
             
-            * **Build Date:** `${{ steps.prep_meta.outputs.date }}`
-            * **Commit:** [${{ steps.prep_meta.outputs.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-            * **Status:** ⚠️ Pre-release / Bleeding edge (Unsigned development build).
-            
-            ### 📥 Download
-            * **[AMIGOpy_Setup_nightly.exe](${{ github.server_url }}/${{ github.repository }}/releases/download/nightly/AMIGOpy_Setup_nightly.exe)** (Windows Installer)
+            ### 📥 Downloads
+            * **Installer:** `AMIGOpy_Setup_${{ github.event.inputs.app_version }}.exe`
+            * **Portable ZIP:** `AMIGOpy-win-portable-${{ github.event.inputs.app_version }}.zip`
           files: |
-            release_assets/AMIGOpy_Setup_nightly.exe
+            AMIGOpy_Setup_${{ github.event.inputs.app_version }}.exe
+            AMIGOpy-win-portable-${{ github.event.inputs.app_version }}.zip
