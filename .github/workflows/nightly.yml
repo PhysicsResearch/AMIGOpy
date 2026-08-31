@@ -166,16 +166,7 @@ jobs:
             "--include-data-files=icons\roi_square.png=icons\roi_square.png",
             "--include-data-files=icons\undo.png=icons\undo.png",
             "--include-data-dir=fcn_ctcal\ct_cal_curves=fcn_ctcal\ct_cal_curves",
-            "--include-data-files=fcn_materialassignment\materials_db.csv=fcn_materialassignment\materials_db.csv",
-            "--include-data-files=fcn_gui/logo.ico=fcn_gui/logo.ico",
-            "--include-data-files=fcn_gui/logo.png=fcn_gui/logo.png",
-            "--include-data-files=fcn_gui/amigopy.png=fcn_gui/amigopy.png",
-            "--include-data-files=logo.ico=logo.ico",
-            "--include-data-files=style.qss=style.qss",
-            "--include-data-dir=config=config",
-            "--include-data-dir=fcn_brachy_sources/data=fcn_brachy_sources/data",
-            "--include-data-dir=fcn_3DPrinting/data=fcn_3DPrinting/data",
-            "--include-data-dir=fcn_DECT/data=fcn_DECT/data"
+            "--include-data-files=fcn_materialassignment\materials_db.csv=fcn_materialassignment\materials_db.csv"
           )
           $nuitkaArgs += $vtkDataArg
           $nuitkaArgs += $qtArgs
