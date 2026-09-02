@@ -12,6 +12,7 @@ def decompose_transform_matrix(matrix4x4):
     - Euler rotation angles in degrees (Roll=X, Pitch=Y, Yaw=Z)
     - Determinant of rotation matrix
     """
+    # test commit
     M = np.array(matrix4x4, dtype=float).reshape((4, 4))
     R = M[:3, :3]
     T = M[:3, 3]
