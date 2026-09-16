@@ -911,8 +911,8 @@ def setup_3d_database_tab(self):
     # Connect cellClicked signal to automatically update details below ONLY when explicitly clicked (deferred to avoid closeEditor warning)
     self.table_3d_db.cellClicked.connect(lambda row, col: QTimer.singleShot(0, lambda: display_selected_filament_details(self)))
     
-    # Connect itemChanged to automatically save changes in real-time
-    self.table_3d_db.itemChanged.connect(lambda: auto_save_all_databases(self))
+    # Connect itemChanged to automatically sync with matmix and save changes in real-time
+    self.table_3d_db.itemChanged.connect(lambda: (sync_3d_db_to_matmix(self), auto_save_all_databases(self)))
     
     # Define row inserter and post paste handlers for main database
     def insert_db_row(r):
@@ -920,7 +920,7 @@ def setup_3d_database_tab(self):
         for c in range(10):
             self.table_3d_db.setItem(r, c, QTableWidgetItem(""))
     self.table_3d_db.row_inserter = insert_db_row
-    self.table_3d_db.post_paste_handler = lambda: auto_save_all_databases(self)
+    self.table_3d_db.post_paste_handler = lambda: (sync_3d_db_to_matmix(self), auto_save_all_databases(self))
     
     # Set custom delegate for float columns to allow 4 decimal places during inline editing
     self.float_delegate_3d_db = FloatDelegate(self.table_3d_db)
@@ -1666,6 +1666,11 @@ def setup_mat_mix_tab(self):
     layout_27.setContentsMargins(0, 0, 0, 0)
     layout_27.addWidget(self.splitter_mat_mix)
     
+    # Connect D3 tab switching to synchronize matmix when user switches to it
+    if hasattr(self, "D3") and not getattr(self, "_d3_current_changed_connected", False):
+        self._d3_current_changed_connected = True
+        self.D3.currentChanged.connect(lambda idx: on_d3_tab_changed(self, idx))
+    
     # Initialize cache structures
     self.current_viewed_mix_id = None
     self.mix_calibration_cache = {}
@@ -1818,6 +1823,15 @@ def initialize_mix_graph(self):
     self.combo_graph_y.currentTextChanged.connect(lambda: update_mix_graph(self))
     graph_ctrl_layout.addWidget(self.combo_graph_y)
     
+    graph_ctrl_layout.addSpacing(10)
+    
+    self.check_allow_prediction = QtWidgets.QCheckBox("Allow Prediction")
+    self.check_allow_prediction.setStyleSheet("color: #e5e7eb; font-weight: bold;")
+    self.check_allow_prediction.setChecked(False)
+    self.check_allow_prediction.setToolTip("Overlay predicted values alongside measured values for Zeff and RED")
+    self.check_allow_prediction.stateChanged.connect(lambda state: update_mix_graph(self))
+    graph_ctrl_layout.addWidget(self.check_allow_prediction)
+    
     graph_ctrl_layout.addSpacing(15)
     
     self.lbl_graph_fit = QLabel("Fit:")
@@ -1850,6 +1864,39 @@ def initialize_mix_graph(self):
     self.check_show_equation.setChecked(False)
     self.check_show_equation.stateChanged.connect(lambda state: update_mix_graph(self))
     graph_ctrl_layout.addWidget(self.check_show_equation)
+    
+    graph_ctrl_layout.addSpacing(15)
+    
+    self.check_hold_plot = QtWidgets.QCheckBox("Hold Plot")
+    self.check_hold_plot.setStyleSheet("color: #e5e7eb; font-weight: bold;")
+    self.check_hold_plot.setChecked(False)
+    self.check_hold_plot.setToolTip("Hold current curves on canvas to compare with other variables or mixes")
+    self.check_hold_plot.stateChanged.connect(lambda state: on_toggle_hold_plot(self, state))
+    graph_ctrl_layout.addWidget(self.check_hold_plot)
+    
+    self.btn_clear_held = QPushButton("Clear Held")
+    self.btn_clear_held.setStyleSheet("""
+        QPushButton {
+            background-color: #2b2b36;
+            color: #9ca3af;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-size: 11px;
+        }
+        QPushButton:hover {
+            background-color: #3b82f6;
+            color: #ffffff;
+        }
+        QPushButton:disabled {
+            background-color: #1e1e24;
+            color: #4b5563;
+            border-color: #374151;
+        }
+    """)
+    self.btn_clear_held.setEnabled(False)
+    self.btn_clear_held.clicked.connect(lambda: clear_held_plots(self))
+    graph_ctrl_layout.addWidget(self.btn_clear_held)
     
     graph_ctrl_layout.addSpacing(15)
     
@@ -2258,21 +2305,23 @@ def _do_auto_save(self):
         save_current_active_material_cache(self)
         save_current_active_mix_cache(self)
         
+        sync_3d_db_to_matmix(self)
+        
         save_3d_database(self)
         save_calibration_database(self)
         save_mix_database(self)
         save_mix_calibration_database(self)
-        
-        update_mat_mix_comboboxes(self)
     except Exception as e:
         print(f"Error during auto-save: {e}")
     finally:
         self._is_autosaving = False
 def save_3d_database_action(self):
     save_current_active_material_cache(self)
+    sync_3d_db_to_matmix(self)
     save_3d_database(self)
     save_calibration_database(self)
-    update_mat_mix_comboboxes(self)
+    save_mix_database(self)
+    save_mix_calibration_database(self)
     QMessageBox.information(self, "Success", "Material database and calibration info saved successfully!")
 
 def remove_selected_material(self):
@@ -2920,76 +2969,181 @@ def update_group_borders_and_properties(self):
             r += 1
     self.table_mat_mix.viewport().update()
 
-def update_mat_mix_comboboxes(self):
+def on_d3_tab_changed(self, idx):
+    if not hasattr(self, "D3"):
+        return
+    if hasattr(self, "tab_27") and idx == self.D3.indexOf(self.tab_27):
+        sync_3d_db_to_matmix(self)
+        if getattr(self, "current_viewed_mix_id", None) is None and hasattr(self, "table_mat_mix") and self.table_mat_mix.rowCount() > 0:
+            self.table_mat_mix.selectRow(0)
+            display_selected_mix_details(self)
+    elif hasattr(self, "tab_view_and_fit") and idx == self.D3.indexOf(self.tab_view_and_fit):
+        if hasattr(self, "populate_view_and_fit_list"):
+            populate_view_and_fit_list(self)
+
+def sync_3d_db_to_matmix(self):
+    """
+    Synchronizes all material properties from the main 3D database (self.table_3d_db)
+    to the Material Mix tab (self.table_mat_mix, predictions in table_mix_z_red,
+    table_mix_red_cal, mix_red_cache, and graphs).
+    """
+    if getattr(self, "_is_loading", False) or getattr(self, "_is_syncing_db_to_mix", False):
+        return
     if not hasattr(self, "table_mat_mix") or not hasattr(self, "table_3d_db"):
         return
         
-    mat_names = []
-    for r in range(self.table_3d_db.rowCount()):
-        item = self.table_3d_db.item(r, 0)
-        if item:
-            name = item.text().strip()
-            if name and name not in mat_names:
-                mat_names.append(name)
-    mat_names.sort()
-    
-    # Check if the list of materials has actually changed
-    last_names = getattr(self, "_last_material_names", None)
-    force = getattr(self, "_force_combobox_update", False)
-    if not force and last_names is not None and last_names == mat_names:
-        return
-    self._force_combobox_update = False
-    self._last_material_names = mat_names
-    
-    db_map = {}
-    for r_db in range(self.table_3d_db.rowCount()):
-        mat_item = self.table_3d_db.item(r_db, 0)
-        if mat_item:
-            m_name = mat_item.text().strip()
-            if m_name and m_name not in db_map:
-                red = self.table_3d_db.item(r_db, 6).text() if self.table_3d_db.item(r_db, 6) else ""
-                zeff = self.table_3d_db.item(r_db, 8).text() if self.table_3d_db.item(r_db, 8) else ""
-                color = self.table_3d_db.item(r_db, 3).text() if self.table_3d_db.item(r_db, 3) else ""
-                brand = self.table_3d_db.item(r_db, 1).text() if self.table_3d_db.item(r_db, 1) else ""
-                m_type = self.table_3d_db.item(r_db, 2).text() if self.table_3d_db.item(r_db, 2) else ""
-                printer = self.table_3d_db.item(r_db, 4).text() if self.table_3d_db.item(r_db, 4) else ""
-                db_map[m_name] = (red, zeff, color, brand, m_type, printer)
-
-    self.table_mat_mix.blockSignals(True)
+    self._is_syncing_db_to_mix = True
     try:
-        for r in range(self.table_mat_mix.rowCount()):
-            combo = self.table_mat_mix.cellWidget(r, 1)
-            if isinstance(combo, QComboBox):
-                saved_sel = combo.property("saved_selection")
-                current_sel = saved_sel if saved_sel else combo.currentText()
-                combo.setProperty("saved_selection", None)
-                
-                combo.blockSignals(True)
-                combo.clear()
-                combo.addItem("")
-                
-                local_items = list(mat_names)
-                if current_sel and current_sel not in local_items:
-                    local_items.append(current_sel)
+        # 1. Map all materials from table_3d_db
+        db_map = {}
+        for r_db in range(self.table_3d_db.rowCount()):
+            name_item = self.table_3d_db.item(r_db, 0)
+            if name_item:
+                m_name = name_item.text().strip()
+                if m_name and m_name not in db_map:
+                    db_map[m_name] = {
+                        "brand": safe_get_cell_text(self.table_3d_db, r_db, 1),
+                        "type": safe_get_cell_text(self.table_3d_db, r_db, 2),
+                        "color": safe_get_cell_text(self.table_3d_db, r_db, 3),
+                        "printer": safe_get_cell_text(self.table_3d_db, r_db, 4),
+                        "red": safe_get_cell_text(self.table_3d_db, r_db, 6),
+                        "zeff": safe_get_cell_text(self.table_3d_db, r_db, 8),
+                    }
                     
-                combo.addItems(local_items)
+        # 2. Check if material names list changed
+        mat_names = sorted(list(db_map.keys()))
+        last_names = getattr(self, "_last_material_names", None)
+        force = getattr(self, "_force_combobox_update", False)
+        need_repopulate_combos = (force or last_names is None or last_names != mat_names)
+        self._force_combobox_update = False
+        self._last_material_names = mat_names
+        
+        # 3. Update table_mat_mix
+        self.table_mat_mix.blockSignals(True)
+        try:
+            for r in range(self.table_mat_mix.rowCount()):
+                combo = self.table_mat_mix.cellWidget(r, 1)
+                if isinstance(combo, QComboBox):
+                    current_sel = combo.currentText().strip()
+                    
+                    if need_repopulate_combos:
+                        saved_sel = combo.property("saved_selection")
+                        eff_sel = saved_sel if saved_sel else current_sel
+                        combo.setProperty("saved_selection", None)
+                        
+                        combo.blockSignals(True)
+                        combo.clear()
+                        combo.addItem("")
+                        local_items = list(mat_names)
+                        if eff_sel and eff_sel not in local_items:
+                            local_items.append(eff_sel)
+                        combo.addItems(local_items)
+                        if eff_sel:
+                            combo.setCurrentText(eff_sel)
+                        else:
+                            combo.setCurrentIndex(0)
+                        combo.blockSignals(False)
+                        current_sel = combo.currentText().strip()
+                        
+                    if current_sel in db_map:
+                        vals = db_map[current_sel]
+                        for c_idx, key in [(3, "red"), (4, "zeff"), (5, "color"), (6, "brand"), (7, "type"), (8, "printer")]:
+                            it = self.table_mat_mix.item(r, c_idx)
+                            if it is None:
+                                it = QTableWidgetItem()
+                                it.setFlags(it.flags() & ~Qt.ItemIsEditable)
+                                self.table_mat_mix.setItem(r, c_idx, it)
+                            it.setText(vals[key])
+        finally:
+            self.table_mat_mix.blockSignals(False)
+            
+        # 4. Update all combinations in mix_red_cache for all mix groups
+        if hasattr(self, "mix_red_cache"):
+            old_v_id = getattr(self, "current_viewed_mix_id", None)
+            try:
+                for m_id, combo_list in self.mix_red_cache.items():
+                    s_row, g_size = find_mix_group_row_and_size(self, m_id)
+                    if s_row == -1:
+                        continue
+                    self.current_viewed_mix_id = m_id
+                    for combination in combo_list:
+                        ratios = combination.get("percentage", [])
+                        pred_zeff = calculate_mix_zeff_predicted_val(self, ratios)
+                        for row_vals in combination.get("rows", []):
+                            if len(row_vals) >= 14:
+                                infill_val = safe_float(row_vals[0])
+                                row_pred_red = calculate_mix_red_predicted_val(self, ratios, infill_val)
+                                row_vals[8] = f"{row_pred_red:.4f}"
+                                row_vals[11] = f"{pred_zeff:.4f}"
+            finally:
+                self.current_viewed_mix_id = old_v_id
                 
-                if current_sel:
-                    combo.setCurrentText(current_sel)
-                else:
-                    combo.setCurrentIndex(0)
-                combo.blockSignals(False)
+        # 5. Update currently viewed mix group details and predictions
+        curr_mix_id = getattr(self, "current_viewed_mix_id", None)
+        if curr_mix_id is not None:
+            start_row, group_size = find_mix_group_row_and_size(self, curr_mix_id)
+            if start_row != -1:
+                mat_names_group = get_materials_in_mix(self, start_row, group_size)
+                n_mats = len(mat_names_group)
                 
-                if current_sel in db_map:
-                    red, zeff, color, brand, m_type, printer = db_map[current_sel]
-                    if self.table_mat_mix.item(r, 3): self.table_mat_mix.item(r, 3).setText(red)
-                    if self.table_mat_mix.item(r, 4): self.table_mat_mix.item(r, 4).setText(zeff)
-                    if self.table_mat_mix.item(r, 5): self.table_mat_mix.item(r, 5).setText(color)
-                    if self.table_mat_mix.item(r, 6): self.table_mat_mix.item(r, 6).setText(brand)
-                    if self.table_mat_mix.item(r, 7): self.table_mat_mix.item(r, 7).setText(m_type)
-                    if self.table_mat_mix.item(r, 8): self.table_mat_mix.item(r, 8).setText(printer)
+                comp_reds = []
+                comp_zeffs = []
+                for i in range(group_size):
+                    r = start_row + i
+                    if r < self.table_mat_mix.rowCount():
+                        comp_reds.append(safe_float(safe_get_cell_text(self.table_mat_mix, r, 3)))
+                        comp_zeffs.append(safe_float(safe_get_cell_text(self.table_mat_mix, r, 4)))
+                    else:
+                        comp_reds.append(0.0)
+                        comp_zeffs.append(0.0)
+                        
+                # Update table_mix_z_red
+                if hasattr(self, "table_mix_z_red"):
+                    self.table_mix_z_red.blockSignals(True)
+                    for row_idx in range(self.table_mix_z_red.rowCount()):
+                        update_row_predictions(self, row_idx, n_mats, comp_reds, comp_zeffs)
+                    self.table_mix_z_red.blockSignals(False)
+                    
+                # Update table_mix_red_cal (active combination)
+                if hasattr(self, "table_mix_red_cal") and hasattr(self, "list_mix_red_ratios"):
+                    ratio_idx = self.list_mix_red_ratios.currentRow()
+                    mix_red_data = self.mix_red_cache.get(curr_mix_id, [])
+                    if 0 <= ratio_idx < len(mix_red_data):
+                        combination = mix_red_data[ratio_idx]
+                        ratios = combination.get("percentage", [])
+                        pred_zeff = calculate_mix_zeff_predicted_val(self, ratios)
+                        
+                        self.table_mix_red_cal.blockSignals(True)
+                        for r in range(self.table_mix_red_cal.rowCount()):
+                            infill_val = safe_float(safe_get_cell_text(self.table_mix_red_cal, r, 0))
+                            row_pred_red = calculate_mix_red_predicted_val(self, ratios, infill_val)
+                            
+                            pred_item = self.table_mix_red_cal.item(r, 8)
+                            if not pred_item:
+                                pred_item = QTableWidgetItem()
+                                pred_item.setFlags(pred_item.flags() & ~Qt.ItemIsEditable)
+                                self.table_mix_red_cal.setItem(r, 8, pred_item)
+                            pred_item.setData(Qt.EditRole, row_pred_red)
+                            pred_item.setText(f"{row_pred_red:.4f}")
+                            
+                            pred_z_item = self.table_mix_red_cal.item(r, 11)
+                            if not pred_z_item:
+                                pred_z_item = QTableWidgetItem()
+                                pred_z_item.setFlags(pred_z_item.flags() & ~Qt.ItemIsEditable)
+                                self.table_mix_red_cal.setItem(r, 11, pred_z_item)
+                            pred_z_item.setData(Qt.EditRole, pred_zeff)
+                            pred_z_item.setText(f"{pred_zeff:.4f}")
+                        self.table_mix_red_cal.blockSignals(False)
+                        
+                # Update graph
+                update_mix_graph(self)
+    except Exception as e:
+        print(f"Error during sync_3d_db_to_matmix: {e}")
     finally:
-        self.table_mat_mix.blockSignals(False)
+        self._is_syncing_db_to_mix = False
+
+def update_mat_mix_comboboxes(self):
+    sync_3d_db_to_matmix(self)
 
 # Insert new mix group below the currently selected mix group
 def add_mix_group(self):
@@ -3258,6 +3412,16 @@ def display_selected_mix_details(self):
             row = self.table_mat_mix.currentRow()
             
         if row < 0 or row >= self.table_mat_mix.rowCount():
+            if hasattr(self, "current_viewed_mix_id") and self.current_viewed_mix_id is not None:
+                start_row, _ = find_mix_group_row_and_size(self, self.current_viewed_mix_id)
+                if start_row != -1:
+                    row = start_row
+                else:
+                    row = 0 if self.table_mat_mix.rowCount() > 0 else -1
+            else:
+                row = 0 if self.table_mat_mix.rowCount() > 0 else -1
+                
+        if row < 0 or row >= self.table_mat_mix.rowCount():
             return
             
         start_row = row
@@ -3280,6 +3444,14 @@ def display_selected_mix_details(self):
         mat_names = get_materials_in_mix(self, start_row, group_size)
         n_mats = len(mat_names)
         
+        if getattr(self, "_held_mix_id", None) != mix_id:
+            self._held_datasets = []
+            if hasattr(self, "check_hold_plot"):
+                self.check_hold_plot.blockSignals(True)
+                self.check_hold_plot.setChecked(False)
+                self.check_hold_plot.blockSignals(False)
+            if hasattr(self, "btn_clear_held"):
+                self.btn_clear_held.setEnabled(False)
         self.current_viewed_mix_id = mix_id
         self.lbl_mix_cal_title.setText(f"Mix Calibration Data (Mix ID: {mix_id})")
         self.lbl_mix_z_red_title.setText(f"Zeff & RED Predictions (Mix ID: {mix_id})")
@@ -3536,6 +3708,37 @@ def display_selected_mix_details(self):
     finally:
         self._is_updating_mix_details = False
 
+# Hold Plot and Clear Held Plot Handlers
+def on_toggle_hold_plot(self, state):
+    if not hasattr(self, "_held_datasets"):
+        self._held_datasets = []
+        
+    is_checked = (state == Qt.Checked or state == 2 or state is True)
+    if is_checked:
+        # Snapshot currently active plot curves
+        snap = getattr(self, "_last_plotted_curves", [])
+        if snap:
+            self._held_datasets = list(snap)
+            self._held_mix_id = getattr(self, "current_viewed_mix_id", None)
+            if hasattr(self, "btn_clear_held"):
+                self.btn_clear_held.setEnabled(True)
+    else:
+        self._held_datasets = []
+        if hasattr(self, "btn_clear_held"):
+            self.btn_clear_held.setEnabled(False)
+            
+    update_mix_graph(self)
+
+def clear_held_plots(self):
+    self._held_datasets = []
+    if hasattr(self, "check_hold_plot"):
+        self.check_hold_plot.blockSignals(True)
+        self.check_hold_plot.setChecked(False)
+        self.check_hold_plot.blockSignals(False)
+    if hasattr(self, "btn_clear_held"):
+        self.btn_clear_held.setEnabled(False)
+    update_mix_graph(self)
+
 # Dynamic Plot Canvas Refresher
 def update_mix_graph(self):
     if not hasattr(self, "graph_canvas") or not hasattr(self, "combo_graph_x") or not hasattr(self, "combo_graph_y"):
@@ -3598,6 +3801,24 @@ def update_mix_graph(self):
         self.graph_canvas.draw_idle()
         return
         
+    # Check if prediction overlay is supported for the selected Y variable
+    is_zeff_prop = (user_data_y[0] == "property" and user_data_y[1] in ["Zeff", "Pred. Zeff"])
+    is_red_prop = (user_data_y[0] == "property" and user_data_y[1] in ["RED", "Pred. RED"])
+    allow_pred_supported = is_zeff_prop or is_red_prop
+    
+    if hasattr(self, "check_allow_prediction"):
+        self.check_allow_prediction.setEnabled(allow_pred_supported)
+        if allow_pred_supported:
+            self.check_allow_prediction.setToolTip("Overlay predicted values alongside measured values for Zeff and RED")
+        else:
+            self.check_allow_prediction.setToolTip("Allow Prediction is only available when Y Axis is Zeff or RED")
+            
+    allow_pred = (
+        allow_pred_supported and
+        hasattr(self, "check_allow_prediction") and
+        self.check_allow_prediction.isChecked()
+    )
+        
     # Read checked selections from the tree list
     show_main = True
     checked_mix_red_indices = []
@@ -3620,9 +3841,11 @@ def update_mix_graph(self):
                             
     def get_main_mix_data():
         x_data = []
-        y_data = []
         x_err = []
-        y_err = []
+        y_meas_data = []
+        y_meas_err = []
+        y_pred_data = []
+        y_pred_err = []
         
         for r in range(num_rows):
             ratios = []
@@ -3730,68 +3953,86 @@ def update_mix_graph(self):
                     x_err_val = 0.0
 
             # Extract Y
-            if user_data_y[0] == "ratio":
-                mat_idx = user_data_y[1]
-                y_val = ratios[mat_idx]
-                y_err_val = 0.0
+            if allow_pred:
+                if is_zeff_prop:
+                    y_m = val_z
+                    y_m_err = val_zstd
+                    y_p = val_pz
+                    y_p_err = 0.0
+                else: # is_red_prop
+                    y_m = val_red
+                    y_m_err = val_red_std
+                    y_p = val_pr
+                    y_p_err = 0.0
             else:
-                prop_name = user_data_y[1]
-                if prop_name == "Zeff":
-                    y_val = val_z
-                    y_err_val = val_zstd
-                elif prop_name == "Pred. Zeff":
-                    y_val = val_pz
-                    y_err_val = 0.0
-                elif prop_name == "Diff. Zeff":
-                    y_val = val_dz
-                    y_err_val = 0.0
-                elif prop_name == "RED":
-                    y_val = val_red
-                    y_err_val = val_red_std
-                elif prop_name == "Pred. RED":
-                    y_val = val_pr
-                    y_err_val = 0.0
-                elif prop_name == "Diff. RED":
-                    y_val = val_dr
-                    y_err_val = 0.0
-                elif prop_name == "Infill %":
-                    val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 11, Qt.EditRole)
-                    y_val = safe_float(val_raw)
-                    y_err_val = 0.0
-                elif prop_name == "Flow":
-                    val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 17, Qt.EditRole)
-                    y_val = safe_float(val_raw)
-                    y_err_val = 0.0
-                elif prop_name == "HU-Low":
-                    val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 2, Qt.EditRole)
-                    y_val = safe_float(val_raw)
-                    std_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 3, Qt.EditRole)
-                    y_err_val = safe_float(std_raw)
-                elif prop_name == "HU-High":
-                    val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 4, Qt.EditRole)
-                    y_val = safe_float(val_raw)
-                    std_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 5, Qt.EditRole)
-                    y_err_val = safe_float(std_raw)
+                if user_data_y[0] == "ratio":
+                    mat_idx = user_data_y[1]
+                    y_m = ratios[mat_idx]
+                    y_m_err = 0.0
                 else:
-                    y_val = 0.0
-                    y_err_val = 0.0
+                    prop_name = user_data_y[1]
+                    if prop_name == "Zeff":
+                        y_m = val_z
+                        y_m_err = val_zstd
+                    elif prop_name == "Pred. Zeff":
+                        y_m = val_pz
+                        y_m_err = 0.0
+                    elif prop_name == "Diff. Zeff":
+                        y_m = val_dz
+                        y_m_err = 0.0
+                    elif prop_name == "RED":
+                        y_m = val_red
+                        y_m_err = val_red_std
+                    elif prop_name == "Pred. RED":
+                        y_m = val_pr
+                        y_m_err = 0.0
+                    elif prop_name == "Diff. RED":
+                        y_m = val_dr
+                        y_m_err = 0.0
+                    elif prop_name == "Infill %":
+                        val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 11, Qt.EditRole)
+                        y_m = safe_float(val_raw)
+                        y_m_err = 0.0
+                    elif prop_name == "Flow":
+                        val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 17, Qt.EditRole)
+                        y_m = safe_float(val_raw)
+                        y_m_err = 0.0
+                    elif prop_name == "HU-Low":
+                        val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 2, Qt.EditRole)
+                        y_m = safe_float(val_raw)
+                        std_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 3, Qt.EditRole)
+                        y_m_err = safe_float(std_raw)
+                    elif prop_name == "HU-High":
+                        val_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 4, Qt.EditRole)
+                        y_m = safe_float(val_raw)
+                        std_raw = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 5, Qt.EditRole)
+                        y_m_err = safe_float(std_raw)
+                    else:
+                        y_m = 0.0
+                        y_m_err = 0.0
+                y_p = 0.0
+                y_p_err = 0.0
 
             x_data.append(x_val)
-            y_data.append(y_val)
             x_err.append(x_err_val)
-            y_err.append(y_err_val)
+            y_meas_data.append(y_m)
+            y_meas_err.append(y_m_err)
+            y_pred_data.append(y_p)
+            y_pred_err.append(y_p_err)
             
-        return x_data, y_data, x_err, y_err
+        return x_data, x_err, y_meas_data, y_meas_err, y_pred_data, y_pred_err
         
     def get_mix_red_combo_data(combo_idx):
         x_data = []
-        y_data = []
         x_err = []
-        y_err = []
+        y_meas_data = []
+        y_meas_err = []
+        y_pred_data = []
+        y_pred_err = []
         
         mix_red_data = self.mix_red_cache.get(mix_id, [])
         if combo_idx >= len(mix_red_data):
-            return x_data, y_data, x_err, y_err
+            return x_data, x_err, y_meas_data, y_meas_err, y_pred_data, y_pred_err
             
         combo = mix_red_data[combo_idx]
         ratios = combo["percentage"]
@@ -3859,52 +4100,68 @@ def update_mix_graph(self):
                     x_err_val = 0.0
 
             # Extract Y
-            if user_data_y[0] == "ratio":
-                mat_idx = user_data_y[1]
-                y_val = ratios[mat_idx] if mat_idx < len(ratios) else 0.0
-                y_err_val = 0.0
+            if allow_pred:
+                if is_zeff_prop:
+                    y_m = val_z
+                    y_m_err = val_zstd
+                    y_p = val_pz
+                    y_p_err = 0.0
+                else: # is_red_prop
+                    y_m = val_red
+                    y_m_err = val_red_std
+                    y_p = val_pr
+                    y_p_err = 0.0
             else:
-                prop_name = user_data_y[1]
-                if prop_name == "Zeff":
-                    y_val = val_z
-                    y_err_val = val_zstd
-                elif prop_name == "Pred. Zeff":
-                    y_val = val_pz
-                    y_err_val = 0.0
-                elif prop_name == "Diff. Zeff":
-                    y_val = val_dz
-                    y_err_val = 0.0
-                elif prop_name == "RED":
-                    y_val = val_red
-                    y_err_val = val_red_std
-                elif prop_name == "Pred. RED":
-                    y_val = val_pr
-                    y_err_val = 0.0
-                elif prop_name == "Diff. RED":
-                    y_val = val_dr
-                    y_err_val = 0.0
-                elif prop_name == "Infill %":
-                    y_val = val_infill
-                    y_err_val = 0.0
-                elif prop_name == "Flow":
-                    y_val = val_flow
-                    y_err_val = 0.0
-                elif prop_name == "HU-Low":
-                    y_val = val_hulow
-                    y_err_val = val_hulow_std
-                elif prop_name == "HU-High":
-                    y_val = val_huhig
-                    y_err_val = val_huhig_std
+                if user_data_y[0] == "ratio":
+                    mat_idx = user_data_y[1]
+                    y_m = ratios[mat_idx] if mat_idx < len(ratios) else 0.0
+                    y_m_err = 0.0
                 else:
-                    y_val = 0.0
-                    y_err_val = 0.0
+                    prop_name = user_data_y[1]
+                    if prop_name == "Zeff":
+                        y_m = val_z
+                        y_m_err = val_zstd
+                    elif prop_name == "Pred. Zeff":
+                        y_m = val_pz
+                        y_m_err = 0.0
+                    elif prop_name == "Diff. Zeff":
+                        y_m = val_dz
+                        y_m_err = 0.0
+                    elif prop_name == "RED":
+                        y_m = val_red
+                        y_m_err = val_red_std
+                    elif prop_name == "Pred. RED":
+                        y_m = val_pr
+                        y_m_err = 0.0
+                    elif prop_name == "Diff. RED":
+                        y_m = val_dr
+                        y_m_err = 0.0
+                    elif prop_name == "Infill %":
+                        y_m = val_infill
+                        y_m_err = 0.0
+                    elif prop_name == "Flow":
+                        y_m = val_flow
+                        y_m_err = 0.0
+                    elif prop_name == "HU-Low":
+                        y_m = val_hulow
+                        y_m_err = val_hulow_std
+                    elif prop_name == "HU-High":
+                        y_m = val_huhig
+                        y_m_err = val_huhig_std
+                    else:
+                        y_m = 0.0
+                        y_m_err = 0.0
+                y_p = 0.0
+                y_p_err = 0.0
 
             x_data.append(x_val)
-            y_data.append(y_val)
             x_err.append(x_err_val)
-            y_err.append(y_err_val)
+            y_meas_data.append(y_m)
+            y_meas_err.append(y_m_err)
+            y_pred_data.append(y_p)
+            y_pred_err.append(y_p_err)
             
-        return x_data, y_data, x_err, y_err
+        return x_data, x_err, y_meas_data, y_meas_err, y_pred_data, y_pred_err
         
     x_label = ""
     y_label = ""
@@ -3915,19 +4172,38 @@ def update_mix_graph(self):
     else:
         x_label = user_data_x[1]
         
-    if user_data_y[0] == "ratio":
-        mat_idx = user_data_y[1]
-        if mat_idx < len(mat_names):
-            y_label = f"% {mat_names[mat_idx]}"
+    if allow_pred:
+        if is_zeff_prop:
+            y_label = "Zeff"
+            plot_title = f"Zeff (Measured vs Pred.) vs {x_label}"
+        elif is_red_prop:
+            y_label = "RED"
+            plot_title = f"RED (Measured vs Pred.) vs {x_label}"
+        else:
+            y_label = user_data_y[1]
+            plot_title = f"{y_label} vs {x_label}"
     else:
-        y_label = user_data_y[1]
+        if user_data_y[0] == "ratio":
+            mat_idx = user_data_y[1]
+            if mat_idx < len(mat_names):
+                y_label = f"% {mat_names[mat_idx]}"
+        else:
+            y_label = user_data_y[1]
+        plot_title = f"{y_label} vs {x_label}"
 
     datasets_to_plot = []
+    # (label, x_data, y_data, x_err, y_err, is_pred, group_idx)
+    group_counter = 0
     
     if show_main and num_rows > 0:
-        x_main, y_main, x_err_main, y_err_main = get_main_mix_data()
-        if x_main:
-            datasets_to_plot.append(("Main Mix Data", x_main, y_main, x_err_main, y_err_main))
+        x_m, x_err_m, y_m_meas, y_err_m_meas, y_m_pred, y_err_m_pred = get_main_mix_data()
+        if x_m:
+            if allow_pred:
+                datasets_to_plot.append(("Main Mix Data (Measured)", x_m, y_m_meas, x_err_m, y_err_m_meas, False, group_counter))
+                datasets_to_plot.append(("Main Mix Data (Pred.)", x_m, y_m_pred, x_err_m, y_err_m_pred, True, group_counter))
+            else:
+                datasets_to_plot.append(("Main Mix Data", x_m, y_m_meas, x_err_m, y_err_m_meas, False, group_counter))
+            group_counter += 1
             
     mix_red_data = self.mix_red_cache.get(mix_id, [])
     for combo_idx in checked_mix_red_indices:
@@ -3935,9 +4211,14 @@ def update_mix_graph(self):
             combo = mix_red_data[combo_idx]
             ratios = combo["percentage"]
             lbl = format_ratio_string(mat_names, ratios)
-            x_combo, y_combo, x_err_combo, y_err_combo = get_mix_red_combo_data(combo_idx)
-            if x_combo:
-                datasets_to_plot.append((lbl, x_combo, y_combo, x_err_combo, y_err_combo))
+            x_c, x_err_c, y_c_meas, y_err_c_meas, y_c_pred, y_err_c_pred = get_mix_red_combo_data(combo_idx)
+            if x_c:
+                if allow_pred:
+                    datasets_to_plot.append((f"{lbl} (Measured)", x_c, y_c_meas, x_err_c, y_err_c_meas, False, group_counter))
+                    datasets_to_plot.append((f"{lbl} (Pred.)", x_c, y_c_pred, x_err_c, y_err_c_pred, True, group_counter))
+                else:
+                    datasets_to_plot.append((lbl, x_c, y_c_meas, x_err_c, y_err_c_meas, False, group_counter))
+                group_counter += 1
                 
     # Read layout details from Figures menu bar states
     color_map = {
@@ -3985,7 +4266,13 @@ def update_mix_graph(self):
     line_style = style_map.get(getattr(self, "selected_line_style", "solid").lower(), "-")
     line_width = getattr(self, "selected_line_width", 2.0)
     
-    if not datasets_to_plot:
+    has_held_data = bool(
+        hasattr(self, "check_hold_plot") and
+        self.check_hold_plot.isChecked() and
+        getattr(self, "_held_datasets", None)
+    )
+    
+    if not datasets_to_plot and not has_held_data:
         ax.text(
             0.5, 0.5, "No datasets selected.\nPlease check one or more in the list on the side.",
             transform=ax.transAxes,
@@ -3994,7 +4281,7 @@ def update_mix_graph(self):
             color=text_color,
             fontsize=font_size + 2
         )
-        ax.set_title(f"{y_label} vs {x_label}", fontdict=font_settings, color=text_color, pad=10)
+        ax.set_title(plot_title, fontdict=font_settings, color=text_color, pad=10)
         ax.set_xlabel(x_label, fontdict=font_settings, color=text_color)
         ax.set_ylabel(y_label, fontdict=font_settings, color=text_color)
         
@@ -4014,8 +4301,27 @@ def update_mix_graph(self):
     if hasattr(self, "combo_graph_fit"):
         fit_deg = self.combo_graph_fit.currentData()
         
-    for plot_idx, (label, x_data, y_data, x_err, y_err) in enumerate(datasets_to_plot):
-        color = color_list[plot_idx % len(color_list)]
+    active_curve_records = []
+    
+    # 1. Render held datasets first if Hold Plot is active
+    if has_held_data:
+        for held in self._held_datasets:
+            ax.errorbar(
+                held["x"], held["y"],
+                xerr=held.get("xerr"), yerr=held.get("yerr"),
+                color=held.get("color", "#9ca3af"),
+                marker=held.get("marker", "o"),
+                markersize=held.get("markersize", 6),
+                linestyle=held.get("linestyle", ":"),
+                linewidth=held.get("linewidth", 1.5),
+                alpha=held.get("alpha", 0.65),
+                ecolor="#6b7280", elinewidth=1, capsize=2,
+                label=held.get("label", "[Held]")
+            )
+            
+    # 2. Render active live datasets
+    for plot_idx, (label, x_data, y_data, x_err, y_err, is_pred, group_idx) in enumerate(datasets_to_plot):
+        color = color_list[group_idx % len(color_list)]
         
         sorted_pairs = sorted(zip(x_data, y_data, x_err, y_err))
         x_sorted = [p[0] for p in sorted_pairs]
@@ -4029,15 +4335,31 @@ def update_mix_graph(self):
         xerr_arg = x_err_sorted if has_x_err else None
         yerr_arg = y_err_sorted if has_y_err else None
         
-        ax.errorbar(
-            x_sorted, y_sorted, xerr=xerr_arg, yerr=yerr_arg,
-            color=color, marker=marker_sym, markersize=marker_sz,
-            linestyle=line_style, linewidth=line_width, ecolor="#9ca3af", elinewidth=1, capsize=3,
-            label=label
-        )
+        if is_pred:
+            # Prediction styling: dashed line with open square marker
+            ax.plot(
+                x_sorted, y_sorted,
+                color=color, marker="s", fillstyle="none", markeredgewidth=1.5,
+                markersize=marker_sz, linestyle="--", linewidth=line_width,
+                label=label
+            )
+            active_curve_records.append((label, x_sorted, y_sorted, None, None, color, "s", marker_sz, "--", line_width))
+        else:
+            # Measured data styling: solid line / error bars with user marker
+            ax.errorbar(
+                x_sorted, y_sorted, xerr=xerr_arg, yerr=yerr_arg,
+                color=color, marker=marker_sym, markersize=marker_sz,
+                linestyle=line_style, linewidth=line_width, ecolor="#9ca3af", elinewidth=1, capsize=3,
+                label=label
+            )
+            active_curve_records.append((label, x_sorted, y_sorted, xerr_arg, yerr_arg, color, marker_sym, marker_sz, line_style, line_width))
         
-        # Fit polynomial if requested
-        if fit_deg > 0 and len(x_sorted) > fit_deg:
+        # Fit polynomial if requested (only apply to measured datasets when allow_pred is active)
+        should_fit = (fit_deg > 0 and len(x_sorted) > fit_deg)
+        if allow_pred and is_pred:
+            should_fit = False
+            
+        if should_fit:
             import numpy as np
             try:
                 x_arr = np.array(x_sorted, dtype=float)
@@ -4050,9 +4372,9 @@ def update_mix_graph(self):
                     coefs = np.polyfit(x_valid, y_valid, fit_deg)
                     p = np.poly1d(coefs)
                     
-                    y_pred = p(x_valid)
+                    y_fit_pred = p(x_valid)
                     y_mean = np.mean(y_valid)
-                    ss_res = np.sum((y_valid - y_pred) ** 2)
+                    ss_res = np.sum((y_valid - y_fit_pred) ** 2)
                     ss_tot = np.sum((y_valid - y_mean) ** 2)
                     r2 = 1.0 - (ss_res / ss_tot) if ss_tot != 0 else 1.0
                     
@@ -4077,17 +4399,15 @@ def update_mix_graph(self):
                     x_fit = np.linspace(min(x_valid), max(x_valid), 100)
                     y_fit = p(x_fit)
                     
-                    # Draw fit curve with dashed line matching the dataset color
+                    # Draw fit curve with dotted-dash line matching the dataset color
                     ax.plot(
                         x_fit, y_fit,
-                        color=color, linestyle="--", linewidth=line_width * 0.8,
+                        color=color, linestyle="-.", linewidth=line_width * 0.8,
                         label=f"{label} Fit"
                     )
                     
-                    # Display equation if selected. Since we can have multiple curves,
-                    # displaying multiple equations stacked is helpful!
+                    # Display equation if selected
                     if hasattr(self, "check_show_equation") and self.check_show_equation.isChecked():
-                        # Stack them vertically based on plot_idx
                         y_pos = 0.95 - (plot_idx * 0.15)
                         ax.text(
                             0.05, y_pos, full_display_str,
@@ -4101,6 +4421,25 @@ def update_mix_graph(self):
             except Exception as e:
                 print(f"Error computing polynomial fit for {label}: {e}")
                 
+    # Save active curve records for potential Hold snapshotting
+    last_plotted = []
+    for rec in active_curve_records:
+        rec_label, rx, ry, rxerr, ryerr, rcol, rmk, rmksz, rstyle, rwidth = rec
+        last_plotted.append({
+            "label": f"[Held] {rec_label}",
+            "x": rx,
+            "y": ry,
+            "xerr": rxerr,
+            "yerr": ryerr,
+            "color": rcol,
+            "marker": rmk,
+            "markersize": rmksz,
+            "linestyle": ":",
+            "linewidth": rwidth,
+            "alpha": 0.65
+        })
+    self._last_plotted_curves = last_plotted
+                
     show_legend = True
     if hasattr(self, "check_show_legend"):
         show_legend = self.check_show_legend.isChecked()
@@ -4110,7 +4449,7 @@ def update_mix_graph(self):
     if show_legend:
         ax.legend(facecolor=bg, edgecolor=spine_color, labelcolor=text_color)
         
-    ax.set_title(f"{y_label} vs {x_label}", fontdict=font_settings, color=text_color, pad=10)
+    ax.set_title(plot_title, fontdict=font_settings, color=text_color, pad=10)
     ax.set_xlabel(x_label, fontdict=font_settings, color=text_color)
     ax.set_ylabel(y_label, fontdict=font_settings, color=text_color)
     

@@ -195,10 +195,12 @@ def populate_medical_image_tree(self):
                         LUT = series_data['metadata']
                         Acq_number = series_data['metadata'].get('AcquisitionNumber', 'N/A')
                         series_desc = series_data['metadata'].get('SeriesDescription', '')
+                        acq_plane = series_data['metadata'].get('AcquisitionPlane', 'AXIAL')
+                        plane_tag = f" [{acq_plane.capitalize()}]" if acq_plane in ('CORONAL', 'SAGITTAL') and acq_plane.lower() not in series_desc.lower() else ""
                         if series_desc:
-                            series_label = f"{series_desc}_Series: {series_data['SeriesNumber']}"
+                            series_label = f"{series_desc}{plane_tag}_Series: {series_data['SeriesNumber']}"
                         else:
-                            series_label = f"Acq_{Acq_number}_Series: {series_data['SeriesNumber']}"
+                            series_label = f"Acq_{Acq_number}{plane_tag}_Series: {series_data['SeriesNumber']}"
                         if LUT.get('LUTLabel', 'N/A') != 'N/A':
                             series_label += f" {LUT['LUTLabel']} {LUT['LUTExplanation']}"
 
