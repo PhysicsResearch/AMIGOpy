@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox, QMessageBox, QAbstractItemView, QGridLayout, QFrame, QHeaderView,
     QStyledItemDelegate, QDateEdit, QTabWidget, QTextEdit, QMenu, QApplication,
     QSpinBox, QComboBox, QFileDialog, QTreeWidget, QTreeWidgetItem, QListWidget, QListWidgetItem, QGroupBox,
-    QCheckBox
+    QCheckBox, QTextBrowser
 )
 from PySide6.QtCore import Qt, QDate, QObject, QEvent, QTimer, QUrl
 from PySide6.QtGui import QColor, QFont, QKeySequence
@@ -35,6 +35,12 @@ from fcn_3DPrinting.safe_io import (
 )
 
 logger = logging.getLogger("amigopy")
+
+from fcn_3DPrinting.material_props import (
+    get_mix_component_reference_values, get_mix_m_value, predict_mix_red, predict_mix_zeff,
+    predict_mix_red_for, predict_mix_zeff_for, summarize_material, summarize_mix,
+    render_material_overview_html, render_mix_overview_html,
+)
 
 try:
     from fcn_3DPrinting.matmix_3d_fit import (
@@ -551,79 +557,22 @@ def calculate_predicted_values(self, row_idx, table_source, comp_reds=None, comp
         return None, None
         
     if comp_reds is None or comp_zeffs is None:
-        start_row, group_size = find_mix_group_row_and_size(self, mix_id)
-        if start_row == -1:
+        comp_reds, comp_zeffs = get_mix_component_reference_values(self, mix_id)
+        if comp_reds is None:
             return None, None
-            
-        comp_reds = []
-        comp_zeffs = []
-        db_map = {}
-        if hasattr(self, "table_3d_db"):
-            for r_db in range(self.table_3d_db.rowCount()):
-                mat_text = safe_get_cell_text(self.table_3d_db, r_db, 0).strip()
-                if mat_text and mat_text not in db_map:
-                    red_val = safe_float(safe_get_cell_text(self.table_3d_db, r_db, 6))
-                    zeff_val = safe_float(safe_get_cell_text(self.table_3d_db, r_db, 8))
-                    db_map[mat_text] = (red_val, zeff_val)
 
-        for i in range(group_size):
-            r = start_row + i
-            if r >= self.table_mat_mix.rowCount():
-                break
-                
-            # Get selected material name from top MatMix table (column 1 combobox)
-            combo = self.table_mat_mix.cellWidget(r, 1)
-            mat_name = safe_get_combo_text(combo).strip()
-            
-            # Look up RED and Zeff in the matmix top table first, then fallback to main database self.table_3d_db
-            ref_red = 0.0
-            ref_zeff = 0.0
-            
-            # 1. Read from matmix top table (RED is column 3, Zeff is column 4)
-            red_str = safe_get_cell_text(self.table_mat_mix, r, 3)
-            zeff_str = safe_get_cell_text(self.table_mat_mix, r, 4)
-            if red_str.strip():
-                ref_red = safe_float(red_str)
-            if zeff_str.strip():
-                ref_zeff = safe_float(zeff_str)
-                    
-            # 2. Fallback to main database if still not found/0
-            if (ref_red == 0.0 or ref_zeff == 0.0) and mat_name in db_map:
-                db_r, db_z = db_map[mat_name]
-                if ref_red == 0.0:
-                    ref_red = db_r
-                if ref_zeff == 0.0:
-                    ref_zeff = db_z
-
-            comp_reds.append(ref_red)
-            comp_zeffs.append(ref_zeff)
-        
     n_mats = len(comp_reds)
     percentages = []
     for idx in range(n_mats):
         val_raw = safe_get_cell_value(table_source, row_idx, idx, Qt.EditRole)
         percentages.append(safe_float(val_raw))
-        
+
     total_p = sum(percentages)
     if total_p <= 0:
         return 0.0, 0.0
-        
-    # Pred. RED is the sum of reference RED of each material multiplied by the mass weight (%value/100)
-    pred_red = 0.0
-    for idx in range(n_mats):
-        pred_red += (percentages[idx] / 100.0) * comp_reds[idx]
-        
-    # Pred. Zeff follows: (Zeff_Mat1^m * %_Mat1/100 + Zeff_Mat2^m * %_Mat2/100 + ...)^(1/m)
-    # using reference Zeff from main material database or matmix top table, with configurable m-value
-    power = 3.4
-    if mix_id is not None and hasattr(self, "mix_m_value_cache"):
-        power = self.mix_m_value_cache.get(mix_id, 3.4)
-        
-    term_sum = 0.0
-    for idx in range(n_mats):
-        term_sum += (comp_zeffs[idx] ** power) * (percentages[idx] / 100.0)
-    pred_zeff = term_sum ** (1.0 / power) if power != 0 else 0.0
-    
+
+    pred_red = predict_mix_red(comp_reds, percentages)
+    pred_zeff = predict_mix_zeff(comp_zeffs, percentages, get_mix_m_value(self, mix_id))
     return pred_red, pred_zeff
 
 def update_row_predictions(self, row, n_mats, comp_reds=None, comp_zeffs=None):
@@ -719,56 +668,13 @@ def on_m_value_changed(self, val):
     if start_row != -1:
         mat_names = get_materials_in_mix(self, start_row, group_size)
         n_mats = len(mat_names)
-        
-        # Resolve mix reference values once for high-performance loading
-        comp_reds = []
-        comp_zeffs = []
-        for i in range(group_size):
-            r_idx = start_row + i
-            if r_idx >= self.table_mat_mix.rowCount():
-                break
-            combo = self.table_mat_mix.cellWidget(r_idx, 1)
-            mat_name = safe_get_combo_text(combo)
-            ref_red = 0.0
-            ref_zeff = 0.0
-            red_str = safe_get_cell_text(self.table_mat_mix, r_idx, 3)
-            zeff_str = safe_get_cell_text(self.table_mat_mix, r_idx, 4)
-            if red_str.strip():
-                try:
-                    ref_red = float(red_str.replace(',', '.'))
-                except ValueError:
-                    pass
-            if zeff_str.strip():
-                try:
-                    ref_zeff = float(zeff_str.replace(',', '.'))
-                except ValueError:
-                    pass
-            if ref_red == 0.0 or ref_zeff == 0.0:
-                if mat_name:
-                    for r_db in range(self.table_3d_db.rowCount()):
-                        item_db_text = safe_get_cell_text(self.table_3d_db, r_db, 0)
-                        if item_db_text.strip() == mat_name:
-                            if ref_red == 0.0:
-                                try:
-                                    db_red_str = safe_get_cell_text(self.table_3d_db, r_db, 6)
-                                    ref_red = float(db_red_str.replace(',', '.')) if db_red_str else 0.0
-                                except ValueError:
-                                    ref_red = 0.0
-                            if ref_zeff == 0.0:
-                                try:
-                                    db_zeff_str = safe_get_cell_text(self.table_3d_db, r_db, 8)
-                                    ref_zeff = float(db_zeff_str.replace(',', '.')) if db_zeff_str else 0.0
-                                except ValueError:
-                                    ref_zeff = 0.0
-                            break
-            comp_reds.append(ref_red)
-            comp_zeffs.append(ref_zeff)
-            
+        comp_reds, comp_zeffs = get_mix_component_reference_values(self, mix_id)
         for r in range(self.table_mix_z_red.rowCount()):
             update_row_predictions(self, r, n_mats, comp_reds, comp_zeffs)
-            
+
     update_mix_graph(self)
     auto_save_all_databases(self)
+    refresh_mix_overview(self)
 
 def sync_mix_tables(self, source, changed_item):
     if not hasattr(self, "table_mix_calibration_info") or not hasattr(self, "table_mix_z_red"):
@@ -1065,6 +971,11 @@ def setup_3d_database_tab(self):
     # Add Tabs to Detail Panel
     self.tabWidget_3d_detail.addTab(self.tab_info, "Info")
     self.tabWidget_3d_detail.addTab(self.tab_notes, "Notes")
+    self.tab_overview, self.txt_overview, self.overview_button_row = _build_overview_tab(
+        self, "Material Overview", lambda: refresh_material_overview(self, force=True))
+    self.tabWidget_3d_detail.insertTab(0, self.tab_overview, "Overview")
+    self.tabWidget_3d_detail.setCurrentIndex(0)
+    self.tabWidget_3d_detail.currentChanged.connect(lambda idx: on_3d_detail_tab_changed(self, idx))
     
     # Add rows to Splitter
     self.splitter_3d_db.addWidget(top_widget)
@@ -1337,43 +1248,7 @@ def setup_mat_mix_tab(self):
     # Set post paste handlers to coordinate batch pastes correctly
     def sync_after_paste_calibration():
         mix_id = getattr(self, "current_viewed_mix_id", None)
-        comp_reds = None
-        comp_zeffs = None
-        if mix_id is not None:
-            start_row, group_size = find_mix_group_row_and_size(self, mix_id)
-            if start_row != -1:
-                comp_reds = []
-                comp_zeffs = []
-                for i in range(group_size):
-                    r_idx = start_row + i
-                    if r_idx >= self.table_mat_mix.rowCount():
-                        break
-                    combo = self.table_mat_mix.cellWidget(r_idx, 1)
-                    mat_name = safe_get_combo_text(combo)
-                    ref_red = 0.0
-                    ref_zeff = 0.0
-                    
-                    red_str = safe_get_cell_text(self.table_mat_mix, r_idx, 3)
-                    zeff_str = safe_get_cell_text(self.table_mat_mix, r_idx, 4)
-                    
-                    if red_str.strip():
-                        ref_red = safe_float(red_str)
-                    if zeff_str.strip():
-                        ref_zeff = safe_float(zeff_str)
-                    if ref_red == 0.0 or ref_zeff == 0.0:
-                        if mat_name:
-                            for r_db in range(self.table_3d_db.rowCount()):
-                                item_db_text = safe_get_cell_text(self.table_3d_db, r_db, 0)
-                                if item_db_text.strip() == mat_name:
-                                    if ref_red == 0.0:
-                                        db_red_str = safe_get_cell_text(self.table_3d_db, r_db, 6)
-                                        ref_red = safe_float(db_red_str)
-                                    if ref_zeff == 0.0:
-                                        db_zeff_str = safe_get_cell_text(self.table_3d_db, r_db, 8)
-                                        ref_zeff = safe_float(db_zeff_str)
-                                    break
-                    comp_reds.append(ref_red)
-                    comp_zeffs.append(ref_zeff)
+        comp_reds, comp_zeffs = get_mix_component_reference_values(self, mix_id)
 
         n_mats = self.table_mix_z_red.columnCount() - 8
         with signals_blocked(self.table_mix_z_red):
@@ -1408,72 +1283,35 @@ def setup_mat_mix_tab(self):
     
     def sync_after_paste_z_red():
         mix_id = getattr(self, "current_viewed_mix_id", None)
-        comp_reds = None
-        comp_zeffs = None
-        if mix_id is not None:
-            start_row, group_size = find_mix_group_row_and_size(self, mix_id)
-            if start_row != -1:
-                comp_reds = []
-                comp_zeffs = []
-                for i in range(group_size):
-                    r_idx = start_row + i
-                    if r_idx >= self.table_mat_mix.rowCount():
-                        break
-                    combo = self.table_mat_mix.cellWidget(r_idx, 1)
-                    mat_name = safe_get_combo_text(combo)
-                    ref_red = 0.0
-                    ref_zeff = 0.0
-                    
-                    red_str = safe_get_cell_text(self.table_mat_mix, r_idx, 3)
-                    zeff_str = safe_get_cell_text(self.table_mat_mix, r_idx, 4)
-                    
-                    if red_str.strip():
-                        ref_red = safe_float(red_str)
-                    if zeff_str.strip():
-                        ref_zeff = safe_float(zeff_str)
-                    if ref_red == 0.0 or ref_zeff == 0.0:
-                        if mat_name:
-                            for r_db in range(self.table_3d_db.rowCount()):
-                                item_db_text = safe_get_cell_text(self.table_3d_db, r_db, 0)
-                                if item_db_text.strip() == mat_name:
-                                    if ref_red == 0.0:
-                                        db_red_str = safe_get_cell_text(self.table_3d_db, r_db, 6)
-                                        ref_red = safe_float(db_red_str)
-                                    if ref_zeff == 0.0:
-                                        db_zeff_str = safe_get_cell_text(self.table_3d_db, r_db, 8)
-                                        ref_zeff = safe_float(db_zeff_str)
-                                    break
-                    comp_reds.append(ref_red)
-                    comp_zeffs.append(ref_zeff)
+        comp_reds, comp_zeffs = get_mix_component_reference_values(self, mix_id)
 
-        self.table_mix_calibration_info.blockSignals(True)
         n_mats = self.table_mix_z_red.columnCount() - 8
-        for r in range(self.table_mix_z_red.rowCount()):
-            if r >= self.table_mix_calibration_info.rowCount():
-                self.table_mix_calibration_info.insertRow(r)
-            for c in range(n_mats):
-                val = safe_get_cell_value(self.table_mix_z_red, r, c, Qt.EditRole)
-                val_str = safe_get_cell_text(self.table_mix_z_red, r, c)
-                set_target_cell(self.table_mix_calibration_info, r, c, val, val_str)
-                
-            z_val = safe_get_cell_value(self.table_mix_z_red, r, n_mats, Qt.EditRole)
-            z_str = safe_get_cell_text(self.table_mix_z_red, r, n_mats)
-            set_target_cell(self.table_mix_calibration_info, r, n_mats + 8, z_val, z_str)
-            
-            zstd_val = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 1, Qt.EditRole)
-            zstd_str = safe_get_cell_text(self.table_mix_z_red, r, n_mats + 1)
-            set_target_cell(self.table_mix_calibration_info, r, n_mats + 9, zstd_val, zstd_str)
-            
-            r_val = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 4, Qt.EditRole)
-            r_str = safe_get_cell_text(self.table_mix_z_red, r, n_mats + 4)
-            set_target_cell(self.table_mix_calibration_info, r, n_mats + 6, r_val, r_str)
-            
-            rstd_val = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 5, Qt.EditRole)
-            rstd_str = safe_get_cell_text(self.table_mix_z_red, r, n_mats + 5)
-            set_target_cell(self.table_mix_calibration_info, r, n_mats + 7, rstd_val, rstd_str)
-            
-            update_row_predictions(self, r, n_mats, comp_reds, comp_zeffs)
-        self.table_mix_calibration_info.blockSignals(False)
+        with signals_blocked(self.table_mix_calibration_info):
+            for r in range(self.table_mix_z_red.rowCount()):
+                if r >= self.table_mix_calibration_info.rowCount():
+                    self.table_mix_calibration_info.insertRow(r)
+                for c in range(n_mats):
+                    val = safe_get_cell_value(self.table_mix_z_red, r, c, Qt.EditRole)
+                    val_str = safe_get_cell_text(self.table_mix_z_red, r, c)
+                    set_target_cell(self.table_mix_calibration_info, r, c, val, val_str)
+
+                z_val = safe_get_cell_value(self.table_mix_z_red, r, n_mats, Qt.EditRole)
+                z_str = safe_get_cell_text(self.table_mix_z_red, r, n_mats)
+                set_target_cell(self.table_mix_calibration_info, r, n_mats + 8, z_val, z_str)
+
+                zstd_val = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 1, Qt.EditRole)
+                zstd_str = safe_get_cell_text(self.table_mix_z_red, r, n_mats + 1)
+                set_target_cell(self.table_mix_calibration_info, r, n_mats + 9, zstd_val, zstd_str)
+
+                r_val = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 4, Qt.EditRole)
+                r_str = safe_get_cell_text(self.table_mix_z_red, r, n_mats + 4)
+                set_target_cell(self.table_mix_calibration_info, r, n_mats + 6, r_val, r_str)
+
+                rstd_val = safe_get_cell_value(self.table_mix_z_red, r, n_mats + 5, Qt.EditRole)
+                rstd_str = safe_get_cell_text(self.table_mix_z_red, r, n_mats + 5)
+                set_target_cell(self.table_mix_calibration_info, r, n_mats + 7, rstd_val, rstd_str)
+
+                update_row_predictions(self, r, n_mats, comp_reds, comp_zeffs)
         update_mix_graph(self)
         auto_save_all_databases(self)
     self.table_mix_z_red.post_paste_handler = sync_after_paste_z_red
@@ -1674,8 +1512,12 @@ def setup_mat_mix_tab(self):
     self.tabWidget_mix_detail.addTab(self.tab_mix_red, "Mix RED")
     self.tabWidget_mix_detail.addTab(self.tab_mix_notes, "Notes")
     self.tabWidget_mix_detail.addTab(self.tab_mix_graphs, "Graphs")
-    
-    # Listen to tab change events to initialize graphs lazily
+    self.tab_mix_overview, self.txt_mix_overview, self.mix_overview_button_row = _build_overview_tab(
+        self, "Mix Overview", lambda: refresh_mix_overview(self, force=True))
+    self.tabWidget_mix_detail.insertTab(0, self.tab_mix_overview, "Overview")
+    self.tabWidget_mix_detail.setCurrentIndex(0)
+
+    # Listen to tab change events to initialize graphs lazily / render the overview on demand
     self.tabWidget_mix_detail.currentChanged.connect(lambda idx: on_mix_tab_changed(self, idx))
     
     # Add widgets to splitter
@@ -1787,8 +1629,11 @@ def refresh_mix_graphs_tree(self):
     self.tree_mix_graphs_datasets.blockSignals(False)
 
 def on_mix_tab_changed(self, index):
-    if self.tabWidget_mix_detail.widget(index) is getattr(self, "tab_mix_graphs", None):
+    widget = self.tabWidget_mix_detail.widget(index)
+    if widget is getattr(self, "tab_mix_graphs", None):
         initialize_mix_graph(self)
+    elif widget is getattr(self, "tab_mix_overview", None) and getattr(self, "_mix_overview_dirty", True):
+        refresh_mix_overview(self, force=True)
 
 def initialize_mix_graph(self):
     if hasattr(self, "graph_canvas"):
@@ -2111,6 +1956,8 @@ def display_selected_filament_details(self):
     self.txt_notes.setPlainText(filament_notes)
     self.txt_notes.blockSignals(False)
 
+    refresh_material_overview(self)
+
 def save_current_active_material_cache(self):
     if hasattr(self, "current_viewed_filament") and self.current_viewed_filament:
         if hasattr(self, "table_calibration_info") and self.table_calibration_info.state() == QAbstractItemView.EditingState:
@@ -2352,6 +2199,80 @@ def ensure_3dp_tab_loaded(self):
     _on_tab_changed(self, idx)
     return hasattr(self, "table_3d_db")
 
+# ---------------------------------------------------------------- Overview panels (read-only summaries)
+
+_OVERVIEW_PLACEHOLDER = '<p style="color:#9ca3af">Select an entry in the table above to see its overview.</p>'
+
+def _build_overview_tab(self, title, refresh_callback):
+    tab = QWidget()
+    layout = QVBoxLayout(tab)
+    layout.setContentsMargins(10, 10, 10, 10)
+
+    button_row = QHBoxLayout()
+    lbl_title = QLabel(title)
+    lbl_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #3b82f6;")
+    button_row.addWidget(lbl_title)
+    button_row.addStretch()
+
+    browser = QTextBrowser()
+    browser.setOpenExternalLinks(False)
+    browser.setStyleSheet("background-color: #1e1e24; color: #e5e7eb; border: 1px solid #3c4450; border-radius: 4px; padding: 6px;")
+    browser.setHtml(_OVERVIEW_PLACEHOLDER)
+
+    btn_refresh = QPushButton("Refresh")
+    btn_refresh.setStyleSheet("background-color: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    btn_refresh.clicked.connect(lambda: refresh_callback())
+    btn_copy = QPushButton("Copy as text")
+    btn_copy.setStyleSheet("background-color: #4b5563; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    btn_copy.clicked.connect(lambda: QApplication.clipboard().setText(browser.toPlainText()))
+    button_row.addWidget(btn_refresh)
+    button_row.addWidget(btn_copy)
+
+    layout.addLayout(button_row)
+    layout.addWidget(browser)
+    return tab, browser, button_row
+
+def _render_overview(browser, build_html, what):
+    try:
+        browser.setHtml(build_html())
+    except Exception:
+        logger.exception("Could not build the %s overview", what)
+        browser.setHtml(f'<p style="color:#ef4444">The {what} overview could not be generated; see the log for details.</p>')
+
+def refresh_material_overview(self, force=False):
+    browser = getattr(self, "txt_overview", None)
+    if browser is None:
+        return
+    tabs = getattr(self, "tabWidget_3d_detail", None)
+    if not force and tabs is not None and tabs.currentWidget() is not self.tab_overview:
+        self._overview_dirty = True
+        return
+    self._overview_dirty = False
+    name = getattr(self, "current_viewed_filament", None)
+    if not name:
+        browser.setHtml(_OVERVIEW_PLACEHOLDER)
+        return
+    _render_overview(browser, lambda: render_material_overview_html(summarize_material(self, name)), "material")
+
+def refresh_mix_overview(self, force=False):
+    browser = getattr(self, "txt_mix_overview", None)
+    if browser is None:
+        return
+    tabs = getattr(self, "tabWidget_mix_detail", None)
+    if not force and tabs is not None and tabs.currentWidget() is not self.tab_mix_overview:
+        self._mix_overview_dirty = True
+        return
+    self._mix_overview_dirty = False
+    mix_id = getattr(self, "current_viewed_mix_id", None)
+    if mix_id is None:
+        browser.setHtml(_OVERVIEW_PLACEHOLDER)
+        return
+    _render_overview(browser, lambda: render_mix_overview_html(summarize_mix(self, mix_id)), "mix")
+
+def on_3d_detail_tab_changed(self, index):
+    if self.tabWidget_3d_detail.widget(index) is getattr(self, "tab_overview", None) and getattr(self, "_overview_dirty", True):
+        refresh_material_overview(self, force=True)
+
 def auto_save_all_databases(self):
     if getattr(self, "_is_loading", False):
         return
@@ -2393,6 +2314,8 @@ def _do_auto_save(self):
         self._is_autosaving = False
     if failures:
         report_save_failures(self, failures)
+    refresh_material_overview(self)
+    refresh_mix_overview(self)
 def save_3d_database_action(self):
     save_current_active_material_cache(self)
     sync_3d_db_to_matmix(self)
@@ -3142,24 +3065,19 @@ def sync_3d_db_to_matmix(self):
             
         # 4. Update all combinations in mix_red_cache for all mix groups
         if hasattr(self, "mix_red_cache"):
-            old_v_id = getattr(self, "current_viewed_mix_id", None)
-            try:
-                for m_id, combo_list in self.mix_red_cache.items():
-                    s_row, g_size = find_mix_group_row_and_size(self, m_id)
-                    if s_row == -1:
-                        continue
-                    self.current_viewed_mix_id = m_id
-                    for combination in combo_list:
-                        ratios = combination.get("percentage", [])
-                        pred_zeff = calculate_mix_zeff_predicted_val(self, ratios)
-                        for row_vals in combination.get("rows", []):
-                            if len(row_vals) >= 14:
-                                infill_val = safe_float(row_vals[0])
-                                row_pred_red = calculate_mix_red_predicted_val(self, ratios, infill_val)
-                                row_vals[8] = f"{row_pred_red:.4f}"
-                                row_vals[11] = f"{pred_zeff:.4f}"
-            finally:
-                self.current_viewed_mix_id = old_v_id
+            for m_id, combo_list in self.mix_red_cache.items():
+                s_row, g_size = find_mix_group_row_and_size(self, m_id)
+                if s_row == -1:
+                    continue
+                for combination in combo_list:
+                    ratios = combination.get("percentage", [])
+                    pred_zeff = predict_mix_zeff_for(self, m_id, ratios)
+                    for row_vals in combination.get("rows", []):
+                        if len(row_vals) >= 14:
+                            infill_val = safe_float(row_vals[0])
+                            row_pred_red = predict_mix_red_for(self, m_id, ratios, infill_val)
+                            row_vals[8] = f"{row_pred_red:.4f}"
+                            row_vals[11] = f"{pred_zeff:.4f}"
                 
         # 5. Update currently viewed mix group details and predictions
         curr_mix_id = getattr(self, "current_viewed_mix_id", None)
@@ -3610,36 +3528,11 @@ def display_selected_mix_details(self):
                 
             cal_rows = self.mix_calibration_cache.get(mix_id, [])
             
-            # Resolve mix reference values once using fast dictionary lookup
-            comp_reds = []
-            comp_zeffs = []
-            db_map = {}
-            if hasattr(self, "table_3d_db"):
-                for r_db in range(self.table_3d_db.rowCount()):
-                    mat_text = safe_get_cell_text(self.table_3d_db, r_db, 0).strip()
-                    if mat_text and mat_text not in db_map:
-                        red_val = safe_float(safe_get_cell_text(self.table_3d_db, r_db, 6))
-                        zeff_val = safe_float(safe_get_cell_text(self.table_3d_db, r_db, 8))
-                        db_map[mat_text] = (red_val, zeff_val)
+            # Resolve mix reference values once (MatMix table first, material database as fallback)
+            comp_reds, comp_zeffs = get_mix_component_reference_values(self, mix_id)
+            if comp_reds is None:
+                comp_reds, comp_zeffs = [], []
 
-            for i in range(group_size):
-                r = start_row + i
-                if r >= self.table_mat_mix.rowCount():
-                    break
-                combo = self.table_mat_mix.cellWidget(r, 1)
-                mat_name = safe_get_combo_text(combo).strip()
-                ref_red = safe_float(safe_get_cell_text(self.table_mat_mix, r, 3))
-                ref_zeff = safe_float(safe_get_cell_text(self.table_mat_mix, r, 4))
-
-                if (ref_red == 0.0 or ref_zeff == 0.0) and mat_name in db_map:
-                    db_r, db_z = db_map[mat_name]
-                    if ref_red == 0.0:
-                        ref_red = db_r
-                    if ref_zeff == 0.0:
-                        ref_zeff = db_z
-                comp_reds.append(ref_red)
-                comp_zeffs.append(ref_zeff)
-                
             for row_data in cal_rows:
                 if len(row_data) < 20:
                     continue
@@ -3794,6 +3687,7 @@ def display_selected_mix_details(self):
             update_mix_graph(self)
     finally:
         self._is_updating_mix_details = False
+    refresh_mix_overview(self)
 
 # Hold Plot and Clear Held Plot Handlers
 def on_toggle_hold_plot(self, state):
@@ -3831,7 +3725,7 @@ def update_mix_graph(self):
     if not hasattr(self, "graph_canvas") or not hasattr(self, "combo_graph_x") or not hasattr(self, "combo_graph_y"):
         return
     # Skip redraw if the Graphs tab is not currently visible
-    if hasattr(self, "tabWidget_mix_detail") and self.tabWidget_mix_detail.currentIndex() != 4:
+    if hasattr(self, "tabWidget_mix_detail") and self.tabWidget_mix_detail.currentWidget() is not getattr(self, "tab_mix_graphs", None):
         return
         
     self.graph_figure.clear()
@@ -5067,6 +4961,7 @@ def refresh_mix_red_ratios_list(self):
 def display_selected_mix_red_ratio_details(self, idx):
     with signals_blocked(self.table_mix_red_cal):
         _fill_mix_red_ratio_table(self, idx)
+    refresh_mix_overview(self)
 
 def _fill_mix_red_ratio_table(self, idx):
     self.table_mix_red_cal.clearContents()
@@ -5130,89 +5025,10 @@ def _fill_mix_red_ratio_table(self, idx):
                 self.table_mix_red_cal.setItem(row_idx, c, item)
 
 def calculate_mix_red_predicted_val(self, ratios, infill_pct=100.0):
-    mix_id = getattr(self, "current_viewed_mix_id", None)
-    if mix_id is None:
-        return 0.0
-        
-    start_row = -1
-    total_rows = self.table_mat_mix.rowCount()
-    start_row, group_size = find_mix_group_row_and_size(self, mix_id)
-    if start_row == -1:
-        return 0.0
-        
-    comp_reds = []
-    for i in range(group_size):
-        r = start_row + i
-        if r >= self.table_mat_mix.rowCount():
-            break
-            
-        combo = self.table_mat_mix.cellWidget(r, 1)
-        mat_name = safe_get_combo_text(combo)
-        
-        ref_red = 0.0
-        red_str = safe_get_cell_text(self.table_mat_mix, r, 3)
-        if red_str.strip():
-            ref_red = safe_float(red_str)
-                
-        if ref_red == 0.0 and mat_name:
-            for r_db in range(self.table_3d_db.rowCount()):
-                item_db_text = safe_get_cell_text(self.table_3d_db, r_db, 0)
-                if item_db_text.strip() == mat_name:
-                    db_red_str = safe_get_cell_text(self.table_3d_db, r_db, 6)
-                    ref_red = safe_float(db_red_str)
-                    break
-        
-        expected_red = get_expected_material_red(self, mat_name, ref_red, infill_pct)
-        comp_reds.append(expected_red)
-        
-    pred_red = 0.0
-    for idx, ratio in enumerate(ratios):
-        if idx < len(comp_reds):
-            pred_red += (ratio / 100.0) * comp_reds[idx]
-    return pred_red
+    return predict_mix_red_for(self, getattr(self, "current_viewed_mix_id", None), ratios, infill_pct)
 
 def calculate_mix_zeff_predicted_val(self, ratios):
-    mix_id = getattr(self, "current_viewed_mix_id", None)
-    if mix_id is None:
-        return 0.0
-        
-    start_row, group_size = find_mix_group_row_and_size(self, mix_id)
-    if start_row == -1:
-        return 0.0
-        
-    comp_zeffs = []
-    for i in range(group_size):
-        r = start_row + i
-        if r >= self.table_mat_mix.rowCount():
-            break
-            
-        combo = self.table_mat_mix.cellWidget(r, 1)
-        mat_name = safe_get_combo_text(combo)
-        
-        ref_zeff = 0.0
-        zeff_str = safe_get_cell_text(self.table_mat_mix, r, 4)
-        if zeff_str.strip():
-            ref_zeff = safe_float(zeff_str)
-                
-        if ref_zeff == 0.0 and mat_name:
-            for r_db in range(self.table_3d_db.rowCount()):
-                item_db_text = safe_get_cell_text(self.table_3d_db, r_db, 0)
-                if item_db_text.strip() == mat_name:
-                    db_zeff_str = safe_get_cell_text(self.table_3d_db, r_db, 8)
-                    ref_zeff = safe_float(db_zeff_str)
-                    break
-        comp_zeffs.append(ref_zeff)
-        
-    power = 3.4
-    if hasattr(self, "mix_m_value_cache"):
-        power = self.mix_m_value_cache.get(mix_id, 3.4)
-        
-    term_sum = 0.0
-    for idx, ratio in enumerate(ratios):
-        if idx < len(comp_zeffs):
-            term_sum += (comp_zeffs[idx] ** power) * (ratio / 100.0)
-    pred_zeff = term_sum ** (1.0 / power) if power != 0 else 0.0
-    return pred_zeff
+    return predict_mix_zeff_for(self, getattr(self, "current_viewed_mix_id", None), ratios)
 
 def save_mix_red_table_to_cache(self, mix_id, ratio_idx):
     if mix_id not in self.mix_red_cache:

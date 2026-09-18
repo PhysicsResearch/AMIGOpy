@@ -241,28 +241,12 @@ def get_mix_component_reference_zeffs(self, mix_id, mat_names):
     fcn_init/create_3D_database_tab.py, but decoupled from
     self.current_viewed_mix_id so it can be used for any mix by id.
     """
-    from fcn_init.create_3D_database_tab import find_mix_group_row_and_size, safe_get_cell_text, safe_get_combo_text
+    from fcn_3DPrinting.material_props import get_mix_components
 
-    start_row, group_size = find_mix_group_row_and_size(self, mix_id)
-    if start_row == -1:
+    components = get_mix_components(self, mix_id)
+    if not components:
         return [0.0] * len(mat_names)
-
-    db_map = {}
-    if hasattr(self, "table_3d_db"):
-        for r_db in range(self.table_3d_db.rowCount()):
-            mat_text = safe_get_cell_text(self.table_3d_db, r_db, 0).strip()
-            if mat_text and mat_text not in db_map:
-                db_map[mat_text] = safe_float(safe_get_cell_text(self.table_3d_db, r_db, 8))
-
-    zeffs = []
-    for i in range(group_size):
-        r = start_row + i
-        mat_name = mat_names[i] if i < len(mat_names) else ""
-        ref_zeff = safe_float(safe_get_cell_text(self.table_mat_mix, r, 4))
-        if ref_zeff == 0.0:
-            ref_zeff = db_map.get(mat_name, 0.0)
-        zeffs.append(ref_zeff)
-    return zeffs
+    return [c["zeff"].value for c in components]
 
 
 def estimate_zeff_powerlaw(self, mix_id, mat_names):
