@@ -2,6 +2,7 @@ import os
 import csv
 import json
 import random
+import tempfile
 import threading
 import zipfile
 import glob
@@ -14,10 +15,26 @@ from PySide6.QtWidgets import (
     QPushButton, QScrollArea, QLabel, QDialog, QFormLayout, QLineEdit,
     QDoubleSpinBox, QMessageBox, QAbstractItemView, QGridLayout, QFrame, QHeaderView,
     QStyledItemDelegate, QDateEdit, QTabWidget, QTextEdit, QMenu, QApplication,
-    QSpinBox, QComboBox, QFileDialog, QTreeWidget, QTreeWidgetItem, QListWidget, QListWidgetItem, QGroupBox
+    QSpinBox, QComboBox, QFileDialog, QTreeWidget, QTreeWidgetItem, QListWidget, QListWidgetItem, QGroupBox,
+    QCheckBox
 )
-from PySide6.QtCore import Qt, QDate, QObject, QEvent, QTimer
+from PySide6.QtCore import Qt, QDate, QObject, QEvent, QTimer, QUrl
 from PySide6.QtGui import QColor, QFont, QKeySequence
+
+try:
+    from PySide6.QtWebEngineWidgets import QWebEngineView
+except ImportError:
+    QWebEngineView = None
+
+try:
+    from fcn_3DPrinting.matmix_3d_fit import (
+        extract_ratio_infill_red_dataset, fit_poly_surface, format_surface_equation,
+        estimate_zeff_vs_ratio, estimate_zeff_powerlaw, interpolate_percentages,
+        build_plotly_figure, insufficient_data_html, resolve_figures_style, InsufficientDataError,
+    )
+    matmix_3d_fit_available = True
+except ImportError:
+    matmix_3d_fit_available = False
 
 # Global placeholder states for Matplotlib lazy loading
 matplotlib_imported = False
@@ -6354,7 +6371,7 @@ def setup_view_and_fit_tab(self):
         }
     """)
     self.list_fit_materials.currentRowChanged.connect(lambda idx: on_fit_material_changed(self))
-    self.list_fit_materials.itemChanged.connect(lambda item: update_fit_graph_and_calculators(self))
+    self.list_fit_materials.itemChanged.connect(lambda item: refresh_active_fit_view(self))
     left_layout.addWidget(self.list_fit_materials)
     
     self.splitter_fit.addWidget(left_widget)
@@ -6363,7 +6380,33 @@ def setup_view_and_fit_tab(self):
     right_widget = QWidget()
     right_layout = QVBoxLayout(right_widget)
     right_layout.setContentsMargins(0, 0, 0, 0)
-    
+
+    self.fit_3d_view_available = QWebEngineView is not None and matmix_3d_fit_available
+
+    # View mode selector (2D matplotlib fit vs. 3D Plotly ratio/infill/RED surface)
+    if self.fit_3d_view_available:
+        view_mode_layout = QHBoxLayout()
+        lbl_view_mode = QLabel("View:")
+        lbl_view_mode.setStyleSheet("font-weight: bold; color: #e5e7eb; margin-right: 5px;")
+        view_mode_layout.addWidget(lbl_view_mode)
+
+        self.combo_fit_view_mode = FocusComboBox()
+        self.combo_fit_view_mode.setStyleSheet("background-color: #2b2b36; border: 1px solid #4b5563; border-radius: 4px; color: #ffffff; padding: 4px; min-width: 80px;")
+        self.combo_fit_view_mode.addItem("2D", "2D")
+        self.combo_fit_view_mode.addItem("3D", "3D")
+        self.combo_fit_view_mode.currentTextChanged.connect(lambda: on_fit_view_mode_changed(self))
+        view_mode_layout.addWidget(self.combo_fit_view_mode)
+        view_mode_layout.addStretch()
+        right_layout.addLayout(view_mode_layout)
+
+        self.fit_2d_container = QWidget()
+        self.fit_2d_layout = QVBoxLayout(self.fit_2d_container)
+        self.fit_2d_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.addWidget(self.fit_2d_container)
+    else:
+        self.fit_2d_container = right_widget
+        self.fit_2d_layout = right_layout
+
     # Fit Controls Layout
     fit_ctrl_layout = QHBoxLayout()
     
@@ -6402,7 +6445,7 @@ def setup_view_and_fit_tab(self):
     fit_ctrl_layout.addWidget(self.combo_fit_deg)
     
     fit_ctrl_layout.addStretch()
-    right_layout.addLayout(fit_ctrl_layout)
+    self.fit_2d_layout.addLayout(fit_ctrl_layout)
     
     # Populate dropdown choices with blocked signals
     self.combo_fit_x.blockSignals(True)
@@ -6431,7 +6474,7 @@ def setup_view_and_fit_tab(self):
     self.fit_figure = Figure(facecolor="#1e1e24")
     self.fit_canvas = FigureCanvas(self.fit_figure)
     self.fit_canvas.setStyleSheet("background-color: #1e1e24;")
-    right_layout.addWidget(self.fit_canvas)
+    self.fit_2d_layout.addWidget(self.fit_canvas)
     
     if NavigationToolbar is not None:
         self.fit_toolbar = NavigationToolbar(self.fit_canvas, self.tab_view_and_fit)
@@ -6452,8 +6495,8 @@ def setup_view_and_fit_tab(self):
                 background-color: #3b82f6;
             }
         """)
-        right_layout.addWidget(self.fit_toolbar)
-        
+        self.fit_2d_layout.addWidget(self.fit_toolbar)
+
     # Calculators bottom layout
     calc_layout = QHBoxLayout()
     
@@ -6508,13 +6551,267 @@ def setup_view_and_fit_tab(self):
     inverse_form.addRow(self.lbl_fit_calc_x_res_label, self.lbl_fit_calc_x_res)
     
     calc_layout.addWidget(self.grp_inverse)
-    
-    right_layout.addLayout(calc_layout)
+
+    self.fit_2d_layout.addLayout(calc_layout)
+
+    if self.fit_3d_view_available:
+        setup_view_and_fit_3d_container(self, right_layout)
+
     self.splitter_fit.addWidget(right_widget)
     self.splitter_fit.setSizes([250, 550])
-    
+
     # Populate the list widget on load
     populate_view_and_fit_list(self)
+
+    # Hook into the "Figures" menu's trigger_mix_graph_update chain (fcn_init/create_menu.py)
+    # so background/font/legend/marker/color/line-width changes live-refresh whichever of the
+    # 2D or 3D fit views is currently visible, same pattern as fcn_RTFiles/plot_ebrt_photons.py.
+    _prev_update = getattr(self, "update_mix_graph_func", None)
+    def _chained_fit_view_update(_prev=_prev_update):
+        if _prev:
+            try:
+                _prev()
+            except Exception as e:
+                print(f"Error in chained Figures-menu update: {e}")
+        refresh_active_fit_view(self)
+    self.update_mix_graph_func = _chained_fit_view_update
+
+def setup_view_and_fit_3d_container(self, right_layout):
+    self.fit_3d_container = QWidget()
+    fit_3d_layout = QVBoxLayout(self.fit_3d_container)
+    fit_3d_layout.setContentsMargins(0, 0, 0, 0)
+    right_layout.addWidget(self.fit_3d_container)
+    self.fit_3d_container.setVisible(False)
+    self._fit3d_powerlaw_confirmed = {}
+
+    ctrl3d_layout = QHBoxLayout()
+    lbl_deg3d = QLabel("RED Fit Degree:")
+    lbl_deg3d.setStyleSheet("font-weight: bold; color: #e5e7eb; margin-right: 5px;")
+    ctrl3d_layout.addWidget(lbl_deg3d)
+
+    self.combo_fit3d_deg = FocusComboBox()
+    self.combo_fit3d_deg.setStyleSheet("background-color: #2b2b36; border: 1px solid #4b5563; border-radius: 4px; color: #ffffff; padding: 4px; min-width: 150px;")
+    self.combo_fit3d_deg.addItem("1st (Bilinear)", 1)
+    self.combo_fit3d_deg.addItem("2nd (Biquadratic)", 2)
+    self.combo_fit3d_deg.addItem("3rd (Bicubic)", 3)
+    self.combo_fit3d_deg.setCurrentIndex(0)
+    self.combo_fit3d_deg.currentTextChanged.connect(lambda: update_fit_3d_view(self))
+    ctrl3d_layout.addWidget(self.combo_fit3d_deg)
+
+    ctrl3d_layout.addSpacing(15)
+
+    self.chk_fit3d_surface = QCheckBox("Fitted surface")
+    self.chk_fit3d_surface.setChecked(True)
+    self.chk_fit3d_surface.setStyleSheet("color: #e5e7eb;")
+    self.chk_fit3d_surface.stateChanged.connect(lambda: update_fit_3d_view(self))
+    ctrl3d_layout.addWidget(self.chk_fit3d_surface)
+
+    self.chk_fit3d_points = QCheckBox("Measured points")
+    self.chk_fit3d_points.setChecked(True)
+    self.chk_fit3d_points.setStyleSheet("color: #e5e7eb;")
+    self.chk_fit3d_points.stateChanged.connect(lambda: update_fit_3d_view(self))
+    ctrl3d_layout.addWidget(self.chk_fit3d_points)
+
+    ctrl3d_layout.addStretch()
+    fit_3d_layout.addLayout(ctrl3d_layout)
+
+    body_layout = QHBoxLayout()
+    self.web_fit_3d = QWebEngineView()
+    self.web_fit_3d.setMinimumHeight(420)
+    body_layout.addWidget(self.web_fit_3d, 3)
+
+    sidebar = QWidget()
+    sidebar.setFixedWidth(230)
+    sidebar_layout = QVBoxLayout(sidebar)
+    sidebar_layout.setContentsMargins(8, 0, 0, 0)
+
+    def make_stat_label(title):
+        lbl_title = QLabel(title)
+        lbl_title.setStyleSheet("font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-top: 8px;")
+        lbl_val = QLabel("-")
+        lbl_val.setWordWrap(True)
+        lbl_val.setStyleSheet("font-family: Consolas, monospace; font-size: 11px; color: #e5e7eb; background-color: #1e1e24; border: 1px solid #3c4450; border-radius: 4px; padding: 6px;")
+        sidebar_layout.addWidget(lbl_title)
+        sidebar_layout.addWidget(lbl_val)
+        return lbl_val
+
+    self.lbl_fit3d_equation = make_stat_label("Fit equation")
+    self.lbl_fit3d_stats = make_stat_label("Fit quality")
+    self.lbl_fit3d_zeff_model = make_stat_label("Zeff model")
+    self.lbl_fit3d_status = make_stat_label("Status")
+    sidebar_layout.addStretch()
+
+    body_layout.addWidget(sidebar, 0)
+    fit_3d_layout.addLayout(body_layout)
+
+def set_fit3d_sidebar(self, equation="-", stats="-", zeff_model="-", status="-"):
+    if hasattr(self, "lbl_fit3d_equation"):
+        self.lbl_fit3d_equation.setText(equation)
+    if hasattr(self, "lbl_fit3d_stats"):
+        self.lbl_fit3d_stats.setText(stats)
+    if hasattr(self, "lbl_fit3d_zeff_model"):
+        self.lbl_fit3d_zeff_model.setText(zeff_model)
+    if hasattr(self, "lbl_fit3d_status"):
+        self.lbl_fit3d_status.setText(status)
+
+def refresh_active_fit_view(self):
+    view_mode = self.combo_fit_view_mode.currentData() if hasattr(self, "combo_fit_view_mode") else "2D"
+    if view_mode == "3D" and getattr(self, "fit_3d_view_available", False):
+        update_fit_3d_view(self)
+    else:
+        update_fit_graph_and_calculators(self)
+
+def on_fit_view_mode_changed(self):
+    if not hasattr(self, "fit_2d_container") or not hasattr(self, "fit_3d_container"):
+        return
+    is_3d = self.combo_fit_view_mode.currentData() == "3D"
+    self.fit_2d_container.setVisible(not is_3d)
+    self.fit_3d_container.setVisible(is_3d)
+    if is_3d:
+        update_fit_3d_view(self)
+
+def set_fit3d_html(self, html):
+    # QWebEngineView.setHtml() encodes its argument as a data: URL and is capped at ~2MB
+    # by Chromium's URL-length limit; the inline-plotly.js figure HTML routinely exceeds
+    # that (several MB), which fails silently and renders a blank/white page. Writing to a
+    # local file and loading it has no such limit.
+    tmp_dir = os.path.join(tempfile.gettempdir(), "AMIGOpy")
+    os.makedirs(tmp_dir, exist_ok=True)
+    tmp_path = os.path.join(tmp_dir, "fit3d_view.html")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    self.web_fit_3d.load(QUrl.fromLocalFile(tmp_path))
+
+def update_fit_3d_view(self):
+    if not getattr(self, "fit_3d_view_available", False) or not hasattr(self, "web_fit_3d"):
+        return
+
+    mix_red_items = []
+    for idx in range(self.list_fit_materials.count()):
+        item = self.list_fit_materials.item(idx)
+        if item.checkState() == Qt.Checked:
+            data = item.data(Qt.UserRole)
+            if data and data[0] == "mix_red":
+                mix_red_items.append(data)
+
+    if not mix_red_items:
+        # Mirror the 2D fit's fallback: if nothing is checked, use whichever item is
+        # currently selected (single-clicked) in the list, same as update_fit_graph_and_calculators.
+        curr = self.list_fit_materials.currentItem()
+        curr_data = curr.data(Qt.UserRole) if curr else None
+        if curr_data and curr_data[0] == "mix_red":
+            mix_red_items = [curr_data]
+
+    if not mix_red_items:
+        set_fit3d_html(self, insufficient_data_html(
+            "Select a mixing-ratio row to build the 3D surface: click or check one of the "
+            "indented rows under a Mix (e.g. “- Maastro Bone - 70% | PolyLite PLA White - "
+            "30%”) — not the plain “Material:” or “Mix:” rows. All ratio "
+            "combinations of that mix will be used automatically."))
+        set_fit3d_sidebar(self, status="No mixing-ratio row selected.")
+        return
+
+    mix_id = mix_red_items[0][1]
+    other_mix_ids = sorted(set(d[1] for d in mix_red_items[1:]) - {mix_id})
+
+    dataset = extract_ratio_infill_red_dataset(self, mix_id)
+    points = dataset["points"]
+
+    if not points:
+        set_fit3d_html(self, insufficient_data_html(
+            "The selected mix has no calibration rows (Infill % / RED) recorded yet."))
+        set_fit3d_sidebar(self, status="No calibration data for this mix.")
+        return
+
+    ratios = [p["ratio"] for p in points]
+    infills = [p["infill"] for p in points]
+    reds = [p["red"] for p in points]
+
+    if len(set(ratios)) < 2:
+        set_fit3d_html(self, insufficient_data_html(
+            "Only one mixing ratio has calibration data. Check at least one more ratio "
+            "combination of this mix (with its own calibration rows) to fit a "
+            "(ratio, infill) → RED surface."))
+        set_fit3d_sidebar(self, status="Need ≥ 2 distinct ratios with data.")
+        return
+    if len(set(infills)) < 2:
+        set_fit3d_html(self, insufficient_data_html(
+            "Only one infill density has calibration data across the selected ratios. "
+            "Add calibration rows at another infill density to fit a "
+            "(ratio, infill) → RED surface."))
+        set_fit3d_sidebar(self, status="Need ≥ 2 distinct infill values with data.")
+        return
+
+    degree = self.combo_fit3d_deg.currentData() if hasattr(self, "combo_fit3d_deg") else 1
+
+    try:
+        surface_fit = fit_poly_surface(ratios, infills, reds, degree)
+    except InsufficientDataError as e:
+        set_fit3d_html(self, insufficient_data_html(str(e)))
+        set_fit3d_sidebar(self, status=str(e))
+        return
+
+    zeff_points = [p for p in points if p["zeff"] is not None]
+    zeff_calib_fit = None
+    if zeff_points:
+        zeff_calib_fit = estimate_zeff_vs_ratio(
+            [p["ratio"] for p in zeff_points], [p["zeff"] for p in zeff_points])
+
+    zeff_lookup = None
+    if zeff_calib_fit is not None:
+        zeff_lookup = lambda r, _f=zeff_calib_fit: float(_f["predict"](r))
+        zeff_model_desc = (f"Calibration fit, degree {zeff_calib_fit['degree']} "
+                            f"(R² = {zeff_calib_fit['r2']:.3f})")
+    else:
+        m_value = self.mix_m_value_cache.get(mix_id, 3.4) if hasattr(self, "mix_m_value_cache") else 3.4
+        cache_key = (mix_id, tuple(sorted(set(ratios))))
+        use_powerlaw = self._fit3d_powerlaw_confirmed.get(cache_key)
+        if use_powerlaw is None:
+            reply = QMessageBox.question(
+                self, "No measured Zeff calibration data",
+                "No usable measured Zeff calibration data was found for the selected mixing "
+                "ratios, so a direct Zeff(ratio) fit can't be made.\n\n"
+                "Estimate Zeff instead using the Mayneord power-law mixing rule "
+                f"(m = {m_value:.2f}) applied to each component's reference Zeff from the "
+                "material database?\n\n"
+                "Choosing No will disable Zeff coloring for this plot (the surface will be "
+                "colored by predicted RED instead).",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes
+            )
+            use_powerlaw = (reply == QMessageBox.Yes)
+            self._fit3d_powerlaw_confirmed[cache_key] = use_powerlaw
+
+        if use_powerlaw:
+            powerlaw = estimate_zeff_powerlaw(self, mix_id, dataset["mat_names"])
+            zeff_lookup = lambda r, _pl=powerlaw, _pts=points: _pl["predict"](interpolate_percentages(_pts, r))
+            zeff_model_desc = f"Mayneord power-law mixing rule (m = {powerlaw['m_value']:.2f})"
+        else:
+            zeff_model_desc = "Zeff coloring disabled – surface colored by predicted RED"
+
+    status_note = "OK"
+    if other_mix_ids:
+        status_note = (f"Only the mix of the first checked ratio-combination was used; "
+                        f"{len(other_mix_ids)} checked combination(s) from other mixes were "
+                        "ignored (the 3D fit supports one mix at a time).")
+
+    html = build_plotly_figure(
+        dataset, surface_fit, zeff_lookup, zeff_model_desc,
+        show_surface=self.chk_fit3d_surface.isChecked(),
+        show_points=self.chk_fit3d_points.isChecked(),
+        style=resolve_figures_style(self),
+    )
+    set_fit3d_html(self, html)
+
+    set_fit3d_sidebar(
+        self,
+        equation=format_surface_equation(surface_fit),
+        stats=(f"R² = {surface_fit['r2']:.4f}\nRMSE = {surface_fit['rmse']:.4f}\n"
+               f"LOOCV mean = {surface_fit['loocv_mean']:.2f}%\n"
+               f"LOOCV max = {surface_fit['loocv_max']:.2f}%\n"
+               f"n = {surface_fit['n_points']} points"),
+        zeff_model=zeff_model_desc,
+        status=status_note,
+    )
 
 def populate_view_and_fit_list(self):
     if not hasattr(self, "list_fit_materials"):
@@ -6636,8 +6933,8 @@ def on_fit_material_changed(self):
         self.lbl_calc_x_prompt.setText(f"Enter X ({self.combo_fit_x.currentText()}):")
     if hasattr(self, "combo_fit_y") and hasattr(self, "lbl_calc_y_prompt"):
         self.lbl_calc_y_prompt.setText(f"Enter Y ({self.combo_fit_y.currentText()}):")
-        
-    update_fit_graph_and_calculators(self)
+
+    refresh_active_fit_view(self)
 
 def update_fit_graph_and_calculators(self):
     if not hasattr(self, "fit_canvas") or not hasattr(self, "list_fit_materials"):
