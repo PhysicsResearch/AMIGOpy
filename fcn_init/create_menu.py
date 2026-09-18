@@ -21,7 +21,10 @@ from fcn_load.load_npy import load_npy_files
 from fcn_load.load_tiff_similar import load_tiff_files, load_png_files, load_jpeg_files, load_bmp_files  
 from fcn_autocont.segmentator_calls import open_segmentator_tab
 from functools import partial
-from fcn_init.create_3D_database_tab import export_3dp_database_action, import_3dp_database_action, restore_3dp_database_action
+from fcn_init.create_3D_database_tab import (
+    export_3dp_database_action, import_3dp_database_action, restore_3dp_database_action,
+    export_package_action, import_package_action,
+)
 
 
 def initializeMenuBar(self):
@@ -78,6 +81,9 @@ def initializeMenuBar(self):
     import_3dp_action = QAction("3DP Database", self)
     import_3dp_action.triggered.connect(lambda: import_3dp_database_action(self))
     importMenu.addAction(import_3dp_action)
+    import_pkg_action = QAction("3DP Material/Mix Package...", self)
+    import_pkg_action.triggered.connect(lambda: import_package_action(self))
+    importMenu.addAction(import_pkg_action)
 
     ViewMenu      = self.menuBar().addMenu("View")
     WindowingMenu = ViewMenu .addMenu("Window")
@@ -238,6 +244,9 @@ def initializeMenuBar(self):
     export_3dp_action = QAction("3DP Database", self)
     export_3dp_action.triggered.connect(lambda: export_3dp_database_action(self))
     ExportMenu.addAction(export_3dp_action)
+    export_pkg_action = QAction("3DP Material/Mix Package...", self)
+    export_pkg_action.triggered.connect(lambda: export_package_action(self))
+    ExportMenu.addAction(export_pkg_action)
     
     # Figures
     self.selected_font_size = 14

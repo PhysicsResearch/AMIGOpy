@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox, QMessageBox, QAbstractItemView, QGridLayout, QFrame, QHeaderView,
     QStyledItemDelegate, QDateEdit, QTabWidget, QTextEdit, QMenu, QApplication,
     QSpinBox, QComboBox, QFileDialog, QTreeWidget, QTreeWidgetItem, QListWidget, QListWidgetItem, QGroupBox,
-    QCheckBox, QTextBrowser
+    QCheckBox, QTextBrowser, QRadioButton
 )
 from PySide6.QtCore import Qt, QDate, QObject, QEvent, QTimer, QUrl
 from PySide6.QtGui import QColor, QFont, QKeySequence
@@ -40,6 +40,10 @@ from fcn_3DPrinting.material_props import (
     get_mix_component_reference_values, get_mix_m_value, predict_mix_red, predict_mix_zeff,
     predict_mix_red_for, predict_mix_zeff_for, summarize_material, summarize_mix,
     render_material_overview_html, render_mix_overview_html,
+)
+from fcn_3DPrinting.matmix_package import (
+    PACKAGE_FILTER, PackageError, build_material_item, build_mix_item, build_package, write_package,
+    read_package, plan_import, apply_import, summarize_result, suggested_file_name,
 )
 
 try:
@@ -874,12 +878,24 @@ def setup_3d_database_tab(self):
     self.btn_3d_db_save.setStyleSheet("background-color: #16a34a; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_3d_db_save.clicked.connect(lambda: save_3d_database_action(self))
     
+    self.btn_3d_db_export_pkg = QPushButton("Export Material...")
+    self.btn_3d_db_export_pkg.setStyleSheet("background-color: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_3d_db_export_pkg.setToolTip("Save the selected material (reference values, calibration rows, notes) as a package file")
+    self.btn_3d_db_export_pkg.clicked.connect(lambda: export_material_package_action(self))
+
+    self.btn_3d_db_import_pkg = QPushButton("Import Package...")
+    self.btn_3d_db_import_pkg.setStyleSheet("background-color: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_3d_db_import_pkg.setToolTip("Import materials or mixes from a package file exported by AMIGOpy")
+    self.btn_3d_db_import_pkg.clicked.connect(lambda: import_package_action(self))
+
     btn_layout.addWidget(self.btn_3d_db_add)
     btn_layout.addWidget(self.btn_3d_db_remove)
     btn_layout.addWidget(self.btn_3d_db_save)
+    btn_layout.addWidget(self.btn_3d_db_export_pkg)
+    btn_layout.addWidget(self.btn_3d_db_import_pkg)
     btn_layout.addStretch()
     top_layout.addLayout(btn_layout)
-    
+
     # ------------------ BOTTOM ROW (Tab Widget Details & Calibration) ------------------
     self.tabWidget_3d_detail = QTabWidget()
     
@@ -1067,10 +1083,21 @@ def setup_mat_mix_tab(self):
     self.btn_mix_save.setStyleSheet("background-color: #16a34a; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_save.clicked.connect(lambda: save_mix_database_action(self))
     
+    self.btn_mix_export_pkg = QPushButton("Export Mix...")
+    self.btn_mix_export_pkg.setStyleSheet("background-color: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_export_pkg.setToolTip("Save the selected mix (components, calibration, RED ratio measurements, notes) as a package file")
+    self.btn_mix_export_pkg.clicked.connect(lambda: export_mix_package_action(self))
+
+    self.btn_mix_import_pkg = QPushButton("Import Package...")
+    self.btn_mix_import_pkg.setStyleSheet("background-color: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_import_pkg.clicked.connect(lambda: import_package_action(self))
+
     btn_layout.addWidget(self.btn_mix_add)
     btn_layout.addWidget(self.btn_mix_remove)
     btn_layout.addWidget(self.btn_mix_create)
     btn_layout.addWidget(self.btn_mix_save)
+    btn_layout.addWidget(self.btn_mix_export_pkg)
+    btn_layout.addWidget(self.btn_mix_import_pkg)
     btn_layout.addStretch()
     top_layout.addLayout(btn_layout)
     
@@ -5510,6 +5537,228 @@ def import_3dp_database_action(self):
     if snapshot:
         msg += f"\n\nThe previous database was saved as a restore point:\n{os.path.basename(snapshot)}"
     QMessageBox.information(self, "Success", msg)
+
+# ---------------------------------------------------------------- Material / mix package export & import
+
+_PACKAGE_DIALOG_STYLE = """
+    QDialog { background-color: #1e1e24; color: #ffffff; }
+    QLabel { color: #e5e7eb; }
+    QRadioButton { color: #e5e7eb; }
+    QTableWidget { background-color: #1e1e24; color: #ffffff; border: 1px solid #3c4450; }
+    QHeaderView::section { background-color: #2b2b36; color: #e5e7eb; padding: 4px; }
+    QPushButton { font-weight: bold; padding: 6px 12px; border-radius: 4px; }
+"""
+
+def export_material_package_action(self):
+    if not ensure_3dp_tab_loaded(self):
+        QMessageBox.warning(self, "Warning", "The 3D Printing tab could not be initialised.")
+        return
+    name = getattr(self, "current_viewed_filament", None)
+    if not name:
+        QMessageBox.warning(self, "Warning", "Please select a material first.")
+        return
+    save_current_active_material_cache(self)
+    try:
+        item = build_material_item(self, name)
+    except PackageError as e:
+        QMessageBox.critical(self, "Export failed", str(e))
+        return
+    path, _ = QFileDialog.getSaveFileName(self, "Export Material Package", suggested_file_name(name), PACKAGE_FILTER)
+    if not path:
+        return
+    try:
+        write_package(path, build_package([item]))
+    except Exception as e:
+        logger.exception("Material package export failed")
+        QMessageBox.critical(self, "Export failed", f"The package could not be written:\n{e}")
+        return
+    QMessageBox.information(self, "Exported", f"Material '{name}' was exported to:\n{path}")
+
+def export_mix_package_action(self):
+    if not ensure_3dp_tab_loaded(self):
+        QMessageBox.warning(self, "Warning", "The 3D Printing tab could not be initialised.")
+        return
+    mix_id = getattr(self, "current_viewed_mix_id", None)
+    if mix_id is None:
+        QMessageBox.warning(self, "Warning", "Please select a mix first.")
+        return
+    save_current_active_mix_cache(self)
+    reply = QMessageBox.question(
+        self, "Export Mix Package",
+        "Include the calibration measurements and notes of the component materials in the package?\n\n"
+        "(Their reference RED/Zeff values are always included so the mix can be re-created elsewhere.)",
+        QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, QMessageBox.No
+    )
+    if reply == QMessageBox.Cancel:
+        return
+    try:
+        item = build_mix_item(self, mix_id, include_component_calibration=(reply == QMessageBox.Yes))
+    except PackageError as e:
+        QMessageBox.critical(self, "Export failed", str(e))
+        return
+    path, _ = QFileDialog.getSaveFileName(self, "Export Mix Package", suggested_file_name(item["mix"]["name"]), PACKAGE_FILTER)
+    if not path:
+        return
+    try:
+        write_package(path, build_package([item]))
+    except Exception as e:
+        logger.exception("Mix package export failed")
+        QMessageBox.critical(self, "Export failed", f"The package could not be written:\n{e}")
+        return
+    QMessageBox.information(self, "Exported", f"Mix '{item['mix']['name']}' was exported to:\n{path}")
+
+def export_package_action(self):
+    """Menu entry: choose whether to export the selected material or the selected mix."""
+    if not ensure_3dp_tab_loaded(self):
+        QMessageBox.warning(self, "Warning", "The 3D Printing tab could not be initialised.")
+        return
+    box = QMessageBox(self)
+    box.setWindowTitle("Export 3DP Package")
+    box.setText("What do you want to export?")
+    btn_material = box.addButton("Selected material", QMessageBox.AcceptRole)
+    btn_mix = box.addButton("Selected mix", QMessageBox.AcceptRole)
+    box.addButton(QMessageBox.Cancel)
+    box.exec()
+    if box.clickedButton() is btn_material:
+        export_material_package_action(self)
+    elif box.clickedButton() is btn_mix:
+        export_mix_package_action(self)
+
+def _choose_import_plan_dialog(self, pkg):
+    dlg = QDialog(self)
+    dlg.setWindowTitle("Import 3DP Package")
+    dlg.setMinimumSize(620, 420)
+    dlg.setStyleSheet(_PACKAGE_DIALOG_STYLE)
+    layout = QVBoxLayout(dlg)
+
+    generator = pkg.get("generator", {}) or {}
+    lbl = QLabel(f"The package contains {len(pkg['items'])} item(s)"
+                 + (f" (exported {generator.get('exported_at')})" if generator.get("exported_at") else "") + ".\n"
+                 "When a material or mix with the same name already exists here:")
+    lbl.setWordWrap(True)
+    layout.addWidget(lbl)
+
+    radio_row = QHBoxLayout()
+    radios = {}
+    for mode, label in (("rename", "Import as a copy (rename)"), ("skip", "Skip it"), ("overwrite", "Overwrite it")):
+        rb = QRadioButton(label)
+        radios[mode] = rb
+        radio_row.addWidget(rb)
+    radios["rename"].setChecked(True)
+    radio_row.addStretch()
+    layout.addLayout(radio_row)
+
+    table = QTableWidget(0, 3)
+    table.setHorizontalHeaderLabels(["Item", "Kind", "Planned action"])
+    table.horizontalHeader().setStretchLastSection(True)
+    table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+    table.setSelectionMode(QAbstractItemView.NoSelection)
+    layout.addWidget(table)
+
+    lbl_warn = QLabel()
+    lbl_warn.setWordWrap(True)
+    lbl_warn.setStyleSheet("color: #f59e0b;")
+    layout.addWidget(lbl_warn)
+
+    holder = {"plan": None}
+
+    def rebuild():
+        mode = next(m for m, rb in radios.items() if rb.isChecked())
+        plan = plan_import(self, pkg, mode)
+        holder["plan"] = plan
+        table.setRowCount(0)
+        for action in plan.actions:
+            r = table.rowCount()
+            table.insertRow(r)
+            label = action.source_name + (" (from mix components)" if action.synthesized else "")
+            text = {"add": "Add", "skip": "Skip (already exists)", "overwrite": "Overwrite existing",
+                    "rename": f"Add as '{action.new_name}'"}[action.action]
+            if action.kind == "mix" and action.action == "add" and action.new_name:
+                text = f"Add as '{action.new_name}' (a mix with this name and components exists)"
+            for c, value in enumerate((label, action.kind, text)):
+                table.setItem(r, c, QTableWidgetItem(value))
+        lbl_warn.setText("\n".join(plan.warnings))
+
+    for rb in radios.values():
+        rb.toggled.connect(lambda checked: rebuild() if checked else None)
+    rebuild()
+
+    buttons = QHBoxLayout()
+    btn_ok = QPushButton("Import")
+    btn_ok.setStyleSheet("background-color: #0284c7; color: white;")
+    btn_cancel = QPushButton("Cancel")
+    btn_cancel.setStyleSheet("background-color: #4b5563; color: white;")
+    buttons.addStretch()
+    buttons.addWidget(btn_ok)
+    buttons.addWidget(btn_cancel)
+    layout.addLayout(buttons)
+    btn_ok.clicked.connect(dlg.accept)
+    btn_cancel.clicked.connect(dlg.reject)
+
+    if dlg.exec() != QDialog.Accepted:
+        return None
+    return holder["plan"]
+
+def _show_imported_item(self, result):
+    """Select the last imported mix or material so the user lands on it."""
+    if result.added_mix_ids:
+        mix_id = result.added_mix_ids[-1]
+        start_row, _ = find_mix_group_row_and_size(self, mix_id)
+        if start_row != -1:
+            self.current_viewed_mix_id = None
+            self.table_mat_mix.selectRow(start_row)
+            display_selected_mix_details(self)
+            if hasattr(self, "D3") and hasattr(self, "tab_27"):
+                self.D3.setCurrentWidget(self.tab_27)
+        return
+    names = result.added_materials + [r.split(" -> ")[-1] for r in result.renamed] + \
+        [n for n in result.overwritten if not n.startswith("mix ")]
+    if not names:
+        return
+    target = names[-1]
+    for r in range(self.table_3d_db.rowCount()):
+        item = self.table_3d_db.item(r, 0)
+        if item is not None and item.text().strip() == target:
+            self.current_viewed_filament = None
+            self.table_3d_db.selectRow(r)
+            display_selected_filament_details(self)
+            if hasattr(self, "D3") and hasattr(self, "tab_18"):
+                self.D3.setCurrentWidget(self.tab_18)
+            break
+
+def import_package_action(self):
+    path, _ = QFileDialog.getOpenFileName(self, "Import 3DP Material/Mix Package", "", PACKAGE_FILTER)
+    if not path:
+        return
+    try:
+        pkg = read_package(path)
+    except PackageError as e:
+        QMessageBox.critical(self, "Invalid package", str(e))
+        return
+    if not ensure_3dp_tab_loaded(self):
+        QMessageBox.warning(self, "Warning", "The 3D Printing tab could not be initialised.")
+        return
+    plan = _choose_import_plan_dialog(self, pkg)
+    if plan is None:
+        return
+    try:
+        snapshot = snapshot_database("import_package")
+        result = apply_import(self, pkg, plan)
+    except Exception as e:
+        logger.exception("Package import failed")
+        QMessageBox.critical(
+            self, "Import failed",
+            f"The package could not be imported:\n{e}\n\n"
+            "Use Tools > 3DP > Restore Database to return to the snapshot taken before the import."
+        )
+        return
+    _show_imported_item(self, result)
+    refresh_material_overview(self)
+    refresh_mix_overview(self)
+    msg = summarize_result(result)
+    if snapshot:
+        msg += f"\n\nA restore point was saved first: {os.path.basename(snapshot)}"
+    QMessageBox.information(self, "Package imported", msg)
 
 def open_create_mix_dialog(self):
     from itertools import combinations
