@@ -447,11 +447,20 @@ def initialize_software_buttons(self):
     safe_style(self, 'btn_clear_all_roi_data', "background-color: #ef4444; color: white; font-weight: bold;")
     safe_btn(self, 'btn_clear_all_roi_data', 'clicked', lambda: roi_c_clear_all_data(self))
     self.gridLayout_34.addWidget(self.btn_clear_all_roi_data, 1, 2, 1, 1)
-    
-    # Span data table across all 3 columns to use full width to the right
+
+    # Push the ROI statistics straight into the 3D-printing calibration database
+    self.btn_add_roi_to_3dp = QPushButton("Add to 3DP Database...", self.tab_35)
+    safe_style(self, 'btn_add_roi_to_3dp', "background-color: #16a34a; color: white; font-weight: bold;")
+    def _open_add_roi_to_3dp():
+        from fcn_3DPrinting.add_to_cal_mat_db import open_add_roi_to_3dp_dialog
+        open_add_roi_to_3dp_dialog(self)
+    safe_btn(self, 'btn_add_roi_to_3dp', 'clicked', _open_add_roi_to_3dp)
+    self.gridLayout_34.addWidget(self.btn_add_roi_to_3dp, 1, 3, 1, 1)
+
+    # Span data table across all 4 columns to use full width to the right
     if hasattr(self, 'table_roi_c_values'):
         self.gridLayout_34.removeWidget(self.table_roi_c_values)
-        self.gridLayout_34.addWidget(self.table_roi_c_values, 0, 0, 1, 3)
+        self.gridLayout_34.addWidget(self.table_roi_c_values, 0, 0, 1, 4)
     
     # Create programmatically the ROI configuration inputs (pixel size, slices)
     self.roi_config_widget = QtWidgets.QWidget(self.tab_34)
