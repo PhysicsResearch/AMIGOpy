@@ -41,7 +41,7 @@ from fcn_init.ModulesTab_change       import set_fcn_tabModules_changed
 from fcn_init.init_variables          import initialize_software_variables
 from fcn_init.init_tables             import initialize_software_tables
 from fcn_init.init_buttons            import initialize_software_buttons
-from fcn_init.create_3D_database_tab  import setup_3d_database_tab, setup_mat_mix_tab, setup_view_and_fit_tab
+from fcn_init.create_3D_database_tab  import flush_3dp_databases
 from fcn_init.init_load_files         import load_Source_cal_csv_file
 from fcn_init.init_list_menus         import populate_list_menus
 from fcn_init.init_drop_options       import initialize_drop_fcn
@@ -117,11 +117,7 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
         initialize_software_tables(self)
         # initialize buttons
         initialize_software_buttons(self)
-        # initialize 3D Printing Database tab (if tab_3DP has been created)
-        if hasattr(self, 'tab_18') and self.tab_18 is not None:
-            setup_3d_database_tab(self)
-            setup_mat_mix_tab(self)
-            setup_view_and_fit_tab(self)
+        # (the 3D Printing tab is created lazily by fcn_create_gui/setup_ui.py on first click)
         # initialize drop functions
         # Enable drag and drop
         initialize_drop_fcn(self)
@@ -475,6 +471,15 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
                 from fcn_display.display_images import update_layer_view
                 update_layer_view(self)
 
+    def closeEvent(self, event):
+        # The 3DP autosave is debounced (300 ms); make sure the last edit reaches disk.
+        try:
+            flush_3dp_databases(self)
+        except Exception:
+            import logging
+            logging.getLogger("amigopy").exception("Final 3DP database flush on close failed")
+        super().closeEvent(event)
+
     def keyPressEvent(self, event):
         if event.modifiers() & Qt.ControlModifier:
             key_map = {
@@ -723,74 +728,28 @@ if __name__ == "__main__":
     import qdarkstyle
     import resources_rc 
 
-    # --- Setup log directory and file in AppData ---
+    # --- Logging + crash handling (rotating log, non-fatal error dialogs; see fcn_init/app_stability.py) ---
+    import logging as _logging
+    from fcn_init.app_stability import (
+        setup_logging, StreamToLogger, install_qt_message_handler, install_exception_hooks,
+    )
     appdata_dir = os.path.join(os.getenv('APPDATA', os.path.expanduser('~')), 'AMIGOpy')
     try:
-        os.makedirs(appdata_dir, exist_ok=True)
-        log_file_path = os.path.join(appdata_dir, 'amigopy.log')
-        log_file = open(log_file_path, 'w', encoding='utf-8')
-        log_file.write(f"=== AMIGOpy Log Started: {datetime.datetime.now()} ===\n")
-        log_file.flush()
+        app_logger, log_file_path = setup_logging(appdata_dir)
     except Exception as e:
-        log_file = None
+        app_logger = _logging.getLogger("amigopy")
+        log_file_path = os.path.join(appdata_dir, 'amigopy.log')
         print("Failed to initialize logging:", e)
+    sys.stdout = StreamToLogger(_logging.getLogger("amigopy.stdout"), _logging.INFO, sys.__stdout__)
+    sys.stderr = StreamToLogger(_logging.getLogger("amigopy.stderr"), _logging.WARNING, sys.__stderr__)
+    install_qt_message_handler(app_logger)
 
-    # Redirection class for standard outputs
-    class LoggerRedirector:
-        def __init__(self, original_stream, log_file):
-            self.original_stream = original_stream
-            self.log_file = log_file
-
-        def write(self, message):
-            if self.original_stream:
-                try:
-                    self.original_stream.write(message)
-                except:
-                    pass
-            if self.log_file:
-                try:
-                    self.log_file.write(message)
-                    self.log_file.flush()
-                except:
-                    pass
-
-        def flush(self):
-            if self.original_stream:
-                try:
-                    self.original_stream.flush()
-                except:
-                    pass
-            if self.log_file:
-                try:
-                    self.log_file.flush()
-                except:
-                    pass
-
-    # Redirect sys.stdout and sys.stderr
-    if log_file:
-        sys.stdout = LoggerRedirector(sys.stdout, log_file)
-        sys.stderr = LoggerRedirector(sys.stderr, log_file)
-
-    # Custom exception hook to display a critical QMessageBox on crash
-    def exception_hook(exctype, value, tb):
-        tb_str = "".join(traceback.format_exception(exctype, value, tb))
-        sys.stderr.write(f"\nFATAL EXCEPTION CRASH:\n{tb_str}\n")
-        
-        if QApplication.instance():
-            QMessageBox.critical(
-                None,
-                "AMIGOpy Crash",
-                f"AMIGOpy has encountered a fatal error and has crashed.\n\n"
-                f"Error Details:\n{value}\n\n"
-                f"A detailed log containing the crash traceback has been saved to:\n"
-                f"{log_file_path}\n\n"
-                f"Please retrieve this log file to inspect or report the issue.",
-                QMessageBox.StandardButton.Ok
-            )
-        sys.__excepthook__(exctype, value, tb)
-        sys.exit(1)
-
-    sys.excepthook = exception_hook
+    _ui_state = {"ready": False, "window": None}
+    install_exception_hooks(
+        app_logger, log_file_path,
+        is_ui_ready=lambda: _ui_state["ready"],
+        get_parent=lambda: _ui_state["window"],
+    )
 
     # --- Keep your GL defaults (unchanged) ---
     fmt = QSurfaceFormat()
@@ -856,6 +815,8 @@ if __name__ == "__main__":
     paths = sys.argv[1:] if len(sys.argv) > 1 else []
     folder_path = paths if len(paths) > 1 else (paths[0] if len(paths) == 1 else None)
     window = MyApp(folder_path)
+    _ui_state["window"] = window
+    app.aboutToQuit.connect(lambda: flush_3dp_databases(window))
 
     # Optional: apply theme after splash is visible
     custom_qss = """
@@ -928,6 +889,7 @@ if __name__ == "__main__":
             
     window.show()
     splash.finish(window)
+    _ui_state["ready"] = True  # from here on, unhandled exceptions are reported instead of terminating the app
 
     # Use the same accumulation timer for startup load so that concurrent launches group together
     if folder_path is not None:

@@ -84,9 +84,21 @@ def _on_tab_changed(w, index):
     try:
         if attr_name == "tab_3DP":
             from fcn_init.create_3D_database_tab import setup_3d_database_tab, setup_mat_mix_tab, setup_view_and_fit_tab
-            setup_3d_database_tab(w)
-            setup_mat_mix_tab(w)
-            setup_view_and_fit_tab(w)
+            try:
+                setup_3d_database_tab(w)
+                setup_mat_mix_tab(w)
+                setup_view_and_fit_tab(w)
+            except Exception:
+                # Leave w._is_loading as it is: if the tables never finished loading, autosave must
+                # stay disabled so a half-empty table cannot overwrite the database files.
+                import logging
+                logging.getLogger("amigopy").exception("3D Printing tab failed to initialise")
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.warning(
+                    w, "3D Printing tab",
+                    "The 3D Printing tab could not be fully initialised; see the log for details.\n"
+                    "Automatic saving of the 3DP database is disabled until AMIGOpy is restarted.",
+                )
 
         # Apply translations for newly created widgets
         retranslate_ui(w)

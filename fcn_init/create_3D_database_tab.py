@@ -26,6 +26,16 @@ try:
 except ImportError:
     QWebEngineView = None
 
+import logging
+import re
+from contextlib import contextmanager
+from fcn_3DPrinting.db_paths import DB_FILES, get_3dp_db_dir, get_3dp_db_file, get_backup_dir, list_db_files
+from fcn_3DPrinting.safe_io import (
+    atomic_write_csv, atomic_write_json, rotate_backups, safe_extract_zip, snapshot_database,
+)
+
+logger = logging.getLogger("amigopy")
+
 try:
     from fcn_3DPrinting.matmix_3d_fit import (
         extract_ratio_infill_red_dataset, fit_poly_surface, format_surface_equation,
@@ -439,34 +449,33 @@ class MixGroupDelegate(QStyledItemDelegate):
         painter.restore()
 
 def get_db_path():
-    appdata_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
-    os.makedirs(appdata_dir, exist_ok=True)
-    return os.path.join(appdata_dir, 'filaments_3d_db.csv')
+    return get_3dp_db_file("materials")
 
 def get_cal_db_path():
-    appdata_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
-    os.makedirs(appdata_dir, exist_ok=True)
-    return os.path.join(appdata_dir, 'filaments_calibration_db.csv')
+    return get_3dp_db_file("material_calibration")
 
 def get_notes_db_path():
-    appdata_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
-    os.makedirs(appdata_dir, exist_ok=True)
-    return os.path.join(appdata_dir, 'filaments_notes_db.json')
+    return get_3dp_db_file("material_notes")
 
 def get_mix_db_path():
-    appdata_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
-    os.makedirs(appdata_dir, exist_ok=True)
-    return os.path.join(appdata_dir, 'filaments_mix_db.csv')
+    return get_3dp_db_file("mixes")
 
 def get_mix_cal_db_path():
-    appdata_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
-    os.makedirs(appdata_dir, exist_ok=True)
-    return os.path.join(appdata_dir, 'filaments_mix_calibration_db.csv')
+    return get_3dp_db_file("mix_calibration")
 
 def get_mix_notes_db_path():
-    appdata_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
-    os.makedirs(appdata_dir, exist_ok=True)
-    return os.path.join(appdata_dir, 'filaments_mix_notes_db.json')
+    return get_3dp_db_file("mix_notes")
+
+@contextmanager
+def signals_blocked(*widgets):
+    # blockSignals(True) without a finally used to leave tables mute after any exception
+    for w in widgets:
+        w.blockSignals(True)
+    try:
+        yield
+    finally:
+        for w in widgets:
+            w.blockSignals(False)
 
 def safe_float(val_str, default=0.0):
     if val_str is None:
@@ -827,47 +836,45 @@ def sync_mix_tables(self, source, changed_item):
         return
     
     if source == self.table_mix_calibration_info:
-        self.table_mix_z_red.blockSignals(True)
-        if col < n_mats:
-            set_target_cell(self.table_mix_z_red, row, col, val, val_str)
-        else:
-            std_col = col - n_mats
-            if std_col == 6:  # RED in Info
-                target_col = n_mats + 4  # RED in Z & RED
-                set_target_cell(self.table_mix_z_red, row, target_col, val, val_str)
-            elif std_col == 7:  # RED_STD in Info
-                target_col = n_mats + 5  # STD (RED STD) in Z & RED
-                set_target_cell(self.table_mix_z_red, row, target_col, val, val_str)
-            elif std_col == 8:  # Zeff in Info
-                target_col = n_mats  # Zeff in Z & RED
-                set_target_cell(self.table_mix_z_red, row, target_col, val, val_str)
-            elif std_col == 9:  # Zeff STD in Info
-                target_col = n_mats + 1  # STD (Zeff STD) in Z & RED
-                set_target_cell(self.table_mix_z_red, row, target_col, val, val_str)
-        update_row_predictions(self, row, n_mats)
-        self.table_mix_z_red.blockSignals(False)
+        with signals_blocked(self.table_mix_z_red):
+            if col < n_mats:
+                set_target_cell(self.table_mix_z_red, row, col, val, val_str)
+            else:
+                std_col = col - n_mats
+                if std_col == 6:  # RED in Info
+                    target_col = n_mats + 4  # RED in Z & RED
+                    set_target_cell(self.table_mix_z_red, row, target_col, val, val_str)
+                elif std_col == 7:  # RED_STD in Info
+                    target_col = n_mats + 5  # STD (RED STD) in Z & RED
+                    set_target_cell(self.table_mix_z_red, row, target_col, val, val_str)
+                elif std_col == 8:  # Zeff in Info
+                    target_col = n_mats  # Zeff in Z & RED
+                    set_target_cell(self.table_mix_z_red, row, target_col, val, val_str)
+                elif std_col == 9:  # Zeff STD in Info
+                    target_col = n_mats + 1  # STD (Zeff STD) in Z & RED
+                    set_target_cell(self.table_mix_z_red, row, target_col, val, val_str)
+            update_row_predictions(self, row, n_mats)
         update_mix_graph(self)
-        
+
     elif source == self.table_mix_z_red:
-        self.table_mix_calibration_info.blockSignals(True)
-        if col < n_mats:
-            set_target_cell(self.table_mix_calibration_info, row, col, val, val_str)
-        else:
-            std_col = col - n_mats
-            if std_col == 0:  # Zeff in Z & RED
-                target_col = n_mats + 8  # Zeff in Info
-                set_target_cell(self.table_mix_calibration_info, row, target_col, val, val_str)
-            elif std_col == 1:  # STD (Zeff STD) in Z & RED
-                target_col = n_mats + 9  # Zeff STD in Info
-                set_target_cell(self.table_mix_calibration_info, row, target_col, val, val_str)
-            elif std_col == 4:  # RED in Z & RED
-                target_col = n_mats + 6  # RED in Info
-                set_target_cell(self.table_mix_calibration_info, row, target_col, val, val_str)
-            elif std_col == 5:  # STD (RED STD) in Z & RED
-                target_col = n_mats + 7  # RED_STD in Info
-                set_target_cell(self.table_mix_calibration_info, row, target_col, val, val_str)
-        update_row_predictions(self, row, n_mats)
-        self.table_mix_calibration_info.blockSignals(False)
+        with signals_blocked(self.table_mix_calibration_info):
+            if col < n_mats:
+                set_target_cell(self.table_mix_calibration_info, row, col, val, val_str)
+            else:
+                std_col = col - n_mats
+                if std_col == 0:  # Zeff in Z & RED
+                    target_col = n_mats + 8  # Zeff in Info
+                    set_target_cell(self.table_mix_calibration_info, row, target_col, val, val_str)
+                elif std_col == 1:  # STD (Zeff STD) in Z & RED
+                    target_col = n_mats + 9  # Zeff STD in Info
+                    set_target_cell(self.table_mix_calibration_info, row, target_col, val, val_str)
+                elif std_col == 4:  # RED in Z & RED
+                    target_col = n_mats + 6  # RED in Info
+                    set_target_cell(self.table_mix_calibration_info, row, target_col, val, val_str)
+                elif std_col == 5:  # STD (RED STD) in Z & RED
+                    target_col = n_mats + 7  # RED_STD in Info
+                    set_target_cell(self.table_mix_calibration_info, row, target_col, val, val_str)
+            update_row_predictions(self, row, n_mats)
         update_mix_graph(self)
     auto_save_all_databases(self)
 
@@ -1368,34 +1375,33 @@ def setup_mat_mix_tab(self):
                     comp_reds.append(ref_red)
                     comp_zeffs.append(ref_zeff)
 
-        self.table_mix_z_red.blockSignals(True)
         n_mats = self.table_mix_z_red.columnCount() - 8
-        for r in range(self.table_mix_calibration_info.rowCount()):
-            if r >= self.table_mix_z_red.rowCount():
-                self.table_mix_z_red.insertRow(r)
-            for c in range(n_mats):
-                val = safe_get_cell_value(self.table_mix_calibration_info, r, c, Qt.EditRole)
-                val_str = safe_get_cell_text(self.table_mix_calibration_info, r, c)
-                set_target_cell(self.table_mix_z_red, r, c, val, val_str)
-                
-            z_val = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 8, Qt.EditRole)
-            z_str = safe_get_cell_text(self.table_mix_calibration_info, r, n_mats + 8)
-            set_target_cell(self.table_mix_z_red, r, n_mats, z_val, z_str)
-            
-            zstd_val = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 9, Qt.EditRole)
-            zstd_str = safe_get_cell_text(self.table_mix_calibration_info, r, n_mats + 9)
-            set_target_cell(self.table_mix_z_red, r, n_mats + 1, zstd_val, zstd_str)
-            
-            r_val = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 6, Qt.EditRole)
-            r_str = safe_get_cell_text(self.table_mix_calibration_info, r, n_mats + 6)
-            set_target_cell(self.table_mix_z_red, r, n_mats + 4, r_val, r_str)
-            
-            rstd_val = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 7, Qt.EditRole)
-            rstd_str = safe_get_cell_text(self.table_mix_calibration_info, r, n_mats + 7)
-            set_target_cell(self.table_mix_z_red, r, n_mats + 5, rstd_val, rstd_str)
-            
-            update_row_predictions(self, r, n_mats, comp_reds, comp_zeffs)
-        self.table_mix_z_red.blockSignals(False)
+        with signals_blocked(self.table_mix_z_red):
+            for r in range(self.table_mix_calibration_info.rowCount()):
+                if r >= self.table_mix_z_red.rowCount():
+                    self.table_mix_z_red.insertRow(r)
+                for c in range(n_mats):
+                    val = safe_get_cell_value(self.table_mix_calibration_info, r, c, Qt.EditRole)
+                    val_str = safe_get_cell_text(self.table_mix_calibration_info, r, c)
+                    set_target_cell(self.table_mix_z_red, r, c, val, val_str)
+
+                z_val = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 8, Qt.EditRole)
+                z_str = safe_get_cell_text(self.table_mix_calibration_info, r, n_mats + 8)
+                set_target_cell(self.table_mix_z_red, r, n_mats, z_val, z_str)
+
+                zstd_val = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 9, Qt.EditRole)
+                zstd_str = safe_get_cell_text(self.table_mix_calibration_info, r, n_mats + 9)
+                set_target_cell(self.table_mix_z_red, r, n_mats + 1, zstd_val, zstd_str)
+
+                r_val = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 6, Qt.EditRole)
+                r_str = safe_get_cell_text(self.table_mix_calibration_info, r, n_mats + 6)
+                set_target_cell(self.table_mix_z_red, r, n_mats + 4, r_val, r_str)
+
+                rstd_val = safe_get_cell_value(self.table_mix_calibration_info, r, n_mats + 7, Qt.EditRole)
+                rstd_str = safe_get_cell_text(self.table_mix_calibration_info, r, n_mats + 7)
+                set_target_cell(self.table_mix_z_red, r, n_mats + 5, rstd_val, rstd_str)
+
+                update_row_predictions(self, r, n_mats, comp_reds, comp_zeffs)
         update_mix_graph(self)
         auto_save_all_databases(self)
     self.table_mix_calibration_info.post_paste_handler = sync_after_paste_calibration
@@ -1599,30 +1605,29 @@ def setup_mat_mix_tab(self):
                 ratios = combination["percentage"]
                 pred_zeff = calculate_mix_zeff_predicted_val(self, ratios)
                 
-                self.table_mix_red_cal.blockSignals(True)
-                for r in range(self.table_mix_red_cal.rowCount()):
-                    infill_val = safe_float(safe_get_cell_text(self.table_mix_red_cal, r, 0))
-                    row_pred_red = calculate_mix_red_predicted_val(self, ratios, infill_val)
-                    
-                    # Pred. RED (col 8)
-                    pred_item = self.table_mix_red_cal.item(r, 8)
-                    if not pred_item:
-                        pred_item = QTableWidgetItem()
-                        pred_item.setFlags(pred_item.flags() & ~Qt.ItemIsEditable)
-                        self.table_mix_red_cal.setItem(r, 8, pred_item)
-                    pred_item.setData(Qt.EditRole, row_pred_red)
-                    pred_item.setText(f"{row_pred_red:.4f}")
-                    
-                    # Pred. Zeff (col 11)
-                    pred_z_item = self.table_mix_red_cal.item(r, 11)
-                    if not pred_z_item:
-                        pred_z_item = QTableWidgetItem()
-                        pred_z_item.setFlags(pred_z_item.flags() & ~Qt.ItemIsEditable)
-                        self.table_mix_red_cal.setItem(r, 11, pred_z_item)
-                    pred_z_item.setData(Qt.EditRole, pred_zeff)
-                    pred_z_item.setText(f"{pred_zeff:.4f}")
-                self.table_mix_red_cal.blockSignals(False)
-                
+                with signals_blocked(self.table_mix_red_cal):
+                    for r in range(self.table_mix_red_cal.rowCount()):
+                        infill_val = safe_float(safe_get_cell_text(self.table_mix_red_cal, r, 0))
+                        row_pred_red = calculate_mix_red_predicted_val(self, ratios, infill_val)
+
+                        # Pred. RED (col 8)
+                        pred_item = self.table_mix_red_cal.item(r, 8)
+                        if not pred_item:
+                            pred_item = QTableWidgetItem()
+                            pred_item.setFlags(pred_item.flags() & ~Qt.ItemIsEditable)
+                            self.table_mix_red_cal.setItem(r, 8, pred_item)
+                        pred_item.setData(Qt.EditRole, row_pred_red)
+                        pred_item.setText(f"{row_pred_red:.4f}")
+
+                        # Pred. Zeff (col 11)
+                        pred_z_item = self.table_mix_red_cal.item(r, 11)
+                        if not pred_z_item:
+                            pred_z_item = QTableWidgetItem()
+                            pred_z_item.setFlags(pred_z_item.flags() & ~Qt.ItemIsEditable)
+                            self.table_mix_red_cal.setItem(r, 11, pred_z_item)
+                        pred_z_item.setData(Qt.EditRole, pred_zeff)
+                        pred_z_item.setText(f"{pred_zeff:.4f}")
+
                 save_mix_red_table_to_cache(self, mix_id, ratio_idx)
                 auto_save_all_databases(self)
     self.table_mix_red_cal.post_paste_handler = sync_mix_red_after_paste
@@ -1709,8 +1714,8 @@ def setup_mat_mix_tab(self):
         self.table_mat_mix.selectRow(0)
         QTimer.singleShot(0, lambda: display_selected_mix_details(self))
     
-    # Create a daily backup asynchronously on first access each day
-    threading.Thread(target=create_daily_backup, args=(self,), daemon=True).start()
+    # Daily backup on the GUI thread (files are KB-sized); a worker thread used to race the autosave writers
+    QTimer.singleShot(1500, lambda: create_daily_backup(self))
 
 def refresh_mix_graphs_tree(self):
     if not hasattr(self, "tree_mix_graphs_datasets"):
@@ -1782,8 +1787,7 @@ def refresh_mix_graphs_tree(self):
     self.tree_mix_graphs_datasets.blockSignals(False)
 
 def on_mix_tab_changed(self, index):
-    # Tab 4 is the Graphs tab
-    if index == 4:
+    if self.tabWidget_mix_detail.widget(index) is getattr(self, "tab_mix_graphs", None):
         initialize_mix_graph(self)
 
 def initialize_mix_graph(self):
@@ -2069,39 +2073,37 @@ def display_selected_filament_details(self):
     self.lbl_notes_title.setText(f"Notes & Specifications for: {name}")
     
     # Load and display calibration info
-    self.table_calibration_info.blockSignals(True)
-    self.table_calibration_info.clearContents() # Clear widgets to prevent QAbstractItemView warnings
-    self.table_calibration_info.setRowCount(0)
-    
-    cal_rows = self.calibration_data_cache.get(name, [])
-    for row_data in cal_rows:
-        row_idx = self.table_calibration_info.rowCount()
-        self.table_calibration_info.insertRow(row_idx)
-        
-        # Text settings (kV_low, kV_hig)
-        self.table_calibration_info.setItem(row_idx, 0, QTableWidgetItem(row_data[0]))
-        self.table_calibration_info.setItem(row_idx, 1, QTableWidgetItem(row_data[1]))
-        
-        # Numeric settings (with 4 decimal places)
-        numeric_indices = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 17, 18, 19]
-        for c in range(20):
-            if c in [0, 1]:
-                continue
-            item = QTableWidgetItem()
-            val_str = row_data[c] if c < len(row_data) else ""
-            if c in numeric_indices:
-                try:
-                    float_val = float(val_str)
-                    item.setData(Qt.EditRole, float_val)
-                    item.setText(f"{float_val:.4f}")
-                except ValueError:
-                    item.setData(Qt.EditRole, 0.0)
-                    item.setText("0.0000")
-            else:
-                item = QTableWidgetItem(val_str)
-            self.table_calibration_info.setItem(row_idx, c, item)
-            
-    self.table_calibration_info.blockSignals(False)
+    with signals_blocked(self.table_calibration_info):
+        self.table_calibration_info.clearContents() # Clear widgets to prevent QAbstractItemView warnings
+        self.table_calibration_info.setRowCount(0)
+
+        cal_rows = self.calibration_data_cache.get(name, [])
+        for row_data in cal_rows:
+            row_idx = self.table_calibration_info.rowCount()
+            self.table_calibration_info.insertRow(row_idx)
+
+            # Text settings (kV_low, kV_hig)
+            self.table_calibration_info.setItem(row_idx, 0, QTableWidgetItem(row_data[0]))
+            self.table_calibration_info.setItem(row_idx, 1, QTableWidgetItem(row_data[1]))
+
+            # Numeric settings (with 4 decimal places)
+            numeric_indices = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 17, 18, 19]
+            for c in range(20):
+                if c in [0, 1]:
+                    continue
+                item = QTableWidgetItem()
+                val_str = row_data[c] if c < len(row_data) else ""
+                if c in numeric_indices:
+                    try:
+                        float_val = float(val_str)
+                        item.setData(Qt.EditRole, float_val)
+                        item.setText(f"{float_val:.4f}")
+                    except ValueError:
+                        item.setData(Qt.EditRole, 0.0)
+                        item.setText("0.0000")
+                else:
+                    item = QTableWidgetItem(val_str)
+                self.table_calibration_info.setItem(row_idx, c, item)
     
     # Load notes
     filament_notes = self.notes_cache.get(name, "")
@@ -2138,17 +2140,14 @@ def load_3d_database(self):
     # If the file does not exist, initialize it with default values
     if not os.path.exists(db_path):
         try:
-            with open(db_path, mode='w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                # Write header
-                writer.writerow(["Material Name", "Brand", "Type", "Color", "3DPrinter", "Date", "RED", "RED STD", "Zeff", "Zeff STD"])
-                for item in default_filaments:
-                    writer.writerow([
-                        item["Material Name"], item["Brand"], item["Type"], item["Color"], item["3DPrinter"], "2026-07-19",
-                        item["RED"], item["RED STD"], item["Zeff"], item["Zeff STD"]
-                    ])
-        except Exception as e:
-            print(f"Error initializing 3D database: {e}")
+            atomic_write_csv(
+                db_path,
+                ["Material Name", "Brand", "Type", "Color", "3DPrinter", "Date", "RED", "RED STD", "Zeff", "Zeff STD"],
+                [[item["Material Name"], item["Brand"], item["Type"], item["Color"], item["3DPrinter"], "2026-07-19",
+                  item["RED"], item["RED STD"], item["Zeff"], item["Zeff STD"]] for item in default_filaments],
+            )
+        except Exception:
+            logger.exception("Error initializing 3D database")
             
     # Read the CSV file
     self.table_3d_db.setUpdatesEnabled(False)
@@ -2207,26 +2206,29 @@ def load_3d_database(self):
 
 def save_3d_database(self):
     db_path = get_db_path()
-    
+    rows = []
+    for r in range(self.table_3d_db.rowCount()):
+        row_data = []
+        for c in range(10):
+            item = self.table_3d_db.item(r, c)
+            if item is not None:
+                val = item.data(Qt.EditRole)
+                row_data.append(str(val))
+            else:
+                row_data.append("")
+        rows.append(row_data)
     try:
-        with open(db_path, mode='w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow(["Material Name", "Brand", "Type", "Color", "3DPrinter", "Date", "RED", "RED STD", "Zeff", "Zeff STD"])
-            
-            for r in range(self.table_3d_db.rowCount()):
-                row_data = []
-                for c in range(10):
-                    item = self.table_3d_db.item(r, c)
-                    if item is not None:
-                        val = item.data(Qt.EditRole)
-                        row_data.append(str(val))
-                    else:
-                        row_data.append("")
-                writer.writerow(row_data)
-    except Exception as e:
-        print(f"Error saving 3D database: {e}")
-        
-    populate_view_and_fit_list(self)
+        rotate_backups(db_path)
+        atomic_write_csv(
+            db_path,
+            ["Material Name", "Brand", "Type", "Color", "3DPrinter", "Date", "RED", "RED STD", "Zeff", "Zeff STD"],
+            rows,
+        )
+    except Exception:
+        logger.exception("Error saving 3D database to %s", db_path)
+        raise
+    finally:
+        populate_view_and_fit_list(self)
 
 def load_all_calibration_data(self):
     self.calibration_data_cache = {}
@@ -2237,17 +2239,17 @@ def load_all_calibration_data(self):
     # Initialize defaults if file doesn't exist
     if not os.path.exists(cal_db_path):
         try:
-            with open(cal_db_path, mode='w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                writer.writerow([
+            atomic_write_csv(
+                cal_db_path,
+                [
                     "Material Name", "kV_low", "kV_hig", "HU_low", "HU_low_STD", "HU_hig", "HU_hig_STD",
                     "RED", "RED_STD", "Zeff", "Zeff STD", "Print Temp", "Bed Temp", "Infill Density", "Infill Pattern",
                     "Flow Multiplier", "Flow", "Shape", "Layer Height", "Line Width", "Print Speed"
-                ])
-                for row in default_calibrations:
-                    writer.writerow(row)
-        except Exception as e:
-            print(f"Error initializing calibration database: {e}")
+                ],
+                default_calibrations,
+            )
+        except Exception:
+            logger.exception("Error initializing calibration database")
             
     # Read the calibration CSV
     try:
@@ -2283,26 +2285,73 @@ def load_all_calibration_data(self):
 
 def save_calibration_database(self):
     cal_db_path = get_cal_db_path()
+    rows = [[mat_name] + list(row)
+            for mat_name, mat_rows in self.calibration_data_cache.items()
+            for row in mat_rows]
     try:
-        with open(cal_db_path, mode='w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([
+        rotate_backups(cal_db_path)
+        atomic_write_csv(
+            cal_db_path,
+            [
                 "Material Name", "kV_low", "kV_hig", "HU_low", "HU_low_STD", "HU_hig", "HU_hig_STD",
                 "RED", "RED_STD", "Zeff", "Zeff STD", "Print Temp", "Bed Temp", "Infill Density", "Infill Pattern",
                 "Flow Multiplier", "Flow", "Shape", "Layer Height", "Line Width", "Print Speed"
-            ])
-            for mat_name, rows in self.calibration_data_cache.items():
-                for row in rows:
-                    writer.writerow([mat_name] + row)
-    except Exception as e:
-        print(f"Error saving calibration database: {e}")
-        
+            ],
+            rows,
+        )
+    except Exception:
+        logger.exception("Error saving calibration database to %s", cal_db_path)
+        raise
+
     notes_path = get_notes_db_path()
     try:
-        with open(notes_path, mode='w', encoding='utf-8') as f:
-            json.dump(self.notes_cache, f, indent=4)
-    except Exception as e:
-        print(f"Error saving notes database: {e}")
+        rotate_backups(notes_path)
+        atomic_write_json(notes_path, self.notes_cache)
+    except Exception:
+        logger.exception("Error saving notes database to %s", notes_path)
+        raise
+
+def report_save_failures(self, failures):
+    """Show at most one warning per minute for failed database writes (details always go to the log)."""
+    import time as _time
+    now = _time.monotonic()
+    last = getattr(self, "_last_save_error_ts", 0.0)
+    if now - last < 60.0:
+        return
+    self._last_save_error_ts = now
+    QMessageBox.warning(
+        self, "3DP database could not be saved",
+        "The following 3D-printing database files could not be written:\n\n"
+        + "\n".join(f"- {f}" for f in failures)
+        + f"\n\nYour previous versions are kept as .bak1 files in:\n{get_3dp_db_dir()}\n\n"
+        "The application keeps running; check the log for details."
+    )
+
+def flush_3dp_databases(self):
+    """Synchronous final save used on application exit (the autosave timer is debounced)."""
+    if getattr(self, "_final_flush_done", False) or not hasattr(self, "table_3d_db"):
+        return
+    self._final_flush_done = True
+    timer = getattr(self, "_auto_save_timer", None)
+    if timer is not None and timer.isActive():
+        timer.stop()
+    _do_auto_save(self)
+
+def ensure_3dp_tab_loaded(self):
+    """The 3D Printing tab is created lazily; load it before touching its tables from another tab."""
+    if hasattr(self, "table_3d_db"):
+        return True
+    tab = getattr(self, "tab_3DP", None)
+    tab_modules = getattr(self, "tabModules", None)
+    if tab is None or tab_modules is None:
+        return False
+    idx = tab_modules.indexOf(tab)
+    if idx < 0:
+        return False
+    from fcn_create_gui.setup_ui import _on_tab_changed
+    _on_tab_changed(self, idx)
+    return hasattr(self, "table_3d_db")
+
 def auto_save_all_databases(self):
     if getattr(self, "_is_loading", False):
         return
@@ -2318,27 +2367,44 @@ def _do_auto_save(self):
     if getattr(self, "_is_loading", False) or getattr(self, "_is_autosaving", False):
         return
     self._is_autosaving = True
+    failures = []
     try:
-        save_current_active_material_cache(self)
-        save_current_active_mix_cache(self)
-        
-        sync_3d_db_to_matmix(self)
-        
+        for step_name, step in (
+            ("flush active material", save_current_active_material_cache),
+            ("flush active mix", save_current_active_mix_cache),
+            ("sync database to MatMix", sync_3d_db_to_matmix),
+        ):
+            try:
+                step(self)
+            except Exception:
+                logger.exception("Auto-save: '%s' step failed", step_name)
+
+        for label, saver in (
+            (DB_FILES["materials"], save_3d_database),
+            (DB_FILES["material_calibration"], save_calibration_database),
+            (DB_FILES["mixes"], save_mix_database),
+            (DB_FILES["mix_calibration"], save_mix_calibration_database),
+        ):
+            try:
+                saver(self)
+            except Exception as e:
+                failures.append(f"{label}: {e}")
+    finally:
+        self._is_autosaving = False
+    if failures:
+        report_save_failures(self, failures)
+def save_3d_database_action(self):
+    save_current_active_material_cache(self)
+    sync_3d_db_to_matmix(self)
+    try:
         save_3d_database(self)
         save_calibration_database(self)
         save_mix_database(self)
         save_mix_calibration_database(self)
     except Exception as e:
-        print(f"Error during auto-save: {e}")
-    finally:
-        self._is_autosaving = False
-def save_3d_database_action(self):
-    save_current_active_material_cache(self)
-    sync_3d_db_to_matmix(self)
-    save_3d_database(self)
-    save_calibration_database(self)
-    save_mix_database(self)
-    save_mix_calibration_database(self)
+        QMessageBox.critical(self, "Save failed",
+                             f"The material database could not be saved:\n{e}\n\nSee the log for details.")
+        return
     QMessageBox.information(self, "Success", "Material database and calibration info saved successfully!")
 
 def remove_selected_material(self):
@@ -3253,48 +3319,47 @@ def remove_mix_group(self):
 # Save MatMix CSV
 def save_mix_database(self):
     db_path = get_mix_db_path()
+    rows = []
+    total_rows = self.table_mat_mix.rowCount()
+    r = 0
+    while r < total_rows:
+        spin = self.table_mat_mix.cellWidget(r, 0)
+        if isinstance(spin, QSpinBox):
+            n = max(1, spin.value())
+            mix_id = spin.property("mix_id")
+            for i in range(n):
+                row_idx = r + i
+                if row_idx >= total_rows:
+                    break
+                combo = self.table_mat_mix.cellWidget(row_idx, 1)
+                mat_name = combo.currentText() if isinstance(combo, QComboBox) else ""
+
+                name_item = self.table_mat_mix.item(row_idx, 2)
+                name = name_item.text() if name_item else ""
+
+                red = self.table_mat_mix.item(row_idx, 3).text() if self.table_mat_mix.item(row_idx, 3) else ""
+                zeff = self.table_mat_mix.item(row_idx, 4).text() if self.table_mat_mix.item(row_idx, 4) else ""
+                color = self.table_mat_mix.item(row_idx, 5).text() if self.table_mat_mix.item(row_idx, 5) else ""
+                brand = self.table_mat_mix.item(row_idx, 6).text() if self.table_mat_mix.item(row_idx, 6) else ""
+                m_type = self.table_mat_mix.item(row_idx, 7).text() if self.table_mat_mix.item(row_idx, 7) else ""
+                printer = self.table_mat_mix.item(row_idx, 8).text() if self.table_mat_mix.item(row_idx, 8) else ""
+
+                rows.append([mix_id, n, mat_name, name, red, zeff, color, brand, m_type, printer])
+            r += n
+        else:
+            r += 1
     try:
-        with open(db_path, mode='w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                "Mix ID", "Mix Size", "Material Name", "Name", "RED", "Zeff",
-                "Color", "Brand", "Type", "Printer"
-            ])
-            
-            total_rows = self.table_mat_mix.rowCount()
-            r = 0
-            while r < total_rows:
-                spin = self.table_mat_mix.cellWidget(r, 0)
-                if isinstance(spin, QSpinBox):
-                    n = max(1, spin.value())
-                    mix_id = spin.property("mix_id")
-                    for i in range(n):
-                        row_idx = r + i
-                        if row_idx >= total_rows:
-                            break
-                        combo = self.table_mat_mix.cellWidget(row_idx, 1)
-                        mat_name = combo.currentText() if isinstance(combo, QComboBox) else ""
-                        
-                        name_item = self.table_mat_mix.item(row_idx, 2)
-                        name = name_item.text() if name_item else ""
-                        
-                        red = self.table_mat_mix.item(row_idx, 3).text() if self.table_mat_mix.item(row_idx, 3) else ""
-                        zeff = self.table_mat_mix.item(row_idx, 4).text() if self.table_mat_mix.item(row_idx, 4) else ""
-                        color = self.table_mat_mix.item(row_idx, 5).text() if self.table_mat_mix.item(row_idx, 5) else ""
-                        brand = self.table_mat_mix.item(row_idx, 6).text() if self.table_mat_mix.item(row_idx, 6) else ""
-                        m_type = self.table_mat_mix.item(row_idx, 7).text() if self.table_mat_mix.item(row_idx, 7) else ""
-                        printer = self.table_mat_mix.item(row_idx, 8).text() if self.table_mat_mix.item(row_idx, 8) else ""
-                        
-                        writer.writerow([
-                            mix_id, n, mat_name, name, red, zeff, color, brand, m_type, printer
-                        ])
-                    r += n
-                else:
-                    r += 1
-    except Exception as e:
-        print(f"Error saving mixed materials database: {e}")
-        
-    populate_view_and_fit_list(self)
+        rotate_backups(db_path)
+        atomic_write_csv(
+            db_path,
+            ["Mix ID", "Mix Size", "Material Name", "Name", "RED", "Zeff", "Color", "Brand", "Type", "Printer"],
+            rows,
+        )
+    except Exception:
+        logger.exception("Error saving mixed materials database to %s", db_path)
+        raise
+    finally:
+        populate_view_and_fit_list(self)
 
 # Load MatMix CSV
 def load_mix_database(self):
@@ -3397,8 +3462,13 @@ def save_mix_database_action(self):
         QMessageBox.warning(self, "Invalid Percentages", error_msg)
         return
         
-    save_mix_database(self)
-    save_mix_calibration_database(self)
+    try:
+        save_mix_database(self)
+        save_mix_calibration_database(self)
+    except Exception as e:
+        QMessageBox.critical(self, "Save failed",
+                             f"The mixed material database could not be saved:\n{e}\n\nSee the log for details.")
+        return
     QMessageBox.information(self, "Success", "Mixed material database and calibration data saved successfully!")
 
 # Details and Dynamic Mix Calibration logic
@@ -4542,20 +4612,21 @@ def load_all_mix_calibration_data(self):
     
     if not os.path.exists(cal_db_path):
         try:
-            with open(cal_db_path, mode='w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                writer.writerow([
+            atomic_write_csv(
+                cal_db_path,
+                [
                     "Mix ID", "Ratios", "kV_low", "kV_hig", "HU_low", "HU_low_STD", "HU_hig", "HU_hig_STD",
                     "RED", "RED_STD", "Zeff", "Zeff STD", "Infill Type", "Infill Density", "Layer Height",
                     "Line Width", "Print Temp", "Bed Temp", "Flow Multiplier", "Flow", "Print Speed"
-                ])
-                writer.writerow([
+                ],
+                [[
                     "0", "50.0000,50.0000", "80", "140", "80.0000", "5.0000", "120.0000", "6.0000",
                     "1.0850", "0.0200", "6.2500", "0.1000", "Grid", "100.0000", "0.2000",
                     "0.4000", "230.0000", "80.0000", "1.0000", "100.0000", "45.0000"
-                ])
-        except Exception as e:
-            print(f"Error initializing mix calibration database: {e}")
+                ]],
+            )
+        except Exception:
+            logger.exception("Error initializing mix calibration database")
             
     try:
         with open(cal_db_path, mode='r', encoding='utf-8') as f:
@@ -4601,44 +4672,46 @@ def load_all_mix_calibration_data(self):
 
 def save_mix_calibration_database(self):
     cal_db_path = get_mix_cal_db_path()
+    rows = [[mix_id] + list(row)
+            for mix_id, mix_rows in self.mix_calibration_cache.items()
+            for row in mix_rows]
     try:
-        with open(cal_db_path, mode='w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([
+        rotate_backups(cal_db_path)
+        atomic_write_csv(
+            cal_db_path,
+            [
                 "Mix ID", "Ratios", "kV_low", "kV_hig", "HU_low", "HU_low_STD", "HU_hig", "HU_hig_STD",
                 "RED", "RED_STD", "Zeff", "Zeff STD", "Infill Type", "Infill Density", "Layer Height",
                 "Line Width", "Print Temp", "Bed Temp", "Flow Multiplier", "Flow", "Print Speed"
-            ])
-            for mix_id, rows in self.mix_calibration_cache.items():
-                for row in rows:
-                    writer.writerow([mix_id] + row)
-    except Exception as e:
-        print(f"Error saving mix calibration database: {e}")
-        
+            ],
+            rows,
+        )
+    except Exception:
+        logger.exception("Error saving mix calibration database to %s", cal_db_path)
+        raise
+
     notes_path = get_mix_notes_db_path()
+    data = {}
+    all_mix_ids = set(self.mix_notes_cache.keys()).union(self.mix_m_value_cache.keys())
+    for mix_id in all_mix_ids:
+        data[str(mix_id)] = {
+            "notes": self.mix_notes_cache.get(mix_id, ""),
+            "m_value": self.mix_m_value_cache.get(mix_id, 3.4),
+        }
     try:
-        with open(notes_path, mode='w', encoding='utf-8') as f:
-            data = {}
-            all_mix_ids = set(self.mix_notes_cache.keys()).union(self.mix_m_value_cache.keys())
-            for mix_id in all_mix_ids:
-                notes = self.mix_notes_cache.get(mix_id, "")
-                m_val = self.mix_m_value_cache.get(mix_id, 3.4)
-                data[str(mix_id)] = {
-                    "notes": notes,
-                    "m_value": m_val
-                }
-            json.dump(data, f, indent=4)
-    except Exception as e:
-        print(f"Error saving mix notes database: {e}")
-        
-    # Save Mix RED cache
+        rotate_backups(notes_path)
+        atomic_write_json(notes_path, data)
+    except Exception:
+        logger.exception("Error saving mix notes database to %s", notes_path)
+        raise
+
     mix_red_path = get_mix_red_db_path()
     try:
-        with open(mix_red_path, mode='w', encoding='utf-8') as f:
-            serializable_data = {str(k): v for k, v in self.mix_red_cache.items()}
-            json.dump(serializable_data, f, indent=4)
-    except Exception as e:
-        print(f"Error saving Mix RED cache: {e}")
+        rotate_backups(mix_red_path)
+        atomic_write_json(mix_red_path, {str(k): v for k, v in self.mix_red_cache.items()})
+    except Exception:
+        logger.exception("Error saving Mix RED cache to %s", mix_red_path)
+        raise
 
 # Insert new mix calibration row below the currently selected row
 def add_mix_calibration_row(self):
@@ -4814,9 +4887,7 @@ def clear_all_mix_calibration_rows(self):
 
 # Mix RED tab helper methods
 def get_mix_red_db_path():
-    appdata_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
-    os.makedirs(appdata_dir, exist_ok=True)
-    return os.path.join(appdata_dir, 'filaments_mix_red_db.json')
+    return get_3dp_db_file("mix_red")
 
 def format_ratio_string(mat_names, ratios):
     parts = []
@@ -4994,20 +5065,21 @@ def refresh_mix_red_ratios_list(self):
     refresh_mix_graphs_tree(self)
 
 def display_selected_mix_red_ratio_details(self, idx):
-    self.table_mix_red_cal.blockSignals(True)
+    with signals_blocked(self.table_mix_red_cal):
+        _fill_mix_red_ratio_table(self, idx)
+
+def _fill_mix_red_ratio_table(self, idx):
     self.table_mix_red_cal.clearContents()
     self.table_mix_red_cal.setRowCount(0)
-    
+
     mix_id = getattr(self, "current_viewed_mix_id", None)
     if mix_id is None or idx < 0:
-        self.table_mix_red_cal.blockSignals(False)
         return
-        
+
     mix_red_data = self.mix_red_cache.get(mix_id, [])
     if idx >= len(mix_red_data):
-        self.table_mix_red_cal.blockSignals(False)
         return
-        
+
     combination = mix_red_data[idx]
     ratios = combination["percentage"]
     rows = combination.get("rows", [])
@@ -5056,8 +5128,6 @@ def display_selected_mix_red_ratio_details(self, idx):
                     item.setData(Qt.EditRole, 0.0)
                     item.setText("0.0000")
                 self.table_mix_red_cal.setItem(row_idx, c, item)
-        
-    self.table_mix_red_cal.blockSignals(False)
 
 def calculate_mix_red_predicted_val(self, ratios, infill_pct=100.0):
     mix_id = getattr(self, "current_viewed_mix_id", None)
@@ -5504,118 +5574,126 @@ def edit_mix_red_ratio(self):
         break
 
 def export_3dp_database_action(self):
-    # Save active cached changes first
-    if hasattr(self, "current_viewed_filament") and self.current_viewed_filament:
+    if not ensure_3dp_tab_loaded(self):
+        QMessageBox.warning(self, "Warning", "The 3D Printing tab could not be initialised.")
+        return
+
+    # Flush everything the user may still be editing, then write all files
+    if getattr(self, "current_viewed_filament", None):
         save_current_active_material_cache(self)
-    if hasattr(self, "current_viewed_mix_id") and self.current_viewed_mix_id is not None:
+    if getattr(self, "current_viewed_mix_id", None) is not None:
         save_current_active_mix_cache(self)
-        
-    # Save to disk
-    if hasattr(self, "table_3d_db"):
+    try:
         save_3d_database(self)
         save_calibration_database(self)
-    if hasattr(self, "table_mat_mix"):
+        save_mix_database(self)
         save_mix_calibration_database(self)
-        
-    db_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
-    files_to_export = [
-        "filaments_db.csv",
-        "filaments_calibration_db.csv",
-        "filaments_notes_db.json",
-        "filaments_mix_db.csv",
-        "filaments_mix_calibration_db.csv",
-        "filaments_mix_notes_db.json",
-        "filaments_mix_red_db.json"
-    ]
-    
-    # Check if any file exists
-    existing_files = [f for f in files_to_export if os.path.exists(os.path.join(db_dir, f))]
+    except Exception as e:
+        QMessageBox.critical(self, "Error", f"Could not save the database before exporting:\n{e}")
+        return
+
+    existing_files = list_db_files(existing_only=True)
     if not existing_files:
         QMessageBox.warning(self, "Warning", "No database files found to export!")
         return
-        
+
     file_path, _ = QFileDialog.getSaveFileName(
         self, "Export 3DP Database", "AMIGO_3DP_Database.zip", "Zip Files (*.zip)"
     )
     if not file_path:
         return
-        
+
     try:
         with zipfile.ZipFile(file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for f in existing_files:
-                full_path = os.path.join(db_dir, f)
-                zipf.write(full_path, f)
+            for full_path in existing_files:
+                zipf.write(full_path, os.path.basename(full_path))
         QMessageBox.information(self, "Success", f"3DP Database exported successfully to:\n{file_path}")
     except Exception as e:
+        logger.exception("3DP database export failed")
         QMessageBox.critical(self, "Error", f"Failed to export 3DP Database:\n{e}")
+
+def _reload_3dp_databases_from_disk(self):
+    """Re-read every database file and refresh the Database / MatMix views (after import or restore)."""
+    self._is_loading = True
+    try:
+        self.current_viewed_filament = None
+        self.current_viewed_mix_id = None
+        load_3d_database(self)
+        load_all_calibration_data(self)
+        load_mix_database(self)
+        load_all_mix_calibration_data(self)
+    finally:
+        self._is_loading = False
+
+    if self.table_3d_db.rowCount() > 0:
+        self.table_3d_db.selectRow(0)
+        display_selected_filament_details(self)
+    else:
+        self.table_calibration_info.clearContents()
+        self.table_calibration_info.setRowCount(0)
+        self.txt_notes.clear()
+
+    if self.table_mat_mix.rowCount() > 0:
+        self.table_mat_mix.selectRow(0)
+        display_selected_mix_details(self)
+    else:
+        self.table_mix_calibration_info.clearContents()
+        self.table_mix_calibration_info.setRowCount(0)
+        self.table_mix_z_red.clearContents()
+        self.table_mix_z_red.setRowCount(0)
+        self.txt_mix_notes.clear()
+
+    if hasattr(self, "graph_canvas"):
+        update_mix_graph(self)
+    populate_view_and_fit_list(self)
 
 def import_3dp_database_action(self):
     reply = QMessageBox.warning(
         self, "Confirm Overwrite",
         "Importing a new 3DP Database will permanently overwrite and replace the current database on this computer.\n\n"
+        "A snapshot of the current database is taken first (Tools > 3DP > Restore Database).\n\n"
         "Do you want to continue?",
         QMessageBox.Yes | QMessageBox.No, QMessageBox.No
     )
     if reply != QMessageBox.Yes:
         return
-        
+
     file_path, _ = QFileDialog.getOpenFileName(
         self, "Import 3DP Database", "", "Zip Files (*.zip)"
     )
     if not file_path:
         return
-        
-    db_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
-    os.makedirs(db_dir, exist_ok=True)
-    
+
+    if not ensure_3dp_tab_loaded(self):
+        QMessageBox.warning(self, "Warning", "The 3D Printing tab could not be initialised.")
+        return
+
     try:
-        # First, validate zip content
-        with zipfile.ZipFile(file_path, 'r') as zipf:
-            namelist = zipf.namelist()
-            has_valid_files = any(f.endswith('.csv') or f.endswith('.json') for f in namelist)
-            if not has_valid_files:
-                QMessageBox.critical(self, "Invalid Database", "The selected zip file does not contain valid database files.")
-                return
-                
-            # Extract and overwrite
-            zipf.extractall(db_dir)
-            
-        # Hot-reload databases in the GUI
-        self.current_viewed_filament = None
-        self.current_viewed_mix_id = None
-        
-        load_3d_database(self)
-        load_all_calibration_data(self)
-        load_mix_database(self)
-        load_all_mix_calibration_data(self)
-        
-        # Select first row in database if available
-        if self.table_3d_db.rowCount() > 0:
-            self.table_3d_db.selectRow(0)
-            display_selected_filament_details(self)
-        else:
-            self.table_calibration_info.clearContents()
-            self.table_calibration_info.setRowCount(0)
-            self.txt_notes.clear()
-            
-        # Select first row in mix database if available
-        if self.table_mat_mix.rowCount() > 0:
-            self.table_mat_mix.selectRow(0)
-            display_selected_mix_details(self)
-        else:
-            self.table_mix_calibration_info.clearContents()
-            self.table_mix_calibration_info.setRowCount(0)
-            self.table_mix_z_red.clearContents()
-            self.table_mix_z_red.setRowCount(0)
-            self.txt_mix_notes.clear()
-            
-        # Update graphs if initialized
-        if hasattr(self, "graph_canvas"):
-            update_mix_graph(self)
-            
-        QMessageBox.information(self, "Success", "3DP Database imported and loaded successfully!")
+        snapshot = snapshot_database("import_zip")
+        extracted = safe_extract_zip(file_path, get_3dp_db_dir(), set(DB_FILES.values()))
+    except ValueError as e:
+        QMessageBox.critical(self, "Invalid Database", str(e))
+        return
     except Exception as e:
+        logger.exception("3DP database import failed")
         QMessageBox.critical(self, "Error", f"Failed to import 3DP Database:\n{e}")
+        return
+
+    try:
+        _reload_3dp_databases_from_disk(self)
+    except Exception as e:
+        logger.exception("Reload after 3DP database import failed")
+        QMessageBox.critical(
+            self, "Error",
+            f"The database files were imported but could not be reloaded:\n{e}\n\n"
+            "Restart AMIGOpy, or use Tools > 3DP > Restore Database to go back to the snapshot."
+        )
+        return
+
+    msg = f"3DP Database imported and loaded successfully ({len(extracted)} files)."
+    if snapshot:
+        msg += f"\n\nThe previous database was saved as a restore point:\n{os.path.basename(snapshot)}"
+    QMessageBox.information(self, "Success", msg)
 
 def open_create_mix_dialog(self):
     from itertools import combinations
@@ -6169,10 +6247,7 @@ def open_create_mix_dialog(self):
 
 def _get_backup_dir():
     """Return the path to the daily backup directory."""
-    appdata_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
-    backup_dir = os.path.join(appdata_dir, 'backups')
-    os.makedirs(backup_dir, exist_ok=True)
-    return backup_dir
+    return get_backup_dir()
 
 
 def create_daily_backup(self):
@@ -6188,26 +6263,13 @@ def create_daily_backup(self):
         if os.path.exists(backup_path):
             return
         
-        db_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
-        db_files = [
-            "filaments_3d_db.csv",
-            "filaments_calibration_db.csv",
-            "filaments_notes_db.json",
-            "filaments_mix_db.csv",
-            "filaments_mix_calibration_db.csv",
-            "filaments_mix_notes_db.json",
-            "filaments_mix_red_db.json"
-        ]
-        
-        # Only backup if at least one file exists
-        existing = [f for f in db_files if os.path.exists(os.path.join(db_dir, f))]
+        existing = list_db_files(existing_only=True)
         if not existing:
             return
-        
+
         with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for f in existing:
-                full_path = os.path.join(db_dir, f)
-                zipf.write(full_path, f)
+            for full_path in existing:
+                zipf.write(full_path, os.path.basename(full_path))
         
         # Prune old backups, keep only the 3 most recent
         backup_files = sorted(glob.glob(os.path.join(backup_dir, 'backup_*.zip')))
@@ -6223,42 +6285,49 @@ def create_daily_backup(self):
         print(f"Warning: Could not create daily backup: {e}")
 
 
-def restore_3dp_database_action(self):
-    """Show a dialog to restore the 3DP database from a daily backup."""
-    backup_dir = _get_backup_dir()
-    backup_files = sorted(glob.glob(os.path.join(backup_dir, 'backup_*.zip')), reverse=True)
-    
-    if not backup_files:
-        QMessageBox.information(self, "No Backups", "No backup restore points were found.")
-        return
-    
-    # Build list of restore point labels
-    labels = []
-    for bp in backup_files:
-        fname = os.path.basename(bp)
-        # Extract date from backup_YYYY-MM-DD.zip
-        date_str = fname.replace('backup_', '').replace('.zip', '')
+def _describe_restore_point(path):
+    fname = os.path.basename(path)
+    try:
+        size_kb = os.path.getsize(path) / 1024
+    except OSError:
+        size_kb = 0.0
+    if fname.startswith('backup_'):
+        date_str = fname[len('backup_'):-len('.zip')]
         try:
             dt = datetime.strptime(date_str, '%Y-%m-%d')
-            size_kb = os.path.getsize(bp) / 1024
-            labels.append(f"{dt.strftime('%A, %B %d, %Y')}  ({size_kb:.1f} KB)")
-        except (ValueError, OSError):
-            labels.append(fname)
-    
-    # Show selection dialog
+            return f"Daily backup - {dt.strftime('%A, %B %d, %Y')}  ({size_kb:.1f} KB)"
+        except ValueError:
+            return f"{fname}  ({size_kb:.1f} KB)"
+    m = re.match(r"pre_(.+)_(\d{8})_(\d{6})(?:_\d+)?\.zip$", fname)
+    if m:
+        reason, d, t = m.groups()
+        return (f"Before {reason.replace('_', ' ')} - {d[:4]}-{d[4:6]}-{d[6:]} "
+                f"{t[:2]}:{t[2:4]}:{t[4:]}  ({size_kb:.1f} KB)")
+    return f"{fname}  ({size_kb:.1f} KB)"
+
+def restore_3dp_database_action(self):
+    """Restore the 3DP database from a daily backup or a pre-operation snapshot."""
+    backup_dir = _get_backup_dir()
+    restore_points = (sorted(glob.glob(os.path.join(backup_dir, 'backup_*.zip')), reverse=True)
+                      + sorted(glob.glob(os.path.join(backup_dir, 'pre_*.zip')), reverse=True))
+    if not restore_points:
+        QMessageBox.information(self, "No Backups", "No backup restore points were found.")
+        return
+
+    labels = [_describe_restore_point(bp) for bp in restore_points]
+
     from PySide6.QtWidgets import QInputDialog
     chosen, ok = QInputDialog.getItem(
         self, "Restore 3DP Database",
         "Select a restore point:\n\n"
-        "Warning: This will replace ALL current 3DP database data.",
+        "Warning: This will replace ALL current 3DP database data\n"
+        "(a snapshot of the current state is taken first).",
         labels, 0, False
     )
     if not ok or not chosen:
         return
-    
-    idx = labels.index(chosen)
-    selected_backup = backup_files[idx]
-    
+    selected_backup = restore_points[labels.index(chosen)]
+
     reply = QMessageBox.warning(
         self, "Confirm Restore",
         f"Are you sure you want to restore the database from:\n\n"
@@ -6268,58 +6337,30 @@ def restore_3dp_database_action(self):
     )
     if reply != QMessageBox.Yes:
         return
-    
-    db_dir = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser('~/AppData/Local')), 'AMIGOpy')
-    
+
+    if not ensure_3dp_tab_loaded(self):
+        QMessageBox.warning(self, "Warning", "The 3D Printing tab could not be initialised.")
+        return
+
     try:
-        # Prevent auto-save during reload
-        self._is_loading = True
-        
-        with zipfile.ZipFile(selected_backup, 'r') as zipf:
-            namelist = zipf.namelist()
-            has_valid = any(f.endswith('.csv') or f.endswith('.json') for f in namelist)
-            if not has_valid:
-                QMessageBox.critical(self, "Invalid Backup", "The selected backup file does not contain valid database files.")
-                self._is_loading = False
-                return
-            zipf.extractall(db_dir)
-        
-        # Hot-reload all databases
-        self.current_viewed_filament = None
-        self.current_viewed_mix_id = None
-        
-        load_3d_database(self)
-        load_all_calibration_data(self)
-        load_mix_database(self)
-        load_all_mix_calibration_data(self)
-        
-        if self.table_3d_db.rowCount() > 0:
-            self.table_3d_db.selectRow(0)
-            display_selected_filament_details(self)
-        else:
-            self.table_calibration_info.clearContents()
-            self.table_calibration_info.setRowCount(0)
-            self.txt_notes.clear()
-        
-        if self.table_mat_mix.rowCount() > 0:
-            self.table_mat_mix.selectRow(0)
-            display_selected_mix_details(self)
-        else:
-            self.table_mix_calibration_info.clearContents()
-            self.table_mix_calibration_info.setRowCount(0)
-            self.table_mix_z_red.clearContents()
-            self.table_mix_z_red.setRowCount(0)
-            self.txt_mix_notes.clear()
-        
-        if hasattr(self, "graph_canvas"):
-            update_mix_graph(self)
-        
-        self._is_loading = False
-        
-        QMessageBox.information(self, "Success", "3DP Database restored successfully!")
+        snapshot_database("restore")
+        safe_extract_zip(selected_backup, get_3dp_db_dir(), set(DB_FILES.values()))
+    except ValueError as e:
+        QMessageBox.critical(self, "Invalid Backup", str(e))
+        return
     except Exception as e:
-        self._is_loading = False
+        logger.exception("3DP database restore failed")
         QMessageBox.critical(self, "Error", f"Failed to restore 3DP Database:\n{e}")
+        return
+
+    try:
+        _reload_3dp_databases_from_disk(self)
+    except Exception as e:
+        logger.exception("Reload after 3DP database restore failed")
+        QMessageBox.critical(self, "Error", f"The backup was extracted but could not be reloaded:\n{e}\n\nRestart AMIGOpy.")
+        return
+
+    QMessageBox.information(self, "Success", "3DP Database restored successfully!")
 
 def setup_view_and_fit_tab(self):
     # Create the tab widget
