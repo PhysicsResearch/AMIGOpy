@@ -273,9 +273,10 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
 
     # --- UI bridge: ensures slots run in GUI thread, not worker thread ---
     class _UiBridge(QObject):
-        def __init__(self, w: SegmentatorWindow):
+        def __init__(self, w: SegmentatorWindow, owner):
             super().__init__(w)
             self.win = w
+            self.owner = owner
             self.thread: Optional[QThread] = None
 
         @Slot(int)
@@ -292,6 +293,13 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
             else:
                 _set_row_state(self.win, row, "done" if ok else "failed", msg or "")
             self.win._current_row = None
+
+            if ok and self.owner:
+                try:
+                    from fcn_load.populate_med_image_list import populate_medical_image_tree
+                    populate_medical_image_tree(self.owner)
+                except Exception as ex:
+                    print(f"[TS] Error refreshing tree on GUI thread: {ex}")
 
         @Slot(list)
         def on_cancelled_rows(self, rows: List[int]):
@@ -331,7 +339,7 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
             self.win._seg_worker_thread = None
             self.win._seg_worker = None
 
-    bridge = _UiBridge(win)
+    bridge = _UiBridge(win, owner)
     bridge.thread = thread
 
     # --- Connect with explicit QueuedConnection so updates run on GUI thread ---

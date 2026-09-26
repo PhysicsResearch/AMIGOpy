@@ -210,10 +210,12 @@ def populate_medical_image_tree(self):
                         # If structures exist, add them as a sublevel
                         structures = series_data.get('structures')
                         if structures:
-                            structures_names = [
-                                structures[s_key].get('Name', s_key)
-                                for s_key in structures.keys()
-                            ]
+                            structures_names = series_data.get('structures_names')
+                            if not structures_names:
+                                structures_names = [
+                                    structures[s_key].get('Name', s_key)
+                                    for s_key in structures.keys()
+                                ]
                             if structures_names:
                                 structures_parent_item = QStandardItem("Structures")
                                 series_item.appendRow(structures_parent_item)
@@ -264,8 +266,8 @@ def populate_medical_image_tree(self):
                     combo_index += 1
     # Expand all items in the tree view
     self.DataTreeView.expandAll()
-    # Auto-click the first image series
-    select_first_image_series(self)
+    # Auto-click the current series if still present, else first series
+    select_current_or_first_image_series(self)
 
 def _get_or_create_parent_item(self, label):
     # Check if model is None
@@ -283,6 +285,47 @@ def _get_or_create_parent_item(self, label):
     new_item = QStandardItem(label)
     self.model.appendRow(new_item)
     return new_item    
+
+def select_current_or_first_image_series(self):
+    model = self.DataTreeView.model()
+    if not model:
+        return
+
+    cur_p = getattr(self, 'patientID', None)
+    cur_s = getattr(self, 'studyID', None)
+    cur_m = getattr(self, 'modality', None)
+    cur_idx = getattr(self, 'series_index', None)
+
+    if (
+        cur_p is not None and cur_s is not None and cur_m is not None and cur_idx is not None
+        and hasattr(self, 'medical_image') and cur_p in self.medical_image
+    ):
+        medical_image_item = None
+        for i in range(model.rowCount()):
+            item = model.item(i)
+            if item and item.text() == "Medical Image":
+                medical_image_item = item
+                break
+        if medical_image_item:
+            for p_idx in range(medical_image_item.rowCount()):
+                p_item = medical_image_item.child(p_idx)
+                if not p_item or p_item.text().replace("PatientID: ", "") != str(cur_p):
+                    continue
+                for s_idx in range(p_item.rowCount()):
+                    s_item = p_item.child(s_idx)
+                    if not s_item or s_item.text().replace("StudyID: ", "") != str(cur_s):
+                        continue
+                    for m_idx in range(s_item.rowCount()):
+                        m_item = s_item.child(m_idx)
+                        if not m_item or m_item.text().replace("Modality: ", "") != str(cur_m):
+                            continue
+                        if cur_idx < m_item.rowCount():
+                            ser_item = m_item.child(cur_idx)
+                            if ser_item:
+                                trigger_tree_click(self, ser_item.index())
+                                return
+
+    select_first_image_series(self)
 
 def select_first_image_series(self):
     model = self.DataTreeView.model()

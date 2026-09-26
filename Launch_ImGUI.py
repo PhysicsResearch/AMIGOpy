@@ -881,9 +881,25 @@ if __name__ == "__main__":
             window.setWindowState(window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
             window.raise_()
             window.activateWindow()
-            # Load all accumulated paths together
-            to_load = paths if len(paths) > 1 else paths[0]
-            load_all_dcm(window, to_load, progress_callback=None, update_label=None)
+
+            from fcn_load.load_nifti import is_nifti_file, load_nifti_files
+            from fcn_load.drop_folder_files_options import handle_dropped_path
+
+            nifti_files = [p for p in paths if os.path.isfile(p) and is_nifti_file(p)]
+            other_paths = [p for p in paths if p not in nifti_files]
+
+            if nifti_files:
+                load_nifti_files(window, nifti_files)
+
+            if other_paths:
+                for p in list(other_paths):
+                    if os.path.isdir(p):
+                        handle_dropped_path(window, p)
+                        other_paths.remove(p)
+
+                if other_paths:
+                    to_load = other_paths if len(other_paths) > 1 else other_paths[0]
+                    load_all_dcm(window, to_load, progress_callback=None, update_label=None)
 
     window.path_accumulation_timer.timeout.connect(process_accumulated_paths)
 

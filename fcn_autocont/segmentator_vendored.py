@@ -179,6 +179,8 @@ def _normalize_task(task: str) -> str:
 def _targets_from_params(params: Dict[str, Any]) -> List[str]:
     trg = params.get("targets")
     if not trg:
+        trg = params.get("ct_targets") or params.get("mr_targets")
+    if not trg:
         return []
     if isinstance(trg, str):
         parts = [x.strip() for x in trg.split(",")]
@@ -285,7 +287,8 @@ if '_is_nii_path' not in globals():
 
 def _import_masks_into_series(owner, out_dir: Path,
                               patient_id: str, study_id: str,
-                              modality: str, series_index: int) -> int:
+                              modality: str, series_index: int,
+                              targets: Optional[List[str]] = None) -> int:
     """
     Import per-organ NIfTI masks from TotalSegmentator. If only a single
     multi-label file exists, split it into binary masks per label.
@@ -303,6 +306,11 @@ def _import_masks_into_series(owner, out_dir: Path,
 
     files = sorted(p for p in out_dir.rglob("*") if _is_nii_path(p))
 
+    # If targets were specified, restrict import to only the requested targets
+    allowed_set = set()
+    if targets:
+        allowed_set = {str(t).strip().lower() for t in targets if str(t).strip()}
+
     # Debug: record what we saw
     if os.environ.get("AMIGO_DEBUG"):
         try:
@@ -313,30 +321,55 @@ def _import_masks_into_series(owner, out_dir: Path,
         except Exception:
             pass
 
+    palette = [
+        "#E6194B", "#3CB44B", "#FFE119", "#4363D8", "#F58231",
+        "#911EB4", "#46F0F0", "#F032E6", "#BCF60C", "#FABEBE",
+        "#008080", "#E6BEFF", "#9A6324", "#FFFAC8", "#800000",
+        "#AAFFC3", "#808000", "#FFD8B1", "#000075", "#808080"
+    ]
+
     imported = 0
 
     # Path A: many per-organ files (typical TS 'nifti' output)
     for f in files:
+        name = f.stem
+        if name.endswith(".nii"):
+            name = name[:-4]
+
+        # If user specified targets, filter out non-matching files
+        if allowed_set and name.lower() not in allowed_set:
+            continue
+
         try:
             img = sitk.ReadImage(str(f))
             arr = sitk.GetArrayFromImage(img)  # (z, y, x)
-            # Adjust orientation if your app expects it
+            # Adjust orientation to match AMIGOpy display
             arr = np.flip(arr, axis=1)
             if not np.any(arr):
                 continue
             mask = (arr > 0).astype(np.uint8)
 
-            s_idx = start_idx + imported
-            s_key = f"Structure_{s_idx:03d}"
-            name  = f.stem
-            if name.endswith(".nii"):
-                name = name[:-4]
+            if name in names_list:
+                s_key = keys_list[names_list.index(name)]
+            else:
+                existing_nums = []
+                for k in keys_list:
+                    if k.startswith("Structure_"):
+                        suffix = k.split("_")[-1]
+                        if suffix.isdigit():
+                            existing_nums.append(int(suffix))
+                next_num = (max(existing_nums) if existing_nums else len(keys_list)) + 1
+                s_key = f"Structure_{next_num:03d}"
+                keys_list.append(s_key)
+                names_list.append(name)
 
-            keys_list.append(s_key)
-            names_list.append(name)
-            structures.setdefault(s_key, {})
-            structures[s_key]["Mask3D"] = mask
-            structures[s_key]["Name"]   = name
+            structures[s_key] = {
+                "Mask3D": mask,
+                "Name": name,
+                "Modified": 0,
+                "Contours2D": {'axial': {}, 'sagittal': {}, 'coronal': {}},
+                "VTKActors2D": {},
+            }
             imported += 1
         except Exception as e:
             print(f"[TS][import] Failed to import {f}: {e}")
@@ -350,17 +383,53 @@ def _import_masks_into_series(owner, out_dir: Path,
             arr = np.flip(arr, axis=1)
             labels = [int(v) for v in np.unique(arr) if int(v) > 0]
             for lv in labels:
+                name = f"Label_{lv}"
+                if allowed_set and name.lower() not in allowed_set:
+                    continue
                 m = (arr == lv).astype(np.uint8)
-                s_idx = start_idx + imported
-                s_key = f"Structure_{s_idx:03d}"
-                name  = f"Label_{lv}"
-                keys_list.append(s_key)
-                names_list.append(name)
-                structures.setdefault(s_key, {})["Mask3D"] = m
-                structures[s_key]["Name"] = name
+                if name in names_list:
+                    s_key = keys_list[names_list.index(name)]
+                else:
+                    existing_nums = []
+                    for k in keys_list:
+                        if k.startswith("Structure_"):
+                            suffix = k.split("_")[-1]
+                            if suffix.isdigit():
+                                existing_nums.append(int(suffix))
+                    next_num = (max(existing_nums) if existing_nums else len(keys_list)) + 1
+                    s_key = f"Structure_{next_num:03d}"
+                    keys_list.append(s_key)
+                    names_list.append(name)
+
+                structures[s_key] = {
+                    "Mask3D": m,
+                    "Name": name,
+                    "Modified": 0,
+                    "Contours2D": {'axial': {}, 'sagittal': {}, 'coronal': {}},
+                    "VTKActors2D": {},
+                }
                 imported += 1
         except Exception as e:
             print(f"[TS][import] Failed to split multi-label: {e}")
+
+    # Ensure parallel appearance lists on series are aligned with structures_keys
+    n_keys = len(keys_list)
+    view_arr = series.setdefault('structures_view', [])
+    color_arr = series.setdefault('structures_color', [])
+    lw_arr = series.setdefault('structures_line_width', [])
+    tr_arr = series.setdefault('structures_transparency', [])
+    mtr_arr = series.setdefault('structures_mask_transparency', [])
+
+    while len(view_arr) < n_keys:
+        view_arr.append(0)
+    while len(color_arr) < n_keys:
+        color_arr.append(palette[len(color_arr) % len(palette)])
+    while len(lw_arr) < n_keys:
+        lw_arr.append(3.0)
+    while len(tr_arr) < n_keys:
+        tr_arr.append(0.1)
+    while len(mtr_arr) < n_keys:
+        mtr_arr.append(0.5)
 
     # Clean empty subfolders (best effort)
     try:
@@ -630,25 +699,49 @@ def run_totalseg_for_series(owner, series_list: List[Dict[str, Any]], params: Di
             if getattr(getattr(owner, "segwin", owner), "_seg_cancel", False):
                 break
 
-            # 2) run TS (subprocess, killable)
-            ok, msg = _run_totalseg(owner, input_nii, out_dir, params or {})
-            if not ok:
-                _show_warn("TotalSegmentator failed", msg,
-                           parent=getattr(owner, "segwin", None) or owner)
-                continue
+            # 2) determine sub-jobs for this run (CT, MR, and/or subroutines)
+            jobs = []
+            ct_targets = (params or {}).get("ct_targets") or []
+            mr_targets = (params or {}).get("mr_targets") or []
+            subroutines = (params or {}).get("subroutines") or []
+            direct_targets = (params or {}).get("targets") or []
+            direct_task = (params or {}).get("task")
 
-            # 3) import output masks
-            n = _import_masks_into_series(owner, out_dir, pid, sid, mod, idx)
-            print(f"[TS] Imported {n} structures for {tag} from {out_dir}")
+            if ct_targets:
+                jobs.append({"task": "total", "targets": list(ct_targets)})
+            if mr_targets:
+                jobs.append({"task": "total_mr", "targets": list(mr_targets)})
+            for sub in subroutines:
+                jobs.append({"task": sub, "targets": None})
+
+            if not jobs:
+                jobs.append({
+                    "task": direct_task or "total",
+                    "targets": direct_targets if direct_targets else None
+                })
+
+            total_imported = 0
+            for job in jobs:
+                if getattr(getattr(owner, "segwin", owner), "_seg_cancel", False):
+                    break
+                job_params = dict(params or {})
+                job_params["task"] = job["task"]
+                job_params["targets"] = job["targets"]
+
+                # run TS (subprocess, killable)
+                ok, msg = _run_totalseg(owner, input_nii, out_dir, job_params)
+                if not ok:
+                    _show_warn("TotalSegmentator failed", msg,
+                               parent=getattr(owner, "segwin", None) or owner)
+                    continue
+
+                # 3) import output masks (passing targets ensures ONLY requested structures are imported)
+                n = _import_masks_into_series(owner, out_dir, pid, sid, mod, idx, targets=job["targets"])
+                total_imported += n
+
+            print(f"[TS] Imported {total_imported} structures for {tag} from {out_dir}")
 
         except Exception as ex:
             tb = traceback.format_exc()
             _show_warn("TotalSegmentator error", f"{ex}", tb,
                        parent=getattr(owner, "segwin", None) or owner)
-
-    # Optional: refresh your DICOM tree
-    try:
-        from fcn_load.populate_med_image_list import populate_medical_image_tree
-        populate_medical_image_tree(owner)
-    except Exception:
-        pass
