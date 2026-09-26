@@ -170,11 +170,11 @@ def on_tree_context_menu(self, pos):
 
 def adjust_reset_view(self):
     """
-    Reset the camera view in all three VTK widgets.
+    Reset the camera view in all three VTK widgets to fit the active image bounds.
     """
-    self.renAxial.ResetCamera()
-    self.renSagittal.ResetCamera()
-    self.renCoronal.ResetCamera()
+    idx = getattr(self.layer_selected, 'currentIndex', lambda: 0)()
+    from fcn_display.view_tab_compare_previous_image import reset_views_camera
+    reset_views_camera(self, idx)
     self.vtkWidgetAxial.GetRenderWindow().Render()
     self.vtkWidgetSagittal.GetRenderWindow().Render()
     self.vtkWidgetCoronal.GetRenderWindow().Render()

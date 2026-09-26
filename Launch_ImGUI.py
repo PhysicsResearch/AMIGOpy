@@ -7,7 +7,7 @@ sys.modules['pyarrow'] = None
 
 from PySide6.QtCore import Qt, QCoreApplication
 from PySide6.QtGui import QSurfaceFormat, QIcon, QGuiApplication
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QToolBar
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QToolBar, QSizePolicy
 from PySide6.QtCore import QEvent, Qt, QTimer, Signal, QObject
 # Force software GL (stable on many Windows setups)
 QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_UseSoftwareOpenGL, True)
@@ -396,6 +396,8 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
         # 3D view:
         if hasattr(self, 'VTK_view_3D') and self.VTK_view_3D is not None and hasattr(self.VTK_view_3D, 'installEventFilter'):
             self.VTK_view_3D.installEventFilter(self)
+        if hasattr(self, '_3Dview') and self._3Dview is not None and hasattr(self._3Dview, 'installEventFilter'):
+            self._3Dview.installEventFilter(self)
         self._vtk3d_is_maximized = False
         #
         initializeMenuBar(self)
@@ -553,37 +555,18 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
                 self.set_view_mode("all")
                 return True
 
-            vtk3d = getattr(self, 'VTK_view_3D', None) or getattr(self, 'vtk3dWidget', None)
-            if vtk3d is not None and watched is vtk3d:
-                parent = vtk3d.parentWidget()
-                current_tab = self.tabModules.tabText(self.tabModules.currentIndex())
-                if current_tab == "_3Dview" and parent is not None:
-                    layout = parent.layout()
-                    if layout is not None:
-                        if not getattr(self, '_vtk3d_is_maximized', False):
-                            # Store original grid layout position
-                            res = _find_widget_in_gridlayout(layout, vtk3d)
-                            if res is not None:
-                                row, col, rowSpan, colSpan = res
-                                self._vtk3d_orig_grid = (row, col, rowSpan, colSpan)
-                                self._vtk3d_orig_parent = parent
-                                self._vtk3d_orig_geometry = vtk3d.geometry()
-                                # Maximize widget to fill parent
-                                vtk3d.setParent(parent)
-                                vtk3d.raise_()
-                                vtk3d.setGeometry(parent.rect())
-                                vtk3d.show()
-                                self._vtk3d_is_maximized = True
-                        else:
-                            # Restore to original grid position and span
-                            if hasattr(self, '_vtk3d_orig_grid'):
-                                row, col, rowSpan, colSpan = self._vtk3d_orig_grid
-                                layout.addWidget(vtk3d, row, col, rowSpan, colSpan)
-                            vtk3d.setParent(parent)
-                            vtk3d.setMinimumSize(0, 0)  # Reset min size
-                            vtk3d.updateGeometry()
-                            self._vtk3d_is_maximized = False
-                return True
+            # 3D view canvas toggle maximize / restore
+            current_tab = self.tabModules.tabText(self.tabModules.currentIndex())
+            if current_tab == "_3Dview":
+                is_3d_canvas = (
+                    watched is getattr(self, 'VTK_view_3D', None)
+                    or watched is getattr(self, 'vtk3dWidget', None)
+                    or (hasattr(self, 'VTK_view_3D') and self.VTK_view_3D is not None and self.VTK_view_3D.isAncestorOf(watched))
+                    or (watched is getattr(self, '_3Dview', None) and getattr(self, '_vtk3d_is_maximized', False))
+                )
+                if is_3d_canvas:
+                    self.toggle_3d_view_maximize()
+                    return True
 
             if hasattr(watched, "_axis_name"):
                 axis = watched._axis_name
@@ -595,17 +578,67 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
 
         return super().eventFilter(watched, event)
 
+    def toggle_3d_view_maximize(self):
+        vtk3d = getattr(self, 'VTK_view_3D', None)
+        parent = getattr(self, '_3Dview', None) or (vtk3d.parentWidget() if vtk3d else None)
+        if vtk3d is None or parent is None:
+            return
+        layout = parent.layout()
+        if layout is None:
+            return
 
+        panels = [
+            getattr(self, 'View3DgroupBox_12', None),
+            getattr(self, 'View3DgroupBox_13', None),
+            getattr(self, 'tabWidget_3Dview', None),
+        ]
 
-    def _hook_vtk_dblclicks(self):
-        # Install the event filter on the QVTKRenderWindowInteractor children,
-        # not on the placeholder containers.
-        for axis in _VIEW_ATTRS.keys():
-            pane_name, _, _ = _resolve_names(axis)
-            holder = getattr(self, pane_name)
-            for vtk_child in holder.findChildren(QVTKWidget):
-                vtk_child._axis_name = axis
-                vtk_child.installEventFilter(self)
+        if not getattr(self, '_vtk3d_is_maximized', False):
+            # Store original grid layout position
+            res = _find_widget_in_gridlayout(layout, vtk3d)
+            if res[0] is not None:
+                self._vtk3d_orig_grid = res
+            else:
+                self._vtk3d_orig_grid = (0, 1, 2, 2)
+
+            # Hide surrounding control panels & table
+            self._vtk3d_saved_panels_vis = {p: p.isVisible() for p in panels if p is not None}
+            for p in panels:
+                if p is not None:
+                    p.hide()
+
+            # Maximize VTK_view_3D to span the full grid layout
+            layout.removeWidget(vtk3d)
+            layout.addWidget(vtk3d, 0, 0, 4, 4)
+            vtk3d.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            vtk3d.raise_()
+            vtk3d.show()
+            self._vtk3d_is_maximized = True
+        else:
+            # Restore to original grid position and span
+            layout.removeWidget(vtk3d)
+            orig_grid = getattr(self, '_vtk3d_orig_grid', (0, 1, 2, 2))
+            layout.addWidget(vtk3d, *orig_grid)
+
+            # Restore visibility of surrounding panels
+            saved_vis = getattr(self, '_vtk3d_saved_panels_vis', {})
+            for p in panels:
+                if p is not None:
+                    p.setVisible(saved_vis.get(p, True))
+
+            vtk3d.setMinimumSize(0, 0)
+            vtk3d.updateGeometry()
+            self._vtk3d_is_maximized = False
+
+        # Request 3D re-render
+        if hasattr(self, 'VTK3D_interactor') and self.VTK3D_interactor is not None:
+            rw = self.VTK3D_interactor.GetRenderWindow()
+            if rw:
+                rw.Render()
+        elif hasattr(self, 'vtk3dWidget') and self.vtk3dWidget is not None:
+            rw = self.vtk3dWidget.GetRenderWindow()
+            if rw:
+                rw.Render()
         
 
 

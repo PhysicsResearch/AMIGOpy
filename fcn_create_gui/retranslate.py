@@ -233,6 +233,8 @@ def retranslate_ui(w):
         w.View3D_Apply.setText(QCoreApplication.translate("w", u"Apply", None))
     if hasattr(w, 'View3D_name_06'):
         w.View3D_name_06.setText(QCoreApplication.translate("w", u"Isovalue ", None))
+    if hasattr(w, 'View3D_name_opacity'):
+        w.View3D_name_opacity.setText(QCoreApplication.translate("w", u"Opacity", None))
     if hasattr(w, 'View3D_name_08'):
         w.View3D_name_08.setText(QCoreApplication.translate("w", u"Axial Limit", None))
     if hasattr(w, 'View3D_name_09'):

@@ -19,6 +19,7 @@ from fcn_load.load_nifti import load_nifti_files
 from fcn_load.load_mha import load_mha_files
 from fcn_load.load_npy import load_npy_files
 from fcn_load.load_tiff_similar import load_tiff_files, load_png_files, load_jpeg_files, load_bmp_files  
+from fcn_load.load_microct import load_microct_stack
 from fcn_autocont.segmentator_calls import open_segmentator_tab
 from functools import partial
 from fcn_init.create_3D_database_tab import (
@@ -47,7 +48,7 @@ def initializeMenuBar(self):
     # open
     openMenu = fileMenu.addMenu("Open")
     # Add items 
-    items = ["DICOM", "NIfTI","AMIGOpy","MHA","npy","STL","Obj","3mf", "Tiff", "EGSPhant","IrIS", "MCNPinp", "MCNPout"]
+    items = ["DICOM", "NIfTI","AMIGOpy","MHA","npy","STL","Obj","3mf", "Tiff", "microCT (tiff,bmp)", "EGSPhant","IrIS", "MCNPinp", "MCNPout"]
     for item in items:
         action = QAction(item, self)
         # Connect the Folder action to the load_dcm function
@@ -75,6 +76,8 @@ def initializeMenuBar(self):
             action.setShortcut("Ctrl+N")    
         if item == "Tiff":
             action.triggered.connect(lambda: load_tiff_files(self))
+        if item == "microCT (tiff,bmp)":
+            action.triggered.connect(lambda: load_microct_stack(self))
         openMenu.addAction(action)
         
     importMenu = fileMenu.addMenu("Import")

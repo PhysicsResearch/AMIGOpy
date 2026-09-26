@@ -129,22 +129,16 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
         offset=offset
     )
 
-    # ── reset thresholds (and full‐range) for this layer so the sliders jump to the new data
-    # clear any old state
-    self._thresholds.pop(idx, None)
-    self._full_ranges.pop(idx, None)
-    # compute new data range
-    vol = self.display_3D_data[idx]
-    vmin, vmax = float(vol.min()), float(vol.max())
-    # re-initialize the two 3D sliders for this layer
-    initialize_3Dsliders(self, vmin, vmax)
-    # ── now reset the crop‐region sliders for just this layer
-    # clear any old crop state
-    self._crops.pop(idx, None)
-    self._dims .pop(idx, None)
-    # volume_np.shape is (Z, Y, X), but initialize_crop_widgets wants (X, Y, Z)
-    dz, dy, dx = vol.shape
-    initialize_crop_widgets(self, (dx, dy, dz), idx)
+    # ── reset thresholds & crop-region sliders for this layer using the displayed VTK volume
+    img = self._imgs.get(idx)
+    if img is not None:
+        nx, ny, nz = img.GetDimensions()
+        vmin, vmax = self._full_ranges.get(idx, (0.0, 1.0))
+        self._thresholds.pop(idx, None)
+        initialize_3Dsliders(self, vmin, vmax)
+        self._crops.pop(idx, None)
+        self._dims.pop(idx, None)
+        initialize_crop_widgets(self, (nx, ny, nz), idx)
     # stop exectution here
 
     return

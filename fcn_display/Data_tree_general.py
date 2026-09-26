@@ -413,14 +413,17 @@ def on_DataTreeView_clicked(self,index):
                 adjust_data_type_input(self,idx)
                 #
                 self.current_axial_slice_index[idx]    = round(self.display_data[idx].shape[0]/2)
-                self.current_sagittal_slice_index[idx] = round(self.display_data[idx].shape[1]/2)
-                self.current_coronal_slice_index[idx]  = round(self.display_data[idx].shape[2]/2)
+                self.current_coronal_slice_index[idx]  = round(self.display_data[idx].shape[1]/2)
+                self.current_sagittal_slice_index[idx] = round(self.display_data[idx].shape[2]/2)
                 #
     
                 # update_metadata_table
                 meta_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
-                if 'DCM_Info' in meta_dict:
+                if meta_dict.get('DCM_Info') is not None:
                     update_meta_view_table_dicom(self, meta_dict['DCM_Info'])
+                elif meta_dict.get('microCT_Log'):
+                    from fcn_display.meta_viewer import update_meta_view_table_nifti
+                    update_meta_view_table_nifti(self, meta_dict['microCT_Log'])
                 self.modality_metadata = self.modality
                 # display info
                 display_dicom_info(self)
@@ -970,9 +973,27 @@ def on_DataTreeView_clicked(self,index):
 
 
 def display_dicom_info(self):
-    if self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'] is None:
+    meta = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
+    if meta.get('DCM_Info') is None:
+        if meta.get('DataType') == 'microCT':
+            scanner = meta.get('microCT_Scanner', 'microCT')
+            vox_um  = meta.get('microCT_PixelSize_um', '')
+            kv      = meta.get('microCT_SourceVoltage_kV', '')
+            ua      = meta.get('microCT_SourceCurrent_uA', '')
+            if hasattr(self, 'textActorAxialInfo'):
+                self.textActorAxialInfo.SetInput(
+                    f"{scanner}\n"
+                    f"Voxel: {vox_um} µm\n"
+                    f"{kv} kV  {ua} µA"
+                )
+            if hasattr(self, 'textActorSagittalInfo'):
+                self.textActorSagittalInfo.SetInput(
+                    f"{meta.get('StudyDescription', '')}\n"
+                    f"{meta.get('SeriesDescription', '')}\n"
+                    f"Slices: {meta.get('microCT_NumberOfSlices', '')}"
+                )
         return
-    PatientName = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('PatientName','')
+    PatientName = meta['DCM_Info'].get('PatientName','')
     PatientID   = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('PatientID','')
     Date        = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('AcquisitionDate','')
     KVP         = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DCM_Info'].get('KVP','')

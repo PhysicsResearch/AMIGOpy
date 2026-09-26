@@ -68,7 +68,8 @@ def displayaxial(self, Im = None):
                 
 
   
-        if self.slice_thick[i] ==0:
+        if self.slice_thick[i] == 0:
+            self.imageActorAxial[i].SetVisibility(0)
             continue
         
         
@@ -96,22 +97,24 @@ def displayaxial(self, Im = None):
             #
             imageProperty = self.imageActorAxial[i].GetProperty()
             imageProperty.SetOpacity(self.LayerAlpha[i])  
+            self.imageActorAxial[i].SetVisibility(1)
             self.dataImporterAxial[i].Modified()  
             if i == idx:
                 # Update the position and lateral extension of the axial line to cross the entire image
-                self.sagittalLine2Source.SetPoint1(self.Im_Offset[i,1],self.Im_Offset[i,2]+self.current_axial_slice_index[i]*self.slice_thick[i], 0.1)
-                self.sagittalLine2Source.SetPoint2(self.Im_Offset[i,1]+extent[0]*self.pixel_spac[i,0]-self.pixel_spac[i,0],self.Im_Offset[i,2]+self.current_axial_slice_index[i]*self.slice_thick[i], 0.1)
+                self.sagittalLine2Source.SetPoint1(self.Im_Offset[i,1],self.Im_Offset[i,2]+self.current_axial_slice_index[i]*self.slice_thick[i], 0.05)
+                self.sagittalLine2Source.SetPoint2(self.Im_Offset[i,1]+extent[0]*self.pixel_spac[i,0]-self.pixel_spac[i,0],self.Im_Offset[i,2]+self.current_axial_slice_index[i]*self.slice_thick[i], 0.05)
                 self.sagittalLine2Source.Modified()  # Notify VTK of the changes
                 #
                 # Update the position and lateral extension of the axial line to cross the entire image
-                self.coronalLine2Source.SetPoint1(self.Im_Offset[i,0],self.Im_Offset[i,2]+self.current_axial_slice_index[i]*self.slice_thick[i], 1)
-                self.coronalLine2Source.SetPoint2(self.Im_Offset[i,0]+extent[1]*self.pixel_spac[i,1]-self.pixel_spac[i,1],self.Im_Offset[i,2]+self.current_axial_slice_index[i]*self.slice_thick[i], 0.11)
+                self.coronalLine2Source.SetPoint1(self.Im_Offset[i,0],self.Im_Offset[i,2]+self.current_axial_slice_index[i]*self.slice_thick[i], 0.05)
+                self.coronalLine2Source.SetPoint2(self.Im_Offset[i,0]+extent[1]*self.pixel_spac[i,1]-self.pixel_spac[i,1],self.Im_Offset[i,2]+self.current_axial_slice_index[i]*self.slice_thick[i], 0.05)
                 self.coronalLine2Source.Modified()  # Notify VTK of the changes
                 self.current_axial_slice_index[i]  
                       
         else:             
             imageProperty = self.imageActorAxial[i].GetProperty()
             imageProperty.SetOpacity(0)
+            self.imageActorAxial[i].SetVisibility(0)
             self.dataImporterAxial[i].Modified()
         #     
         #  Render to update
@@ -787,7 +790,8 @@ def displaycoronal(self, Im = None):
                 _update_coronal_mask_overlay(self)
                 disp_structure_overlay_coronal(self)
 
-        if self.slice_thick[i] ==0:
+        if self.slice_thick[i] == 0:
+            self.imageActorCoronal[i].SetVisibility(0)
             continue   
         
         
@@ -812,16 +816,17 @@ def displaycoronal(self, Im = None):
             # Inform the pipeline that data has changed.
             imageProperty = self.imageActorCoronal[i].GetProperty()
             imageProperty.SetOpacity(self.LayerAlpha[i])  
+            self.imageActorCoronal[i].SetVisibility(1)
             self.dataImporterCoronal[i].Modified()  
             if i == idx:
                 # Update the position and lateral extension of the axial line to cross the entire image
-                self.axialLineSource.SetPoint1(self.Im_Offset[i,0],self.Im_Offset[i,1]+ self.current_coronal_slice_index[i]*self.pixel_spac[i,0], 1)
-                self.axialLineSource.SetPoint2(self.Im_Offset[i,0]+extent[1]*self.pixel_spac[i,1]-self.pixel_spac[i,1],self.Im_Offset[i,1]+ self.current_coronal_slice_index[i]*self.pixel_spac[i,0], 0.1)
+                self.axialLineSource.SetPoint1(self.Im_Offset[i,0],self.Im_Offset[i,1]+ self.current_coronal_slice_index[i]*self.pixel_spac[i,0], 0.05)
+                self.axialLineSource.SetPoint2(self.Im_Offset[i,0]+extent[1]*self.pixel_spac[i,1]-self.pixel_spac[i,1],self.Im_Offset[i,1]+ self.current_coronal_slice_index[i]*self.pixel_spac[i,0], 0.05)
                 self.axialLineSource.Modified()  # Notify VTK of the changes
                 
                 # Update the position and lateral extension of the axial line to cross the entire image
-                self.sagittalLineSource.SetPoint1(self.Im_Offset[i,1]+self.current_coronal_slice_index[i]*self.pixel_spac[i,0],self.Im_Offset[i,2], 1)
-                self.sagittalLineSource.SetPoint2(self.Im_Offset[i,1]+self.current_coronal_slice_index[i]*self.pixel_spac[i,0],self.Im_Offset[i,2]+extent[0]*self.slice_thick[i]-self.slice_thick[i], 0.1)
+                self.sagittalLineSource.SetPoint1(self.Im_Offset[i,1]+self.current_coronal_slice_index[i]*self.pixel_spac[i,0],self.Im_Offset[i,2], 0.05)
+                self.sagittalLineSource.SetPoint2(self.Im_Offset[i,1]+self.current_coronal_slice_index[i]*self.pixel_spac[i,0],self.Im_Offset[i,2]+extent[0]*self.slice_thick[i]-self.slice_thick[i], 0.05)
                 self.sagittalLineSource.Modified()  # Notify VTK of the changes
             #
             self.imageActorCoronal[i].SetPosition(self.Im_Offset[i,0], self.Im_Offset[i,2] , 0)
@@ -831,6 +836,7 @@ def displaycoronal(self, Im = None):
         else:
             imageProperty = self.imageActorCoronal[i].GetProperty()
             imageProperty.SetOpacity(0) 
+            self.imageActorCoronal[i].SetVisibility(0)
             self.dataImporterCoronal[i].Modified()  
     #
 
@@ -1506,7 +1512,8 @@ def displaysagittal(self,Im = None):
             _update_sagittal_mask_overlay(self)
             disp_structure_overlay_sagittal(self)
 
-        if self.slice_thick[i] ==0:
+        if self.slice_thick[i] == 0:
+            self.imageActorSagittal[i].SetVisibility(0)
             continue
         
         
@@ -1531,21 +1538,23 @@ def displaysagittal(self,Im = None):
             self.imageActorSagittal[i].SetPosition(self.Im_Offset[i,1], self.Im_Offset[i,2] , 0)
             imageProperty = self.imageActorSagittal[i].GetProperty()
             imageProperty.SetOpacity(self.LayerAlpha[i])  
+            self.imageActorSagittal[i].SetVisibility(1)
             # Inform the pipeline that data has changed.
             self.dataImporterSagittal[i].Modified()  
             if i==idx:
                 # Update the position and lateral extension of the axial line to cross the entire image
-                self.axialLine2Source.SetPoint1(self.Im_Offset[i,0]+self.current_sagittal_slice_index[i]*self.pixel_spac[i,1],self.Im_Offset[i,1], 1)
-                self.axialLine2Source.SetPoint2(self.Im_Offset[i,0]+self.current_sagittal_slice_index[i]*self.pixel_spac[i,1],self.Im_Offset[i,1]+extent[1]*self.pixel_spac[i,0]-self.pixel_spac[i,0],  1)
+                self.axialLine2Source.SetPoint1(self.Im_Offset[i,0]+self.current_sagittal_slice_index[i]*self.pixel_spac[i,1],self.Im_Offset[i,1], 0.05)
+                self.axialLine2Source.SetPoint2(self.Im_Offset[i,0]+self.current_sagittal_slice_index[i]*self.pixel_spac[i,1],self.Im_Offset[i,1]+extent[1]*self.pixel_spac[i,0]-self.pixel_spac[i,0],  0.05)
                 self.axialLine2Source.Modified()  # Notify VTK of the changes
             
                 # # Update the position and lateral extension of the coronal line to cross the entire image
-                self.coronalLineSource.SetPoint1(self.Im_Offset[i,0]+self.current_sagittal_slice_index[i]*self.pixel_spac[i,1], self.Im_Offset[i,2], 1)
-                self.coronalLineSource.SetPoint2(self.Im_Offset[i,0]+self.current_sagittal_slice_index[i]*self.pixel_spac[i,1],self.Im_Offset[i,2]+extent[0]*self.slice_thick[i]-self.slice_thick[i],  1)
+                self.coronalLineSource.SetPoint1(self.Im_Offset[i,0]+self.current_sagittal_slice_index[i]*self.pixel_spac[i,1], self.Im_Offset[i,2], 0.05)
+                self.coronalLineSource.SetPoint2(self.Im_Offset[i,0]+self.current_sagittal_slice_index[i]*self.pixel_spac[i,1],self.Im_Offset[i,2]+extent[0]*self.slice_thick[i]-self.slice_thick[i],  0.05)
                 self.coronalLineSource.Modified()  # Notify VTK of the changes     
         else: 
             imageProperty = self.imageActorSagittal[i].GetProperty()
             imageProperty.SetOpacity(0)  
+            self.imageActorSagittal[i].SetVisibility(0)  
         #
     # Render the updated data
     self.vtkWidgetSagittal.GetRenderWindow().Render()

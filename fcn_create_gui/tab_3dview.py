@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 tab_3dview.py - AMIGOpy GUI Module
 =====================================
@@ -262,13 +262,13 @@ def create_tab_3dview(w):
     w.View3D_Threshold_slider_01.setObjectName(u"View3D_Threshold_slider_01")
     w.View3D_Threshold_slider_01.setOrientation(Qt.Orientation.Horizontal)
 
-    w.gridLayout_67.addWidget(w.View3D_Threshold_slider_01, 2, 1, 1, 4)
+    w.gridLayout_67.addWidget(w.View3D_Threshold_slider_01, 3, 1, 1, 4)
 
     w.View3D_coronal_slider_01 = QSlider(w.View3DgroupBox_13)
     w.View3D_coronal_slider_01.setObjectName(u"View3D_coronal_slider_01")
     w.View3D_coronal_slider_01.setOrientation(Qt.Orientation.Horizontal)
 
-    w.gridLayout_67.addWidget(w.View3D_coronal_slider_01, 6, 1, 1, 4)
+    w.gridLayout_67.addWidget(w.View3D_coronal_slider_01, 7, 1, 1, 4)
 
     w.View3DverticalSpacer_23 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
@@ -278,12 +278,12 @@ def create_tab_3dview(w):
     w.View3D_axial_slider_01.setObjectName(u"View3D_axial_slider_01")
     w.View3D_axial_slider_01.setOrientation(Qt.Orientation.Horizontal)
 
-    w.gridLayout_67.addWidget(w.View3D_axial_slider_01, 4, 1, 1, 4)
+    w.gridLayout_67.addWidget(w.View3D_axial_slider_01, 5, 1, 1, 4)
 
     w.View3D_axial_spin_02 = QSpinBox(w.View3DgroupBox_13)
     w.View3D_axial_spin_02.setObjectName(u"View3D_axial_spin_02")
 
-    w.gridLayout_67.addWidget(w.View3D_axial_spin_02, 5, 5, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_axial_spin_02, 6, 5, 1, 1)
 
     w.View3DhorizontalSpacer_80 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -292,17 +292,17 @@ def create_tab_3dview(w):
     w.View3D_Apply = QPushButton(w.View3DgroupBox_13)
     w.View3D_Apply.setObjectName(u"View3D_Apply")
 
-    w.gridLayout_67.addWidget(w.View3D_Apply, 12, 5, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_Apply, 13, 5, 1, 1)
 
     w.View3D_colormap = QComboBox(w.View3DgroupBox_13)
     w.View3D_colormap.setObjectName(u"View3D_colormap")
 
-    w.gridLayout_67.addWidget(w.View3D_colormap, 10, 1, 1, 4)
+    w.gridLayout_67.addWidget(w.View3D_colormap, 11, 1, 1, 4)
 
     w.View3D_axial_spin_01 = QSpinBox(w.View3DgroupBox_13)
     w.View3D_axial_spin_01.setObjectName(u"View3D_axial_spin_01")
 
-    w.gridLayout_67.addWidget(w.View3D_axial_spin_01, 4, 5, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_axial_spin_01, 5, 5, 1, 1)
 
     w.View3DhorizontalSpacer_82 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -311,7 +311,7 @@ def create_tab_3dview(w):
     w.View3D_Threshold_spin_01 = QDoubleSpinBox(w.View3DgroupBox_13)
     w.View3D_Threshold_spin_01.setObjectName(u"View3D_Threshold_spin_01")
 
-    w.gridLayout_67.addWidget(w.View3D_Threshold_spin_01, 2, 5, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_Threshold_spin_01, 3, 5, 1, 1)
 
     w.View3DhorizontalSpacer_85 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -320,7 +320,7 @@ def create_tab_3dview(w):
     w.View3D_coronal_spin_01 = QSpinBox(w.View3DgroupBox_13)
     w.View3D_coronal_spin_01.setObjectName(u"View3D_coronal_spin_01")
 
-    w.gridLayout_67.addWidget(w.View3D_coronal_spin_01, 6, 5, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_coronal_spin_01, 7, 5, 1, 1)
 
     w.View3D_name_06 = QLineEdit(w.View3DgroupBox_13)
     w.View3D_name_06.setObjectName(u"View3D_name_06")
@@ -328,38 +328,61 @@ def create_tab_3dview(w):
 
     w.gridLayout_67.addWidget(w.View3D_name_06, 1, 0, 1, 1)
 
+    w.View3D_name_opacity = QLineEdit(w.View3DgroupBox_13)
+    w.View3D_name_opacity.setObjectName(u"View3D_name_opacity")
+    w.View3D_name_opacity.setEnabled(False)
+    w.View3D_name_opacity.setText(u"Opacity")
+
+    w.gridLayout_67.addWidget(w.View3D_name_opacity, 2, 0, 1, 1)
+
+    w.View3D_opacity_slider = QSlider(w.View3DgroupBox_13)
+    w.View3D_opacity_slider.setObjectName(u"View3D_opacity_slider")
+    w.View3D_opacity_slider.setOrientation(Qt.Orientation.Horizontal)
+    w.View3D_opacity_slider.setRange(0, 100)
+    w.View3D_opacity_slider.setValue(100)
+
+    w.gridLayout_67.addWidget(w.View3D_opacity_slider, 2, 1, 1, 4)
+
+    w.View3D_opacity_spin_01 = QDoubleSpinBox(w.View3DgroupBox_13)
+    w.View3D_opacity_spin_01.setObjectName(u"View3D_opacity_spin_01")
+    w.View3D_opacity_spin_01.setRange(0.0, 1.0)
+    w.View3D_opacity_spin_01.setSingleStep(0.05)
+    w.View3D_opacity_spin_01.setValue(1.0)
+
+    w.gridLayout_67.addWidget(w.View3D_opacity_spin_01, 2, 5, 1, 1)
+
     w.View3D_sagittal_slider_01 = QSlider(w.View3DgroupBox_13)
     w.View3D_sagittal_slider_01.setObjectName(u"View3D_sagittal_slider_01")
     w.View3D_sagittal_slider_01.setOrientation(Qt.Orientation.Horizontal)
 
-    w.gridLayout_67.addWidget(w.View3D_sagittal_slider_01, 8, 1, 1, 4)
+    w.gridLayout_67.addWidget(w.View3D_sagittal_slider_01, 9, 1, 1, 4)
 
     w.View3D_sagittal_slider_02 = QSlider(w.View3DgroupBox_13)
     w.View3D_sagittal_slider_02.setObjectName(u"View3D_sagittal_slider_02")
     w.View3D_sagittal_slider_02.setOrientation(Qt.Orientation.Horizontal)
 
-    w.gridLayout_67.addWidget(w.View3D_sagittal_slider_02, 9, 1, 1, 4)
+    w.gridLayout_67.addWidget(w.View3D_sagittal_slider_02, 10, 1, 1, 4)
 
     w.View3D_Threshold_spin_02 = QDoubleSpinBox(w.View3DgroupBox_13)
     w.View3D_Threshold_spin_02.setObjectName(u"View3D_Threshold_spin_02")
 
-    w.gridLayout_67.addWidget(w.View3D_Threshold_spin_02, 3, 5, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_Threshold_spin_02, 4, 5, 1, 1)
 
     w.View3D_sagittal_spin_02 = QSpinBox(w.View3DgroupBox_13)
     w.View3D_sagittal_spin_02.setObjectName(u"View3D_sagittal_spin_02")
 
-    w.gridLayout_67.addWidget(w.View3D_sagittal_spin_02, 9, 5, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_sagittal_spin_02, 10, 5, 1, 1)
 
     w.View3D_sagittal_spin_01 = QSpinBox(w.View3DgroupBox_13)
     w.View3D_sagittal_spin_01.setObjectName(u"View3D_sagittal_spin_01")
 
-    w.gridLayout_67.addWidget(w.View3D_sagittal_spin_01, 8, 5, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_sagittal_spin_01, 9, 5, 1, 1)
 
     w.View3D_name_08 = QLineEdit(w.View3DgroupBox_13)
     w.View3D_name_08.setObjectName(u"View3D_name_08")
     w.View3D_name_08.setEnabled(False)
 
-    w.gridLayout_67.addWidget(w.View3D_name_08, 4, 0, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_name_08, 5, 0, 1, 1)
 
     w.View3D_isovalue_slider = QSlider(w.View3DgroupBox_13)
     w.View3D_isovalue_slider.setObjectName(u"View3D_isovalue_slider")
@@ -371,19 +394,19 @@ def create_tab_3dview(w):
     w.View3D_name_09.setObjectName(u"View3D_name_09")
     w.View3D_name_09.setEnabled(False)
 
-    w.gridLayout_67.addWidget(w.View3D_name_09, 6, 0, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_name_09, 7, 0, 1, 1)
 
     w.View3D_Threshold_slider_02 = QSlider(w.View3DgroupBox_13)
     w.View3D_Threshold_slider_02.setObjectName(u"View3D_Threshold_slider_02")
     w.View3D_Threshold_slider_02.setOrientation(Qt.Orientation.Horizontal)
 
-    w.gridLayout_67.addWidget(w.View3D_Threshold_slider_02, 3, 1, 1, 4)
+    w.gridLayout_67.addWidget(w.View3D_Threshold_slider_02, 4, 1, 1, 4)
 
     w.View3D_name_10 = QLineEdit(w.View3DgroupBox_13)
     w.View3D_name_10.setObjectName(u"View3D_name_10")
     w.View3D_name_10.setEnabled(False)
 
-    w.gridLayout_67.addWidget(w.View3D_name_10, 8, 0, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_name_10, 9, 0, 1, 1)
 
     w.View3DhorizontalSpacer_81 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -393,7 +416,7 @@ def create_tab_3dview(w):
     w.View3D_axial_slider_02.setObjectName(u"View3D_axial_slider_02")
     w.View3D_axial_slider_02.setOrientation(Qt.Orientation.Horizontal)
 
-    w.gridLayout_67.addWidget(w.View3D_axial_slider_02, 5, 1, 1, 4)
+    w.gridLayout_67.addWidget(w.View3D_axial_slider_02, 6, 1, 1, 4)
 
     w.View3DhorizontalSpacer_83 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -408,12 +431,12 @@ def create_tab_3dview(w):
     w.View3D_name_07.setObjectName(u"View3D_name_07")
     w.View3D_name_07.setEnabled(False)
 
-    w.gridLayout_67.addWidget(w.View3D_name_07, 2, 0, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_name_07, 3, 0, 1, 1)
 
     w.View3D_coronal_spin_02 = QSpinBox(w.View3DgroupBox_13)
     w.View3D_coronal_spin_02.setObjectName(u"View3D_coronal_spin_02")
 
-    w.gridLayout_67.addWidget(w.View3D_coronal_spin_02, 7, 5, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_coronal_spin_02, 8, 5, 1, 1)
 
     w.View3D_isovalue_spin_01 = QDoubleSpinBox(w.View3DgroupBox_13)
     w.View3D_isovalue_spin_01.setObjectName(u"View3D_isovalue_spin_01")
@@ -455,25 +478,25 @@ def create_tab_3dview(w):
     w.View3D_name_11.setObjectName(u"View3D_name_11")
     w.View3D_name_11.setEnabled(False)
 
-    w.gridLayout_67.addWidget(w.View3D_name_11, 10, 0, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_name_11, 11, 0, 1, 1)
 
     w.View3D_coronal_slider_02 = QSlider(w.View3DgroupBox_13)
     w.View3D_coronal_slider_02.setObjectName(u"View3D_coronal_slider_02")
     w.View3D_coronal_slider_02.setOrientation(Qt.Orientation.Horizontal)
 
-    w.gridLayout_67.addWidget(w.View3D_coronal_slider_02, 7, 1, 1, 4)
+    w.gridLayout_67.addWidget(w.View3D_coronal_slider_02, 8, 1, 1, 4)
 
     w.View3D_real_time_checkBox = QCheckBox(w.View3DgroupBox_13)
     w.View3D_real_time_checkBox.setObjectName(u"View3D_real_time_checkBox")
     w.View3D_real_time_checkBox.setEnabled(False)
 
-    w.gridLayout_67.addWidget(w.View3D_real_time_checkBox, 11, 5, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_real_time_checkBox, 12, 5, 1, 1)
 
     w.View3D_update_all_3D = QCheckBox(w.View3DgroupBox_13)
     w.View3D_update_all_3D.setObjectName(u"View3D_update_all_3D")
     w.View3D_update_all_3D.setEnabled(False)
 
-    w.gridLayout_67.addWidget(w.View3D_update_all_3D, 10, 5, 1, 1)
+    w.gridLayout_67.addWidget(w.View3D_update_all_3D, 11, 5, 1, 1)
 
 
     w.gridLayout_63.addWidget(w.View3DgroupBox_13, 1, 3, 2, 1)

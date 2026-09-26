@@ -20,11 +20,43 @@ def _is_binary_volume(a: np.ndarray) -> bool:
     return False
 
 
+def reset_views_camera(self, idx):
+    """
+    Reset the 2D view cameras to specifically fit the active layer's image actor,
+    preventing empty or different-scale layers (e.g. 100mm placeholders vs 8.5mm microCT)
+    from distorting the camera zoom and placement.
+    """
+    for ren, actors in [
+        (getattr(self, 'renAxial', None), getattr(self, 'imageActorAxial', None)),
+        (getattr(self, 'renSagittal', None), getattr(self, 'imageActorSagittal', None)),
+        (getattr(self, 'renCoronal', None), getattr(self, 'imageActorCoronal', None)),
+    ]:
+        if ren is None:
+            continue
+        reset_done = False
+        if actors is not None and 0 <= idx < len(actors):
+            act = actors[idx]
+            if act is not None:
+                b = act.GetBounds()
+                # Check valid 2D bounds (at least one lateral dimension has non-zero width)
+                if b and ((b[1] - b[0]) > 1e-4 or (b[3] - b[2]) > 1e-4):
+                    ren.ResetCamera(b)
+                    cam = ren.GetActiveCamera()
+                    cr = cam.GetClippingRange()
+                    cam.SetClippingRange(min(cr[0], 0.01), max(cr[1], 1000.0))
+                    reset_done = True
+        if not reset_done:
+            ren.ResetCamera()
+            cam = ren.GetActiveCamera()
+            cr = cam.GetClippingRange()
+            cam.SetClippingRange(min(cr[0], 0.01), max(cr[1], 1000.0))
+
+
 def compare_view_previous(self, Window, Level, idx, num_layers=4):
     """
     Per-layer comparison & actions:
-      • First time for layer idx: set_window(..), ResetCamera(), Render()
-      • If PixelSpacing / IPP / SliceThickness are MISSING or CHANGED: ResetCamera()
+      • First time for layer idx: set_window(..), ResetCamera(bounds), Render()
+      • If PixelSpacing / IPP / SliceThickness are MISSING or CHANGED: ResetCamera(bounds)
       • If min/max/mean changed >50% or binary volume: set_window(..)
       • Stores per-layer snapshot in self.view_previous_image[idx]
     """
@@ -67,10 +99,17 @@ def compare_view_previous(self, Window, Level, idx, num_layers=4):
     ipp = _safe_tuple(meta, 'ImagePositionPatient', 3)      # (x, y, z) or None
     thk = _safe_float(meta, 'SliceThickness')               # float or None
 
-    arr3d    = self.display_data[idx]
-    cur_min  = float(np.nanmin(arr3d))
-    cur_max  = float(np.nanmax(arr3d))
-    cur_mean = float(np.nanmean(arr3d))
+    arr3d = self.display_data[idx]
+    # For large volumes (e.g. microCT), subsample in 3D first to avoid freezing UI
+    if arr3d.size > 2_000_000:
+        step = max(1, int(round((arr3d.size / 500_000) ** (1.0 / 3.0))))
+        sample = arr3d[::step, ::step, ::step]
+    else:
+        sample = arr3d
+
+    cur_min  = float(np.nanmin(sample))
+    cur_max  = float(np.nanmax(sample))
+    cur_mean = float(np.nanmean(sample))
 
     current = {
         'pixel_spacing': px,
@@ -104,10 +143,8 @@ def compare_view_previous(self, Window, Level, idx, num_layers=4):
     # ---- first time for this layer: do WL + camera reset + render ----
     if prev is None:
         W, L = _derive_wl()
-        set_window(self,W, L)
-        self.renAxial.ResetCamera()
-        self.renSagittal.ResetCamera()
-        self.renCoronal.ResetCamera()
+        set_window(self, W, L)
+        reset_views_camera(self, idx)
         self.vtkWidgetAxial.GetRenderWindow().Render()
         self.vtkWidgetSagittal.GetRenderWindow().Render()
         self.vtkWidgetCoronal.GetRenderWindow().Render()
@@ -144,13 +181,11 @@ def compare_view_previous(self, Window, Level, idx, num_layers=4):
     # Always apply WL for binary volumes, or when stats changed greatly
     if wl_changed or _is_binary_volume(arr3d):
         W, L = _derive_wl()
-        set_window(self,W, L)
+        set_window(self, W, L)
         did_anything = True
 
     if geom_changed:
-        self.renAxial.ResetCamera()
-        self.renSagittal.ResetCamera()
-        self.renCoronal.ResetCamera()
+        reset_views_camera(self, idx)
         did_anything = True
 
     if did_anything:
