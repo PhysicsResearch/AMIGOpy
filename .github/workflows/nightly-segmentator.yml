@@ -1,0 +1,160 @@
+name: Build AMIGOpy Pre-Release with TotalSegmentator (Nightly)
+
+on:
+  schedule:
+    # Run every night at 03:00 UTC (after standard nightly build)
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: "Pre-release version tag, e.g. nightly"
+        required: true
+        default: "nightly"
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build-and-release-segmentator:
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    env:
+      KMP_DUPLICATE_LIB_OK: "TRUE"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Miniconda (builder env)
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniconda-version: "latest"
+          python-version: "3.12"
+          environment-file: amigo.yml
+          activate-environment: amigo
+          auto-update-conda: true
+          channels: conda-forge,defaults
+
+      - name: Add Graphviz to PATH (conda)
+        shell: powershell
+        run: echo "$env:CONDA_PREFIX\Library\bin" >> $env:GITHUB_PATH
+
+      - name: Upgrade pip tooling
+        shell: powershell
+        run: python -m pip install --upgrade pip wheel setuptools
+
+      # ---- Pin Torch CPU (no CUDA wheels) to keep bundle size reasonable ----
+      - name: Install PyTorch CPU wheels
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu `
+            "torch==2.4.1+cpu" "torchvision==0.19.1+cpu" "torchaudio==2.4.1+cpu"
+
+      - name: Install scikit-learn for worker
+        shell: powershell
+        run: python -m pip install "scikit-learn>=1.3,<1.6"
+
+      - name: Ensure PyInstaller
+        shell: powershell
+        run: pip install pyinstaller
+
+      - name: Build combined dist (GUI + CPU worker)
+        shell: powershell
+        env:
+          BUILD_SEGMENTATOR: "1"
+        run: pyinstaller amigopy.spec --clean
+
+      - name: Verify dist contents
+        shell: powershell
+        run: |
+          if (-not (Test-Path "dist\AMIGOpy\Launch_ImGUI.exe")) {
+            throw "dist\AMIGOpy\Launch_ImGUI.exe missing"
+          }
+          if (-not (Test-Path "dist\AMIGOpy\segmentator_worker.exe")) {
+            throw "dist\AMIGOpy\segmentator_worker.exe missing"
+          }
+          Write-Host "Both Launch_ImGUI.exe and segmentator_worker.exe verified in dist\AMIGOpy"
+          Get-ChildItem -Recurse dist\AMIGOpy | Select-Object -First 30 | Format-List -Property FullName,Length
+
+      - name: Zip portable build
+        shell: powershell
+        run: |
+          $ver = "${{ github.event.inputs.app_version }}"
+          if (-not $ver) { $ver = "nightly" }
+          Compress-Archive `
+            -Path "dist/AMIGOpy/*" `
+            -DestinationPath "AMIGOpy-win-portable-segmentator-${ver}.zip" `
+            -Force
+
+      - name: Ensure Inno Setup is installed
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+            if (!(Test-Path $iscc)) {
+              $isccAlt = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+              if (Test-Path $isccAlt) {
+                $iscc = $isccAlt
+              } else {
+                throw "ISCC.exe not found after install."
+              }
+            }
+          }
+          $global:LASTEXITCODE = 0
+
+      - name: Build AMIGOpy installer with Segmentator
+        shell: powershell
+        run: |
+          $iscc = "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            $iscc = "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+          }
+          & $iscc /DOutputName="AMIGOpy-Setup-Segmentator" AMIGOpy.iss
+
+      - name: Prepare installer for release
+        shell: powershell
+        run: |
+          $ver = "${{ github.event.inputs.app_version }}"
+          if (-not $ver) { $ver = "nightly" }
+          if (!(Test-Path "Output\AMIGOpy-Setup-Segmentator.exe")) {
+            throw "Output\AMIGOpy-Setup-Segmentator.exe not found"
+          }
+          Copy-Item "Output\AMIGOpy-Setup-Segmentator.exe" "AMIGOpy_Setup_Segmentator_${ver}.exe"
+          Write-Host "Prepared AMIGOpy_Setup_Segmentator_${ver}.exe"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AMIGOpy-Setup-Segmentator
+          path: Output/AMIGOpy-Setup-Segmentator.exe
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Create / Update GitHub Pre-Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.app_version || 'nightly' }}
+          name: AMIGOpy Pre-Release (${{ github.event.inputs.app_version || 'nightly' }})
+          draft: false
+          prerelease: true
+          make_latest: false
+          body: |
+            ## 🌙 AMIGOpy Pre-Release with TotalSegmentator
+            
+            * **Release Tag:** `${{ github.event.inputs.app_version || 'nightly' }}`
+            * **Commit:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            * **Status:** ⚠️ Bleeding-edge pre-release build with TotalSegmentator AI worker (Unsigned).
+            
+            ### 📥 Downloads
+            * **Installer (with TotalSegmentator):** `AMIGOpy_Setup_Segmentator_${{ github.event.inputs.app_version || 'nightly' }}.exe`
+            * **Portable ZIP (with TotalSegmentator):** `AMIGOpy-win-portable-segmentator-${{ github.event.inputs.app_version || 'nightly' }}.zip`
+          files: |
+            AMIGOpy_Setup_Segmentator_*.exe
+            AMIGOpy-win-portable-segmentator-*.zip

@@ -2,6 +2,10 @@
 ; Outputs a single app folder with Launch_ImGUI.exe and segmentator_worker.exe,
 ; sets TOTALSEG_HOME to a writeable models cache in LocalAppData.
 
+#ifndef OutputName
+#define OutputName "AMIGOpy-Setup"
+#endif
+
 [Setup]
 AppId={{E09A3FB0-4DF3-495E-817D-1EAE3753C818}}
 AppName=AMIGOpy
@@ -12,7 +16,7 @@ AppSupportURL=https://www.amigo-medphys.com/
 AppUpdatesURL=https://www.amigo-medphys.com/
 DefaultDirName={autopf}\AMIGOpy
 DefaultGroupName=AMIGOpy
-OutputBaseFilename=AMIGOpy-Setup
+OutputBaseFilename={#OutputName}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -80,25 +84,25 @@ Root: HKCR; Subkey: "Directory\Background\shell\OpenWithAMIGOpy\command"; ValueT
 ; Path to the worker exe for external tools (compat with prior API script)
 Root: HKCU; Subkey: "SOFTWARE\AMIGOpy\Segmentator"; \
     ValueType: string; ValueName: "InstalledPath"; ValueData: "{app}\segmentator_worker.exe"; \
-    Flags: uninsdeletevalue
+    Flags: uninsdeletevalue; Check: HasSegmentatorWorker
 
 ; Environment variable for apps/scripts to find the worker
 Root: HKCU; Subkey: "Environment"; \
     ValueType: expandsz; ValueName: "AMIGO_TS_WORKER"; \
     ValueData: "{app}\segmentator_worker.exe"; \
-    Flags: preservestringtype uninsdeletevalue
+    Flags: preservestringtype uninsdeletevalue; Check: HasSegmentatorWorker
 
 ; Back-compat with older code that expected AMIGO_API_EXE
 Root: HKCU; Subkey: "Environment"; \
     ValueType: expandsz; ValueName: "AMIGO_API_EXE"; \
     ValueData: "{app}\segmentator_worker.exe"; \
-    Flags: preservestringtype uninsdeletevalue
+    Flags: preservestringtype uninsdeletevalue; Check: HasSegmentatorWorker
 
 ; Set a writeable model cache path for TotalSegmentator (your code will use this if present)
 Root: HKCU; Subkey: "Environment"; \
     ValueType: expandsz; ValueName: "TOTALSEG_HOME"; \
     ValueData: "{localappdata}\AMIGOpy\models"; \
-    Flags: preservestringtype uninsdeletevalue
+    Flags: preservestringtype uninsdeletevalue; Check: HasSegmentatorWorker
 
 [Icons]
 Name: "{autoprograms}\AMIGOpy";  Filename: "{app}\Launch_ImGUI.exe"; IconFilename: "{app}\AMBpy.ico"
@@ -110,3 +114,9 @@ Filename: "{app}\Launch_ImGUI.exe"; Description: "{cm:LaunchProgram,AMIGOpy}"; F
 [UninstallDelete]
 ; Optionally remove the models cache on uninstall (comment out to keep models between installs)
 Type: filesandordirs; Name: "{localappdata}\AMIGOpy\models"
+
+[Code]
+function HasSegmentatorWorker: Boolean;
+begin
+  Result := FileExists(ExpandConstant('{app}\segmentator_worker.exe'));
+end;

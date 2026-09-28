@@ -62,7 +62,7 @@ exe_gui = EXE(
     pyz_gui,
     a_gui.scripts,
     [],
-    exclude_binaries=False,
+    exclude_binaries=True,
     name='Launch_ImGUI',
     debug=False,
     bootloader_ignore_signals=False,
@@ -71,83 +71,105 @@ exe_gui = EXE(
     console=False,   # GUI app
 )
 
-# ── Worker Analysis (heavy: include TS stack) ─────────────────────────────────
-# Packages to sweep for hidden imports / data / DLLs
-BASE_PKGS = [
-    # Segmentation stack
-    "totalsegmentator","nnunet","nnunetv2","monai","torch","torchvision",
-    # Imaging
-    "nibabel","SimpleITK","scipy","skimage","tqdm","einops","packaging",
-    # DICOM/NIfTI
-    "pydicom","dicom2nifti",
-    # misc
-    "filelock","requests","yaml","numpy","sklearn",
-]
+# ── Optional Segmentator Worker (controlled via BUILD_SEGMENTATOR env var) ───
+BUILD_SEGMENTATOR = os.environ.get("BUILD_SEGMENTATOR", "1").strip().lower() not in ("0", "false", "no")
 
-hiddenimports, worker_datas, worker_bins = [], [], []
+if BUILD_SEGMENTATOR:
+    # ── Worker Analysis (heavy: include TS stack) ─────────────────────────────────
+    # Packages to sweep for hidden imports / data / DLLs
+    BASE_PKGS = [
+        # Segmentation stack
+        "totalsegmentator","nnunet","nnunetv2","monai","torch","torchvision",
+        # Imaging
+        "nibabel","SimpleITK","scipy","skimage","tqdm","einops","packaging",
+        # DICOM/NIfTI
+        "pydicom","dicom2nifti",
+        # misc
+        "filelock","requests","yaml","numpy","sklearn",
+    ]
 
-for pkg in BASE_PKGS:
-    try:
-        hiddenimports += collect_submodules(pkg)
-    except Exception:
-        pass
+    hiddenimports, worker_datas, worker_bins = [], [], []
 
-# pydicom dynamic bits
-for extra in ["pydicom.encaps","pydicom.pixels","pydicom.pixels.decoders"]:
-    try:
-        hiddenimports += collect_submodules(extra)
-    except Exception:
-        pass
+    for pkg in BASE_PKGS:
+        try:
+            hiddenimports += collect_submodules(pkg)
+        except Exception:
+            pass
 
-# non-.py data
-for pkg in ["totalsegmentator","nnunet","nnunetv2","monai","torch","torchvision",
-            "skimage","SimpleITK","nibabel"]:
-    try:
-        worker_datas += collect_data_files(pkg, include_py_files=False)
-    except Exception:
-        pass
+    # pydicom dynamic bits
+    for extra in ["pydicom.encaps","pydicom.pixels","pydicom.pixels.decoders"]:
+        try:
+            hiddenimports += collect_submodules(extra)
+        except Exception:
+            pass
 
-# DLLs (torch, SimpleITK)
-for pkg in ["torch","torchvision","SimpleITK"]:
-    try:
-        worker_bins += collect_dynamic_libs(pkg)
-    except Exception:
-        pass
+    # non-.py data
+    for pkg in ["totalsegmentator","nnunet","nnunetv2","monai","torch","torchvision",
+                "skimage","SimpleITK","nibabel"]:
+        try:
+            worker_datas += collect_data_files(pkg, include_py_files=False)
+        except Exception:
+            pass
 
-a_ts = Analysis(
-    [WORKER_SCRIPT],
-    pathex=[BASE_DIR],
-    binaries=worker_bins,
-    datas=worker_datas,
-    hiddenimports=hiddenimports,
-    hookspath=[os.path.join(BASE_DIR, 'hooks')],
-    runtime_hooks=[],
-    excludes=[],
-    cipher=block_cipher,
-    noarchive=False,
-)
+    # DLLs (torch, SimpleITK)
+    for pkg in ["torch","torchvision","SimpleITK"]:
+        try:
+            worker_bins += collect_dynamic_libs(pkg)
+        except Exception:
+            pass
 
-pyz_ts = PYZ(a_ts.pure, a_ts.zipped_data, cipher=block_cipher)
+    a_ts = Analysis(
+        [WORKER_SCRIPT],
+        pathex=[BASE_DIR],
+        binaries=worker_bins,
+        datas=worker_datas,
+        hiddenimports=hiddenimports,
+        hookspath=[os.path.join(BASE_DIR, 'hooks')],
+        runtime_hooks=[],
+        excludes=[],
+        cipher=block_cipher,
+        noarchive=False,
+    )
 
-exe_ts = EXE(
-    pyz_ts,
-    a_ts.scripts,
-    a_ts.binaries,
-    a_ts.zipfiles,
-    a_ts.datas,
-    name='segmentator_worker',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=False,
-    console=True,   # console is fine for logs
-)
+    pyz_ts = PYZ(a_ts.pure, a_ts.zipped_data, cipher=block_cipher)
 
-# ── Single output folder containing BOTH executables ──────────────────────────
-coll = COLLECT(
-    exe_gui, exe_ts,
-    a_gui.binaries, a_gui.zipfiles, a_gui.datas,
-    a_ts.binaries,  a_ts.zipfiles,  a_ts.datas,
-    strip=False, upx=False, upx_exclude=[],
-    name='AMIGOpy',       # dist/AMIGOpy with both EXEs + shared libs
-)
+    exe_ts = EXE(
+        pyz_ts,
+        a_ts.scripts,
+        [],
+        exclude_binaries=True,
+        name='segmentator_worker',
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=False,
+        console=True,   # console is fine for logs
+    )
+
+    # ── Single output folder containing BOTH executables ──────────────────────────
+    coll = COLLECT(
+        exe_gui,
+        a_gui.binaries,
+        a_gui.zipfiles,
+        a_gui.datas,
+        exe_ts,
+        a_ts.binaries,
+        a_ts.zipfiles,
+        a_ts.datas,
+        strip=False,
+        upx=False,
+        upx_exclude=[],
+        name='AMIGOpy',       # dist/AMIGOpy with both EXEs + shared libs
+    )
+else:
+    # ── Single output folder containing ONLY the GUI executable ───────────────────
+    coll = COLLECT(
+        exe_gui,
+        a_gui.binaries,
+        a_gui.zipfiles,
+        a_gui.datas,
+        strip=False,
+        upx=False,
+        upx_exclude=[],
+        name='AMIGOpy',       # dist/AMIGOpy with GUI only
+    )

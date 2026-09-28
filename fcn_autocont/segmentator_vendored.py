@@ -513,12 +513,20 @@ def _run_ts_subprocess(owner, kwargs, log_dir: Path, env_extra: Dict[str, str]):
 
     # ---- choose child command
     if getattr(sys, "frozen", False):
-        worker_name = "segmentator_worker.exe" if os.name == "nt" else "segmentator_worker"
-        worker_path = os.path.join(os.path.dirname(sys.executable), worker_name)
-        if os.path.exists(worker_path):
-            cmd = [worker_path, str(args_json)]
+        base = Path(sys.executable).parent
+        worker_candidates = [
+            base / ("segmentator_worker.exe" if os.name == "nt" else "segmentator_worker"),
+            base / "workers" / "cpu" / ("segmentator_worker.exe" if os.name == "nt" else "segmentator_worker"),
+            base / "workers" / "cuda" / ("segmentator_worker.exe" if os.name == "nt" else "segmentator_worker"),
+        ]
+        found_worker = next((p for p in worker_candidates if p.exists()), None)
+        if found_worker:
+            cmd = [str(found_worker), str(args_json)]
         else:
-            cmd = [sys.executable, str(runner_py), str(args_json)]
+            raise RuntimeError(
+                "Autocontouring worker (segmentator_worker.exe) was not found in the application directory. "
+                "Please install the 'with TotalSegmentator' edition of AMIGOpy."
+            )
     else:
         py = sys.executable
         if os.name == "nt":
