@@ -7,7 +7,7 @@ sys.modules['pyarrow'] = None
 
 from PySide6.QtCore import Qt, QCoreApplication
 from PySide6.QtGui import QSurfaceFormat, QIcon, QGuiApplication
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QToolBar
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QToolBar, QSizePolicy
 from PySide6.QtCore import QEvent, Qt, QTimer, Signal, QObject
 # Force software GL (stable on many Windows setups)
 QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_UseSoftwareOpenGL, True)
@@ -41,7 +41,7 @@ from fcn_init.ModulesTab_change       import set_fcn_tabModules_changed
 from fcn_init.init_variables          import initialize_software_variables
 from fcn_init.init_tables             import initialize_software_tables
 from fcn_init.init_buttons            import initialize_software_buttons
-from fcn_init.create_3D_database_tab  import setup_3d_database_tab, setup_mat_mix_tab, setup_view_and_fit_tab
+from fcn_init.create_3D_database_tab  import flush_3dp_databases
 from fcn_init.init_load_files         import load_Source_cal_csv_file
 from fcn_init.init_list_menus         import populate_list_menus
 from fcn_init.init_drop_options       import initialize_drop_fcn
@@ -117,11 +117,7 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
         initialize_software_tables(self)
         # initialize buttons
         initialize_software_buttons(self)
-        # initialize 3D Printing Database tab (if tab_3DP has been created)
-        if hasattr(self, 'tab_18') and self.tab_18 is not None:
-            setup_3d_database_tab(self)
-            setup_mat_mix_tab(self)
-            setup_view_and_fit_tab(self)
+        # (the 3D Printing tab is created lazily by fcn_create_gui/setup_ui.py on first click)
         # initialize drop functions
         # Enable drag and drop
         initialize_drop_fcn(self)
@@ -400,6 +396,8 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
         # 3D view:
         if hasattr(self, 'VTK_view_3D') and self.VTK_view_3D is not None and hasattr(self.VTK_view_3D, 'installEventFilter'):
             self.VTK_view_3D.installEventFilter(self)
+        if hasattr(self, '_3Dview') and self._3Dview is not None and hasattr(self._3Dview, 'installEventFilter'):
+            self._3Dview.installEventFilter(self)
         self._vtk3d_is_maximized = False
         #
         initializeMenuBar(self)
@@ -475,6 +473,15 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
                 from fcn_display.display_images import update_layer_view
                 update_layer_view(self)
 
+    def closeEvent(self, event):
+        # The 3DP autosave is debounced (300 ms); make sure the last edit reaches disk.
+        try:
+            flush_3dp_databases(self)
+        except Exception:
+            import logging
+            logging.getLogger("amigopy").exception("Final 3DP database flush on close failed")
+        super().closeEvent(event)
+
     def keyPressEvent(self, event):
         if event.modifiers() & Qt.ControlModifier:
             key_map = {
@@ -548,37 +555,18 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
                 self.set_view_mode("all")
                 return True
 
-            vtk3d = getattr(self, 'VTK_view_3D', None) or getattr(self, 'vtk3dWidget', None)
-            if vtk3d is not None and watched is vtk3d:
-                parent = vtk3d.parentWidget()
-                current_tab = self.tabModules.tabText(self.tabModules.currentIndex())
-                if current_tab == "_3Dview" and parent is not None:
-                    layout = parent.layout()
-                    if layout is not None:
-                        if not getattr(self, '_vtk3d_is_maximized', False):
-                            # Store original grid layout position
-                            res = _find_widget_in_gridlayout(layout, vtk3d)
-                            if res is not None:
-                                row, col, rowSpan, colSpan = res
-                                self._vtk3d_orig_grid = (row, col, rowSpan, colSpan)
-                                self._vtk3d_orig_parent = parent
-                                self._vtk3d_orig_geometry = vtk3d.geometry()
-                                # Maximize widget to fill parent
-                                vtk3d.setParent(parent)
-                                vtk3d.raise_()
-                                vtk3d.setGeometry(parent.rect())
-                                vtk3d.show()
-                                self._vtk3d_is_maximized = True
-                        else:
-                            # Restore to original grid position and span
-                            if hasattr(self, '_vtk3d_orig_grid'):
-                                row, col, rowSpan, colSpan = self._vtk3d_orig_grid
-                                layout.addWidget(vtk3d, row, col, rowSpan, colSpan)
-                            vtk3d.setParent(parent)
-                            vtk3d.setMinimumSize(0, 0)  # Reset min size
-                            vtk3d.updateGeometry()
-                            self._vtk3d_is_maximized = False
-                return True
+            # 3D view canvas toggle maximize / restore
+            current_tab = self.tabModules.tabText(self.tabModules.currentIndex())
+            if current_tab == "_3Dview":
+                is_3d_canvas = (
+                    watched is getattr(self, 'VTK_view_3D', None)
+                    or watched is getattr(self, 'vtk3dWidget', None)
+                    or (hasattr(self, 'VTK_view_3D') and self.VTK_view_3D is not None and self.VTK_view_3D.isAncestorOf(watched))
+                    or (watched is getattr(self, '_3Dview', None) and getattr(self, '_vtk3d_is_maximized', False))
+                )
+                if is_3d_canvas:
+                    self.toggle_3d_view_maximize()
+                    return True
 
             if hasattr(watched, "_axis_name"):
                 axis = watched._axis_name
@@ -590,17 +578,67 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
 
         return super().eventFilter(watched, event)
 
+    def toggle_3d_view_maximize(self):
+        vtk3d = getattr(self, 'VTK_view_3D', None)
+        parent = getattr(self, '_3Dview', None) or (vtk3d.parentWidget() if vtk3d else None)
+        if vtk3d is None or parent is None:
+            return
+        layout = parent.layout()
+        if layout is None:
+            return
 
+        panels = [
+            getattr(self, 'View3DgroupBox_12', None),
+            getattr(self, 'View3DgroupBox_13', None),
+            getattr(self, 'tabWidget_3Dview', None),
+        ]
 
-    def _hook_vtk_dblclicks(self):
-        # Install the event filter on the QVTKRenderWindowInteractor children,
-        # not on the placeholder containers.
-        for axis in _VIEW_ATTRS.keys():
-            pane_name, _, _ = _resolve_names(axis)
-            holder = getattr(self, pane_name)
-            for vtk_child in holder.findChildren(QVTKWidget):
-                vtk_child._axis_name = axis
-                vtk_child.installEventFilter(self)
+        if not getattr(self, '_vtk3d_is_maximized', False):
+            # Store original grid layout position
+            res = _find_widget_in_gridlayout(layout, vtk3d)
+            if res[0] is not None:
+                self._vtk3d_orig_grid = res
+            else:
+                self._vtk3d_orig_grid = (0, 1, 2, 2)
+
+            # Hide surrounding control panels & table
+            self._vtk3d_saved_panels_vis = {p: p.isVisible() for p in panels if p is not None}
+            for p in panels:
+                if p is not None:
+                    p.hide()
+
+            # Maximize VTK_view_3D to span the full grid layout
+            layout.removeWidget(vtk3d)
+            layout.addWidget(vtk3d, 0, 0, 4, 4)
+            vtk3d.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            vtk3d.raise_()
+            vtk3d.show()
+            self._vtk3d_is_maximized = True
+        else:
+            # Restore to original grid position and span
+            layout.removeWidget(vtk3d)
+            orig_grid = getattr(self, '_vtk3d_orig_grid', (0, 1, 2, 2))
+            layout.addWidget(vtk3d, *orig_grid)
+
+            # Restore visibility of surrounding panels
+            saved_vis = getattr(self, '_vtk3d_saved_panels_vis', {})
+            for p in panels:
+                if p is not None:
+                    p.setVisible(saved_vis.get(p, True))
+
+            vtk3d.setMinimumSize(0, 0)
+            vtk3d.updateGeometry()
+            self._vtk3d_is_maximized = False
+
+        # Request 3D re-render
+        if hasattr(self, 'VTK3D_interactor') and self.VTK3D_interactor is not None:
+            rw = self.VTK3D_interactor.GetRenderWindow()
+            if rw:
+                rw.Render()
+        elif hasattr(self, 'vtk3dWidget') and self.vtk3dWidget is not None:
+            rw = self.vtk3dWidget.GetRenderWindow()
+            if rw:
+                rw.Render()
         
 
 
@@ -723,74 +761,28 @@ if __name__ == "__main__":
     import qdarkstyle
     import resources_rc 
 
-    # --- Setup log directory and file in AppData ---
+    # --- Logging + crash handling (rotating log, non-fatal error dialogs; see fcn_init/app_stability.py) ---
+    import logging as _logging
+    from fcn_init.app_stability import (
+        setup_logging, StreamToLogger, install_qt_message_handler, install_exception_hooks,
+    )
     appdata_dir = os.path.join(os.getenv('APPDATA', os.path.expanduser('~')), 'AMIGOpy')
     try:
-        os.makedirs(appdata_dir, exist_ok=True)
-        log_file_path = os.path.join(appdata_dir, 'amigopy.log')
-        log_file = open(log_file_path, 'w', encoding='utf-8')
-        log_file.write(f"=== AMIGOpy Log Started: {datetime.datetime.now()} ===\n")
-        log_file.flush()
+        app_logger, log_file_path = setup_logging(appdata_dir)
     except Exception as e:
-        log_file = None
+        app_logger = _logging.getLogger("amigopy")
+        log_file_path = os.path.join(appdata_dir, 'amigopy.log')
         print("Failed to initialize logging:", e)
+    sys.stdout = StreamToLogger(_logging.getLogger("amigopy.stdout"), _logging.INFO, sys.__stdout__)
+    sys.stderr = StreamToLogger(_logging.getLogger("amigopy.stderr"), _logging.WARNING, sys.__stderr__)
+    install_qt_message_handler(app_logger)
 
-    # Redirection class for standard outputs
-    class LoggerRedirector:
-        def __init__(self, original_stream, log_file):
-            self.original_stream = original_stream
-            self.log_file = log_file
-
-        def write(self, message):
-            if self.original_stream:
-                try:
-                    self.original_stream.write(message)
-                except:
-                    pass
-            if self.log_file:
-                try:
-                    self.log_file.write(message)
-                    self.log_file.flush()
-                except:
-                    pass
-
-        def flush(self):
-            if self.original_stream:
-                try:
-                    self.original_stream.flush()
-                except:
-                    pass
-            if self.log_file:
-                try:
-                    self.log_file.flush()
-                except:
-                    pass
-
-    # Redirect sys.stdout and sys.stderr
-    if log_file:
-        sys.stdout = LoggerRedirector(sys.stdout, log_file)
-        sys.stderr = LoggerRedirector(sys.stderr, log_file)
-
-    # Custom exception hook to display a critical QMessageBox on crash
-    def exception_hook(exctype, value, tb):
-        tb_str = "".join(traceback.format_exception(exctype, value, tb))
-        sys.stderr.write(f"\nFATAL EXCEPTION CRASH:\n{tb_str}\n")
-        
-        if QApplication.instance():
-            QMessageBox.critical(
-                None,
-                "AMIGOpy Crash",
-                f"AMIGOpy has encountered a fatal error and has crashed.\n\n"
-                f"Error Details:\n{value}\n\n"
-                f"A detailed log containing the crash traceback has been saved to:\n"
-                f"{log_file_path}\n\n"
-                f"Please retrieve this log file to inspect or report the issue.",
-                QMessageBox.StandardButton.Ok
-            )
-        sys.__excepthook__(exctype, value, tb)
-        sys.exit(1)
-
-    sys.excepthook = exception_hook
+    _ui_state = {"ready": False, "window": None}
+    install_exception_hooks(
+        app_logger, log_file_path,
+        is_ui_ready=lambda: _ui_state["ready"],
+        get_parent=lambda: _ui_state["window"],
+    )
 
     # --- Keep your GL defaults (unchanged) ---
     fmt = QSurfaceFormat()
@@ -856,6 +848,8 @@ if __name__ == "__main__":
     paths = sys.argv[1:] if len(sys.argv) > 1 else []
     folder_path = paths if len(paths) > 1 else (paths[0] if len(paths) == 1 else None)
     window = MyApp(folder_path)
+    _ui_state["window"] = window
+    app.aboutToQuit.connect(lambda: flush_3dp_databases(window))
 
     # Optional: apply theme after splash is visible
     custom_qss = """
@@ -887,9 +881,25 @@ if __name__ == "__main__":
             window.setWindowState(window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
             window.raise_()
             window.activateWindow()
-            # Load all accumulated paths together
-            to_load = paths if len(paths) > 1 else paths[0]
-            load_all_dcm(window, to_load, progress_callback=None, update_label=None)
+
+            from fcn_load.load_nifti import is_nifti_file, load_nifti_files
+            from fcn_load.drop_folder_files_options import handle_dropped_path
+
+            nifti_files = [p for p in paths if os.path.isfile(p) and is_nifti_file(p)]
+            other_paths = [p for p in paths if p not in nifti_files]
+
+            if nifti_files:
+                load_nifti_files(window, nifti_files)
+
+            if other_paths:
+                for p in list(other_paths):
+                    if os.path.isdir(p):
+                        handle_dropped_path(window, p)
+                        other_paths.remove(p)
+
+                if other_paths:
+                    to_load = other_paths if len(other_paths) > 1 else other_paths[0]
+                    load_all_dcm(window, to_load, progress_callback=None, update_label=None)
 
     window.path_accumulation_timer.timeout.connect(process_accumulated_paths)
 
@@ -928,6 +938,7 @@ if __name__ == "__main__":
             
     window.show()
     splash.finish(window)
+    _ui_state["ready"] = True  # from here on, unhandled exceptions are reported instead of terminating the app
 
     # Use the same accumulation timer for startup load so that concurrent launches group together
     if folder_path is not None:

@@ -152,6 +152,7 @@ def init_display_empty_image(self):
         self.dataImporterAxial[i].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
         imageProperty = self.imageActorAxial[i].GetProperty()
         imageProperty.SetOpacity(0)  
+        self.imageActorAxial[i].SetVisibility(0)
         # Inform the pipeline that data has changed.
         self.dataImporterAxial[i].Modified()  
         #
@@ -161,6 +162,7 @@ def init_display_empty_image(self):
         self.dataImporterSagittal[i].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
         imageProperty = self.imageActorSagittal[i].GetProperty()
         imageProperty.SetOpacity(0)  
+        self.imageActorSagittal[i].SetVisibility(0)
         # Inform the pipeline that data has changed.
         self.dataImporterSagittal[i].Modified()
         #
@@ -170,6 +172,7 @@ def init_display_empty_image(self):
         self.dataImporterCoronal[i].SetDataExtent(0, extent[1]-1, 0, extent[0]-1, 0, 0)
         imageProperty = self.imageActorCoronal[i].GetProperty()
         imageProperty.SetOpacity(0)  
+        self.imageActorCoronal[i].SetVisibility(0)
         # Inform the pipeline that data has changed.
         self.dataImporterCoronal[i].Modified() 
     
@@ -479,11 +482,21 @@ class DashedLineSource:
             uy = dy / total_len
             uz = dz / total_len
 
+            # Adapt dash and gap size dynamically:
+            # We want around 35 dashes across the full length of the line.
+            # For a 500 mm clinical CT, 500 / 35 ≈ 14 mm (8 mm dash + 6 mm gap).
+            # For an 8.5 mm microCT, 8.5 / 35 ≈ 0.24 mm (0.14 mm dash + 0.10 mm gap).
+            base_period = self.dash_len + self.gap_len
+            target_period = total_len / 35.0
+            scale = min(1.0, target_period / base_period) if base_period > 0 else 1.0
+            dash = max(total_len * 0.005, self.dash_len * scale)
+            gap = max(total_len * 0.003, self.gap_len * scale)
+            period = dash + gap
+
             s = 0.0
             pt_idx = 0
-            period = self.dash_len + self.gap_len
             while s < total_len:
-                s_end = min(s + self.dash_len, total_len)
+                s_end = min(s + dash, total_len)
 
                 p_start = (self.p1[0] + s * ux, self.p1[1] + s * uy, self.p1[2] + s * uz)
                 p_finish = (self.p1[0] + s_end * ux, self.p1[1] + s_end * uy, self.p1[2] + s_end * uz)
@@ -511,6 +524,7 @@ def init_axial_lines(self):
     self.axialLineActor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Light Blue
     self.axialLineActor.GetProperty().SetOpacity(0.70)                    # Opacity 0.7
     self.axialLineActor.GetProperty().SetLineWidth(1)
+    self.axialLineActor.GetProperty().LightingOff()
     self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(self.axialLineActor)
 
     # Line to display sagittal position in the axial view
@@ -522,6 +536,7 @@ def init_axial_lines(self):
     self.axialLine2Actor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Light Blue
     self.axialLine2Actor.GetProperty().SetOpacity(0.70)                    # Opacity 0.7
     self.axialLine2Actor.GetProperty().SetLineWidth(1)
+    self.axialLine2Actor.GetProperty().LightingOff()
     self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(self.axialLine2Actor)
     
     
@@ -535,6 +550,7 @@ def init_sagittal_lines(self):
     self.sagittalLineActor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Light Blue
     self.sagittalLineActor.GetProperty().SetOpacity(0.70)                    # Opacity 0.7
     self.sagittalLineActor.GetProperty().SetLineWidth(1)
+    self.sagittalLineActor.GetProperty().LightingOff()
     self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(self.sagittalLineActor)
     
     # Line that shows axial position in the sagittal view
@@ -546,6 +562,7 @@ def init_sagittal_lines(self):
     self.sagittalLine2Actor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Light Blue
     self.sagittalLine2Actor.GetProperty().SetOpacity(0.70)                    # Opacity 0.7
     self.sagittalLine2Actor.GetProperty().SetLineWidth(1)
+    self.sagittalLine2Actor.GetProperty().LightingOff()
     self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(self.sagittalLine2Actor)
     
     
@@ -559,6 +576,7 @@ def init_coronal_lines(self):
     self.coronalLineActor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Light Blue
     self.coronalLineActor.GetProperty().SetOpacity(0.70)                    # Opacity 0.7
     self.coronalLineActor.GetProperty().SetLineWidth(1)
+    self.coronalLineActor.GetProperty().LightingOff()
     self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(self.coronalLineActor)
     
     # Line that shows axial position in the coronal view
@@ -570,6 +588,7 @@ def init_coronal_lines(self):
     self.coronalLine2Actor.GetProperty().SetColor(0.2549, 0.7765, 0.9490)   # Light Blue
     self.coronalLine2Actor.GetProperty().SetOpacity(0.70)                    # Opacity 0.7
     self.coronalLine2Actor.GetProperty().SetLineWidth(1)
+    self.coronalLine2Actor.GetProperty().LightingOff()
     self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer().AddActor(self.coronalLine2Actor)
     # Set the interactor style to vtkInteractorStyleImage
  

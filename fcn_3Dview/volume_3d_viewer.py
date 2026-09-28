@@ -28,6 +28,58 @@ CMAPS = [
 # -------------------------------------------------------------------------
 # Window/level (threshold) widget helpers
 # -------------------------------------------------------------------------
+# Window/level (threshold) & transfer function helpers
+# -------------------------------------------------------------------------
+def _apply_transfer_functions(self, layer: int):
+    """Apply updated OTF, CTF, and IsoSurface settings to the given layer."""
+    if layer not in self._thresholds or layer not in self._otfs or layer not in self._ctfs:
+        return
+
+    low, high = self._full_ranges.get(layer, (self.slider3D_LOW, self.slider3D_HIGH))
+    tmin, tmax = self._thresholds.get(layer, (low, high))
+    if not hasattr(self, '_isovalues'):
+        self._isovalues = {}
+    isoval = self._isovalues.get(layer, tmin)
+
+    # Determine opacity
+    if hasattr(self, '_opacities') and len(self._opacities) > layer:
+        opacity = float(self._opacities[layer])
+    else:
+        opacity = 1.0
+
+    # IsoSurface contour value
+    if layer in self._vol_props:
+        volp = self._vol_props[layer]
+        volp.GetIsoSurfaceValues().SetValue(0, isoval)
+
+    # Determine blend mode
+    mode = "Composite"
+    if hasattr(self, 'View3D_render_options') and self.View3D_render_options:
+        mode = self.View3D_render_options.currentText()
+
+    # Update OTF
+    otf = self._otfs[layer]
+    otf.RemoveAllPoints()
+    if mode == "IsoSurface":
+        otf.AddPoint(isoval - 1e-4, 0.0)
+        otf.AddPoint(isoval, opacity)
+        otf.AddPoint(high, opacity)
+    else:
+        safe_tmax = max(tmax, tmin + 1e-4)
+        otf.AddPoint(tmin, 0.0)
+        otf.AddPoint(safe_tmax, opacity)
+
+    # Update CTF
+    ctf = self._ctfs[layer]
+    cmap_box = self.findChild(QtWidgets.QComboBox, 'View3D_colormap')
+    default_cmap = cmap_box.currentText() if cmap_box else "Gray"
+    cmap = self._colormaps.get(layer, default_cmap)
+    self.update_color_transfer(layer, ctf, cmap, tmin, max(tmax, tmin + 1e-4))
+
+    if hasattr(self, 'VTK3D_interactor') and self.VTK3D_interactor:
+        self.VTK3D_interactor.GetRenderWindow().Render()
+
+
 def initialize_3Dsliders(self, low: float, high: float, n_steps: int = 100):
     """Configure window/level sliders & spinboxes for the current layer."""
     self.slider3D_LOW, self.slider3D_HIGH = float(low), float(high)
@@ -44,6 +96,15 @@ def initialize_3Dsliders(self, low: float, high: float, n_steps: int = 100):
         self.View3D_Threshold_spin_01,
         self.View3D_Threshold_spin_02,
     ]
+    if hasattr(self, 'View3D_isovalue_slider'):
+        widgets.append(self.View3D_isovalue_slider)
+    if hasattr(self, 'View3D_isovalue_spin_01'):
+        widgets.append(self.View3D_isovalue_spin_01)
+    if hasattr(self, 'View3D_opacity_slider'):
+        widgets.append(self.View3D_opacity_slider)
+    if hasattr(self, 'View3D_opacity_spin_01'):
+        widgets.append(self.View3D_opacity_spin_01)
+
     for w in widgets:
         w.blockSignals(True)
 
@@ -61,86 +122,201 @@ def initialize_3Dsliders(self, low: float, high: float, n_steps: int = 100):
     self.View3D_Threshold_spin_01.setSingleStep(step)
     self.View3D_Threshold_spin_02.setSingleStep(step)
 
+    # configure isovalue
+    if hasattr(self, 'View3D_isovalue_slider'):
+        self.View3D_isovalue_slider.setRange(0, self.slider3D_RES)
+        self.View3D_isovalue_slider.setSingleStep(1)
+    if hasattr(self, 'View3D_isovalue_spin_01'):
+        self.View3D_isovalue_spin_01.setRange(self.slider3D_LOW, self.slider3D_HIGH)
+        self.View3D_isovalue_spin_01.setDecimals(3)
+        self.View3D_isovalue_spin_01.setSingleStep(step)
+
+    # configure opacity
+    layer = self.layer_selected.currentIndex()
+    current_opacity = 1.0
+    if hasattr(self, '_opacities') and len(self._opacities) > layer:
+        current_opacity = float(self._opacities[layer])
+
+    if hasattr(self, 'View3D_opacity_slider'):
+        self.View3D_opacity_slider.setRange(0, 100)
+        self.View3D_opacity_slider.setSingleStep(1)
+        self.View3D_opacity_slider.setValue(int(round(current_opacity * 100)))
+    if hasattr(self, 'View3D_opacity_spin_01'):
+        self.View3D_opacity_spin_01.setRange(0.0, 1.0)
+        self.View3D_opacity_spin_01.setDecimals(2)
+        self.View3D_opacity_spin_01.setSingleStep(0.05)
+        self.View3D_opacity_spin_01.setValue(current_opacity)
+
     # initialize to full range
     self.View3D_Threshold_slider_01.setValue(0)
     self.View3D_Threshold_spin_01.setValue(self.slider3D_LOW)
     self.View3D_Threshold_slider_02.setValue(self.slider3D_RES)
     self.View3D_Threshold_spin_02.setValue(self.slider3D_HIGH)
 
+    if hasattr(self, 'View3D_isovalue_slider'):
+        self.View3D_isovalue_slider.setValue(0)
+    if hasattr(self, 'View3D_isovalue_spin_01'):
+        self.View3D_isovalue_spin_01.setValue(self.slider3D_LOW)
+
     for w in widgets:
         w.blockSignals(False)
 
     # record both the absolute data range and current threshold for this layer
-    layer = self.layer_selected.currentIndex()
+    if not hasattr(self, '_isovalues'):
+        self._isovalues = {}
     self._full_ranges[layer] = (self.slider3D_LOW, self.slider3D_HIGH)
     self._thresholds[layer]  = (self.slider3D_LOW, self.slider3D_HIGH)
+    self._isovalues[layer]   = self.slider3D_LOW
 
     # apply the lower‐slider once to fire off the initial transfer function
     _from_slider(self, 1, 0)
 
 
 def _from_slider(self, idx: int, sval: int):
-    """Handler for threshold sliders: updates only the active layer."""
+    """Handler for threshold & isovalue sliders: updates only the active layer."""
+    if not hasattr(self, '_s_to_v') or not hasattr(self, '_v_to_s'):
+        low = getattr(self, 'slider3D_LOW', 0.0)
+        high = getattr(self, 'slider3D_HIGH', 100.0)
+        res = getattr(self, 'slider3D_RES', 100)
+        span = max(high - low, 1e-6)
+        self.slider3D_LOW = low
+        self.slider3D_HIGH = high
+        self.slider3D_RES = res
+        self.slider3D_SPAN = span
+        self._s_to_v = lambda s: low + (s / res) * span
+        self._v_to_s = lambda v: int(round((v - low) / span * res))
+
     v = self._s_to_v(sval)
     if idx == 1:
         # lower handle: clamp to upper spin value
-        v = min(v, self.View3D_Threshold_spin_02.value())
+        max_val = self.View3D_Threshold_spin_02.value() if hasattr(self, 'View3D_Threshold_spin_02') else v
+        v = min(v, max_val)
         sval = self._v_to_s(v)
-        self.View3D_Threshold_slider_01.blockSignals(True)
-        self.View3D_Threshold_slider_01.setValue(sval)
-        self.View3D_Threshold_slider_01.blockSignals(False)
-        self.View3D_Threshold_spin_01.setValue(v)
+        if hasattr(self, 'View3D_Threshold_slider_01'):
+            self.View3D_Threshold_slider_01.blockSignals(True)
+            self.View3D_Threshold_slider_01.setValue(sval)
+            self.View3D_Threshold_slider_01.blockSignals(False)
+        if hasattr(self, 'View3D_Threshold_spin_01'):
+            self.View3D_Threshold_spin_01.blockSignals(True)
+            self.View3D_Threshold_spin_01.setValue(v)
+            self.View3D_Threshold_spin_01.blockSignals(False)
     else:
         # upper handle: clamp to lower spin value
-        v = max(v, self.View3D_Threshold_spin_01.value())
+        min_val = self.View3D_Threshold_spin_01.value() if hasattr(self, 'View3D_Threshold_spin_01') else v
+        v = max(v, min_val)
         sval = self._v_to_s(v)
-        self.View3D_Threshold_slider_02.blockSignals(True)
-        self.View3D_Threshold_slider_02.setValue(sval)
-        self.View3D_Threshold_slider_02.blockSignals(False)
-        self.View3D_Threshold_spin_02.setValue(v)
+        if hasattr(self, 'View3D_Threshold_slider_02'):
+            self.View3D_Threshold_slider_02.blockSignals(True)
+            self.View3D_Threshold_slider_02.setValue(sval)
+            self.View3D_Threshold_slider_02.blockSignals(False)
+        if hasattr(self, 'View3D_Threshold_spin_02'):
+            self.View3D_Threshold_spin_02.setValue(v)
 
-    layer = self.layer_selected.currentIndex()
-    # print(f"[DEBUG] _from_slider: layer={layer}, idx={idx}, sval={sval}")  
-    # store the new threshold for this layer
-    tmin = self.View3D_Threshold_spin_01.value()
-    tmax = self.View3D_Threshold_spin_02.value()
+    layer = self.layer_selected.currentIndex() if hasattr(self, 'layer_selected') else 0
+    tmin = self.View3D_Threshold_spin_01.value() if hasattr(self, 'View3D_Threshold_spin_01') else v
+    tmax = self.View3D_Threshold_spin_02.value() if hasattr(self, 'View3D_Threshold_spin_02') else v
+    if not hasattr(self, '_thresholds'):
+        self._thresholds = {}
     self._thresholds[layer] = (tmin, tmax)
-    # print(f"[DEBUG] stored thresholds[{layer}] = {self._thresholds[layer]}") 
-    # apply only this layer’s transfer functions
-    opacity = self._opacities[layer] 
-    otf = self._otfs[layer]
-    otf.RemoveAllPoints()
-    otf.AddPoint(tmin, 0.0)
-    otf.AddPoint(tmax, opacity)
 
-    ctf = self._ctfs[layer]
-    cmap = self._colormaps.get(
-        layer,
-        self.findChild(QtWidgets.QComboBox, 'View3D_colormap').currentText()
-    )
-    self.update_color_transfer(layer, ctf, cmap, tmin, tmax)
-    self.VTK3D_interactor.GetRenderWindow().Render()
+    _apply_transfer_functions(self, layer)
 
 
 def _from_spin(self, idx: int, val: float):
     """Mirror spin‐box changes into the slider and reuse the slider logic."""
+    if not hasattr(self, '_s_to_v') or not hasattr(self, '_v_to_s'):
+        low = getattr(self, 'slider3D_LOW', 0.0)
+        high = getattr(self, 'slider3D_HIGH', 100.0)
+        res = getattr(self, 'slider3D_RES', 100)
+        span = max(high - low, 1e-6)
+        self.slider3D_LOW = low
+        self.slider3D_HIGH = high
+        self.slider3D_RES = res
+        self.slider3D_SPAN = span
+        self._s_to_v = lambda s: low + (s / res) * span
+        self._v_to_s = lambda v: int(round((v - low) / span * res))
+
     sval = self._v_to_s(val)
     if idx == 1:
-        self.View3D_Threshold_spin_01.blockSignals(True)
-        self.View3D_Threshold_spin_01.setValue(val)
-        self.View3D_Threshold_spin_01.blockSignals(False)
-        self.View3D_Threshold_slider_01.blockSignals(True)
-        self.View3D_Threshold_slider_01.setValue(sval)
-        self.View3D_Threshold_slider_01.blockSignals(False)
+        if hasattr(self, 'View3D_Threshold_spin_01'):
+            self.View3D_Threshold_spin_01.blockSignals(True)
+            self.View3D_Threshold_spin_01.setValue(val)
+            self.View3D_Threshold_spin_01.blockSignals(False)
+        if hasattr(self, 'View3D_Threshold_slider_01'):
+            self.View3D_Threshold_slider_01.blockSignals(True)
+            self.View3D_Threshold_slider_01.setValue(sval)
+            self.View3D_Threshold_slider_01.blockSignals(False)
+
     else:
-        self.View3D_Threshold_spin_02.blockSignals(True)
-        self.View3D_Threshold_spin_02.setValue(val)
-        self.View3D_Threshold_spin_02.blockSignals(False)
-        self.View3D_Threshold_slider_02.blockSignals(True)
-        self.View3D_Threshold_slider_02.setValue(sval)
-        self.View3D_Threshold_slider_02.blockSignals(False)
+        if hasattr(self, 'View3D_Threshold_spin_02'):
+            self.View3D_Threshold_spin_02.blockSignals(True)
+            self.View3D_Threshold_spin_02.setValue(val)
+            self.View3D_Threshold_spin_02.blockSignals(False)
+        if hasattr(self, 'View3D_Threshold_slider_02'):
+            self.View3D_Threshold_slider_02.blockSignals(True)
+            self.View3D_Threshold_slider_02.setValue(sval)
+            self.View3D_Threshold_slider_02.blockSignals(False)
 
     _from_slider(self, idx, sval)
+
+
+# -------------------------------------------------------------------------
+# Independent isovalue handlers (do NOT touch threshold widgets)
+# -------------------------------------------------------------------------
+def _from_isovalue_slider(self, sval: int):
+    """Handler for isovalue slider: updates only isovalue, not threshold."""
+    if not hasattr(self, '_s_to_v') or not hasattr(self, '_v_to_s'):
+        low = getattr(self, 'slider3D_LOW', 0.0)
+        high = getattr(self, 'slider3D_HIGH', 100.0)
+        res = getattr(self, 'slider3D_RES', 100)
+        span = max(high - low, 1e-6)
+        self.slider3D_LOW = low
+        self.slider3D_HIGH = high
+        self.slider3D_RES = res
+        self.slider3D_SPAN = span
+        self._s_to_v = lambda s: low + (s / res) * span
+        self._v_to_s = lambda v: int(round((v - low) / span * res))
+
+    v = self._s_to_v(sval)
+    # Sync the isovalue spinbox
+    if hasattr(self, 'View3D_isovalue_spin_01'):
+        self.View3D_isovalue_spin_01.blockSignals(True)
+        self.View3D_isovalue_spin_01.setValue(v)
+        self.View3D_isovalue_spin_01.blockSignals(False)
+
+    layer = self.layer_selected.currentIndex() if hasattr(self, 'layer_selected') else 0
+    if not hasattr(self, '_isovalues'):
+        self._isovalues = {}
+    self._isovalues[layer] = v
+    _apply_transfer_functions(self, layer)
+
+
+def _from_isovalue_spin(self, val: float):
+    """Handler for isovalue spinbox: updates only isovalue, not threshold."""
+    if not hasattr(self, '_s_to_v') or not hasattr(self, '_v_to_s'):
+        low = getattr(self, 'slider3D_LOW', 0.0)
+        high = getattr(self, 'slider3D_HIGH', 100.0)
+        res = getattr(self, 'slider3D_RES', 100)
+        span = max(high - low, 1e-6)
+        self.slider3D_LOW = low
+        self.slider3D_HIGH = high
+        self.slider3D_RES = res
+        self.slider3D_SPAN = span
+        self._s_to_v = lambda s: low + (s / res) * span
+        self._v_to_s = lambda v: int(round((v - low) / span * res))
+
+    sval = self._v_to_s(val)
+    # Sync the isovalue slider
+    if hasattr(self, 'View3D_isovalue_slider'):
+        self.View3D_isovalue_slider.blockSignals(True)
+        self.View3D_isovalue_slider.setValue(sval)
+        self.View3D_isovalue_slider.blockSignals(False)
+
+    layer = self.layer_selected.currentIndex() if hasattr(self, 'layer_selected') else 0
+    if not hasattr(self, '_isovalues'):
+        self._isovalues = {}
+    self._isovalues[layer] = val
+    _apply_transfer_functions(self, layer)
 
 
 # -------------------------------------------------------------------------
@@ -285,6 +461,7 @@ class VTK3DViewerMixin:
         self._vol_props   = {}
         self._volumes     = {}
         self._thresholds  = {}
+        self._isovalues   = {}
         self._crops       = {}
         self._dims        = {}
         self._colormaps   = {}
@@ -292,20 +469,42 @@ class VTK3DViewerMixin:
         self._clouds      = {}
         self._play3D_index = 0
 
+        # Default mapping helpers before any volume is loaded
+        if not hasattr(self, 'slider3D_LOW'):
+            self.slider3D_LOW = 0.0
+        if not hasattr(self, 'slider3D_HIGH'):
+            self.slider3D_HIGH = 100.0
+        if not hasattr(self, 'slider3D_RES'):
+            self.slider3D_RES = 100
+        self.slider3D_SPAN = max(self.slider3D_HIGH - self.slider3D_LOW, 1e-6)
+        self._s_to_v = lambda s: self.slider3D_LOW + (s / self.slider3D_RES) * self.slider3D_SPAN
+        self._v_to_s = lambda v: int(round((v - self.slider3D_LOW) / self.slider3D_SPAN * self.slider3D_RES))
+
         # colormap menu
-        combo = self.findChild(QtWidgets.QComboBox, 'View3D_colormap')
-        combo.addItems(CMAPS)
-        combo.currentIndexChanged.connect(self._on_colormap_changed)
+        combo = getattr(self, 'View3D_colormap', None) or self.findChild(QtWidgets.QComboBox, 'View3D_colormap')
+        if combo is not None:
+            combo.addItems(CMAPS)
+            combo.currentIndexChanged.connect(self._on_colormap_changed)
         self.View3D_update_all_3D.stateChanged.connect(self._on_colormap_changed)
 
         # layer change restores state
         self.layer_selected.currentIndexChanged.connect(self._on_layer_changed)
 
-        # threshold callbacks
+        # threshold & isovalue callbacks
         self.View3D_Threshold_slider_01.valueChanged.connect(partial(_from_slider, self, 1))
         self.View3D_Threshold_slider_02.valueChanged.connect(partial(_from_slider, self, 2))
         self.View3D_Threshold_spin_01.valueChanged.connect(partial(_from_spin,   self, 1))
         self.View3D_Threshold_spin_02.valueChanged.connect(partial(_from_spin,   self, 2))
+        if hasattr(self, 'View3D_isovalue_slider'):
+            self.View3D_isovalue_slider.valueChanged.connect(partial(_from_isovalue_slider, self))
+        if hasattr(self, 'View3D_isovalue_spin_01'):
+            self.View3D_isovalue_spin_01.valueChanged.connect(partial(_from_isovalue_spin, self))
+
+        # opacity callbacks
+        if hasattr(self, 'View3D_opacity_slider'):
+            self.View3D_opacity_slider.valueChanged.connect(self._from_opacity_slider)
+        if hasattr(self, 'View3D_opacity_spin_01'):
+            self.View3D_opacity_spin_01.valueChanged.connect(self._from_opacity_spin)
 
         # crop callbacks
         for axis in ('sagittal','coronal','axial'):
@@ -381,6 +580,26 @@ class VTK3DViewerMixin:
         self.VTK3D_interactor.GetRenderWindow().Render()
 
 
+    _apply_transfer_functions = _apply_transfer_functions
+
+    def _from_opacity_slider(self, sval: int):
+        val = sval / 100.0
+        if hasattr(self, 'View3D_opacity_spin_01'):
+            self.View3D_opacity_spin_01.blockSignals(True)
+            self.View3D_opacity_spin_01.setValue(val)
+            self.View3D_opacity_spin_01.blockSignals(False)
+        layer = self.layer_selected.currentIndex()
+        self._on_opacity_changed(val, layer)
+
+    def _from_opacity_spin(self, val: float):
+        sval = int(round(val * 100))
+        if hasattr(self, 'View3D_opacity_slider'):
+            self.View3D_opacity_slider.blockSignals(True)
+            self.View3D_opacity_slider.setValue(sval)
+            self.View3D_opacity_slider.blockSignals(False)
+        layer = self.layer_selected.currentIndex()
+        self._on_opacity_changed(val, layer)
+
     def update_color_transfer(self,
                               layer_idx: int,
                               ctf: vtk.vtkColorTransferFunction,
@@ -400,19 +619,10 @@ class VTK3DViewerMixin:
 
     def _on_colormap_changed(self, *_):
         apply_all = self.View3D_update_all_3D.isChecked()
-        sel   = self.layer_selected.currentIndex()
-        cmap  = self.findChild(QtWidgets.QComboBox, 'View3D_colormap').currentText()
-        for li, ctf in self._ctfs.items():
-            if apply_all or li==sel:
-                tmin,tmax = self._thresholds.get(li, (self.slider3D_LOW, self.slider3D_HIGH))
-                otf = self._otfs[li]
-                otf.RemoveAllPoints()
-                otf.AddPoint(tmin,0.0)
-                layer = self.layer_selected.currentIndex()
-                opacity = self._opacities[layer] 
-                otf.AddPoint(tmax, opacity)
-                self.update_color_transfer(li, ctf, cmap, tmin, tmax)
-        self.VTK3D_interactor.GetRenderWindow().Render()
+        sel = self.layer_selected.currentIndex()
+        for li in self._ctfs:
+            if apply_all or li == sel:
+                _apply_transfer_functions(self, li)
 
     def _on_layer_changed(self, new_idx: int):
         if new_idx not in self._imgs:
@@ -425,47 +635,67 @@ class VTK3DViewerMixin:
         self._s_to_v = lambda s: self.slider3D_LOW + (s/self.slider3D_RES)*self.slider3D_SPAN
         self._v_to_s = lambda v: int(round((v-self.slider3D_LOW)/self.slider3D_SPAN*self.slider3D_RES))
 
-        # grab references to the four widgets
-        spin_lo = self.View3D_Threshold_spin_01
-        spin_hi = self.View3D_Threshold_spin_02
-        slid_lo = self.View3D_Threshold_slider_01
-        slid_hi = self.View3D_Threshold_slider_02
+        # grab references to the widgets
+        widgets_to_block = [
+            self.View3D_Threshold_spin_01,
+            self.View3D_Threshold_spin_02,
+            self.View3D_Threshold_slider_01,
+            self.View3D_Threshold_slider_02,
+        ]
+        if hasattr(self, 'View3D_isovalue_slider'):
+            widgets_to_block.append(self.View3D_isovalue_slider)
+        if hasattr(self, 'View3D_isovalue_spin_01'):
+            widgets_to_block.append(self.View3D_isovalue_spin_01)
+        if hasattr(self, 'View3D_opacity_slider'):
+            widgets_to_block.append(self.View3D_opacity_slider)
+        if hasattr(self, 'View3D_opacity_spin_01'):
+            widgets_to_block.append(self.View3D_opacity_spin_01)
 
         # block *all* signals from them before touching ranges *or* values
-        for w in (spin_lo, spin_hi, slid_lo, slid_hi):
+        for w in widgets_to_block:
             w.blockSignals(True)
 
         # reconfigure ranges
-        slid_lo.setRange(0, self.slider3D_RES)
-        slid_hi.setRange(0, self.slider3D_RES)
-        spin_lo.setRange(low, high)
-        spin_hi.setRange(low, high)
+        self.View3D_Threshold_slider_01.setRange(0, self.slider3D_RES)
+        self.View3D_Threshold_slider_02.setRange(0, self.slider3D_RES)
+        self.View3D_Threshold_spin_01.setRange(low, high)
+        self.View3D_Threshold_spin_02.setRange(low, high)
 
-        # restore your *stored* thresholds for this layer
+        if hasattr(self, 'View3D_isovalue_slider'):
+            self.View3D_isovalue_slider.setRange(0, self.slider3D_RES)
+        if hasattr(self, 'View3D_isovalue_spin_01'):
+            self.View3D_isovalue_spin_01.setRange(low, high)
+
+        if hasattr(self, 'View3D_opacity_slider'):
+            self.View3D_opacity_slider.setRange(0, 100)
+        if hasattr(self, 'View3D_opacity_spin_01'):
+            self.View3D_opacity_spin_01.setRange(0.0, 1.0)
+
+        # restore stored thresholds & isovalues for this layer
         tmin, tmax = self._thresholds.get(new_idx, (low, high))
-        spin_lo.setValue(tmin)
-        slid_lo.setValue(self._v_to_s(tmin))
-        spin_hi.setValue(tmax)
-        slid_hi.setValue(self._v_to_s(tmax))
+        isoval = self._isovalues.get(new_idx, tmin) if hasattr(self, '_isovalues') else tmin
+        self.View3D_Threshold_spin_01.setValue(tmin)
+        self.View3D_Threshold_slider_01.setValue(self._v_to_s(tmin))
+        self.View3D_Threshold_spin_02.setValue(tmax)
+        self.View3D_Threshold_slider_02.setValue(self._v_to_s(tmax))
+
+        if hasattr(self, 'View3D_isovalue_spin_01'):
+            self.View3D_isovalue_spin_01.setValue(isoval)
+        if hasattr(self, 'View3D_isovalue_slider'):
+            self.View3D_isovalue_slider.setValue(self._v_to_s(isoval))
+
+        opac = float(self._opacities[new_idx]) if hasattr(self, '_opacities') and len(self._opacities) > new_idx else 1.0
+        if hasattr(self, 'View3D_opacity_spin_01'):
+            self.View3D_opacity_spin_01.setValue(opac)
+        if hasattr(self, 'View3D_opacity_slider'):
+            self.View3D_opacity_slider.setValue(int(round(opac * 100)))
 
         # unblock signals now that everything is in place
-        for w in (spin_lo, spin_hi, slid_lo, slid_hi):
+        for w in widgets_to_block:
             w.blockSignals(False)
 
-        # re-apply exactly those two end‐points
-        otf = self._otfs[new_idx]
-        otf.RemoveAllPoints()
-        otf.AddPoint(tmin, 0.0)
-        layer = self.layer_selected.currentIndex()
-        opacity = self._opacities[layer] 
-        otf.AddPoint(tmax, opacity)
-
-
-        ctf = self._ctfs[new_idx]
-        cmap = self._colormaps.get(new_idx,
-            self.findChild(QtWidgets.QComboBox, 'View3D_colormap').currentText()
-        )
-        self.update_color_transfer(new_idx, ctf, cmap, tmin, tmax)
+        # re-apply transfer functions
+        _apply_transfer_functions(self, new_idx)
 
         # get dims & stored extents
         nx, ny, nz = self._dims[new_idx]
@@ -506,15 +736,41 @@ class VTK3DViewerMixin:
         if layer_idx in self._volumes:
             self.VTK3D_renderer.RemoveVolume(self._volumes[layer_idx])
 
-        # flip Y axis to match VTK’s coordinate system
-        vol = np.flip(volume_np, axis=1)
+        # Check if volume exceeds GPU 3D texture limits (OpenGL MAX_3D_TEXTURE_SIZE is 2048)
+        # or exceeds 450M voxels, and compute appropriate downsampling steps.
+        MAX_3D_DIM = 1024
+        MAX_3D_VOXELS = 450_000_000
+
+        orig_nz, orig_ny, orig_nx = volume_np.shape
+        step_z = max(1, int(np.ceil(orig_nz / MAX_3D_DIM)))
+        step_y = max(1, int(np.ceil(orig_ny / MAX_3D_DIM)))
+        step_x = max(1, int(np.ceil(orig_nx / MAX_3D_DIM)))
+
+        while ((orig_nz // step_z) * (orig_ny // step_y) * (orig_nx // step_x)) > MAX_3D_VOXELS:
+            step_z += 1
+            step_y += 1
+            step_x += 1
+
+        if step_z > 1 or step_y > 1 or step_x > 1:
+            print(f"[3Dview] Subsampling volume from {volume_np.shape} with steps ({step_z}, {step_y}, {step_x}) "
+                  f"to ensure high performance and stay strictly under GPU MAX_3D_TEXTURE_SIZE (2048).")
+
+        # Flip Y axis to match VTK coordinate system and subsample in a single operation
+        vol = np.ascontiguousarray(volume_np[::step_z, ::-step_y, ::step_x])
         nz, ny, nx = vol.shape
+
+        effective_spacing = (
+            float(voxel_spacing[0] * step_x),
+            float(voxel_spacing[1] * step_y),
+            float(voxel_spacing[2] * step_z),
+        )
+
         arr = numpy_to_vtk(vol.ravel(order='C'), deep=True,
                            array_type=get_vtk_array_type(vol.dtype))
 
         img = vtk.vtkImageData()
         img.SetDimensions(nx, ny, nz)
-        img.SetSpacing(*voxel_spacing)
+        img.SetSpacing(*effective_spacing)
         img.GetPointData().SetScalars(arr)
         self._imgs[layer_idx] = img
 
@@ -531,7 +787,8 @@ class VTK3DViewerMixin:
         self._otfs[layer_idx] = otf
 
         # initial colormap
-        cmap = self.findChild(QtWidgets.QComboBox, 'View3D_colormap').currentText()
+        cmap_box = getattr(self, 'View3D_colormap', None) or self.findChild(QtWidgets.QComboBox, 'View3D_colormap')
+        cmap = cmap_box.currentText() if cmap_box is not None else "Gray"
         self.update_color_transfer(layer_idx, ctf, cmap, vmin, vmax)
 
         # setup volume property
@@ -570,25 +827,30 @@ class VTK3DViewerMixin:
         mapper.SetInputData(img)
         
         # Apply blend mode and quality
+        min_sp = min(effective_spacing)
         if getattr(self, '_render_controls_initialized', False):
             mode = self.View3D_render_options.currentText()
             if mode == "MIP":
                 mapper.SetBlendModeToMaximumIntensity()
             elif mode == "MinIP":
                 mapper.SetBlendModeToMinimumIntensity()
+            elif mode == "IsoSurface":
+                mapper.SetBlendModeToIsoSurface()
             else:
                 mapper.SetBlendModeToComposite()
                 
-            # Quality (sample distance)
+            # Quality (sample distance): adapt to volume's voxel spacing
             quality_val = self.View3D_quality_spin_01.value()
-            sample_distance = 3.0 - 2.9 * quality_val
-            mapper.SetAutoAdjustSampleDistances(0)
+            sample_distance = max(min_sp * (2.5 - 2.0 * quality_val), 1e-4)
             mapper.SetSampleDistance(sample_distance)
+            mapper.SetAutoAdjustSampleDistances(1)
         else:
             mapper.SetBlendModeToComposite()
+            mapper.SetSampleDistance(min_sp)
+            mapper.SetAutoAdjustSampleDistances(1)
             
         mapper.CroppingOn()
-        sx, sy, sz = voxel_spacing
+        sx, sy, sz = effective_spacing
         mapper.SetCroppingRegionPlanes(0, (nx-1)*sx,
                                        0, (ny-1)*sy,
                                        0, (nz-1)*sz)
@@ -625,17 +887,40 @@ class VTK3DViewerMixin:
 
 
     def _on_opacity_changed(self, val, layer=None):
-        if layer is None or layer not in self._thresholds:
+        if layer is None:
+            layer = self.layer_selected.currentIndex()
+        if layer not in self._thresholds and layer not in self._imgs:
             return
-        opacity = max(0.0, min(1.0, val))
-        self._opacities[layer] = opacity
-        # Update OTF
-        tmin, tmax = self._thresholds[layer]
-        otf = self._otfs[layer]
-        otf.RemoveAllPoints()
-        otf.AddPoint(tmin, 0.0)
-        otf.AddPoint(tmax, opacity)
-        self.VTK3D_interactor.GetRenderWindow().Render()
+        opacity = max(0.0, min(1.0, float(val)))
+        if hasattr(self, '_opacities') and len(self._opacities) > layer:
+            self._opacities[layer] = opacity
+        if hasattr(self, 'LayerAlpha') and len(self.LayerAlpha) > layer:
+            self.LayerAlpha[layer] = opacity
+
+        # Sync sidebar sliders/spins for this layer
+        sli = getattr(self, f'Layer_{layer}_alpha_sli', None)
+        if sli is not None:
+            sli.blockSignals(True)
+            sli.setValue(int(round(opacity * 100)))
+            sli.blockSignals(False)
+        spin = getattr(self, f'Layer_{layer}_alpha_spin', None)
+        if spin is not None:
+            spin.blockSignals(True)
+            spin.setValue(opacity)
+            spin.blockSignals(False)
+
+        # Sync 3D view opacity widgets if this is the active layer
+        if layer == self.layer_selected.currentIndex():
+            if hasattr(self, 'View3D_opacity_slider'):
+                self.View3D_opacity_slider.blockSignals(True)
+                self.View3D_opacity_slider.setValue(int(round(opacity * 100)))
+                self.View3D_opacity_slider.blockSignals(False)
+            if hasattr(self, 'View3D_opacity_spin_01'):
+                self.View3D_opacity_spin_01.blockSignals(True)
+                self.View3D_opacity_spin_01.setValue(opacity)
+                self.View3D_opacity_spin_01.blockSignals(False)
+
+        _apply_transfer_functions(self, layer)
 
 
     def update_3d_volume(self, volume_np, layer_idx=None):
@@ -664,6 +949,8 @@ class VTK3DViewerMixin:
         self._otfs.clear()
         self._vol_props.clear()
         self._thresholds.clear()
+        if hasattr(self, '_isovalues'):
+            self._isovalues.clear()
         self._crops.clear()
         self._dims.clear()
         self._full_ranges.clear()

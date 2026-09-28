@@ -219,7 +219,13 @@ def on_metadata_search_text_changed(self, text):
         update_meta_view_table_nifti(self, nifti_meta, text)
         return
 
-    # 3) Neither available -> clear and return
+    # 3) Otherwise try microCT log metadata
+    microct_meta = md.get('microCT_Log', None)
+    if isinstance(microct_meta, dict) and len(microct_meta) > 0:
+        update_meta_view_table_nifti(self, microct_meta, text)
+        return
+
+    # 4) Neither available -> clear and return
     self.MetaViewTable.clear()
     self.MetaViewTable.setColumnCount(2)
     self.MetaViewTable.setHeaderLabels(["Element", "Value / Subitems"])

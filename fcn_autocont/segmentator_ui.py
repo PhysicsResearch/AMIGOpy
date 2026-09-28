@@ -493,15 +493,17 @@ class SegmentatorWindow(QWidget):
         btn_all.clicked.connect(lambda: _set_all(True))
         btn_none.clicked.connect(lambda: _set_all(False))
 
-        # Quick toggles
-        def _quick_changed():
-            for name, cb in quick_map.items():
-                for lab in quick.get(name, []):
-                    w = label_to_cb.get(lab)
-                    if w:
-                        w.setChecked(cb.isChecked())
-        for cb in quick_map.values():
-            cb.stateChanged.connect(_quick_changed)
+        # Quick toggles (each quick-group toggle only affects its own member structures)
+        for name, cb in quick_map.items():
+            def make_qc(grp_name):
+                def _qc(state):
+                    is_on = bool(state)
+                    for lab in quick.get(grp_name, []):
+                        w = label_to_cb.get(lab)
+                        if w:
+                            w.setChecked(is_on)
+                return _qc
+            cb.stateChanged.connect(make_qc(name))
 
         if target_map == "ct":
             self.ct_label_to_cb = label_to_cb
@@ -576,7 +578,7 @@ class SegmentatorWindow(QWidget):
     # --------------------------- Params + actions ---------------------------
 
     def _selected_labels(self, mapping: Dict[str,QCheckBox]) -> List[str]:
-        return [lab for lab, cb in mapping.items() if cb.isChecked() and cb.isVisible()]
+        return [lab for lab, cb in mapping.items() if cb.isChecked()]
 
     def build_params(self) -> Dict:
         params: Dict = {}
@@ -588,23 +590,35 @@ class SegmentatorWindow(QWidget):
         params["output_type"] = self.output_type.currentText().strip().lower()
         params["device"] = self.device_type.currentText().strip().lower()
 
-        params["subroutines"] = [k for k, cb in self.subr_cb.items() if cb.isChecked()]
-
+        subroutines = [k for k, cb in self.subr_cb.items() if cb.isChecked()]
         ct_targets = self._selected_labels(self.ct_label_to_cb)
         mr_targets = self._selected_labels(self.mr_label_to_cb)
+
+        params["subroutines"] = subroutines
         params["ct_targets"] = ct_targets
         params["mr_targets"] = mr_targets
 
         tasks = []
         if ct_targets: tasks.append("total")
         if mr_targets: tasks.append("total_mr")
+        for sub in subroutines:
+            if sub not in tasks:
+                tasks.append(sub)
         params["tasks"] = tasks
 
-        # Back-compat (single task/targets)
-        if ct_targets and not mr_targets:
-            params["task"] = "total";    params["targets"] = ct_targets
-        elif mr_targets and not ct_targets:
-            params["task"] = "total_mr"; params["targets"] = mr_targets
+        # Primary / fallback task and targets
+        if ct_targets:
+            params["task"] = "total"
+            params["targets"] = ct_targets
+        elif mr_targets:
+            params["task"] = "total_mr"
+            params["targets"] = mr_targets
+        elif subroutines:
+            params["task"] = subroutines[0]
+            params["targets"] = []
+        else:
+            params["task"] = "total"
+            params["targets"] = []
 
         return params
 

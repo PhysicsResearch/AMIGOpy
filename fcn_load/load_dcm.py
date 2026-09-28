@@ -8,6 +8,209 @@ from fcn_RTFiles.process_rt_files  import process_rt_plans, process_rt_struct
 
 # Import the function that retrieves a detailed description of DICOM data.
 from fcn_load.sort_dcm import get_data_description
+from collections import Counter
+
+
+def assemble_and_reorient_volume(series_data):
+    """
+    Assembles 2D slices into a 3D volume, geometrically sorted along the slice normal,
+    and reoriented to standard AMIGOpy (Z, Y, X) LPS space.
+
+    Ensures:
+      - Axis 0 is Z (Axial slices, increasing from Inferior to Superior).
+      - Axis 1 is Y (Coronal rows, with VTK row flip applied).
+      - Axis 2 is X (Sagittal cols, increasing from Right to Left).
+      - Coronal and Sagittal reformats are properly converted into (Z, Y, X) volume
+        so they display on the correct viewer axes instead of having axes swapped.
+      - Feet-First / Prone acquisitions are oriented in standard patient coordinate space
+        without erroneous inverted slices or flipped Left/Right.
+      - SliceThickness, PixelSpacing, and ImagePositionPatient are accurately recalculated.
+    """
+    # 1. Retrieve slices
+    if 'slice_list' in series_data and len(series_data['slice_list']) > 0:
+        slices = series_data['slice_list']
+    else:
+        slices = [
+            {
+                'ImageData': item['ImageData'],
+                'ImagePositionPatient': item['ImagePositionPatient'],
+                'InstanceNumber': k,
+                'ImageComments': series_data.get('SliceImageComments', {}).get(k, ''),
+                'ImageOrientationPatient': series_data.get('metadata', {}).get('ImageOrientationPatient', None)
+            }
+            for k, item in series_data.get('images', {}).items()
+        ]
+
+    if not slices:
+        return
+
+    # Check slice matrix shapes; filter out any slice with mismatched shape
+    shapes = [s['ImageData'].shape for s in slices if hasattr(s.get('ImageData'), 'shape')]
+    if shapes:
+        common_shape = Counter(shapes).most_common(1)[0][0]
+        slices = [s for s in slices if getattr(s.get('ImageData'), 'shape', None) == common_shape]
+
+    # Handle single slice (2D)
+    if len(slices) == 1:
+        raw = slices[0]['ImageData']
+        vol = raw[np.newaxis, :, :].astype(np.float32)
+        series_data['3DMatrix'] = np.flip(vol, axis=1)
+        series_data['SliceImageComments'] = [slices[0].get('ImageComments', '')]
+        return
+
+    # Check if localizer / scout with non-parallel views (e.g. AP and Lateral scouts)
+    is_localizer = False
+    first_dcm = series_data.get('metadata', {}).get('DCM_Info')
+    img_type = getattr(first_dcm, 'ImageType', []) if first_dcm else []
+    if any('LOCALIZER' in str(t).upper() for t in img_type):
+        is_localizer = True
+    elif len(slices) <= 4:
+        normals = []
+        for s in slices:
+            s_iop = s.get('ImageOrientationPatient')
+            if s_iop is not None and s_iop != 'N/A' and len(s_iop) == 6:
+                sn = np.cross(s_iop[:3], s_iop[3:])
+                sn_norm = np.linalg.norm(sn)
+                if sn_norm > 0:
+                    normals.append(sn / sn_norm)
+        if len(normals) >= 2 and abs(float(np.dot(normals[0], normals[1]))) < 0.5:
+            is_localizer = True
+
+    if is_localizer:
+        slices = sorted(slices, key=lambda s: int(s.get('InstanceNumber', 0)))
+        series_data['SliceImageComments'] = [s.get('ImageComments', '') for s in slices]
+        raw_stack = np.stack([s['ImageData'] for s in slices], axis=0).astype(np.float32)
+        series_data['3DMatrix'] = np.flip(raw_stack, axis=1)
+        series_data['metadata']['ImagePositionPatient'] = slices[0].get('ImagePositionPatient', [0.0, 0.0, 0.0])
+        return
+
+    # 2. Extract IOP
+    iop = series_data['metadata'].get('ImageOrientationPatient')
+    if iop is None or iop == 'N/A' or len(iop) != 6:
+        iop = slices[0].get('ImageOrientationPatient')
+    if iop is None or iop == 'N/A' or len(iop) != 6:
+        iop = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+    else:
+        iop = [float(x) for x in iop]
+
+    r = np.array(iop[:3], dtype=np.float64)
+    c = np.array(iop[3:], dtype=np.float64)
+    r_norm = np.linalg.norm(r)
+    c_norm = np.linalg.norm(c)
+    if r_norm > 0: r = r / r_norm
+    if c_norm > 0: c = c / c_norm
+    n = np.cross(r, c)
+    n_norm = np.linalg.norm(n)
+    if n_norm > 0: n = n / n_norm
+
+    # 3. Sort slices along slice normal n
+    def get_proj(slc):
+        ipp = slc.get('ImagePositionPatient', [0.0, 0.0, 0.0])
+        return float(np.dot(np.array(ipp, dtype=np.float64), n))
+
+    slices = sorted(slices, key=lambda s: (round(get_proj(s), 4), int(s.get('InstanceNumber', 0))))
+    series_data['SliceImageComments'] = [s.get('ImageComments', '') for s in slices]
+
+    # 4. Calculate step along normal n using median of adjacent slice differences
+    projs = [get_proj(s) for s in slices]
+    if len(projs) >= 2:
+        diffs = [abs(b - a) for a, b in zip(projs, projs[1:]) if abs(b - a) > 1e-4]
+        if diffs:
+            step_s = float(np.median(diffs))
+        else:
+            step_s = abs(projs[1] - projs[0])
+    else:
+        step_s = float(series_data['metadata'].get('SliceThickness', 1.0) or 1.0)
+    if step_s <= 0:
+        step_s = float(series_data['metadata'].get('SliceThickness', 1.0) or 1.0)
+
+    # Trim leading or trailing outlier slices (e.g. overview scouts with large gaps)
+    if len(slices) > 3 and step_s > 0:
+        while len(slices) > 3 and abs(get_proj(slices[1]) - get_proj(slices[0])) > 4 * step_s:
+            slices = slices[1:]
+        while len(slices) > 3 and abs(get_proj(slices[-1]) - get_proj(slices[-2])) > 4 * step_s:
+            slices = slices[:-1]
+
+    series_data['SliceImageComments'] = [s.get('ImageComments', '') for s in slices]
+
+    # Pixel spacing in original 2D slices: ps[0] is row spacing, ps[1] is col spacing
+    ps = series_data['metadata'].get('PixelSpacing', [1.0, 1.0])
+    try:
+        row_spacing = float(ps[0])
+        col_spacing = float(ps[1])
+    except (ValueError, TypeError, IndexError):
+        row_spacing = 1.0
+        col_spacing = 1.0
+
+    # 5. Stack slices along axis 0
+    raw_stack = np.stack([s['ImageData'] for s in slices], axis=0).astype(np.float32)
+
+    # 6. Dominant anatomical axes in LPS space (0=X, 1=Y, 2=Z)
+    col_axis = int(np.argmax(np.abs(r)))
+    row_axis = int(np.argmax(np.abs(c)))
+    slc_axis = int(np.argmax(np.abs(n)))
+
+    col_sign = float(np.sign(r[col_axis]))
+    row_sign = float(np.sign(c[row_axis]))
+    slc_sign = float(np.sign(n[slc_axis]))
+
+    axis_map = {slc_axis: 0, row_axis: 1, col_axis: 2}
+    if len(set(axis_map.keys())) < 3:
+        axis_map = {2: 0, 1: 1, 0: 2}
+        col_sign, row_sign, slc_sign = 1.0, 1.0, 1.0
+
+    # Permute axes so vol is (Z, Y, X)
+    perm = (axis_map[2], axis_map[1], axis_map[0])
+    vol = np.transpose(raw_stack, perm)
+
+    # Map direction cosines to their respective patient axes (0=X, 1=Y, 2=Z)
+    pat_signs = {col_axis: col_sign, row_axis: row_sign, slc_axis: slc_sign}
+
+    # If any axis runs backwards in LPS, flip it
+    flip_z = (pat_signs[2] < 0)
+    flip_y = (pat_signs[1] < 0)
+    flip_x = (pat_signs[0] < 0)
+
+    if flip_z:
+        vol = np.flip(vol, axis=0)
+    if flip_y:
+        vol = np.flip(vol, axis=1)
+    if flip_x:
+        vol = np.flip(vol, axis=2)
+
+    # Standard VTK row flip (axis 1): VTK places row 0 at bottom and row max at top.
+    # In AMIGOpy, flipping axis 1 ensures Anterior (-Y) is at the top of the viewport.
+    vol = np.flip(vol, axis=1)
+
+    # Target spacings for (Z, Y, X)
+    src_spacings = [step_s, row_spacing, col_spacing]
+    target_z_sp = float(src_spacings[axis_map[2]])
+    target_y_sp = float(src_spacings[axis_map[1]])
+    target_x_sp = float(src_spacings[axis_map[0]])
+
+    # Calculate origin (coordinate of voxel (0, 0, 0))
+    t_z = (vol.shape[0] - 1) if flip_z else 0
+    t_y = (vol.shape[1] - 1) if flip_y else 0
+    t_x = (vol.shape[2] - 1) if flip_x else 0
+
+    target_indices = [t_z, t_y, t_x]
+    k_slc = target_indices[perm.index(0)]
+    k_row = target_indices[perm.index(1)]
+    k_col = target_indices[perm.index(2)]
+
+    ipp_ref = np.array(slices[k_slc].get('ImagePositionPatient', [0.0, 0.0, 0.0]), dtype=np.float64)
+    origin_pt = ipp_ref + k_row * row_spacing * c + k_col * col_spacing * r
+
+    series_data['3DMatrix'] = vol
+    series_data['metadata']['SliceThickness'] = target_z_sp
+    series_data['metadata']['PixelSpacing'] = [target_y_sp, target_x_sp]
+    series_data['metadata']['ImagePositionPatient'] = [float(origin_pt[0]), float(origin_pt[1]), float(origin_pt[2])]
+    series_data['metadata']['AcquisitionPlane'] = 'AXIAL' if slc_axis == 2 else ('CORONAL' if slc_axis == 1 else 'SAGITTAL')
+    series_data['ImagePositionPatients'] = [
+        [float(origin_pt[0]), float(origin_pt[1]), float(origin_pt[2] + kz * target_z_sp)]
+        for kz in range(vol.shape[0])
+    ]
+
 
 def load_images(self,detailed_files_info, progress_callback=None, total_steps=None):
     """
@@ -303,6 +506,15 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
             }
             existing_series_data['ImagePositionPatients'].append(image_position_patient)
             existing_series_data['SliceImageComments'][instance_number] = getattr(dicom_file, "ImageComments", '')
+            existing_series_data.setdefault('slice_list', []).append({
+                'ImageData': image,
+                'ImagePositionPatient': image_position_patient,
+                'ImageOrientationPatient': getattr(dicom_file, "ImageOrientationPatient", None),
+                'InstanceNumber': instance_number,
+                'ImageComments': getattr(dicom_file, "ImageComments", ''),
+                'SliceThickness': sli_thick,
+                'PixelSpacing': getattr(dicom_file, "PixelSpacing", None),
+            })
         elif modality == 'RTDOSE':
            # RT dose are loaded using absolut coordinates 
            # Initial position and voxel size are difned when displaying so it alignes with referenced images
@@ -333,53 +545,8 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                 valid_series = []
                 for index, series_data in enumerate(series_list):
                     try:
-                        if modality == 'CT':
-                            sorted_comments = sorted(series_data['SliceImageComments'].items(), key=lambda x: x[0])
-                            # Extract only the values from the sorted list of tuples
-                            series_data['SliceImageComments'] = [comment for _, comment in sorted_comments]
-                            sorted_image_data = sorted(series_data['images'].items(), key=lambda x: x[0])
-                            series_data['3DMatrix'] = np.stack([item[1]['ImageData'] for item in sorted_image_data], axis=0)
-                            series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
-                            #
-                            # --- Normalize Feet-First to Head-First by rotating 180° around patient Z (in-plane) ---
-                            pos = str(series_data['metadata'].get('PatientPosition', '')).upper()
-                            # Handle Feet-First positions (FFS, FFP, FFDR, FFDL, etc.)
-                            if pos.startswith('FF'):
-                                # Rotate each axial slice 180°: flip rows (axis=1) and columns (axis=2)
-                                if '3DMatrix' in series_data and series_data['3DMatrix'] is not None:
-                                    series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
-                                    series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=2)
-                                    series_data['metadata']['AMIGO_PatientPositionNormalized'] = True
-                            else:
-                                series_data['metadata']['AMIGO_PatientPositionNormalized'] = False
-                            #
-                            # Third letter 'P' (prone) -> rotate 180° about patient X (L-R)
-                            if len(pos) >= 3 and pos[2] == 'P':
-                                series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
-                                series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=2)
-                                normalized = True
-                            #
-                            if len(sorted_image_data) >= 2:
-                                p0 = sorted_image_data[0][1]['ImagePositionPatient']
-                                p1 = sorted_image_data[1][1]['ImagePositionPatient']
-                                iop = series_data['metadata'].get('ImageOrientationPatient')
-                                if iop is not None and len(iop) == 6:
-                                    row_v = np.array(iop[:3], dtype=np.float64)
-                                    col_v = np.array(iop[3:], dtype=np.float64)
-                                    norm_v = np.cross(row_v, col_v)
-                                    step_dz = abs(float(np.dot(np.array(p1) - np.array(p0), norm_v)))
-                                else:
-                                    step_dz = abs(float(p1[2] - p0[2]))
-                                if step_dz > 0:
-                                    series_data['metadata']['SliceThickness'] = float(step_dz)
-
-                            if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] > 0):
-                                series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
-                                series_data['metadata']['ImagePositionPatient'] = sorted_image_data[-1][1]['ImagePositionPatient']
-                            else:
-                                series_data['metadata']['ImagePositionPatient'] = sorted_image_data[0][1]['ImagePositionPatient']
-                            series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
-                            #
+                        if modality in ('CT', 'MR'):
+                            assemble_and_reorient_volume(series_data)
                         elif modality == 'RTIMAGE':
                             sorted_comments = sorted(series_data['SliceImageComments'].items(), key=lambda x: x[0])
                             # Extract only the values from the sorted list of tuples
@@ -389,34 +556,6 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                             series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
                             #
                             series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
-                        elif modality == 'MR':
-                            sorted_comments = sorted(series_data['SliceImageComments'].items(), key=lambda x: x[0])
-                            # Extract only the values from the sorted list of tuples
-                            series_data['SliceImageComments'] = [comment for _, comment in sorted_comments]
-                            sorted_image_data = sorted(series_data['images'].items(), key=lambda x: x[0])
-                            series_data['3DMatrix'] = np.stack([item[1]['ImageData'] for item in sorted_image_data], axis=0)
-                            series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
-                            if len(sorted_image_data) >= 2:
-                                p0 = sorted_image_data[0][1]['ImagePositionPatient']
-                                p1 = sorted_image_data[1][1]['ImagePositionPatient']
-                                iop = series_data['metadata'].get('ImageOrientationPatient')
-                                if iop is not None and len(iop) == 6:
-                                    row_v = np.array(iop[:3], dtype=np.float64)
-                                    col_v = np.array(iop[3:], dtype=np.float64)
-                                    norm_v = np.cross(row_v, col_v)
-                                    step_dz = abs(float(np.dot(np.array(p1) - np.array(p0), norm_v)))
-                                else:
-                                    step_dz = abs(float(p1[2] - p0[2]))
-                                if step_dz > 0:
-                                    series_data['metadata']['SliceThickness'] = float(step_dz)
-
-                            if len(sorted_image_data) >= 2 and (sorted_image_data[0][1]['ImagePositionPatient'][2] - sorted_image_data[1][1]['ImagePositionPatient'][2] > 0):
-                                series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=0)
-                                series_data['metadata']['ImagePositionPatient'] = sorted_image_data[-1][1]['ImagePositionPatient']
-                            else:
-                                series_data['metadata']['ImagePositionPatient'] = sorted_image_data[0][1]['ImagePositionPatient']
-                            series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.float32)
-                            #
                         elif modality == 'RTDOSE':
                             # series_data['3DMatrix'] was already populated directly in the first loop
                             series_data['3DMatrix'] = np.flip(series_data['3DMatrix'], axis=1)
@@ -472,6 +611,8 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                         #
                         if 'images' in series_data:
                             del series_data['images']
+                        if 'slice_list' in series_data:
+                            del series_data['slice_list']
                         #
                         lut_label = series_data['metadata'].get('LUTLabel', 'N/A')
                         if '3DMatrix' in series_data and series_data['3DMatrix'] is not None:

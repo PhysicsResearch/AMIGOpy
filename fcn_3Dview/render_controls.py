@@ -36,7 +36,7 @@ def init_3D_render_controls(self):
     self.View3D_specular_spin_01.setValue(0.00)
     
     self.View3D_render_options.clear()
-    self.View3D_render_options.addItems(["Composite", "MIP", "MinIP"])
+    self.View3D_render_options.addItems(["Composite", "IsoSurface", "MIP", "MinIP"])
     
     self.iew3D_lighting_options.clear()
     self.iew3D_lighting_options.addItems(["Headlight", "Camera Light", "Scene Light"])
@@ -121,12 +121,17 @@ def apply_3d_quality(self):
     if not hasattr(self, '_volumes'):
         return
     quality_val = self.View3D_quality_spin_01.value()
-    # quality_val range: 0.0 (low quality, spacing = 3.0mm) to 1.0 (high quality, spacing = 0.1mm)
-    sample_distance = 3.0 - 2.9 * quality_val
     for vol in self._volumes.values():
         mapper = vol.GetMapper()
-        mapper.SetAutoAdjustSampleDistances(0)
-        mapper.SetSampleDistance(sample_distance)
+        img = mapper.GetInput()
+        if img is not None:
+            min_sp = min(img.GetSpacing())
+            sample_distance = max(min_sp * (2.5 - 2.0 * quality_val), 1e-4)
+            mapper.SetSampleDistance(sample_distance)
+            mapper.SetAutoAdjustSampleDistances(1)
+        else:
+            sample_distance = 3.0 - 2.9 * quality_val
+            mapper.SetSampleDistance(sample_distance)
     if hasattr(self, 'VTK3D_interactor') and self.VTK3D_interactor:
         self.VTK3D_interactor.GetRenderWindow().Render()
 
@@ -141,8 +146,16 @@ def apply_3d_brightness(self):
     diffuse_val = 0.7 - 0.5 * brightness_val if brightness_val >= 0 else 0.7 + 0.3 * brightness_val
     
     for volp in self._vol_props.values():
+        # Brightness only takes effect when shading is ON
+        if abs(brightness_val) > 0.01:
+            volp.ShadeOn()
         volp.SetAmbient(ambient_val)
         volp.SetDiffuse(diffuse_val)
+    # Sync shading checkbox if brightness forced it on
+    if abs(brightness_val) > 0.01 and hasattr(self, 'View3D_shading_checkBox'):
+        self.View3D_shading_checkBox.blockSignals(True)
+        self.View3D_shading_checkBox.setChecked(True)
+        self.View3D_shading_checkBox.blockSignals(False)
     if hasattr(self, 'VTK3D_interactor') and self.VTK3D_interactor:
         self.VTK3D_interactor.GetRenderWindow().Render()
 
@@ -171,9 +184,14 @@ def apply_3d_render_mode(self):
             mapper.SetBlendModeToMaximumIntensity()
         elif mode == "MinIP":
             mapper.SetBlendModeToMinimumIntensity()
+        elif mode == "IsoSurface":
+            mapper.SetBlendModeToIsoSurface()
         else:
             mapper.SetBlendModeToComposite()
-    if hasattr(self, 'VTK3D_interactor') and self.VTK3D_interactor:
+    if hasattr(self, '_apply_transfer_functions'):
+        for li in self._volumes:
+            self._apply_transfer_functions(li)
+    elif hasattr(self, 'VTK3D_interactor') and self.VTK3D_interactor:
         self.VTK3D_interactor.GetRenderWindow().Render()
 
 

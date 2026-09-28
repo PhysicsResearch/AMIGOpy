@@ -69,6 +69,10 @@ def generic_drop_event(self, event):
 ## check file extensition and define proper callback function
 
 def handle_dropped_path(main_window, path):
+    def is_nifti_file(filename: str) -> bool:
+        fl = str(filename).lower()
+        return fl.endswith('.nii') or fl.endswith('.nii.gz') or fl.endswith('.gz')
+
     def is_dicom_file(filename: str) -> bool:
         ext = os.path.splitext(filename)[-1].lower()
         return ext in ("", ".dcm", ".ima")
@@ -81,47 +85,58 @@ def handle_dropped_path(main_window, path):
     
     def is_obj_file(filename: str) -> bool:
         return os.path.splitext(filename)[-1].lower() == ".obj"
-    
-    def is_nifti_file(filename: str) -> bool:
-        return filename.endswith('.nii.gz')
 
     if os.path.isfile(path):
-        if is_dicom_file(path):
-            open_dicom_tag_viewer(path)
-
-        elif is_amigo_file(path):
-            # call your async loader (reuse the existing menu slot)
-            load_amigo_bundle(main_window, path)      # see note ①
-        elif is_stl_file(path):
-            # call your async loader (reuse the existing menu slot)
-            load_stl_files(main_window, path)      # see note ①
-        elif is_obj_file(path):
-            # call your async loader (reuse the existing menu slot)
-            load_obj_files(main_window, path)      # see note ①
-        elif is_nifti_file(path):
+        if is_nifti_file(path):
             load_nifti_files(main_window, path)
+        elif is_amigo_file(path):
+            load_amigo_bundle(main_window, path)
+        elif is_stl_file(path):
+            load_stl_files(main_window, path)
+        elif is_obj_file(path):
+            load_obj_files(main_window, path)
+        elif is_dicom_file(path):
+            open_dicom_tag_viewer(path)
         else:
             print(f"Unsupported file type: {os.path.splitext(path)[-1]}")
         return
 
     elif os.path.isdir(path):
-        # print(f"Dropped folder: {path}")
         try:
+            has_dcm = False
+            has_nifti = False
+            has_iris = False
             for root, _, files in os.walk(path):
                 for file in files:
-                    full_path = os.path.join(root, file)
-                    ext = os.path.splitext(file)[-1].lower()
-                    if is_dicom_file(file):
-                        load_all_dcm(main_window,folder_path=path,
-                                    progress_callback=main_window.update_progress,
-                                    update_label=main_window.label)                  	
-                        return
-                    elif ext == '.iris':
-                        print(f"Found IrIS file: {full_path}")
-                        return
-                    elif full_path.endswith('.nii.gz'):
-                        load_nifti_files(main_window, path)
-                        return
-            print("No recognized files found in folder.")
+                    fl = file.lower()
+                    if fl.endswith(('.nii', '.nii.gz', '.gz')):
+                        has_nifti = True
+                        break
+                    elif fl.endswith(('.dcm', '.ima')):
+                        has_dcm = True
+                        break
+                    elif fl.endswith('.iris'):
+                        has_iris = True
+                        break
+                if has_nifti or has_dcm or has_iris:
+                    break
+
+            if has_nifti:
+                load_nifti_files(main_window, path)
+                return
+            elif has_dcm:
+                load_all_dcm(main_window, folder_path=path,
+                             progress_callback=main_window.update_progress,
+                             update_label=main_window.label)
+                return
+            elif has_iris:
+                print(f"Found IrIS file in: {path}")
+                return
+            else:
+                # Fallback: check if DICOM without extensions
+                load_all_dcm(main_window, folder_path=path,
+                             progress_callback=main_window.update_progress,
+                             update_label=main_window.label)
+                return
         except Exception as e:
-            print(f"Error scanning folder: {e}")
+            print(f"Error scanning folder: {e}")

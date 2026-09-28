@@ -167,7 +167,16 @@ def set_vtk_histogran_fig(self):
         from fcn_display.win_level import set_window
         set_window(self, float(np.std(data))*3.0, float(np.mean(data)))
     else:
-        data = self.display_data[idx].ravel().astype(np.float32, copy=False)
+        vol = self.display_data[idx]
+        # For large volumes (e.g. microCT), subsample in 3D BEFORE
+        # flattening to avoid materialising the entire volume as float32.
+        n_voxels = vol.size
+        if n_voxels > 2_000_000:
+            # Stride so we get ~500k–1M samples without a full copy
+            step = max(1, int(round((n_voxels / 1_000_000) ** (1.0 / 3.0))))
+            data = vol[::step, ::step, ::step].ravel().astype(np.float32)
+        else:
+            data = vol.ravel().astype(np.float32, copy=False)
 
     # Data-driven range (replaces hardcoded HU bounds)
     dmin = float(np.nanmin(data)) if data.size else 0.0
@@ -543,7 +552,14 @@ class CompareHistogramDialog(QtWidgets.QDialog):
             return
             
         # Get raw data of active comparison viewport
-        data = app.display_comp_data[ref_idx, layer].ravel().astype(np.float32, copy=False)
+        vol_c = app.display_comp_data[ref_idx, layer]
+        # Subsample large volumes before flattening to avoid OOM
+        n_vox_c = vol_c.size
+        if n_vox_c > 2_000_000:
+            step_c = max(1, int(round((n_vox_c / 1_000_000) ** (1.0 / 3.0))))
+            data = vol_c[::step_c, ::step_c, ::step_c].ravel().astype(np.float32)
+        else:
+            data = vol_c.ravel().astype(np.float32, copy=False)
         dmin = float(np.nanmin(data)) if data.size else 0.0
         dmax = float(np.nanmax(data)) if data.size else 1.0
         if not np.isfinite(dmin) or not np.isfinite(dmax) or dmin == dmax:
