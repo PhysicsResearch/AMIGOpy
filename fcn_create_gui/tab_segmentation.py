@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 tab_segmentation.py - AMIGOpy GUI Module
 ===========================================
@@ -108,6 +108,11 @@ def create_tab_segmentation(w):
     w.segStructList.setObjectName(u"segStructList")
 
     w.gridLayout_64.addWidget(w.segStructList, 0, 0, 1, 3)
+
+    w.booleanSegStruct = QPushButton(w.groupBox_segStruct)
+    w.booleanSegStruct.setObjectName(u"booleanSegStruct")
+
+    w.gridLayout_64.addWidget(w.booleanSegStruct, 3, 0, 1, 3)
 
     w.gridLayout_64.setRowStretch(0, 1)
     w.gridLayout_64.setColumnStretch(0, 1)

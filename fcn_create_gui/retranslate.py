@@ -976,6 +976,8 @@ def retranslate_ui(w):
         w.initStructCheck.setText(QCoreApplication.translate("w", u"All series", None))
     if hasattr(w, 'deleteSegStruct'):
         w.deleteSegStruct.setText(QCoreApplication.translate("w", u"Delete structure", None))
+    if hasattr(w, 'booleanSegStruct'):
+        w.booleanSegStruct.setText(QCoreApplication.translate("w", u"Boolean operations", None))
     if hasattr(w, 'threshMinBox'):
         w.threshMinBox.setText(QCoreApplication.translate("w", u"Min. HU threshold", None))
     if hasattr(w, 'threshMaxBox'):

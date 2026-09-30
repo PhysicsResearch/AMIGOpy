@@ -71,6 +71,8 @@ def on_tree_context_menu(self, pos):
 
         exp_action_dcm     = menu.addAction("Export DCM")
         exp_action_nii     = menu.addAction("Export Nifti")
+        exp_action_struct  = menu.addAction("Export structures…")
+        imp_action_struct  = menu.addAction("Import structures (NIfTI)…")
         delete_action      = menu.addAction("Delete series")
 
         action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
@@ -97,6 +99,12 @@ def on_tree_context_menu(self, pos):
                 export_dicom_series(meta_data, data, slice_thick, output_folder=None)
         elif action == exp_action_nii:
             export_nifti(self, Patient, Study, Modality, Series,output_folder=None, file_name=None)
+        elif action == exp_action_struct:
+            from fcn_export.export_structures_dialog import open_export_structures_dialog
+            open_export_structures_dialog(self, Patient, Study, Modality, Series)
+        elif action == imp_action_struct:
+            from fcn_export.export_structures_dialog import import_structures_from_nifti
+            import_structures_from_nifti(self, Patient, Study, Modality, Series)
 
 
     # -------------------------
@@ -150,15 +158,57 @@ def on_tree_context_menu(self, pos):
 
 
     # -------------------------
-    if Type == "DICOM" and len(hierarchy) == 6 and Series_sub_data == "Structures":
+    # Structure-level (leaf item under Structures)
+    # -------------------------
+    if Type in ("Medical Image", "DICOM") and len(hierarchy) == 7 and Series_sub_data == "Structures":
+        struct_name = hierarchy[6]
+        menu = QMenu()
+        dup_action    = menu.addAction(f"Duplicate '{struct_name}'")
+        bool_action   = menu.addAction("Boolean operations…")
+        export_action = menu.addAction(f"Export structure '{struct_name}'…")
+        menu.addSeparator()
+        delete_action = menu.addAction(f"Delete structure '{struct_name}'")
+
+        action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
+        if action == dup_action:
+            from fcn_operations.boolean_operations_dialog import duplicate_structure
+            duplicate_structure(self, Patient, Study, Modality, Series, struct_name)
+        elif action == bool_action:
+            from fcn_operations.boolean_operations_dialog import open_boolean_dialog
+            open_boolean_dialog(self, Patient, Study, Modality, Series, preselected_name=struct_name)
+        elif action == export_action:
+            from fcn_export.export_structures_dialog import open_export_structures_dialog
+            open_export_structures_dialog(self, Patient, Study, Modality, Series, preselected_name=struct_name)
+        elif action == delete_action:
+            from fcn_operations.boolean_operations_dialog import delete_single_structure
+            delete_single_structure(self, Patient, Study, Modality, Series, struct_name)
+
+    # -------------------------
+    # Structures folder level
+    # -------------------------
+    if Type in ("Medical Image", "DICOM") and len(hierarchy) == 6 and Series_sub_data == "Structures":
         # Build your menu
         menu = QMenu()
+        export_action      = menu.addAction("Export structures…")
+        import_action      = menu.addAction("Import structures (NIfTI)…")
+        menu.addSeparator()
+        bool_action        = menu.addAction("Boolean operations…")
         copy_action        = menu.addAction("Copy structures to…")
-        delete_action      = menu.addAction("Delete")
+        menu.addSeparator()
+        delete_action      = menu.addAction("Delete all structures")
         
         # Pop up the menu at the global screen position
         action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
-        if action == copy_action:
+        if action == export_action:
+            from fcn_export.export_structures_dialog import open_export_structures_dialog
+            open_export_structures_dialog(self, Patient, Study, Modality, Series)
+        elif action == import_action:
+            from fcn_export.export_structures_dialog import import_structures_from_nifti
+            import_structures_from_nifti(self, Patient, Study, Modality, Series)
+        elif action == bool_action:
+            from fcn_operations.boolean_operations_dialog import open_boolean_dialog
+            open_boolean_dialog(self, Patient, Study, Modality, Series)
+        elif action == copy_action:
             print("Copy action triggered")
             on_copy_structures_from_tree_item(self, Patient, Study, Modality, Series)
             # on_DataTreeView_clicked(self,idx)   

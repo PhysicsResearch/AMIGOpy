@@ -37,7 +37,7 @@ from fcn_breathing_curves.functions_edit import applyOperations, undoOperations,
 from fcn_breathing_curves.functions_phantom_operation import setDuetIP, defineInputFolder, setAcqStart, exportMoVeData
 from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, create_ab_matrix, eqd2_calc
 from fcn_segmentation.functions_segmentation import (threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc, 
-                                                     DeleteSeg, undo_brush_seg, apply_morph_oper, undo_morph_oper)
+                                                     DeleteSeg, undo_brush_seg, apply_morph_oper, undo_morph_oper, on_boolean_seg_clicked)
 from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes,add_row_to_ct_table, export_ct_cal_to_csv
 from fcn_densitymap.density_map import create_density_map,del_density_map
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
@@ -150,6 +150,7 @@ def initialize_software_buttons(self):
     safe_btn(self, 'createSegStruct', 'clicked', lambda: InitSeg(self), "background-color: green; color:white")
     safe_btn(self, 'calcSegStatsButton', 'clicked', lambda: calcStrucStats(self), "background-color: green; color:white")
     safe_btn(self, 'deleteSegStruct', 'clicked', lambda: DeleteSeg(self), "background-color: red; color:white")
+    safe_btn(self, 'booleanSegStruct', 'clicked', lambda: on_boolean_seg_clicked(self), "background-color: #1976D2; color:white; font-weight: bold;")
     safe_btn(self, 'exportSegStatsButton', 'clicked', lambda: exportStrucStats(self), "background-color: blue; color:white")
     safe_btn(self, 'exportSegStrucButton', 'clicked', lambda: exportSegStruc(self), "background-color: blue; color:white")
     safe_btn(self, 'ApplyMorphOper', 'clicked', lambda: apply_morph_oper(self), "background-color: blue; color:white")

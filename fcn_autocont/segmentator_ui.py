@@ -19,7 +19,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QCheckBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QGroupBox, QScrollArea, QGridLayout,
-    QDoubleSpinBox, QComboBox, QMessageBox, QSplitter, QSizePolicy, QProgressBar
+    QDoubleSpinBox, QComboBox, QMessageBox, QSplitter, QSizePolicy, QProgressBar,
+    QRadioButton, QButtonGroup, QFrame, QSpinBox
 )
 
 # ---------------------------------------------------------------------------
@@ -33,6 +34,11 @@ COLS_PER_GROUP   = 3     # columns for each label grid
 # ------------------------------- Sub-routines -------------------------------
 
 SUBROUTINE_KEYS = [
+    "all_bone",
+    "cortical_bone",
+    "bone_marrow",
+    "lungs_merged",
+    "lungs_merged_side",
     "lung_vessels",
     "body", "body_mr",
     "cerebral_bleed",
@@ -202,6 +208,57 @@ MR_QUICK = {
     "Spine core": ["spinal_cord","vertebrae","intervertebral_discs"],
 }
 
+# ------------------------------- Bone Subroutine Targets --------------------
+
+ALL_BONE_TARGETS_CT = [
+    "skull",
+    "sacrum",
+    "vertebrae_C1","vertebrae_C2","vertebrae_C3","vertebrae_C4","vertebrae_C5","vertebrae_C6","vertebrae_C7",
+    "vertebrae_T1","vertebrae_T2","vertebrae_T3","vertebrae_T4","vertebrae_T5","vertebrae_T6","vertebrae_T7","vertebrae_T8","vertebrae_T9","vertebrae_T10","vertebrae_T11","vertebrae_T12",
+    "vertebrae_L1","vertebrae_L2","vertebrae_L3","vertebrae_L4","vertebrae_L5","vertebrae_S1",
+    "rib_left_1","rib_left_2","rib_left_3","rib_left_4","rib_left_5","rib_left_6",
+    "rib_left_7","rib_left_8","rib_left_9","rib_left_10","rib_left_11","rib_left_12",
+    "rib_right_1","rib_right_2","rib_right_3","rib_right_4","rib_right_5","rib_right_6",
+    "rib_right_7","rib_right_8","rib_right_9","rib_right_10","rib_right_11","rib_right_12",
+    "sternum",
+    "costal_cartilages",
+    "clavicula_left","clavicula_right",
+    "scapula_left","scapula_right",
+    "humerus_left","humerus_right",
+    "hip_left","hip_right",
+    "femur_left","femur_right",
+]
+
+ALL_BONE_TARGETS_MR = [
+    "sacrum",
+    "vertebrae",
+    "intervertebral_discs",
+    "clavicula_left","clavicula_right",
+    "scapula_left","scapula_right",
+    "humerus_left","humerus_right",
+    "hip_left","hip_right",
+    "femur_left","femur_right",
+]
+
+# ------------------------------- Lung Subroutine Targets --------------------
+
+ALL_LUNG_TARGETS_CT_LEFT = [
+    "lung_upper_lobe_left",
+    "lung_lower_lobe_left",
+]
+
+ALL_LUNG_TARGETS_CT_RIGHT = [
+    "lung_upper_lobe_right",
+    "lung_middle_lobe_right",
+    "lung_lower_lobe_right",
+]
+
+ALL_LUNG_TARGETS_CT = ALL_LUNG_TARGETS_CT_LEFT + ALL_LUNG_TARGETS_CT_RIGHT
+
+ALL_LUNG_TARGETS_MR_LEFT = ["lung_left"]
+ALL_LUNG_TARGETS_MR_RIGHT = ["lung_right"]
+ALL_LUNG_TARGETS_MR = ALL_LUNG_TARGETS_MR_LEFT + ALL_LUNG_TARGETS_MR_RIGHT
+
 # ---------------------------------------------------------------------------
 
 class SegmentatorWindow(QWidget):
@@ -222,20 +279,49 @@ class SegmentatorWindow(QWidget):
             geom = screen.availableGeometry()
             scr_w = geom.width()
             scr_h = geom.height()
-            new_w = min(1320, int(scr_w * 0.95))
-            new_h = min(850, int(scr_h * 0.90))
+            new_w = min(1360, int(scr_w * 0.95))
+            new_h = min(880, int(scr_h * 0.90))
             self.resize(new_w, new_h)
         else:
-            self.resize(1320, 850)
+            self.resize(1360, 880)
 
         self.setStyleSheet("""
+            QWidget {
+                color: #ECEFF1;
+            }
             QPushButton {
-                background-color: #1976D2; color: white; padding: 6px 12px;
-                border-radius: 6px; font-weight: 600;
+                background-color: #1976D2; color: #FFFFFF; padding: 5px 12px;
+                border-radius: 5px; font-weight: 600;
             }
             QPushButton:hover { background-color: #1565C0; }
             QPushButton:disabled { background-color: #90A4AE; color: #ECEFF1; }
-            QCheckBox { font-size: 12px; }
+            QCheckBox {
+                font-size: 12px;
+                color: #ECEFF1;
+            }
+            QCheckBox:hover {
+                color: #FFFFFF;
+            }
+            QRadioButton {
+                font-size: 12px;
+                color: #ECEFF1;
+            }
+            QRadioButton:hover {
+                color: #FFFFFF;
+            }
+            QLabel {
+                color: #ECEFF1;
+            }
+            QGroupBox {
+                color: #ECEFF1;
+            }
+            QSpinBox, QDoubleSpinBox {
+                color: #ECEFF1;
+                background-color: #263238;
+                border: 1px solid #455A64;
+                border-radius: 3px;
+                padding: 2px 4px;
+            }
         """)
 
         self.medical_image = medical_image or {}
@@ -246,6 +332,16 @@ class SegmentatorWindow(QWidget):
         self.ct_label_to_cb: Dict[str, QCheckBox] = {}
         self.mr_label_to_cb: Dict[str, QCheckBox] = {}
         self.subr_cb: Dict[str, QCheckBox] = {}
+
+        # Category and filter tracking
+        self.ct_group_boxes: Dict[str, QGroupBox] = {}
+        self.mr_group_boxes: Dict[str, QGroupBox] = {}
+        self.ct_group_labels: Dict[str, List[str]] = {}
+        self.mr_group_labels: Dict[str, List[str]] = {}
+        self.cat_visibility: Dict[str, bool] = {}
+        self.cat_checkboxes: Dict[str, QCheckBox] = {}
+        self.ct_quick_cbs: Dict[str, QCheckBox] = {}
+        self.mr_quick_cbs: Dict[str, QCheckBox] = {}
 
         main = QVBoxLayout(self); main.setContentsMargins(10,10,10,10); main.setSpacing(8)
 
@@ -264,7 +360,25 @@ class SegmentatorWindow(QWidget):
         self.chk_no_crop = QCheckBox("Avoid crop (--nr_crop)")
         opt.addWidget(self.chk_no_crop)
 
-        opt.addSpacing(20); opt.addWidget(QLabel("Output type:"))
+        opt.addSpacing(12)
+        self.chk_separate_cortical = QCheckBox("Split Cortical/Marrow")
+        self.chk_separate_cortical.setChecked(True)
+        self.chk_separate_cortical.setToolTip("When segmenting bone, separate cortical bone (outer shell) from bone marrow (inner cavity)")
+        opt.addWidget(self.chk_separate_cortical)
+
+        lbl_hu = QLabel("Cortical HU:")
+        self.cortical_hu_spin = QSpinBox()
+        self.cortical_hu_spin.setRange(100, 1500)
+        self.cortical_hu_spin.setSingleStep(25)
+        self.cortical_hu_spin.setValue(300)
+        self.cortical_hu_spin.setSuffix(" HU")
+        self.cortical_hu_spin.setToolTip("Threshold in Hounsfield Units to separate cortical bone (>= threshold) from inner bone marrow (< threshold). Default: 300 HU")
+        self.cortical_hu_spin.setFixedWidth(85)
+        self.chk_separate_cortical.toggled.connect(self.cortical_hu_spin.setEnabled)
+        opt.addWidget(lbl_hu)
+        opt.addWidget(self.cortical_hu_spin)
+
+        opt.addSpacing(16); opt.addWidget(QLabel("Output type:"))
         self.output_type = QComboBox(); self.output_type.addItems(["nifti","dicom"])
         opt.addWidget(self.output_type)
 
@@ -299,21 +413,32 @@ class SegmentatorWindow(QWidget):
         opt.addStretch()
         main.addLayout(opt)
 
-        # ---- splitter: left (series) / right (scrollable column)
+        # ---- splitter: left (series + visualization panel) / right (structures & subroutines)
         splitter = QSplitter(Qt.Horizontal); splitter.setHandleWidth(8)
         splitter.setChildrenCollapsible(False)
         main.addWidget(splitter, 1)
 
-        # LEFT: series table
+        # LEFT PANE: series table (top) and visualization / filters (bottom)
         left = QWidget(); lv = QVBoxLayout(left); lv.setContentsMargins(0,0,0,0); lv.setSpacing(6)
-        hdr = QHBoxLayout(); hdr.addWidget(QLabel("Series:")); hdr.addStretch()
+        
+        left_splitter = QSplitter(Qt.Vertical)
+        left_splitter.setHandleWidth(6)
+        left_splitter.setChildrenCollapsible(False)
+
+        # 1. Top container: Series header + Table (moved up)
+        series_container = QWidget()
+        sc_layout = QVBoxLayout(series_container); sc_layout.setContentsMargins(0, 0, 0, 0); sc_layout.setSpacing(4)
+
+        hdr = QHBoxLayout()
+        hdr.addWidget(QLabel("<b>Series:</b>"))
+        hdr.addStretch()
         for txt, slot in [
             ("Select All", lambda: self._select_all_series(True)),
             ("Clear All",  lambda: self._select_all_series(False)),
             ("Refresh",    self._reload_series),
         ]:
-            b = QPushButton(txt); b.clicked.connect(slot); hdr.addWidget(b)
-        lv.addLayout(hdr)
+            b = QPushButton(txt); b.setStyleSheet("padding: 3px 8px; font-size: 11px;"); b.clicked.connect(slot); hdr.addWidget(b)
+        sc_layout.addLayout(hdr)
 
         self.tbl = QTableWidget(0, 6)
         self.tbl.setHorizontalHeaderLabels(["Select","Patient","Study","Modality","Series [index]","Status"])
@@ -323,40 +448,54 @@ class SegmentatorWindow(QWidget):
         self.tbl.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
         self.tbl.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
         self.tbl.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        lv.addWidget(self.tbl, 1)
-        self._populate_series_table()
+        self.tbl.setMinimumHeight(110)
+        sc_layout.addWidget(self.tbl, 1)
+
+        left_splitter.addWidget(series_container)
+
+        # 2. Bottom container: Visualization & Filter Options Panel
+        vis_panel = self._build_visualization_panel()
+        left_splitter.addWidget(vis_panel)
+
+        left_splitter.setSizes([180, 520])
+        left_splitter.setStretchFactor(0, 0)
+        left_splitter.setStretchFactor(1, 1)
+
+        lv.addWidget(left_splitter, 1)
         splitter.addWidget(left)
 
-        # RIGHT: a vertical splitter to allow resizing components using the mouse
-        right_splitter = QSplitter(Qt.Vertical)
-        right_splitter.setHandleWidth(8)
+        # RIGHT: single unified scroll area containing subroutines, CT section, MR section
+        right_scroll = QScrollArea()
+        right_scroll.setWidgetResizable(True)
+        right_scroll.setFrameShape(QScrollArea.NoFrame)
 
-        # Sub-routines
-        right_splitter.addWidget(self._build_subroutine_box())
+        right_content = QWidget()
+        right_layout = QVBoxLayout(right_content)
+        right_layout.setContentsMargins(4, 4, 8, 4)
+        right_layout.setSpacing(10)
 
-        # CT section
-        ct_box, self.ct_search, _ = self._build_structures_section(
+        # 1. Sub-routines
+        self.subr_box = self._build_subroutine_box()
+        right_layout.addWidget(self.subr_box)
+
+        # 2. CT section
+        self.ct_box, self.ct_search, self.ct_quick_box, self.ct_group_boxes, self.ct_quick_cbs = self._build_structures_section(
             title="CT Total — pick structures (auto-enables CT task if any selected)",
             all_targets=CT_ALL_TARGETS, groups=CT_GROUPS, quick=CT_QUICK,
-            search_ph="Filter CT labels...", min_groups_height=MINH_CT_GROUPS, target_map="ct"
+            search_ph="Filter CT labels...", target_map="ct"
         )
-        right_splitter.addWidget(ct_box)
+        right_layout.addWidget(self.ct_box)
 
-        # MR section
-        mr_box, self.mr_search, _ = self._build_structures_section(
+        # 3. MR section
+        self.mr_box, self.mr_search, self.mr_quick_box, self.mr_group_boxes, self.mr_quick_cbs = self._build_structures_section(
             title="MR Total — pick structures (auto-enables MR task if any selected)",
             all_targets=MR_ALL_TARGETS, groups=MR_GROUPS, quick=MR_QUICK,
-            search_ph="Filter MR labels...", min_groups_height=MINH_MR_GROUPS, target_map="mr"
+            search_ph="Filter MR labels...", target_map="mr"
         )
-        right_splitter.addWidget(mr_box)
+        right_layout.addWidget(self.mr_box)
 
-        right_splitter.setStretchFactor(0, 0)
-        right_splitter.setStretchFactor(1, 1)
-        right_splitter.setStretchFactor(2, 1)
-
-        # Scroll wrapper for the whole right column
-        right_scroll = QScrollArea(); right_scroll.setWidgetResizable(True)
-        right_scroll.setWidget(right_splitter)
+        right_layout.addStretch()
+        right_scroll.setWidget(right_content)
 
         # Right side composite (scroll + buttons row)
         right_side = QWidget(); rsv = QVBoxLayout(right_side)
@@ -374,31 +513,320 @@ class SegmentatorWindow(QWidget):
 
         splitter.addWidget(right_side)
         splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([700, 900])
+        splitter.setStretchFactor(1, 2)
+        splitter.setSizes([520, 840])
+
+        self._populate_series_table()
+        self._on_modality_view_changed()
+
+    # --------------------------- Visualization panel ------------------------
+
+    def _build_visualization_panel(self) -> QGroupBox:
+        box = QGroupBox("Visualization & Filter Options")
+        box.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #37474F;
+                border-radius: 6px;
+                margin-top: 10px;
+                padding-top: 10px;
+                color: #ECEFF1;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 6px;
+                color: #90CAF9;
+            }
+            QRadioButton {
+                color: #ECEFF1;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QRadioButton:hover {
+                color: #FFFFFF;
+            }
+            QCheckBox {
+                color: #ECEFF1;
+                font-size: 12px;
+            }
+            QCheckBox:hover {
+                color: #FFFFFF;
+            }
+            QLabel {
+                color: #ECEFF1;
+            }
+        """)
+        v = QVBoxLayout(box)
+        v.setContentsMargins(8, 10, 8, 8)
+        v.setSpacing(8)
+
+        # 1. Modality View Selection
+        lbl_mod = QLabel("Modality View:")
+        lbl_mod.setStyleSheet("font-weight: bold; color: #ECEFF1; font-size: 12px;")
+        v.addWidget(lbl_mod)
+
+        mod_row = QHBoxLayout()
+        mod_row.setSpacing(14)
+        self.rb_ct = QRadioButton("CT (Total)")
+        self.rb_mr = QRadioButton("MRI (Total MR)")
+        self.rb_both = QRadioButton("Both")
+        self.rb_ct.setStyleSheet("font-size: 12px; font-weight: 600; color: #ECEFF1;")
+        self.rb_mr.setStyleSheet("font-size: 12px; font-weight: 600; color: #ECEFF1;")
+        self.rb_both.setStyleSheet("font-size: 12px; font-weight: 600; color: #ECEFF1;")
+
+        self.mod_group = QButtonGroup(self)
+        self.mod_group.addButton(self.rb_ct, 1)
+        self.mod_group.addButton(self.rb_mr, 2)
+        self.mod_group.addButton(self.rb_both, 3)
+        self.rb_ct.setChecked(True)
+
+        mod_row.addWidget(self.rb_ct)
+        mod_row.addWidget(self.rb_mr)
+        mod_row.addWidget(self.rb_both)
+        mod_row.addStretch()
+        v.addLayout(mod_row)
+
+        self.rb_ct.toggled.connect(self._on_modality_view_changed)
+        self.rb_mr.toggled.connect(self._on_modality_view_changed)
+        self.rb_both.toggled.connect(self._on_modality_view_changed)
+
+        # Divider line
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setFrameShadow(QFrame.Sunken)
+        line.setStyleSheet("color: #37474F;")
+        v.addWidget(line)
+
+        # 2. Sub-categories header + Show All / Hide All buttons
+        cat_hdr = QHBoxLayout()
+        lbl_cats = QLabel("Sub-Categories to Display:")
+        lbl_cats.setStyleSheet("font-weight: bold; color: #ECEFF1; font-size: 12px;")
+        cat_hdr.addWidget(lbl_cats)
+        cat_hdr.addStretch()
+
+        btn_show_all = QPushButton("Show All")
+        btn_show_all.setStyleSheet("background-color: #1976D2; color: #FFFFFF; padding: 2px 8px; font-size: 11px;")
+        btn_show_all.clicked.connect(self._show_all_categories)
+        cat_hdr.addWidget(btn_show_all)
+
+        btn_hide_all = QPushButton("Hide All")
+        btn_hide_all.setStyleSheet("background-color: #1976D2; color: #FFFFFF; padding: 2px 8px; font-size: 11px;")
+        btn_hide_all.clicked.connect(self._hide_all_categories)
+        cat_hdr.addWidget(btn_hide_all)
+        v.addLayout(cat_hdr)
+
+        # 3. Scroll area containing the category checkboxes
+        cat_scroll = QScrollArea()
+        cat_scroll.setWidgetResizable(True)
+        cat_scroll.setFrameShape(QScrollArea.NoFrame)
+        self.cat_container = QWidget()
+        self.cat_layout = QVBoxLayout(self.cat_container)
+        self.cat_layout.setContentsMargins(2, 2, 2, 2)
+        self.cat_layout.setSpacing(6)
+        cat_scroll.setWidget(self.cat_container)
+        v.addWidget(cat_scroll, 1)
+
+        return box
+
+    def _on_modality_view_changed(self):
+        is_ct = self.rb_ct.isChecked()
+        is_mr = self.rb_mr.isChecked()
+        is_both = self.rb_both.isChecked()
+
+        if hasattr(self, "ct_box"):
+            self.ct_box.setVisible(is_ct or is_both)
+        if hasattr(self, "mr_box"):
+            self.mr_box.setVisible(is_mr or is_both)
+
+        self._update_category_filter_list()
+        self._apply_all_category_visibilities()
+        self._update_category_counts()
+
+    def _get_active_category_names(self) -> List[str]:
+        cats = ["Sub-routines", "Quick Groups"]
+        if self.rb_ct.isChecked():
+            for gtitle, _ in CT_GROUPS:
+                if gtitle not in cats:
+                    cats.append(gtitle)
+        elif self.rb_mr.isChecked():
+            for gtitle, _ in MR_GROUPS:
+                if gtitle not in cats:
+                    cats.append(gtitle)
+        else: # Both
+            all_groups = [g[0] for g in CT_GROUPS] + [g[0] for g in MR_GROUPS]
+            for gtitle in all_groups:
+                if gtitle not in cats:
+                    cats.append(gtitle)
+        return cats
+
+    def _update_category_filter_list(self):
+        while self.cat_layout.count():
+            item = self.cat_layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+
+        self.cat_checkboxes.clear()
+        active_cats = self._get_active_category_names()
+
+        for cat_name in active_cats:
+            is_vis = self.cat_visibility.get(cat_name, True)
+            self.cat_visibility[cat_name] = is_vis
+
+            cb = QCheckBox(cat_name)
+            cb.setChecked(is_vis)
+            cb.setStyleSheet("color: #ECEFF1; font-size: 12px;")
+            cb.setToolTip(f"Show/hide {cat_name} category on the right side")
+            cb.toggled.connect(lambda chk, name=cat_name: self._on_cat_toggled(name, chk))
+            self.cat_layout.addWidget(cb)
+            self.cat_checkboxes[cat_name] = cb
+
+        self.cat_layout.addStretch()
+
+    def _on_cat_toggled(self, name: str, checked: bool):
+        self.cat_visibility[name] = checked
+        self._apply_category_visibility(name, checked)
+
+    def _apply_category_visibility(self, name: str, visible: bool):
+        if name == "Sub-routines":
+            if hasattr(self, "subr_box"):
+                self.subr_box.setVisible(visible)
+        elif name == "Quick Groups":
+            if hasattr(self, "ct_quick_box"):
+                self.ct_quick_box.setVisible(visible)
+            if hasattr(self, "mr_quick_box"):
+                self.mr_quick_box.setVisible(visible)
+        else:
+            if hasattr(self, "ct_group_boxes") and name in self.ct_group_boxes:
+                self.ct_group_boxes[name].setVisible(visible)
+            if hasattr(self, "mr_group_boxes") and name in self.mr_group_boxes:
+                self.mr_group_boxes[name].setVisible(visible)
+
+    def _apply_all_category_visibilities(self):
+        for cat_name, visible in self.cat_visibility.items():
+            self._apply_category_visibility(cat_name, visible)
+
+    def _show_all_categories(self):
+        for name, cb in self.cat_checkboxes.items():
+            cb.setChecked(True)
+
+    def _hide_all_categories(self):
+        for name, cb in self.cat_checkboxes.items():
+            cb.setChecked(False)
+
+    def _update_category_counts(self):
+        for cat_name, cb in self.cat_checkboxes.items():
+            count = 0
+            if cat_name == "Sub-routines":
+                count = sum(1 for c in self.subr_cb.values() if c.isChecked())
+            elif cat_name == "Quick Groups":
+                if self.rb_ct.isChecked():
+                    count = sum(1 for c in self.ct_quick_cbs.values() if c.isChecked())
+                elif self.rb_mr.isChecked():
+                    count = sum(1 for c in self.mr_quick_cbs.values() if c.isChecked())
+                else:
+                    count = sum(1 for c in self.ct_quick_cbs.values() if c.isChecked()) + sum(1 for c in self.mr_quick_cbs.values() if c.isChecked())
+            else:
+                if (self.rb_ct.isChecked() or self.rb_both.isChecked()) and hasattr(self, "ct_group_labels"):
+                    for lab in self.ct_group_labels.get(cat_name, []):
+                        if lab in self.ct_label_to_cb and self.ct_label_to_cb[lab].isChecked():
+                            count += 1
+                if (self.rb_mr.isChecked() or self.rb_both.isChecked()) and hasattr(self, "mr_group_labels"):
+                    for lab in self.mr_group_labels.get(cat_name, []):
+                        if lab in self.mr_label_to_cb and self.mr_label_to_cb[lab].isChecked():
+                            count += 1
+
+            if count > 0:
+                cb.setText(f"{cat_name}  ({count} selected)")
+                cb.setStyleSheet("font-weight: 600; color: #42A5F5; font-size: 12px;")
+            else:
+                cb.setText(cat_name)
+                cb.setStyleSheet("font-weight: normal; color: #ECEFF1; font-size: 12px;")
 
     # --------------------------- Subroutine block ---------------------------
 
     def _build_subroutine_box(self) -> QGroupBox:
         box = QGroupBox("Sub-routines")
+        box.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #37474F;
+                border-radius: 6px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 6px;
+                color: #81C784;
+            }
+        """)
         v = QVBoxLayout(box); v.setContentsMargins(10,8,10,8); v.setSpacing(6)
 
-        scroll = QScrollArea(); scroll.setWidgetResizable(True)
-        scroll.setMinimumHeight(140)
-        holder = QWidget(); grid = QGridLayout(holder)
+        hdr = QHBoxLayout()
+        hdr.addWidget(QLabel("<b>Sub-routines</b> (independent specialized models)"))
+        hdr.addStretch()
+        btn_all = QPushButton("Check All"); btn_all.setFixedWidth(80)
+        btn_none = QPushButton("Clear All"); btn_none.setFixedWidth(80)
+        btn_all.setStyleSheet("padding: 2px 6px; font-size: 11px;")
+        btn_none.setStyleSheet("padding: 2px 6px; font-size: 11px;")
+        
+        def _set_subr(state: bool):
+            for c in self.subr_cb.values():
+                c.setChecked(state)
+            self._update_category_counts()
+
+        btn_all.clicked.connect(lambda: _set_subr(True))
+        btn_none.clicked.connect(lambda: _set_subr(False))
+        hdr.addWidget(btn_all); hdr.addWidget(btn_none)
+        v.addLayout(hdr)
+
+        grid = QGridLayout()
         grid.setHorizontalSpacing(18); grid.setVerticalSpacing(6)
-        scroll.setWidget(holder)
 
         col = row = 0
         for key in SUBROUTINE_KEYS:
-            cb = QCheckBox(key.replace("_"," "))
+            if key == "all_bone":
+                display_name = "All bone"
+            elif key == "cortical_bone":
+                display_name = "Cortical bone"
+            elif key == "bone_marrow":
+                display_name = "Bone marrow"
+            elif key == "lungs_merged":
+                display_name = "Lungs (merged)"
+            elif key == "lungs_merged_side":
+                display_name = "Lungs (merged/side)"
+            else:
+                display_name = key.replace("_", " ")
+            cb = QCheckBox(display_name)
+            if key == "all_bone":
+                cb.setToolTip("Segment all bone structures and merge into a single 'bone' structure (or split if Split Cortical/Marrow enabled)")
+            elif key == "cortical_bone":
+                cb.setToolTip("Segment all bones and extract the dense outer cortical bone shell via HU thresholding")
+            elif key == "bone_marrow":
+                cb.setToolTip("Segment all bones and extract inner bone marrow / cancellous space via HU thresholding")
+            elif key == "lungs_merged":
+                cb.setToolTip("Segment all lung structures and merge into a single 'lungs' mask")
+            elif key == "lungs_merged_side":
+                cb.setToolTip("Segment lung lobes and merge by side into 'lung_left' and 'lung_right' masks")
+
+            def _make_subr_handler(k):
+                def _handler(state):
+                    if k in ("cortical_bone", "bone_marrow") and state:
+                        self.chk_separate_cortical.setChecked(True)
+                    self._update_category_counts()
+                return _handler
+
+            cb.stateChanged.connect(_make_subr_handler(key))
             self.subr_cb[key] = cb
             grid.addWidget(cb, row, col)
             col += 1
             if col >= 4:
                 col = 0; row += 1
 
-        v.addWidget(scroll)
+        v.addLayout(grid)
         return box
 
     # --------------------------- Structures sections ------------------------
@@ -407,10 +835,26 @@ class SegmentatorWindow(QWidget):
         self, title: str, all_targets: List[str],
         groups: List[Tuple[str, List[str]]],
         quick: Dict[str, List[str]],
-        search_ph: str, min_groups_height: int, target_map: str
+        search_ph: str, target_map: str
     ):
         box = QGroupBox(title)
-        v = QVBoxLayout(box); v.setContentsMargins(10,8,10,8); v.setSpacing(6)
+        color = "#64B5F6" if target_map == "ct" else "#BA68C8"
+        box.setStyleSheet(f"""
+            QGroupBox {{
+                font-weight: bold;
+                border: 1px solid #37474F;
+                border-radius: 6px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 6px;
+                color: {color};
+            }}
+        """)
+        v = QVBoxLayout(box); v.setContentsMargins(10,8,10,8); v.setSpacing(8)
 
         # Search + select all/clear all
         r = QHBoxLayout()
@@ -421,11 +865,9 @@ class SegmentatorWindow(QWidget):
 
         # Quick groups
         quick_box = QGroupBox("Quick Groups")
-        quick_scroll = QScrollArea(); quick_scroll.setWidgetResizable(True)
-        quick_scroll.setMinimumHeight(MINH_QUICK)
-        q_holder = QWidget(); q_grid = QGridLayout(q_holder)
+        q_vbox = QVBoxLayout(quick_box); q_vbox.setContentsMargins(8, 6, 8, 6); q_vbox.setSpacing(6)
+        q_grid = QGridLayout()
         q_grid.setHorizontalSpacing(18); q_grid.setVerticalSpacing(6)
-        quick_scroll.setWidget(q_holder)
 
         quick_map: Dict[str, QCheckBox] = {}
         col = row = 0
@@ -436,35 +878,56 @@ class SegmentatorWindow(QWidget):
             if col >= 3:
                 col = 0; row += 1
 
-        q_wrap = QVBoxLayout(quick_box); q_wrap.addWidget(quick_scroll)
+        q_vbox.addLayout(q_grid)
         v.addWidget(quick_box)
 
-        # MAIN structures groups
-        groups_scroll = QScrollArea(); groups_scroll.setWidgetResizable(True)
-        groups_scroll.setMinimumHeight(min_groups_height)
-        groups_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        holder = QWidget(); holder_layout = QVBoxLayout(holder)
-        holder_layout.setContentsMargins(6,6,6,6); holder_layout.setSpacing(8)
-        groups_scroll.setWidget(holder)
-        v.addWidget(groups_scroll)
+        # Main structures groups
+        group_boxes: Dict[str, QGroupBox] = {}
+        group_labels: Dict[str, List[str]] = {}
+        label_to_cb: Dict[str, QCheckBox] = {}
 
-        label_to_cb: Dict[str,QCheckBox] = {}
         for gtitle, labels in groups:
             labs = [x for x in labels if x in set(all_targets)]
             if not labs:
                 continue
+            group_labels[gtitle] = labs
             grp = QGroupBox(gtitle)
-            glay = QVBoxLayout(grp); glay.setSpacing(6)
-            header = QHBoxLayout(); header.addWidget(QLabel(f"<b>{gtitle}</b>")); header.addStretch()
-            toggle = QPushButton("Check All"); toggle.setFixedWidth(110); header.addWidget(toggle)
+            glay = QVBoxLayout(grp); glay.setContentsMargins(8, 6, 8, 6); glay.setSpacing(6)
+            
+            header = QHBoxLayout()
+            header.addWidget(QLabel(f"<b>{gtitle}</b>"))
+            header.addStretch()
+            
+            toggle = QPushButton("Check All"); toggle.setFixedWidth(100)
+            btn_collapse = QPushButton("▾")
+            btn_collapse.setFixedWidth(28)
+            btn_collapse.setStyleSheet("padding: 2px; font-size: 11px;")
+            btn_collapse.setToolTip("Collapse / Expand")
+            header.addWidget(toggle)
+            header.addWidget(btn_collapse)
             glay.addLayout(header)
 
-            grid = QGridLayout(); grid.setHorizontalSpacing(18); grid.setVerticalSpacing(6)
+            grid_holder = QWidget()
+            grid = QGridLayout(grid_holder)
+            grid.setContentsMargins(0, 0, 0, 0)
+            grid.setHorizontalSpacing(18); grid.setVerticalSpacing(6)
             for i, lab in enumerate(labs):
                 cb = QCheckBox(lab)
+                cb.stateChanged.connect(lambda _: self._update_category_counts())
                 label_to_cb[lab] = cb
                 grid.addWidget(cb, i // COLS_PER_GROUP, i % COLS_PER_GROUP)
-            glay.addLayout(grid)
+            glay.addWidget(grid_holder)
+
+            def make_collapse(w: QWidget, b: QPushButton):
+                def _c():
+                    if w.isVisible():
+                        w.setVisible(False)
+                        b.setText("▸")
+                    else:
+                        w.setVisible(True)
+                        b.setText("▾")
+                return _c
+            btn_collapse.clicked.connect(make_collapse(grid_holder, btn_collapse))
 
             def make_toggle(cbs: List[QCheckBox], btn: QPushButton):
                 def _t():
@@ -472,16 +935,28 @@ class SegmentatorWindow(QWidget):
                     for c in cbs:
                         c.setChecked(not all_on)
                     btn.setText("Uncheck All" if not all_on else "Check All")
+                    self._update_category_counts()
                 return _t
             toggle.clicked.connect(make_toggle([label_to_cb[x] for x in labs], toggle))
 
-            holder_layout.addWidget(grp)
+            group_boxes[gtitle] = grp
+            v.addWidget(grp)
 
         # search filter
         def _apply_filter(text: str):
             pat = (text or "").strip().lower()
             for lab, cb in label_to_cb.items():
                 cb.setVisible(pat in lab.lower() if pat else True)
+            
+            for gtitle, labels in groups:
+                grp = group_boxes.get(gtitle)
+                if not grp:
+                    continue
+                if pat:
+                    has_match = any(pat in l.lower() for l in labels)
+                    grp.setVisible(has_match)
+                else:
+                    grp.setVisible(self.cat_visibility.get(gtitle, True))
         search.textChanged.connect(_apply_filter)
 
         # select all/none (respect filter)
@@ -490,6 +965,7 @@ class SegmentatorWindow(QWidget):
             for lab, cb in label_to_cb.items():
                 if (not pat) or (pat in lab.lower()):
                     cb.setChecked(state)
+            self._update_category_counts()
         btn_all.clicked.connect(lambda: _set_all(True))
         btn_none.clicked.connect(lambda: _set_all(False))
 
@@ -502,15 +978,24 @@ class SegmentatorWindow(QWidget):
                         w = label_to_cb.get(lab)
                         if w:
                             w.setChecked(is_on)
+                    self._update_category_counts()
                 return _qc
             cb.stateChanged.connect(make_qc(name))
 
         if target_map == "ct":
             self.ct_label_to_cb = label_to_cb
+            self.ct_group_boxes = group_boxes
+            self.ct_group_labels = group_labels
+            self.ct_quick_box = quick_box
+            self.ct_quick_cbs = quick_map
         else:
             self.mr_label_to_cb = label_to_cb
+            self.mr_group_boxes = group_boxes
+            self.mr_group_labels = group_labels
+            self.mr_quick_box = quick_box
+            self.mr_quick_cbs = quick_map
 
-        return box, search, groups_scroll
+        return box, search, quick_box, group_boxes, quick_map
 
     # --------------------------- Series table ops ---------------------------
 
@@ -528,11 +1013,13 @@ class SegmentatorWindow(QWidget):
     def _populate_series_table(self):
         self.tbl.setRowCount(0); self.series_rows.clear()
         rows = []
+        modalities_found = set()
         for pid, studies in sorted(self.medical_image.items()):
             for study_id, by_mod in studies.items():
                 for modality, series_list in by_mod.items():
                     if modality in (self.excluded_modalities or set()):
                         continue
+                    modalities_found.add(str(modality).upper())
                     for idx, s in enumerate(series_list):
                         label = self._series_label(modality, s)
                         rows.append((pid, study_id, modality, idx, f"{label} [{idx}]"))
@@ -546,10 +1033,31 @@ class SegmentatorWindow(QWidget):
             pgb = QProgressBar(); pgb.setRange(0, 100); pgb.setValue(0); pgb.setTextVisible(False)
             self.tbl.setCellWidget(r, 5, pgb)
 
-            self.series_rows.append({
+            row_dict = {
                 "row": r, "patient": pid, "study": study, "modality": mod, "index": idx,
                 "label": label, "pgb": pgb, "chk": cb
-            })
+            }
+            self.series_rows.append(row_dict)
+
+            # Modality auto-detection on checking a series
+            def make_chk_handler(mod_val):
+                def _h(state):
+                    if state:
+                        m = str(mod_val).upper()
+                        if m in ("MR", "MRI") and not self.rb_mr.isChecked():
+                            self.rb_mr.setChecked(True)
+                        elif m == "CT" and not self.rb_ct.isChecked():
+                            self.rb_ct.setChecked(True)
+                return _h
+            cb.stateChanged.connect(make_chk_handler(mod))
+
+        # Initial selection based on available data
+        if any(m in ("MR", "MRI") for m in modalities_found) and not any(m == "CT" for m in modalities_found):
+            if not self.rb_mr.isChecked():
+                self.rb_mr.setChecked(True)
+        elif any(m == "CT" for m in modalities_found):
+            if not self.rb_ct.isChecked():
+                self.rb_ct.setChecked(True)
 
     def _series_label(self, modality, series_data) -> str:
         md = series_data.get('metadata', {})
@@ -591,33 +1099,108 @@ class SegmentatorWindow(QWidget):
         params["device"] = self.device_type.currentText().strip().lower()
 
         subroutines = [k for k, cb in self.subr_cb.items() if cb.isChecked()]
-        ct_targets = self._selected_labels(self.ct_label_to_cb)
-        mr_targets = self._selected_labels(self.mr_label_to_cb)
+        bone_subroutines = {"all_bone", "cortical_bone", "bone_marrow"}
+        all_bone_selected = any(k in subroutines for k in bone_subroutines)
 
-        params["subroutines"] = subroutines
-        params["ct_targets"] = ct_targets
-        params["mr_targets"] = mr_targets
+        lung_subroutines = {"lungs_merged", "lungs_merged_side"}
+        lung_selected = any(k in subroutines for k in lung_subroutines)
+
+        # Filter targets based on active modality view
+        if self.rb_mr.isChecked():
+            ct_targets = []
+            mr_targets = self._selected_labels(self.mr_label_to_cb)
+        elif self.rb_ct.isChecked():
+            ct_targets = self._selected_labels(self.ct_label_to_cb)
+            mr_targets = []
+        else: # Both
+            ct_targets = self._selected_labels(self.ct_label_to_cb)
+            mr_targets = self._selected_labels(self.mr_label_to_cb)
+
+        # Record manual targets explicitly
+        params["manual_ct_targets"] = list(ct_targets)
+        params["manual_mr_targets"] = list(mr_targets)
+        params["all_bone"] = all_bone_selected
+        params["lungs_merged"] = ("lungs_merged" in subroutines)
+        params["lungs_merged_side"] = ("lungs_merged_side" in subroutines)
+
+        requested_lung_types = []
+        if "lungs_merged" in subroutines:
+            requested_lung_types.append("lungs_merged")
+        if "lungs_merged_side" in subroutines:
+            requested_lung_types.append("lungs_merged_side")
+        params["requested_lung_types"] = requested_lung_types
+
+        separate_cortical = self.chk_separate_cortical.isChecked() or any(k in subroutines for k in ("cortical_bone", "bone_marrow"))
+        params["separate_cortical"] = separate_cortical
+        params["cortical_hu"] = int(self.cortical_hu_spin.value())
+
+        # Determine which bone structures are requested to be saved/imported
+        requested_bone_types = []
+        if "all_bone" in subroutines:
+            requested_bone_types.append("all_bone")
+            if separate_cortical:
+                if "cortical_bone" not in requested_bone_types:
+                    requested_bone_types.append("cortical_bone")
+                if "bone_marrow" not in requested_bone_types:
+                    requested_bone_types.append("bone_marrow")
+        if "cortical_bone" in subroutines and "cortical_bone" not in requested_bone_types:
+            requested_bone_types.append("cortical_bone")
+        if "bone_marrow" in subroutines and "bone_marrow" not in requested_bone_types:
+            requested_bone_types.append("bone_marrow")
+
+        params["requested_bone_types"] = requested_bone_types
+
+        # Custom subroutines are handled via targets + merge/split; exclude them from raw TS subroutines
+        custom_subroutines = bone_subroutines | lung_subroutines
+        ts_subroutines = [s for s in subroutines if s not in custom_subroutines]
+        params["subroutines"] = ts_subroutines
+
+        effective_ct_targets = list(ct_targets)
+        effective_mr_targets = list(mr_targets)
+
+        if all_bone_selected:
+            if not self.rb_mr.isChecked(): # CT or Both
+                for b in ALL_BONE_TARGETS_CT:
+                    if b not in effective_ct_targets:
+                        effective_ct_targets.append(b)
+            if not self.rb_ct.isChecked(): # MR or Both
+                for b in ALL_BONE_TARGETS_MR:
+                    if b not in effective_mr_targets:
+                        effective_mr_targets.append(b)
+
+        if lung_selected:
+            if not self.rb_mr.isChecked(): # CT or Both
+                for lt in ALL_LUNG_TARGETS_CT:
+                    if lt not in effective_ct_targets:
+                        effective_ct_targets.append(lt)
+            if not self.rb_ct.isChecked(): # MR or Both
+                for lt in ALL_LUNG_TARGETS_MR:
+                    if lt not in effective_mr_targets:
+                        effective_mr_targets.append(lt)
+
+        params["ct_targets"] = effective_ct_targets
+        params["mr_targets"] = effective_mr_targets
 
         tasks = []
-        if ct_targets: tasks.append("total")
-        if mr_targets: tasks.append("total_mr")
-        for sub in subroutines:
+        if effective_ct_targets: tasks.append("total")
+        if effective_mr_targets: tasks.append("total_mr")
+        for sub in ts_subroutines:
             if sub not in tasks:
                 tasks.append(sub)
         params["tasks"] = tasks
 
         # Primary / fallback task and targets
-        if ct_targets:
+        if effective_ct_targets:
             params["task"] = "total"
-            params["targets"] = ct_targets
-        elif mr_targets:
+            params["targets"] = effective_ct_targets
+        elif effective_mr_targets:
             params["task"] = "total_mr"
-            params["targets"] = mr_targets
-        elif subroutines:
-            params["task"] = subroutines[0]
+            params["targets"] = effective_mr_targets
+        elif ts_subroutines:
+            params["task"] = ts_subroutines[0]
             params["targets"] = []
         else:
-            params["task"] = "total"
+            params["task"] = "total_mr" if self.rb_mr.isChecked() else "total"
             params["targets"] = []
 
         return params
@@ -643,17 +1226,31 @@ class SegmentatorWindow(QWidget):
 
         params = self.build_params()
         if not params["ct_targets"] and not params["mr_targets"] and not params["subroutines"]:
-            reply = QMessageBox.question(
-                self, "No selections",
-                "No CT/MR structures or sub-routines were selected.\n"
-                "Run CT Total with ALL CT labels?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
-            )
-            if reply == QMessageBox.Yes:
-                for cb in self.ct_label_to_cb.values():
-                    cb.setChecked(True)
-                params = self.build_params()
+            if self.rb_mr.isChecked():
+                reply = QMessageBox.question(
+                    self, "No selections",
+                    "No MR structures or sub-routines were selected.\n"
+                    "Run MR Total with ALL MR labels?",
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+                )
+                if reply == QMessageBox.Yes:
+                    for cb in self.mr_label_to_cb.values():
+                        cb.setChecked(True)
+                    params = self.build_params()
+                else:
+                    return
             else:
-                return
+                reply = QMessageBox.question(
+                    self, "No selections",
+                    "No CT structures or sub-routines were selected.\n"
+                    "Run CT Total with ALL CT labels?",
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+                )
+                if reply == QMessageBox.Yes:
+                    for cb in self.ct_label_to_cb.values():
+                        cb.setChecked(True)
+                    params = self.build_params()
+                else:
+                    return
 
         self.runSegRequested.emit(series, params)

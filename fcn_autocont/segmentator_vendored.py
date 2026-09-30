@@ -423,7 +423,22 @@ def _import_masks_into_series(owner, out_dir: Path,
     while len(view_arr) < n_keys:
         view_arr.append(0)
     while len(color_arr) < n_keys:
-        color_arr.append(palette[len(color_arr) % len(palette)])
+        idx = len(color_arr)
+        s_name = names_list[idx] if idx < len(names_list) else ""
+        if s_name.lower() in ("bone", "all_bone", "all bone"):
+            color_arr.append("#E8E2D0")  # Bone/ivory color
+        elif s_name.lower() in ("cortical_bone", "cortical bone", "cortical"):
+            color_arr.append("#FFF8DC")  # Cornsilk / bright ivory cortical bone
+        elif s_name.lower() in ("bone_marrow", "bone marrow", "marrow"):
+            color_arr.append("#D35400")  # Marrow red / deep amber / hematoma red
+        elif s_name.lower() in ("lungs", "lungs_merged", "lungs (merged)"):
+            color_arr.append("#00E5FF")  # Bright cyan / lung
+        elif s_name.lower() in ("lung_left", "lung left"):
+            color_arr.append("#4FC3F7")  # Light blue
+        elif s_name.lower() in ("lung_right", "lung right"):
+            color_arr.append("#0288D1")  # Medium blue
+        else:
+            color_arr.append(palette[len(color_arr) % len(palette)])
     while len(lw_arr) < n_keys:
         lw_arr.append(3.0)
     while len(tr_arr) < n_keys:
@@ -449,16 +464,322 @@ def _import_masks_into_series(owner, out_dir: Path,
     return imported
 
 
+# ------------------------------- Bone Subroutine Targets & Merging ----------
+
+ALL_BONE_TARGETS_CT = [
+    "skull",
+    "sacrum",
+    "vertebrae_C1","vertebrae_C2","vertebrae_C3","vertebrae_C4","vertebrae_C5","vertebrae_C6","vertebrae_C7",
+    "vertebrae_T1","vertebrae_T2","vertebrae_T3","vertebrae_T4","vertebrae_T5","vertebrae_T6","vertebrae_T7","vertebrae_T8","vertebrae_T9","vertebrae_T10","vertebrae_T11","vertebrae_T12",
+    "vertebrae_L1","vertebrae_L2","vertebrae_L3","vertebrae_L4","vertebrae_L5","vertebrae_S1",
+    "rib_left_1","rib_left_2","rib_left_3","rib_left_4","rib_left_5","rib_left_6",
+    "rib_left_7","rib_left_8","rib_left_9","rib_left_10","rib_left_11","rib_left_12",
+    "rib_right_1","rib_right_2","rib_right_3","rib_right_4","rib_right_5","rib_right_6",
+    "rib_right_7","rib_right_8","rib_right_9","rib_right_10","rib_right_11","rib_right_12",
+    "sternum",
+    "costal_cartilages",
+    "clavicula_left","clavicula_right",
+    "scapula_left","scapula_right",
+    "humerus_left","humerus_right",
+    "hip_left","hip_right",
+    "femur_left","femur_right",
+]
+
+ALL_BONE_TARGETS_MR = [
+    "sacrum",
+    "vertebrae",
+    "intervertebral_discs",
+    "clavicula_left","clavicula_right",
+    "scapula_left","scapula_right",
+    "humerus_left","humerus_right",
+    "hip_left","hip_right",
+    "femur_left","femur_right",
+]
 
 
+def _handle_all_bone_merge(
+    out_dir: Path,
+    input_nii: Optional[Path] = None,
+    is_mr: bool = False,
+    manual_targets: Optional[List[str]] = None,
+    separate_cortical: bool = False,
+    cortical_hu: int = 300,
+    requested_types: Optional[List[str]] = None,
+) -> None:
+    """
+    Merge all bone NIfTI masks found in out_dir into a single 'bone.nii.gz' and/or
+    separate dense cortical bone ('cortical_bone.nii.gz') from inner bone marrow ('bone_marrow.nii.gz').
+    If an individual bone component was not manually selected by the user, delete its file from out_dir.
+    """
+    import SimpleITK as sitk
+    import numpy as np
+
+    bone_list = ALL_BONE_TARGETS_MR if is_mr else ALL_BONE_TARGETS_CT
+    bone_set = {b.lower() for b in bone_list}
+    manual_set = {str(t).strip().lower() for t in (manual_targets or []) if str(t).strip()}
+
+    # Find all bone files present in out_dir
+    found_bone_files = []
+    for f in sorted(out_dir.rglob("*")):
+        if not _is_nii_path(f):
+            continue
+        stem = f.stem
+        if stem.endswith(".nii"):
+            stem = stem[:-4]
+        if stem.lower() in bone_set:
+            found_bone_files.append((stem.lower(), f))
+
+    if not found_bone_files:
+        return
+
+    # Load and merge all found bone masks into a single array
+    ref_img = None
+    merged_arr = None
+
+    for stem, f in found_bone_files:
+        try:
+            img = sitk.ReadImage(str(f))
+            arr = sitk.GetArrayFromImage(img)
+            if ref_img is None:
+                ref_img = img
+                merged_arr = np.zeros(arr.shape, dtype=np.uint8)
+            merged_arr[arr > 0] = 1
+        except Exception as e:
+            print(f"[TS][all_bone] Error reading {f}: {e}")
+
+    if ref_img is None or merged_arr is None:
+        return
+
+    req_set = {str(t).lower() for t in (requested_types or ["all_bone"])}
+    save_whole_bone = ("all_bone" in req_set or "bone" in req_set or not separate_cortical)
+
+    # 1. Optionally write the merged whole bone mask
+    if save_whole_bone:
+        try:
+            merged_img = sitk.GetImageFromArray(merged_arr)
+            merged_img.CopyInformation(ref_img)
+            out_bone_path = out_dir / "bone.nii.gz"
+            sitk.WriteImage(merged_img, str(out_bone_path))
+            print(f"[TS][all_bone] Successfully created merged bone mask at {out_bone_path}")
+        except Exception as e:
+            print(f"[TS][all_bone] Error writing merged bone mask: {e}")
+
+    # 2. Cortical bone & bone marrow separation via thresholding
+    do_separate = separate_cortical or ("cortical_bone" in req_set) or ("bone_marrow" in req_set)
+    if do_separate:
+        if input_nii is not None and Path(input_nii).exists():
+            try:
+                scan_img = sitk.ReadImage(str(input_nii))
+                # Ensure identical geometry to reference segmentation
+                if (scan_img.GetSize() != ref_img.GetSize() or
+                    scan_img.GetSpacing() != ref_img.GetSpacing() or
+                    scan_img.GetDirection() != ref_img.GetDirection() or
+                    scan_img.GetOrigin() != ref_img.GetOrigin()):
+                    resample = sitk.ResampleImageFilter()
+                    resample.SetReferenceImage(ref_img)
+                    resample.SetInterpolator(sitk.sitkLinear)
+                    resample.SetDefaultPixelValue(-1000.0 if not is_mr else 0.0)
+                    scan_img = resample.Execute(scan_img)
+
+                scan_arr = sitk.GetArrayFromImage(scan_img)
+                scan_arr = np.nan_to_num(scan_arr, nan=-1000.0 if not is_mr else 0.0)
+
+                if not is_mr:
+                    # CT attenuation thresholding:
+                    # Cortical bone: dense outer compact bone >= cortical_hu (default 300 HU)
+                    cortical_mask = ((merged_arr > 0) & (scan_arr >= cortical_hu)).astype(np.uint8)
+                    # Inner bone / marrow: voxels inside bone envelope below cortical_hu, excluding air (< -200 HU)
+                    marrow_mask = ((merged_arr > 0) & (scan_arr < cortical_hu) & (scan_arr >= -200)).astype(np.uint8)
+                else:
+                    # MR signal intensity: cortical bone is hypointense, marrow is hyperintense
+                    bone_voxels = scan_arr[merged_arr > 0]
+                    if len(bone_voxels) > 0:
+                        thresh = np.percentile(bone_voxels, 35)
+                        cortical_mask = ((merged_arr > 0) & (scan_arr <= thresh)).astype(np.uint8)
+                        marrow_mask = ((merged_arr > 0) & (scan_arr > thresh)).astype(np.uint8)
+                    else:
+                        cortical_mask = np.zeros_like(merged_arr)
+                        marrow_mask = np.zeros_like(merged_arr)
+
+                # Save cortical_bone if requested
+                if ("cortical_bone" in req_set) or separate_cortical:
+                    cort_img = sitk.GetImageFromArray(cortical_mask)
+                    cort_img.CopyInformation(ref_img)
+                    cort_path = out_dir / "cortical_bone.nii.gz"
+                    sitk.WriteImage(cort_img, str(cort_path))
+                    print(f"[TS][all_bone] Created cortical bone mask at {cort_path} ({int(np.sum(cortical_mask))} voxels)")
+
+                # Save bone_marrow if requested
+                if ("bone_marrow" in req_set) or (separate_cortical and "all_bone" in req_set):
+                    marrow_img = sitk.GetImageFromArray(marrow_mask)
+                    marrow_img.CopyInformation(ref_img)
+                    marrow_path = out_dir / "bone_marrow.nii.gz"
+                    sitk.WriteImage(marrow_img, str(marrow_path))
+                    print(f"[TS][all_bone] Created bone marrow mask at {marrow_path} ({int(np.sum(marrow_mask))} voxels)")
+
+            except Exception as e:
+                print(f"[TS][all_bone] Error separating cortical bone and marrow: {e}")
+        else:
+            print(f"[TS][all_bone] Warning: input_nii not found at {input_nii}, cannot separate cortical bone")
+
+    # 3. Delete individual bone parts that were NOT manually selected by the user
+    for stem, f in found_bone_files:
+        if stem not in manual_set:
+            try:
+                f.unlink()
+                print(f"[TS][all_bone] Deleted unselected component: {stem}")
+            except Exception as e:
+                print(f"[TS][all_bone] Error deleting {f}: {e}")
+        else:
+            print(f"[TS][all_bone] Retaining manually selected component: {stem}")
 
 
+# ------------------------------- Lung Subroutine Targets & Merging ----------
+
+ALL_LUNG_TARGETS_CT_LEFT = [
+    "lung_upper_lobe_left",
+    "lung_lower_lobe_left",
+]
+
+ALL_LUNG_TARGETS_CT_RIGHT = [
+    "lung_upper_lobe_right",
+    "lung_middle_lobe_right",
+    "lung_lower_lobe_right",
+]
+
+ALL_LUNG_TARGETS_CT = ALL_LUNG_TARGETS_CT_LEFT + ALL_LUNG_TARGETS_CT_RIGHT
+
+ALL_LUNG_TARGETS_MR_LEFT = ["lung_left"]
+ALL_LUNG_TARGETS_MR_RIGHT = ["lung_right"]
+ALL_LUNG_TARGETS_MR = ALL_LUNG_TARGETS_MR_LEFT + ALL_LUNG_TARGETS_MR_RIGHT
 
 
+def _handle_lung_merge(
+    out_dir: Path,
+    is_mr: bool = False,
+    manual_targets: Optional[List[str]] = None,
+    requested_types: Optional[List[str]] = None,
+) -> None:
+    """
+    Merge lung lobe NIfTI masks found in out_dir:
+      - 'lungs_merged': creates single mask for all lung structures -> 'lungs.nii.gz'
+      - 'lungs_merged_side': creates two masks -> 'lung_left.nii.gz' and 'lung_right.nii.gz'
+    If an individual lung lobe was not manually selected by the user, delete its file from out_dir.
+    """
+    import SimpleITK as sitk
+    import numpy as np
 
+    left_list = ALL_LUNG_TARGETS_MR_LEFT if is_mr else ALL_LUNG_TARGETS_CT_LEFT
+    right_list = ALL_LUNG_TARGETS_MR_RIGHT if is_mr else ALL_LUNG_TARGETS_CT_RIGHT
+    left_set = {t.lower() for t in left_list}
+    right_set = {t.lower() for t in right_list}
+    manual_set = {str(t).strip().lower() for t in (manual_targets or []) if str(t).strip()}
 
+    req_set = {str(t).lower() for t in (requested_types or [])}
+    do_merged = ("lungs_merged" in req_set or "lungs" in req_set)
+    do_side = ("lungs_merged_side" in req_set or "lungs_side" in req_set)
 
+    # Find all lung lobe files present in out_dir
+    found_left = []
+    found_right = []
+    for f in sorted(out_dir.rglob("*")):
+        if not _is_nii_path(f):
+            continue
+        stem = f.stem
+        if stem.endswith(".nii"):
+            stem = stem[:-4]
+        stem_l = stem.lower()
+        if stem_l in left_set:
+            found_left.append((stem_l, f))
+        elif stem_l in right_set:
+            found_right.append((stem_l, f))
 
+    if not found_left and not found_right:
+        return
+
+    ref_img = None
+    left_arr = None
+    right_arr = None
+
+    # Load and combine left lung lobes
+    for stem, f in found_left:
+        try:
+            img = sitk.ReadImage(str(f))
+            arr = sitk.GetArrayFromImage(img)
+            if ref_img is None:
+                ref_img = img
+            if left_arr is None:
+                left_arr = np.zeros(arr.shape, dtype=np.uint8)
+            left_arr[arr > 0] = 1
+        except Exception as e:
+            print(f"[TS][lung_merge] Error reading {f}: {e}")
+
+    # Load and combine right lung lobes
+    for stem, f in found_right:
+        try:
+            img = sitk.ReadImage(str(f))
+            arr = sitk.GetArrayFromImage(img)
+            if ref_img is None:
+                ref_img = img
+            if right_arr is None:
+                right_arr = np.zeros(arr.shape, dtype=np.uint8)
+            right_arr[arr > 0] = 1
+        except Exception as e:
+            print(f"[TS][lung_merge] Error reading {f}: {e}")
+
+    if ref_img is None:
+        return
+
+    ref_shape = sitk.GetArrayFromImage(ref_img).shape
+    if left_arr is None:
+        left_arr = np.zeros(ref_shape, dtype=np.uint8)
+    if right_arr is None:
+        right_arr = np.zeros(ref_shape, dtype=np.uint8)
+
+    # 1. 'Lungs (merged)' -> single mask for all lung structures: lungs.nii.gz
+    if do_merged:
+        try:
+            merged_arr = np.zeros(ref_shape, dtype=np.uint8)
+            merged_arr[(left_arr > 0) | (right_arr > 0)] = 1
+            merged_img = sitk.GetImageFromArray(merged_arr)
+            merged_img.CopyInformation(ref_img)
+            out_path = out_dir / "lungs.nii.gz"
+            sitk.WriteImage(merged_img, str(out_path))
+            print(f"[TS][lung_merge] Successfully created merged lungs mask at {out_path} ({int(np.sum(merged_arr))} voxels)")
+        except Exception as e:
+            print(f"[TS][lung_merge] Error writing merged lungs mask: {e}")
+
+    # 2. 'Lungs (merged/side)' -> two masks: lung_left.nii.gz and lung_right.nii.gz
+    if do_side:
+        try:
+            left_img = sitk.GetImageFromArray(left_arr)
+            left_img.CopyInformation(ref_img)
+            left_path = out_dir / "lung_left.nii.gz"
+            sitk.WriteImage(left_img, str(left_path))
+            print(f"[TS][lung_merge] Successfully created lung_left mask at {left_path} ({int(np.sum(left_arr))} voxels)")
+
+            right_img = sitk.GetImageFromArray(right_arr)
+            right_img.CopyInformation(ref_img)
+            right_path = out_dir / "lung_right.nii.gz"
+            sitk.WriteImage(right_img, str(right_path))
+            print(f"[TS][lung_merge] Successfully created lung_right mask at {right_path} ({int(np.sum(right_arr))} voxels)")
+        except Exception as e:
+            print(f"[TS][lung_merge] Error writing side lung masks: {e}")
+
+    # 3. Delete individual lobe parts that were NOT manually selected by the user
+    all_found = found_left + found_right
+    for stem, f in all_found:
+        if stem in ("lung_left", "lung_right") and do_side:
+            continue
+        if stem not in manual_set:
+            try:
+                if f.name not in ("lungs.nii.gz",):
+                    f.unlink()
+                    print(f"[TS][lung_merge] Deleted unselected lobe component: {stem}")
+            except Exception as e:
+                print(f"[TS][lung_merge] Error deleting {f}: {e}")
+        else:
+            print(f"[TS][lung_merge] Retaining manually selected lobe component: {stem}")
 
 
 # =========================== subprocess runner ===============================
@@ -743,8 +1064,53 @@ def run_totalseg_for_series(owner, series_list: List[Dict[str, Any]], params: Di
                                parent=getattr(owner, "segwin", None) or owner)
                     continue
 
+                # If all_bone custom subroutine was requested, merge bone parts and remove unselected components
+                if params.get("all_bone") and job["task"] in ("total", "total_mr"):
+                    is_mr_series = (str(mod).upper() in ("MR", "MRI")) or (job["task"] == "total_mr")
+                    manual_targets = (params.get("manual_mr_targets") if is_mr_series else params.get("manual_ct_targets")) or []
+                    _handle_all_bone_merge(
+                        out_dir=out_dir,
+                        input_nii=input_nii,
+                        is_mr=is_mr_series,
+                        manual_targets=manual_targets,
+                        separate_cortical=params.get("separate_cortical", False),
+                        cortical_hu=params.get("cortical_hu", 300),
+                        requested_types=params.get("requested_bone_types"),
+                    )
+
+                # If lungs custom subroutine was requested, merge lung lobes and remove unselected components
+                if (params.get("lungs_merged") or params.get("lungs_merged_side")) and job["task"] in ("total", "total_mr"):
+                    is_mr_series = (str(mod).upper() in ("MR", "MRI")) or (job["task"] == "total_mr")
+                    manual_targets = (params.get("manual_mr_targets") if is_mr_series else params.get("manual_ct_targets")) or []
+                    _handle_lung_merge(
+                        out_dir=out_dir,
+                        is_mr=is_mr_series,
+                        manual_targets=manual_targets,
+                        requested_types=params.get("requested_lung_types"),
+                    )
+
                 # 3) import output masks (passing targets ensures ONLY requested structures are imported)
-                n = _import_masks_into_series(owner, out_dir, pid, sid, mod, idx, targets=job["targets"])
+                import_targets = list(job["targets"]) if job["targets"] else []
+                if params.get("all_bone") and import_targets:
+                    req_types = params.get("requested_bone_types") or ["all_bone"]
+                    if "all_bone" in req_types or "bone" in req_types or not params.get("separate_cortical"):
+                        import_targets.append("bone")
+                    if "cortical_bone" in req_types or params.get("separate_cortical"):
+                        import_targets.append("cortical_bone")
+                    if "bone_marrow" in req_types or (params.get("separate_cortical") and "all_bone" in req_types):
+                        import_targets.append("bone_marrow")
+
+                if (params.get("lungs_merged") or params.get("lungs_merged_side")) and import_targets:
+                    req_lung_types = params.get("requested_lung_types") or []
+                    if "lungs_merged" in req_lung_types:
+                        import_targets.append("lungs")
+                    if "lungs_merged_side" in req_lung_types:
+                        if "lung_left" not in import_targets:
+                            import_targets.append("lung_left")
+                        if "lung_right" not in import_targets:
+                            import_targets.append("lung_right")
+
+                n = _import_masks_into_series(owner, out_dir, pid, sid, mod, idx, targets=import_targets if job["targets"] else None)
                 total_imported += n
 
             print(f"[TS] Imported {total_imported} structures for {tag} from {out_dir}")

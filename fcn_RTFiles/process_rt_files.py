@@ -8,7 +8,7 @@ from fcn_RTFiles.process_mevion import read_proton_plan
 
 from PySide6.QtWidgets import (
     QWidget, QCheckBox, QLabel, QPushButton, QHBoxLayout,
-    QVBoxLayout, QColorDialog, QDoubleSpinBox, QListWidgetItem, QApplication,
+    QVBoxLayout, QColorDialog, QDoubleSpinBox, QListWidgetItem, QApplication, QMenu,
 )
 from PySide6.QtGui import QColor
 from PySide6.QtCore import Qt
@@ -142,6 +142,13 @@ class set_struct_table(QWidget):
             if self._on_refresh is not None:
                 self._on_refresh()
 
+    def contextMenuEvent(self, event):
+        if hasattr(self, '_on_context_menu') and callable(self._on_context_menu):
+            self._on_context_menu(self.idx, event.globalPos())
+            event.accept()
+        else:
+            event.ignore()
+
 
 def _refresh_all_views(self):
     from fcn_display.display_images import (disp_structure_overlay_axial, disp_structure_overlay_coronal, disp_structure_overlay_sagittal,
@@ -266,6 +273,58 @@ def update_structure_list_widget(self, structure_names, structure_keys, mode=1):
     transpars    = _ensure_structures_transparency(self, n)
     mask_trs     = _ensure_structures_mask_transparency(self, n) 
 
+    def _handle_struct_context_menu(row_idx, global_pos):
+        if row_idx < 0 or row_idx >= len(structure_names):
+            return
+        s_name = structure_names[row_idx]
+        menu = QMenu(self)
+        dup_act = menu.addAction(f"Duplicate '{s_name}'")
+        bool_act = menu.addAction("Boolean operations…")
+        exp_act = menu.addAction(f"Export structure '{s_name}'…")
+        menu.addSeparator()
+        del_act = menu.addAction(f"Delete '{s_name}'")
+        act = menu.exec_(global_pos)
+        if act == dup_act:
+            from fcn_operations.boolean_operations_dialog import duplicate_structure
+            duplicate_structure(
+                self,
+                getattr(self, 'patientID', None),
+                getattr(self, 'studyID', None),
+                getattr(self, 'modality', None),
+                getattr(self, 'series_index', None),
+                s_name
+            )
+        elif act == bool_act:
+            from fcn_operations.boolean_operations_dialog import open_boolean_dialog
+            open_boolean_dialog(
+                self,
+                getattr(self, 'patientID', None),
+                getattr(self, 'studyID', None),
+                getattr(self, 'modality', None),
+                getattr(self, 'series_index', None),
+                preselected_name=s_name
+            )
+        elif act == exp_act:
+            from fcn_export.export_structures_dialog import open_export_structures_dialog
+            open_export_structures_dialog(
+                self,
+                getattr(self, 'patientID', None),
+                getattr(self, 'studyID', None),
+                getattr(self, 'modality', None),
+                getattr(self, 'series_index', None),
+                preselected_name=s_name
+            )
+        elif act == del_act:
+            from fcn_operations.boolean_operations_dialog import delete_single_structure
+            delete_single_structure(
+                self,
+                getattr(self, 'patientID', None),
+                getattr(self, 'studyID', None),
+                getattr(self, 'modality', None),
+                getattr(self, 'series_index', None),
+                s_name
+            )
+
     for idx, (name, key) in enumerate(zip(structure_names, structure_keys)):
         list_item = QListWidgetItem(self.STRUCTlist)
 
@@ -290,6 +349,7 @@ def update_structure_list_widget(self, structure_names, structure_keys, mode=1):
             init_mask_transparency=mask_trs[idx] if idx < len(mask_trs) else 0.5
         )
         custom_item.structure_key = key
+        custom_item._on_context_menu = _handle_struct_context_menu
 
         # programmatic init: won't trigger redraw thanks to blockSignals
         custom_item.set_checked(bool(view_flags[idx]) if idx < len(view_flags) else False)
@@ -297,6 +357,16 @@ def update_structure_list_widget(self, structure_names, structure_keys, mode=1):
         list_item.setSizeHint(custom_item.sizeHint())
         self.STRUCTlist.addItem(list_item)
         self.STRUCTlist.setItemWidget(list_item, custom_item)
+
+    if not getattr(self.STRUCTlist, '_context_menu_configured', False):
+        self.STRUCTlist.setContextMenuPolicy(Qt.CustomContextMenu)
+        def _on_struct_list_custom_menu(pos):
+            item = self.STRUCTlist.itemAt(pos)
+            if item:
+                row = self.STRUCTlist.row(item)
+                _handle_struct_context_menu(row, self.STRUCTlist.viewport().mapToGlobal(pos))
+        self.STRUCTlist.customContextMenuRequested.connect(_on_struct_list_custom_menu)
+        self.STRUCTlist._context_menu_configured = True
 
     # ── Normalize widths across rows ───────────────────────────────────────────
     rows = []

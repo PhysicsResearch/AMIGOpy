@@ -11,7 +11,8 @@ from fcn_display.display_images_seg import disp_seg_image_slice
 from PySide6 import QtCore
 from PySide6.QtWidgets import (
     QWidget, QCheckBox, QLabel, QPushButton, QHBoxLayout, QMessageBox,
-    QVBoxLayout, QColorDialog, QDoubleSpinBox, QListWidgetItem, QFileDialog, QTableWidgetItem
+    QVBoxLayout, QColorDialog, QDoubleSpinBox, QListWidgetItem, QFileDialog, QTableWidgetItem, QMenu,
+    QSizePolicy
 )
 from PySide6.QtGui import QColor
 from PySide6.QtCore import Qt, QTimer
@@ -338,12 +339,17 @@ class ColorCheckItem(QWidget):
         # 1) Master checkbox to enable/disable the structure
         self.checkbox = QCheckBox()
         self.checkbox.setChecked(True)
+        self.checkbox.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
         # 2) Label for the structure name
         patient_id, series_id, struct_name = widget_info
         self.patient_id = QLabel(str(patient_id))
         self.series_id = QLabel(str(series_id))
         self.struct_name = QLabel(str(struct_name))
+
+        self.patient_id.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.series_id.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.struct_name.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         # 3) Button to pick color
         if struct_name not in struct_colors:
@@ -366,6 +372,8 @@ class ColorCheckItem(QWidget):
 
         # Lay out horizontally
         layout = QHBoxLayout()
+        layout.setContentsMargins(4, 0, 4, 0)
+        layout.setSpacing(8)
         layout.addWidget(self.checkbox)
         layout.addWidget(self.patient_id)
         layout.addWidget(self.series_id)
@@ -373,8 +381,8 @@ class ColorCheckItem(QWidget):
         layout.addWidget(self.color_button)
         layout.addWidget(QLabel("Transp:"))
         layout.addWidget(self.transparency_spinbox)
+        layout.addStretch(1)
 
-        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
     def openColorDialog(self):
@@ -385,6 +393,13 @@ class ColorCheckItem(QWidget):
         if color.isValid():
             self.selectedColor = color
             self.color_button.setStyleSheet(f"background-color: {color.name()};")
+
+    def contextMenuEvent(self, event):
+        if hasattr(self, '_on_context_menu') and callable(self._on_context_menu):
+            self._on_context_menu(self.struct_name.text(), event.globalPos())
+            event.accept()
+        else:
+            event.ignore()
 
 
 def update_seg_struct_list(self):
@@ -410,6 +425,55 @@ def update_seg_struct_list(self):
     
     target_series_dict = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]
 
+    def _handle_seg_context_menu(s_name, global_pos):
+        menu = QMenu(self)
+        dup_act = menu.addAction(f"Duplicate '{s_name}'")
+        bool_act = menu.addAction("Boolean operations…")
+        exp_act = menu.addAction(f"Export structure '{s_name}'…")
+        menu.addSeparator()
+        del_act = menu.addAction(f"Delete '{s_name}'")
+        act = menu.exec_(global_pos)
+        if act == dup_act:
+            from fcn_operations.boolean_operations_dialog import duplicate_structure
+            duplicate_structure(
+                self,
+                getattr(self, 'patientID', None),
+                getattr(self, 'studyID', None),
+                getattr(self, 'modality', None),
+                getattr(self, 'series_index', None),
+                s_name
+            )
+        elif act == bool_act:
+            from fcn_operations.boolean_operations_dialog import open_boolean_dialog
+            open_boolean_dialog(
+                self,
+                getattr(self, 'patientID', None),
+                getattr(self, 'studyID', None),
+                getattr(self, 'modality', None),
+                getattr(self, 'series_index', None),
+                preselected_name=s_name
+            )
+        elif act == exp_act:
+            from fcn_export.export_structures_dialog import open_export_structures_dialog
+            open_export_structures_dialog(
+                self,
+                getattr(self, 'patientID', None),
+                getattr(self, 'studyID', None),
+                getattr(self, 'modality', None),
+                getattr(self, 'series_index', None),
+                preselected_name=s_name
+            )
+        elif act == del_act:
+            from fcn_operations.boolean_operations_dialog import delete_single_structure
+            delete_single_structure(
+                self,
+                getattr(self, 'patientID', None),
+                getattr(self, 'studyID', None),
+                getattr(self, 'modality', None),
+                getattr(self, 'series_index', None),
+                s_name
+            )
+
     if type(target_series_dict) is dict and 'structures' in target_series_dict:
         for k in target_series_dict['structures']:
             name = target_series_dict['structures'][k]['Name']
@@ -418,12 +482,52 @@ def update_seg_struct_list(self):
             list_item = QListWidgetItem(self.segStructList)
             custom_item = ColorCheckItem([self.patientID, self.curr_series_no, name], self.struct_colors)
             custom_item.structure_key = target_key
+            custom_item._on_context_menu = _handle_seg_context_menu
             self.struct_colors = custom_item.struct_colors
             list_item.setSizeHint(custom_item.sizeHint())
 
             # Append new item
             self.segStructList.addItem(list_item)
             self.segStructList.setItemWidget(list_item, custom_item)
+
+    # ── Normalize widths across rows ───────────────────────────────────────────
+    rows = []
+    for i in range(self.segStructList.count()):
+        item = self.segStructList.item(i)
+        w = self.segStructList.itemWidget(item)
+        if w is not None:
+            if w.layout() is not None:
+                w.layout().activate()
+            w.adjustSize()
+            rows.append((item, w))
+
+    if rows:
+        max_pat_w = max((w.patient_id.sizeHint().width() for _, w in rows if hasattr(w, 'patient_id')), default=0)
+        max_ser_w = max((w.series_id.sizeHint().width() for _, w in rows if hasattr(w, 'series_id')), default=0)
+        max_struct_w = max((w.struct_name.sizeHint().width() for _, w in rows if hasattr(w, 'struct_name')), default=0)
+        max_row_w = max((w.sizeHint().width() for _, w in rows), default=0)
+
+        for item, w in rows:
+            if hasattr(w, 'patient_id'):
+                w.patient_id.setMinimumWidth(max_pat_w)
+            if hasattr(w, 'series_id'):
+                w.series_id.setMinimumWidth(max_ser_w)
+            if hasattr(w, 'struct_name'):
+                w.struct_name.setMinimumWidth(max_struct_w)
+            w.setMinimumWidth(max_row_w)
+            item.setSizeHint(w.sizeHint())
+
+    if not getattr(self.segStructList, '_context_menu_configured', False):
+        self.segStructList.setContextMenuPolicy(Qt.CustomContextMenu)
+        def _on_seg_list_custom_menu(pos):
+            item = self.segStructList.itemAt(pos)
+            if item:
+                w = self.segStructList.itemWidget(item)
+                s_name = getattr(getattr(w, 'struct_name', None), 'text', lambda: "")()
+                if s_name:
+                    _handle_seg_context_menu(s_name, self.segStructList.viewport().mapToGlobal(pos))
+        self.segStructList.customContextMenuRequested.connect(_on_seg_list_custom_menu)
+        self.segStructList._context_menu_configured = True
 
     disp_seg_image_slice(self)
         
@@ -784,3 +888,54 @@ def exportSegStruc(self):
 
                         save_path = os.path.join(save_dir, f"{patient_id}_{series_id}_{s_key}.nii.gz")
                         sitk.WriteImage(img, save_path)
+
+
+def on_boolean_seg_clicked(self):
+    """
+    Open the Boolean Contour Operations tool from the Segmentation tab.
+    Shows warnings if no image is selected, or if there are no/insufficient structures.
+    """
+    # 1. Check if an image is selected
+    if not hasattr(self, 'display_seg_data') or 0 not in self.display_seg_data:
+        QMessageBox.warning(self, "Warning", "Please select an image first.")
+        return
+
+    patient_id = getattr(self, 'patientID', None)
+    study_id = getattr(self, 'studyID', None)
+    modality = getattr(self, 'modality', None)
+    series_index = getattr(self, 'series_index', None)
+
+    if not patient_id or not study_id or not modality or series_index is None:
+        QMessageBox.warning(self, "Warning", "Please select an image first.")
+        return
+
+    try:
+        s_series = self.medical_image[patient_id][study_id][modality][series_index]
+    except (KeyError, IndexError, TypeError):
+        QMessageBox.warning(self, "Warning", "Please select an image first.")
+        return
+
+    # 2. Check if structures exist, and if there are multiple structures
+    structs = s_series.get('structures', {})
+    if not structs or len(structs) == 0:
+        QMessageBox.warning(
+            self, "Warning",
+            "No structures found for the selected image.\n"
+            "Multiple structures are required for Boolean operations."
+        )
+        return
+
+    if len(structs) < 2:
+        s_name = list(structs.values())[0].get('Name', 'structure')
+        QMessageBox.warning(
+            self, "Warning",
+            f"Only 1 structure ('{s_name}') was found.\n"
+            "Multiple structures are required for Boolean operations."
+        )
+        return
+
+    # 3. Open the Boolean operations dialog
+    from fcn_operations.boolean_operations_dialog import open_boolean_dialog
+    preselected = getattr(self, 'curr_struc_name', None)
+    open_boolean_dialog(self, patient_id, study_id, modality, series_index, preselected_name=preselected)
+

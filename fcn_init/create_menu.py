@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QMenuBar
 from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtGui import QFont
 from fcn_operations.operations_dialog import open_operations_dialog
+from fcn_operations.boolean_operations_dialog import open_boolean_dialog
 from fcn_reg.registration_dialog import open_registration_dialog
 
 from fcn_load.read_IrIS import load_IrIS_folder
@@ -195,6 +196,10 @@ def initializeMenuBar(self):
     operations_action = QAction("Operations…", self)
     operations_action.triggered.connect(lambda: open_operations_dialog(self))
     ToolsMenu.addAction(operations_action)
+
+    boolean_action = QAction("Boolean Operations…", self)
+    boolean_action.triggered.connect(lambda: open_boolean_dialog(self))
+    ToolsMenu.addAction(boolean_action)
     
     # 3DP submenu
     tdp_menu = ToolsMenu.addMenu("3DP")
