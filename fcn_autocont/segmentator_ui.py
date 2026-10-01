@@ -20,8 +20,10 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QCheckBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QGroupBox, QScrollArea, QGridLayout,
     QDoubleSpinBox, QComboBox, QMessageBox, QSplitter, QSizePolicy, QProgressBar,
-    QRadioButton, QButtonGroup, QFrame, QSpinBox
+    QRadioButton, QButtonGroup, QFrame, QSpinBox, QTabWidget, QFileDialog
 )
+import os
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # TUNABLE HEIGHTS
@@ -263,6 +265,7 @@ ALL_LUNG_TARGETS_MR = ALL_LUNG_TARGETS_MR_LEFT + ALL_LUNG_TARGETS_MR_RIGHT
 
 class SegmentatorWindow(QWidget):
     runSegRequested = Signal(list, dict)
+    runFolderBatchRequested = Signal(str, list, dict)
     stopRequested   = Signal()
 
     def __init__(self, parent=None, medical_image=None, excluded_modalities=None, data_provider=None):
@@ -342,6 +345,10 @@ class SegmentatorWindow(QWidget):
         self.cat_checkboxes: Dict[str, QCheckBox] = {}
         self.ct_quick_cbs: Dict[str, QCheckBox] = {}
         self.mr_quick_cbs: Dict[str, QCheckBox] = {}
+
+        # Folder Batch mode tracking
+        self.folder_files: List[Path] = []
+        self._folder_row_progress: Dict[int, QProgressBar] = {}
 
         main = QVBoxLayout(self); main.setContentsMargins(10,10,10,10); main.setSpacing(8)
 
@@ -425,9 +432,40 @@ class SegmentatorWindow(QWidget):
         left_splitter.setHandleWidth(6)
         left_splitter.setChildrenCollapsible(False)
 
-        # 1. Top container: Series header + Table (moved up)
+        # 1. Top container: Tabs to switch between Loaded Series and Folder Batch
+        self.mode_tabs = QTabWidget()
+        self.mode_tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #37474F;
+                border-radius: 4px;
+                background-color: transparent;
+            }
+            QTabBar::tab {
+                background: #1E242B;
+                color: #B0BEC5;
+                padding: 6px 14px;
+                border: 1px solid #37474F;
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                font-weight: bold;
+                font-size: 11px;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected {
+                background: #263238;
+                color: #38BDF8;
+                border-color: #0284C7;
+            }
+            QTabBar::tab:hover:!selected {
+                background: #212B36;
+                color: #ECEFF1;
+            }
+        """)
+
+        # Tab 0: Loaded Series (AMIGO)
         series_container = QWidget()
-        sc_layout = QVBoxLayout(series_container); sc_layout.setContentsMargins(0, 0, 0, 0); sc_layout.setSpacing(4)
+        sc_layout = QVBoxLayout(series_container); sc_layout.setContentsMargins(4, 4, 4, 4); sc_layout.setSpacing(4)
 
         hdr = QHBoxLayout()
         hdr.addWidget(QLabel("<b>Series:</b>"))
@@ -451,14 +489,21 @@ class SegmentatorWindow(QWidget):
         self.tbl.setMinimumHeight(110)
         sc_layout.addWidget(self.tbl, 1)
 
-        left_splitter.addWidget(series_container)
+        self.mode_tabs.addTab(series_container, "Loaded Series (AMIGO)")
+
+        # Tab 1: Folder Batch
+        folder_container = self._build_folder_container()
+        self.mode_tabs.addTab(folder_container, "Folder Batch")
+        self.mode_tabs.currentChanged.connect(self._on_mode_tab_changed)
+
+        left_splitter.addWidget(self.mode_tabs)
 
         # 2. Bottom container: Visualization & Filter Options Panel
         vis_panel = self._build_visualization_panel()
         left_splitter.addWidget(vis_panel)
 
-        left_splitter.setSizes([180, 520])
-        left_splitter.setStretchFactor(0, 0)
+        left_splitter.setSizes([260, 440])
+        left_splitter.setStretchFactor(0, 1)
         left_splitter.setStretchFactor(1, 1)
 
         lv.addWidget(left_splitter, 1)
@@ -518,6 +563,269 @@ class SegmentatorWindow(QWidget):
 
         self._populate_series_table()
         self._on_modality_view_changed()
+
+    # --------------------------- Folder Batch mode --------------------------
+
+    def _build_folder_container(self) -> QWidget:
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(6)
+
+        # 1. Top row: Folder selector
+        folder_row = QHBoxLayout()
+        folder_row.setSpacing(6)
+        folder_row.addWidget(QLabel("<b>Folder:</b>"))
+
+        self.folder_path_edit = QLineEdit()
+        self.folder_path_edit.setPlaceholderText("Select folder containing NIfTI files (*.nii, *.nii.gz)...")
+        self.folder_path_edit.setStyleSheet("""
+            QLineEdit {
+                background-color: #263238;
+                color: #ECEFF1;
+                border: 1px solid #455A64;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #0284C7;
+            }
+        """)
+        self.folder_path_edit.returnPressed.connect(self._scan_folder)
+        folder_row.addWidget(self.folder_path_edit, 1)
+
+        btn_browse = QPushButton("Browse...")
+        btn_browse.setStyleSheet("padding: 4px 10px; font-size: 11px; background-color: #0284C7;")
+        btn_browse.clicked.connect(self._browse_folder)
+        folder_row.addWidget(btn_browse)
+
+        btn_scan = QPushButton("Scan")
+        btn_scan.setStyleSheet("padding: 4px 10px; font-size: 11px;")
+        btn_scan.clicked.connect(self._scan_folder)
+        folder_row.addWidget(btn_scan)
+
+        layout.addLayout(folder_row)
+
+        # 2. Controls row: Select All, Clear All, and count label
+        ctrl_row = QHBoxLayout()
+        ctrl_row.setSpacing(6)
+
+        self.lbl_folder_count = QLabel("No folder selected")
+        self.lbl_folder_count.setStyleSheet("color: #38BDF8; font-size: 11px; font-weight: bold;")
+        ctrl_row.addWidget(self.lbl_folder_count)
+        ctrl_row.addStretch()
+
+        btn_all = QPushButton("Select All")
+        btn_all.setStyleSheet("padding: 3px 8px; font-size: 11px;")
+        btn_all.clicked.connect(lambda: self._select_all_folder(True))
+        ctrl_row.addWidget(btn_all)
+
+        btn_clear = QPushButton("Clear All")
+        btn_clear.setStyleSheet("padding: 3px 8px; font-size: 11px;")
+        btn_clear.clicked.connect(lambda: self._select_all_folder(False))
+        ctrl_row.addWidget(btn_clear)
+
+        layout.addLayout(ctrl_row)
+
+        # 3. NIfTI files table
+        self.folder_tbl = QTableWidget(0, 5)
+        self.folder_tbl.setHorizontalHeaderLabels(["Select", "File Name", "Size", "Dimensions", "Status"])
+        self.folder_tbl.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.folder_tbl.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.folder_tbl.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self.folder_tbl.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.folder_tbl.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        self.folder_tbl.setMinimumHeight(110)
+        self.folder_tbl.setStyleSheet("""
+            QTableWidget {
+                background-color: #1E242B;
+                gridline-color: #37474F;
+                color: #ECEFF1;
+                border: 1px solid #37474F;
+                border-radius: 4px;
+            }
+            QHeaderView::section {
+                background-color: #263238;
+                color: #B0BEC5;
+                font-weight: bold;
+                border: 1px solid #37474F;
+                padding: 4px;
+                font-size: 11px;
+            }
+            QTableWidget::item:selected {
+                background-color: #0284C7;
+                color: #FFFFFF;
+            }
+        """)
+        layout.addWidget(self.folder_tbl, 1)
+
+        # 4. Info banner
+        info_lbl = QLabel("ℹ Output will be saved to: <b><Folder>/autocont/<filename>/</b> (original scan + contours)")
+        info_lbl.setStyleSheet("color: #90CAF9; font-size: 10px; padding: 2px;")
+        layout.addWidget(info_lbl)
+
+        return container
+
+    def _on_mode_tab_changed(self, index: int):
+        if hasattr(self, "btn_run"):
+            if index == 1:
+                self.btn_run.setText("Run Folder Batch")
+            else:
+                self.btn_run.setText("Run Segmentation")
+
+    def _browse_folder(self):
+        cur = self.folder_path_edit.text().strip() or os.getcwd()
+        folder = QFileDialog.getExistingDirectory(self, "Select Folder Containing NIfTI Files", cur)
+        if folder:
+            self.folder_path_edit.setText(folder)
+            self._scan_folder()
+
+    def _quick_nifti_dims(self, fpath) -> str:
+        try:
+            import nibabel as nib
+            hdr = nib.load(str(fpath)).header
+            shape = hdr.get_data_shape()
+            if len(shape) >= 3:
+                return f"{shape[0]}×{shape[1]}×{shape[2]}"
+            return "×".join(str(s) for s in shape)
+        except Exception:
+            try:
+                import SimpleITK as sitk
+                reader = sitk.ImageFileReader()
+                reader.SetFileName(str(fpath))
+                reader.ReadImageInformation()
+                size = reader.GetSize()
+                return f"{size[0]}×{size[1]}×{size[2]}"
+            except Exception:
+                return "-"
+
+    def _scan_folder(self):
+        folder_str = self.folder_path_edit.text().strip()
+        if not folder_str or not os.path.isdir(folder_str):
+            self.lbl_folder_count.setText("Please select a valid folder.")
+            self.folder_tbl.setRowCount(0)
+            self.folder_files = []
+            return
+
+        folder = Path(folder_str)
+        nii_files = []
+        for f in folder.iterdir():
+            if not f.is_file():
+                continue
+            name_lower = f.name.lower()
+            if not (name_lower.endswith(".nii") or name_lower.endswith(".nii.gz")):
+                continue
+            # Exclude structure mask files (e.g. *_ST_*.nii.gz, or starting with dot)
+            if "_st_" in name_lower or name_lower.startswith("."):
+                continue
+            try:
+                from fcn_export.export_structures_dialog import is_structure_nifti
+                is_struct, _, _ = is_structure_nifti(f.name)
+                if is_struct:
+                    continue
+            except Exception:
+                pass
+            nii_files.append(f)
+
+        nii_files.sort(key=lambda p: p.name.lower())
+        self.folder_files = nii_files
+
+        self.folder_tbl.setRowCount(len(nii_files))
+        self._folder_row_progress = {}
+
+        if not nii_files:
+            self.lbl_folder_count.setText("No NIfTI files found in this folder (*.nii, *.nii.gz)")
+            return
+
+        for r, fpath in enumerate(nii_files):
+            # Col 0: Checkbox
+            chk = QCheckBox()
+            chk.setChecked(True)
+            chk.stateChanged.connect(self._update_folder_count)
+            cb_wrap = QWidget()
+            cb_l = QHBoxLayout(cb_wrap)
+            cb_l.setContentsMargins(8, 0, 0, 0)
+            cb_l.setAlignment(Qt.AlignCenter)
+            cb_l.addWidget(chk)
+            self.folder_tbl.setCellWidget(r, 0, cb_wrap)
+
+            # Col 1: Filename
+            it_name = QTableWidgetItem(fpath.name)
+            it_name.setToolTip(str(fpath))
+            it_name.setFlags(it_name.flags() & ~Qt.ItemIsEditable)
+            self.folder_tbl.setItem(r, 1, it_name)
+
+            # Col 2: Size
+            try:
+                size_bytes = fpath.stat().st_size
+                size_mb = size_bytes / (1024 * 1024)
+                it_size = QTableWidgetItem(f"{size_mb:.1f} MB" if size_mb >= 1.0 else f"{size_bytes/1024:.0f} KB")
+            except Exception:
+                it_size = QTableWidgetItem("-")
+            it_size.setTextAlignment(Qt.AlignCenter)
+            it_size.setFlags(it_size.flags() & ~Qt.ItemIsEditable)
+            self.folder_tbl.setItem(r, 2, it_size)
+
+            # Col 3: Dimensions
+            dims_str = self._quick_nifti_dims(fpath)
+            it_dims = QTableWidgetItem(dims_str)
+            it_dims.setTextAlignment(Qt.AlignCenter)
+            it_dims.setFlags(it_dims.flags() & ~Qt.ItemIsEditable)
+            self.folder_tbl.setItem(r, 3, it_dims)
+
+            # Col 4: Status / Progress bar
+            bar = QProgressBar()
+            bar.setRange(0, 100)
+            bar.setValue(0)
+            bar.setTextVisible(True)
+            bar.setFormat("Ready")
+            bar.setStyleSheet("""
+                QProgressBar {
+                    border: 1px solid #37474F;
+                    border-radius: 3px;
+                    text-align: center;
+                    font-size: 10px;
+                    background-color: #1E242B;
+                    color: #ECEFF1;
+                }
+                QProgressBar::chunk {
+                    background-color: #0284C7;
+                }
+            """)
+            self.folder_tbl.setCellWidget(r, 4, bar)
+            self._folder_row_progress[r] = bar
+
+        self._update_folder_count()
+
+    def _select_all_folder(self, state: bool):
+        for r in range(self.folder_tbl.rowCount()):
+            cb_wrap = self.folder_tbl.cellWidget(r, 0)
+            if cb_wrap:
+                cb = cb_wrap.findChild(QCheckBox)
+                if cb:
+                    cb.setChecked(state)
+        self._update_folder_count()
+
+    def _update_folder_count(self):
+        total = self.folder_tbl.rowCount()
+        selected = len(self.get_selected_folder_files())
+        self.lbl_folder_count.setText(f"{selected} of {total} files selected")
+
+    def get_selected_folder_files(self) -> List[Dict[str, Any]]:
+        selected = []
+        for r in range(self.folder_tbl.rowCount()):
+            cb_wrap = self.folder_tbl.cellWidget(r, 0)
+            if cb_wrap:
+                cb = cb_wrap.findChild(QCheckBox)
+                if cb and cb.isChecked() and r < len(getattr(self, "folder_files", [])):
+                    fpath = self.folder_files[r]
+                    selected.append({
+                        "row": r,
+                        "path": str(fpath),
+                        "name": fpath.name,
+                    })
+        return selected
 
     # --------------------------- Visualization panel ------------------------
 
@@ -1209,6 +1517,8 @@ class SegmentatorWindow(QWidget):
         # Disable Run while a job is active; enable Stop
         self.btn_run.setEnabled(not running)
         self.btn_stop.setEnabled(running)
+        if hasattr(self, "mode_tabs"):
+            self.mode_tabs.setEnabled(not running)
 
     def set_series_progress(self, table_row: int, value: int):
         try:
@@ -1219,6 +1529,52 @@ class SegmentatorWindow(QWidget):
             pass
 
     def _on_run_clicked(self):
+        is_folder_mode = (hasattr(self, "mode_tabs") and self.mode_tabs.currentIndex() == 1)
+
+        if is_folder_mode:
+            selected_files = self.get_selected_folder_files()
+            if not selected_files:
+                QMessageBox.information(self, "Nothing selected", "Please select at least one NIfTI file to process.")
+                return
+
+            folder_str = self.folder_path_edit.text().strip()
+            if not folder_str or not os.path.isdir(folder_str):
+                QMessageBox.warning(self, "Invalid Folder", "Please select a valid folder.")
+                return
+
+            params = self.build_params()
+            if not params["ct_targets"] and not params["mr_targets"] and not params["subroutines"]:
+                if self.rb_mr.isChecked():
+                    reply = QMessageBox.question(
+                        self, "No selections",
+                        "No MR structures or sub-routines were selected.\n"
+                        "Run MR Total with ALL MR labels?",
+                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+                    )
+                    if reply == QMessageBox.Yes:
+                        for cb in self.mr_label_to_cb.values():
+                            cb.setChecked(True)
+                        params = self.build_params()
+                    else:
+                        return
+                else:
+                    reply = QMessageBox.question(
+                        self, "No selections",
+                        "No CT structures or sub-routines were selected.\n"
+                        "Run CT Total with ALL CT labels?",
+                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+                    )
+                    if reply == QMessageBox.Yes:
+                        for cb in self.ct_label_to_cb.values():
+                            cb.setChecked(True)
+                        params = self.build_params()
+                    else:
+                        return
+
+            self.runFolderBatchRequested.emit(folder_str, selected_files, params)
+            return
+
+        # Loaded Series (AMIGO) mode
         series = self.get_selected_series()
         if not series:
             QMessageBox.information(self, "Nothing selected", "Please select at least one series.")

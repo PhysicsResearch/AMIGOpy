@@ -83,7 +83,7 @@ def _match_row_for_meta(win: SegmentatorWindow, meta: dict) -> int:
     return -1
 
 
-def _set_row_state(win: SegmentatorWindow, row: int, state: str, msg: str = ""):
+def _set_row_state(win: SegmentatorWindow, row: int, state: str, msg: str = "", is_folder: bool = False):
     """
     Set a standard state on a row's QProgressBar.
 
@@ -96,7 +96,10 @@ def _set_row_state(win: SegmentatorWindow, row: int, state: str, msg: str = ""):
       'stopped'  ->   0%,          text 'Stopped'
       'idle'     ->   0%,          text ''
     """
-    bar = getattr(win, "_row_progress", {}).get(row)
+    if is_folder or getattr(win, "_is_folder_batch", False):
+        bar = getattr(win, "_folder_row_progress", {}).get(row)
+    else:
+        bar = getattr(win, "_row_progress", {}).get(row)
     if not bar:
         return
     if state in ("queued", "running", "stopping"):
@@ -107,7 +110,7 @@ def _set_row_state(win: SegmentatorWindow, row: int, state: str, msg: str = ""):
     elif state == "done":
         bar.setRange(0, 100)
         bar.setValue(100)
-        bar.setFormat("Done")
+        bar.setFormat(msg or "Done")
     elif state == "failed":
         bar.setRange(0, 100)
         bar.setValue(0)
@@ -119,7 +122,7 @@ def _set_row_state(win: SegmentatorWindow, row: int, state: str, msg: str = ""):
     else:
         bar.setRange(0, 100)
         bar.setValue(0)
-        bar.setFormat("")
+        bar.setFormat("Ready" if (is_folder or getattr(win, "_is_folder_batch", False)) else "")
 
 
 # ----------------------- batch worker thread ----------------------
@@ -204,15 +207,32 @@ def _find_stop_buttons(win: SegmentatorWindow):
     return found
 
 
-def _bind_stop_handler_once(win: SegmentatorWindow, handler):
+def _stop_active_seg(win: SegmentatorWindow):
+    """Stop active segmentation job (either series batch or folder batch)."""
+    if getattr(win, "_seg_cancel", False):
+        return
+    win._seg_cancel = True
+    is_folder = getattr(win, "_is_folder_batch", False)
+    cur = getattr(win, "_current_row", None)
+    if cur is not None:
+        _set_row_state(win, cur, "stopping", is_folder=is_folder)
+    for r in list(getattr(win, "_batch_rows", set())):
+        if r != cur:
+            _set_row_state(win, r, "stopped", is_folder=is_folder)
+    for btn in _find_stop_buttons(win):
+        btn.setEnabled(False)
+
+
+def _bind_stop_handler_once(win: SegmentatorWindow, handler=None):
     """
     Connect the handler to all Stop buttons once.
     Also record a flag to avoid duplicate connects.
     """
     if getattr(win, "_stop_bound", False):
         return
+    actual_handler = handler or (lambda: _stop_active_seg(win))
     for btn in _find_stop_buttons(win):
-        btn.clicked.connect(handler)
+        btn.clicked.connect(actual_handler)
     win._stop_bound = True
 
 
@@ -223,6 +243,9 @@ def _set_controls_busy(win: SegmentatorWindow, busy: bool):
     # Enable/disable ALL detected Stop buttons (independent of how many series are selected)
     for btn in _find_stop_buttons(win):
         btn.setEnabled(busy)
+    # Enable/disable Mode Tabs
+    if hasattr(win, "mode_tabs") and win.mode_tabs:
+        win.mode_tabs.setEnabled(not busy)
 
 
 def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, params):
@@ -230,6 +253,7 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
     if not series_list:
         return  # nothing to do
 
+    win._is_folder_batch = False
     _ensure_status_column(win)
 
     # Map / order rows for selected series
@@ -244,26 +268,9 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
     win._current_row = None
     win._seg_cancel = False
     for r in ordered_rows:
-        _set_row_state(win, r, "queued")
+        _set_row_state(win, r, "queued", is_folder=False)
 
-    # Controls: ALWAYS enable Stop for any non-empty selection
-    def _on_stop_clicked():
-        # Re-entrancy guard
-        if getattr(win, "_seg_cancel", False):
-            return
-        # Flip cancel flag; immediately reflect in UI
-        win._seg_cancel = True
-        if getattr(win, "_current_row", None) is not None:
-            _set_row_state(win, win._current_row, "stopping")
-        # Mark queued-but-not-started rows as 'Stopped'
-        for r in list(getattr(win, "_batch_rows", set())):
-            if r != getattr(win, "_current_row", None):
-                _set_row_state(win, r, "stopped")
-        # Grey out Stop to avoid double-click storms
-        for btn in _find_stop_buttons(win):
-            btn.setEnabled(False)
-
-    _bind_stop_handler_once(win, _on_stop_clicked)
+    _bind_stop_handler_once(win, lambda: _stop_active_seg(win))
     _set_controls_busy(win, True)  # <- this enables the Stop button now
 
     # Create thread + worker
@@ -363,6 +370,175 @@ def _start_batch_with_progress(win: SegmentatorWindow, owner, series_list, param
     thread.start()
 
 
+# ----------------------- folder batch worker thread ----------------
+
+class _FolderBatchWorker(QObject):
+    file_started = Signal(int)                 # row
+    file_finished = Signal(int, bool, str)     # row, ok, message
+    cancelled_rows = Signal(list)              # rows list to mark 'Stopped'
+    all_done = Signal()
+
+    def __init__(self, owner, folder_path: str, file_items: List[Dict[str, Any]], params: Dict[str, Any], parent=None):
+        super().__init__(parent)
+        self._owner = owner
+        self._folder_path = folder_path
+        self._file_items: List[Dict[str, Any]] = list(file_items)
+        self._params = dict(params or {})
+
+    def _cancel_flag(self) -> bool:
+        segwin = getattr(self._owner, "segwin", None) or self._owner
+        return bool(getattr(segwin, "_seg_cancel", False))
+
+    @Slot()
+    def run(self):
+        from pathlib import Path
+        from .segmentator_vendored import run_totalseg_for_folder_file
+
+        ordered_rows = [item["row"] for item in self._file_items]
+
+        for i, item in enumerate(self._file_items):
+            row = item["row"]
+            fpath = item["path"]
+
+            if self._cancel_flag():
+                if row >= 0:
+                    self.file_finished.emit(row, False, "Stopped")
+                remain = ordered_rows[i:]
+                if remain:
+                    self.cancelled_rows.emit(remain)
+                break
+
+            if row >= 0:
+                self.file_started.emit(row)
+
+            ok, msg = True, ""
+            try:
+                ok, msg, count = run_totalseg_for_folder_file(
+                    self._owner,
+                    Path(fpath),
+                    Path(self._folder_path),
+                    self._params
+                )
+            except Exception as ex:
+                ok, msg = False, str(ex)
+
+            if self._cancel_flag():
+                ok, msg = False, "Stopped"
+
+            if row >= 0:
+                self.file_finished.emit(row, ok, msg)
+
+            if self._cancel_flag():
+                remain = ordered_rows[i + 1:]
+                if remain:
+                    self.cancelled_rows.emit(remain)
+                break
+
+        self.all_done.emit()
+
+
+def _start_folder_batch_with_progress(win: SegmentatorWindow, owner, folder_path: str, file_items: list, params: dict):
+    """Run sequential folder batch with per-row progress and cancellation."""
+    if not file_items:
+        return
+
+    win._is_folder_batch = True
+    ordered_rows = [item["row"] for item in file_items]
+
+    # Pre-mark selected as queued
+    win._batch_rows = set(ordered_rows)
+    win._current_row = None
+    win._seg_cancel = False
+    for r in ordered_rows:
+        _set_row_state(win, r, "queued", is_folder=True)
+
+    _bind_stop_handler_once(win, lambda: _stop_active_seg(win))
+    _set_controls_busy(win, True)
+
+    thread = QThread(win)
+    worker = _FolderBatchWorker(owner, folder_path, file_items, params)
+    worker.moveToThread(thread)
+
+    class _FolderUiBridge(QObject):
+        def __init__(self, w: SegmentatorWindow, owner):
+            super().__init__(w)
+            self.win = w
+            self.owner = owner
+            self.thread: Optional[QThread] = None
+
+        @Slot(int)
+        def on_file_started(self, row: int):
+            self.win._current_row = row
+            _set_row_state(self.win, row, "running", is_folder=True)
+
+        @Slot(int, bool, str)
+        def on_file_finished(self, row: int, ok: bool, msg: str):
+            if hasattr(self.win, "_batch_rows") and row in self.win._batch_rows:
+                self.win._batch_rows.discard(row)
+            if msg == "Stopped":
+                _set_row_state(self.win, row, "stopped", is_folder=True)
+            else:
+                _set_row_state(self.win, row, "done" if ok else "failed", msg or "", is_folder=True)
+            self.win._current_row = None
+
+        @Slot(list)
+        def on_cancelled_rows(self, rows: List[int]):
+            for r in rows:
+                if hasattr(self.win, "_batch_rows") and r in self.win._batch_rows:
+                    _set_row_state(self.win, r, "stopped", is_folder=True)
+                    self.win._batch_rows.discard(r)
+
+        @Slot()
+        def on_all_done(self):
+            for r in list(getattr(self.win, "_batch_rows", set())):
+                _set_row_state(
+                    self.win,
+                    r,
+                    "stopped" if getattr(self.win, "_seg_cancel", False) else "failed",
+                    is_folder=True
+                )
+            self.win._batch_rows = set()
+            self.win._current_row = None
+            self.win._seg_cancel = False
+            self.win._is_folder_batch = False
+            _set_controls_busy(self.win, False)
+
+            if self.thread and self.thread.isRunning():
+                self.thread.quit()
+                self.thread.wait(5000)
+            self.win._seg_worker_thread = None
+            self.win._seg_worker = None
+
+        @Slot()
+        def on_thread_finished(self):
+            _set_controls_busy(self.win, False)
+            self.win._current_row = None
+            self.win._batch_rows = set()
+            self.win._seg_cancel = False
+            self.win._is_folder_batch = False
+            self.win._seg_worker_thread = None
+            self.win._seg_worker = None
+
+    bridge = _FolderUiBridge(win, owner)
+    bridge.thread = thread
+
+    worker.file_started.connect(bridge.on_file_started, Qt.QueuedConnection)
+    worker.file_finished.connect(bridge.on_file_finished, Qt.QueuedConnection)
+    worker.cancelled_rows.connect(bridge.on_cancelled_rows, Qt.QueuedConnection)
+    worker.all_done.connect(bridge.on_all_done, Qt.QueuedConnection)
+
+    thread.started.connect(worker.run, Qt.QueuedConnection)
+    worker.all_done.connect(thread.quit, Qt.QueuedConnection)
+    worker.all_done.connect(worker.deleteLater, Qt.QueuedConnection)
+    thread.finished.connect(thread.deleteLater, Qt.QueuedConnection)
+    thread.finished.connect(bridge.on_thread_finished, Qt.QueuedConnection)
+
+    win._seg_worker_thread = thread
+    win._seg_worker = worker
+
+    thread.start()
+
+
 # -------------------------- public entry -------------------------------------
 
 def open_segmentator_tab(self):
@@ -417,6 +593,9 @@ def open_segmentator_tab(self):
     # Wire Run -> batch with progress + cancellation
     self.segwin.runSegRequested.connect(
         lambda series_list, params, owner=self: _start_batch_with_progress(self.segwin, owner, series_list, params)
+    )
+    self.segwin.runFolderBatchRequested.connect(
+        lambda folder_path, files, params, owner=self: _start_folder_batch_with_progress(self.segwin, owner, folder_path, files, params)
     )
 
     # Ensure Stop buttons are discovered and initially disabled

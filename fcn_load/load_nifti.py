@@ -9,6 +9,15 @@ from PySide6.QtWidgets import QFileDialog
 
 NIFTI_EXTS = ('.nii', '.nii.gz', '.gz')
 
+def _norm_path(p: str | Path | None) -> str:
+    """Canonicalize and normalize path for reliable matching across slashes, case, and symlinks."""
+    if not p:
+        return ""
+    try:
+        return os.path.normcase(os.path.abspath(os.path.realpath(os.fspath(p))))
+    except Exception:
+        return os.path.normcase(os.path.abspath(os.fspath(p)))
+
 def is_nifti_file(filename: str | Path) -> bool:
     fl = str(filename).lower()
     return fl.endswith('.nii') or fl.endswith('.nii.gz') or fl.endswith('.gz')
@@ -390,24 +399,45 @@ def load_nifti_files(self, path=None):
     if not hasattr(self, 'medical_image') or not isinstance(self.medical_image, dict):
         self.medical_image = {}
 
-    # 2. Classify files into primary images vs structure masks / labelmaps
+    # 2. Classify files into primary images vs structure masks / labelmaps with canonical deduplication
     primary_paths = []
+    primary_norm_set = set()
     structure_paths = []
+    structure_norm_set = set()
 
     for fpath in paths:
         if not is_nifti_file(fpath):
             continue
+        p_norm = _norm_path(fpath)
         info = classify_nifti_file(fpath)
         if info['is_structure']:
-            structure_paths.append((fpath, info))
+            if p_norm not in structure_norm_set:
+                structure_norm_set.add(p_norm)
+                structure_paths.append((fpath, info))
         else:
-            primary_paths.append(fpath)
+            if p_norm not in primary_norm_set:
+                primary_norm_set.add(p_norm)
+                primary_paths.append(fpath)
 
     # 3. Check for orphaned structure files whose parent image exists on disk in the same folder
     # but wasn't explicitly selected in paths
+    def _is_parent_already_in_primary(img_base_str: str) -> bool:
+        if not img_base_str:
+            return False
+        norm_b = _normalize_name(img_base_str)
+        for p in primary_paths:
+            if norm_b == _normalize_name(_series_number_from_name(p)):
+                return True
+        return False
+
     for spath, s_info in list(structure_paths):
         img_base = s_info.get('associated_image_base')
         if img_base:
+            # If the parent scan is already in primary_paths, do NOT search disk or duplicate it
+            if _is_parent_already_in_primary(img_base):
+                continue
+
+            # If parent scan is already loaded in self.medical_image, do NOT search disk
             match = find_matching_series_for_structure(self, img_base, spath)
             if not match:
                 s_dir = os.path.dirname(spath)
@@ -425,8 +455,11 @@ def load_nifti_files(self, path=None):
                     if found_parent:
                         break
 
-                if found_parent and found_parent not in primary_paths:
-                    primary_paths.append(found_parent)
+                if found_parent:
+                    cand_norm = _norm_path(found_parent)
+                    if cand_norm not in primary_norm_set:
+                        primary_norm_set.add(cand_norm)
+                        primary_paths.append(found_parent)
 
     # If no primary images were found in the folder/selection, check if any structure can attach to loaded series
     if not primary_paths and structure_paths:
@@ -437,6 +470,7 @@ def load_nifti_files(self, path=None):
         if not can_match_loaded:
             # Check if any parent image exists in the same directory on disk
             found_parents = []
+            found_parents_norm = set()
             for spath, s_info in structure_paths:
                 img_base = s_info.get('associated_image_base')
                 if img_base:
@@ -444,7 +478,9 @@ def load_nifti_files(self, path=None):
                     for cand_dir in (s_dir, os.path.dirname(s_dir)):
                         for ext in ('.nii.gz', '.nii', '.gz'):
                             cand = os.path.join(cand_dir, f"{img_base}{ext}")
-                            if os.path.isfile(cand) and cand not in found_parents:
+                            cand_norm = _norm_path(cand)
+                            if os.path.isfile(cand) and cand_norm not in found_parents_norm:
+                                found_parents_norm.add(cand_norm)
                                 found_parents.append(cand)
             if found_parents:
                 primary_paths = found_parents
@@ -470,10 +506,23 @@ def load_nifti_files(self, path=None):
             study_data    = patient_data.setdefault(study_id, {})
             modality_list = study_data.setdefault(modality, [])
 
-            series_dict = read_nifti_series(fpath)
-            modality_list.append(series_dict)
-            series_idx = len(modality_list) - 1
-            loaded_any = True
+            # Check if this exact file is already present in this modality list
+            target_norm = _norm_path(fpath)
+            existing_idx = None
+            for s_i, existing_s in enumerate(modality_list):
+                orig = existing_s.get('metadata', {}).get('OriginalFilePath')
+                if orig and _norm_path(orig) == target_norm:
+                    existing_idx = s_i
+                    break
+
+            if existing_idx is not None:
+                series_dict = modality_list[existing_idx]
+                series_idx = existing_idx
+            else:
+                series_dict = read_nifti_series(fpath)
+                modality_list.append(series_dict)
+                series_idx = len(modality_list) - 1
+                loaded_any = True
 
             # Check for associated structures manifest (.json)
             f_dir = os.path.dirname(fpath)
@@ -509,6 +558,12 @@ def load_nifti_files(self, path=None):
 
             if target:
                 pat_id, study_id, modality, s_idx, s_series = target
+
+                # Skip if this mask file was already imported (e.g. from structures.json manifest in Step 4)
+                src_files = s_series.get('structures_source_files', set())
+                if _norm_path(spath) in src_files:
+                    continue
+
                 cnt = import_structures_from_nifti(
                     self, pat_id, study_id, modality, s_idx, paths=[spath], show_message=False
                 )
@@ -528,6 +583,9 @@ def load_nifti_files(self, path=None):
         self.last_nifti_dir = str(Path(paths[0]).parent)
 
     self.DataType = "Nifti"
-    from fcn_load.populate_med_image_list import populate_medical_image_tree
-    populate_medical_image_tree(self)
+    try:
+        from fcn_load.populate_med_image_list import populate_medical_image_tree
+        populate_medical_image_tree(self)
+    except Exception as ex:
+        print(f"[NIfTI] Note: Tree refresh failed/skipped: {ex}")
 

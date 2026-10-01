@@ -890,6 +890,7 @@ def import_structures_from_nifti(
     existing_names = s_series.setdefault('structures_names', [])
     existing_keys = s_series.setdefault('structures_keys', [])
     existing_colors = s_series.setdefault('structures_color', [])
+    source_files = s_series.setdefault('structures_source_files', set())
 
     imported_count = 0
 
@@ -927,6 +928,10 @@ def import_structures_from_nifti(
             files_to_process.append(p)
 
     for fpath in files_to_process:
+        norm_fp = os.path.normcase(os.path.abspath(os.path.realpath(fpath)))
+        if norm_fp in source_files:
+            continue
+
         try:
             reader = sitk.ImageFileReader()
             reader.SetFileName(fpath)
@@ -974,6 +979,17 @@ def import_structures_from_nifti(
                 items_to_add = [(name, mask_3d, color)]
 
             for s_name_cand, mask_3d, pref_color in items_to_add:
+                # Check if structure already exists with identical name and mask in this series
+                already_exists = False
+                for k, s_data in structures.items():
+                    if s_data.get('Name') == s_name_cand:
+                        ex_m = s_data.get('Mask3D')
+                        if ex_m is not None and ex_m.shape == mask_3d.shape and np.array_equal(ex_m, mask_3d):
+                            already_exists = True
+                            break
+                if already_exists:
+                    continue
+
                 # Ensure unique name
                 unique_name = s_name_cand
                 c = 1
@@ -1012,6 +1028,8 @@ def import_structures_from_nifti(
                 s_series.setdefault('structures_mask_transparency', []).append(0.5)
 
                 imported_count += 1
+
+            source_files.add(norm_fp)
 
         except Exception as e:
             print(f"[Import] Failed to import {fpath}: {e}")

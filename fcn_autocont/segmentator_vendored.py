@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-import os, sys, time, traceback, json, shutil
+import os, sys, time, traceback, json, shutil, datetime
 from pathlib import Path
 from typing import Dict, List, Any, Tuple
 
@@ -1119,3 +1119,210 @@ def run_totalseg_for_series(owner, series_list: List[Dict[str, Any]], params: Di
             tb = traceback.format_exc()
             _show_warn("TotalSegmentator error", f"{ex}", tb,
                        parent=getattr(owner, "segwin", None) or owner)
+
+
+# ===================== folder batch runner (one-by-one) ======================
+
+DEFAULT_COLORS = [
+    "#E6194B", "#3CBA54", "#4885ED", "#F4C20D", "#911EB4",
+    "#46F0F0", "#F032E6", "#BCF60C", "#FABEBE", "#008080",
+    "#E6BEFF", "#9A6324", "#FFFAC8", "#800000", "#AAFFC3",
+    "#808000", "#FFD8B1", "#000075", "#808080", "#FF5722",
+]
+
+
+def run_totalseg_for_folder_file(
+    owner,
+    input_nii: Path,
+    base_folder: Path,
+    params: Dict[str, Any]
+) -> Tuple[bool, str, int]:
+    """
+    Process a single NIfTI file in Folder Batch mode:
+    1. Create 'autocont' (or reuse 'autcont') inside base_folder.
+    2. Inside 'autocont', create a subfolder named after the file stem:
+       e.g. for 'patient01.nii.gz', create 'base_folder/autocont/patient01/'.
+    3. Copy the original file inside that subfolder.
+    4. Run TotalSegmentator jobs on the file.
+    5. Run bone and lung merging subroutines if requested.
+    6. Export all contour masks to the subfolder using standard AMIGO naming:
+       <OriginalFile>_ST_<Name>.nii.gz
+    7. Write 'structures.json' manifest in the subfolder.
+    8. Clean up temporary working directory.
+    9. Return (ok, message, count).
+    """
+    def _is_cancelled():
+        segwin = getattr(owner, "segwin", None) or owner
+        return bool(getattr(segwin, "_seg_cancel", False))
+
+    if _is_cancelled():
+        return False, "Stopped", 0
+
+    if not input_nii.exists():
+        return False, f"File does not exist: {input_nii.name}", 0
+
+    # 1. Determine safe stem
+    clean_stem = input_nii.name
+    for ext in (".nii.gz", ".nii"):
+        if clean_stem.lower().endswith(ext):
+            clean_stem = clean_stem[:-len(ext)]
+            break
+    safe_stem = "".join(c for c in clean_stem if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
+    if not safe_stem:
+        safe_stem = "case"
+
+    # 2. Output directories: autocont/<safe_stem>/
+    autocont_name = "autocont"
+    if (base_folder / "autcont").is_dir():
+        autocont_name = "autcont"
+    autocont_dir = _ensure_dir(base_folder / autocont_name)
+    case_dir = _ensure_dir(autocont_dir / safe_stem)
+
+    # 3. Copy original NIfTI file into case directory
+    copied_orig = case_dir / input_nii.name
+    try:
+        if input_nii.resolve() != copied_orig.resolve():
+            shutil.copy2(str(input_nii), str(copied_orig))
+    except Exception as e:
+        return False, f"Failed to copy original file: {e}", 0
+
+    if _is_cancelled():
+        return False, "Stopped", 0
+
+    # 4. Setup temporary working directory for TS outputs
+    ap = _work_paths()
+    tmp = ap["tmp"]
+    ts_tmp = _ensure_dir(tmp / f"ts_batch_{safe_stem}_{int(time.time()*1000)}")
+    ts_out = _ensure_dir(ts_tmp / "out")
+
+    try:
+        # 5. Determine TS jobs
+        jobs = []
+        ct_targets = (params or {}).get("ct_targets") or []
+        mr_targets = (params or {}).get("mr_targets") or []
+        subroutines = (params or {}).get("subroutines") or []
+        direct_targets = (params or {}).get("targets") or []
+        direct_task = (params or {}).get("task")
+
+        if ct_targets:
+            jobs.append({"task": "total", "targets": list(ct_targets)})
+        if mr_targets:
+            jobs.append({"task": "total_mr", "targets": list(mr_targets)})
+        for sub in subroutines:
+            jobs.append({"task": sub, "targets": None})
+
+        if not jobs:
+            jobs.append({
+                "task": direct_task or "total",
+                "targets": direct_targets if direct_targets else None
+            })
+
+        is_mr = bool(mr_targets) or (direct_task == "total_mr")
+
+        # 6. Run TS for each job
+        for job in jobs:
+            if _is_cancelled():
+                shutil.rmtree(str(ts_tmp), ignore_errors=True)
+                return False, "Stopped", 0
+
+            job_params = dict(params or {})
+            job_params["task"] = job["task"]
+            job_params["targets"] = job["targets"]
+
+            ok, msg = _run_totalseg(owner, copied_orig, ts_out, job_params)
+            if not ok:
+                shutil.rmtree(str(ts_tmp), ignore_errors=True)
+                return False, msg, 0
+
+            # Bone merge subroutine
+            if params.get("all_bone") and job["task"] in ("total", "total_mr"):
+                manual_targets = (params.get("manual_mr_targets") if is_mr else params.get("manual_ct_targets")) or []
+                _handle_all_bone_merge(
+                    out_dir=ts_out,
+                    input_nii=copied_orig,
+                    is_mr=is_mr,
+                    manual_targets=manual_targets,
+                    separate_cortical=params.get("separate_cortical", False),
+                    cortical_hu=params.get("cortical_hu", 300),
+                    requested_types=params.get("requested_bone_types"),
+                )
+
+            # Lung merge subroutine
+            if (params.get("lungs_merged") or params.get("lungs_merged_side")) and job["task"] in ("total", "total_mr"):
+                manual_targets = (params.get("manual_mr_targets") if is_mr else params.get("manual_ct_targets")) or []
+                _handle_lung_merge(
+                    out_dir=ts_out,
+                    is_mr=is_mr,
+                    manual_targets=manual_targets,
+                    requested_types=params.get("requested_lung_types"),
+                )
+
+        if _is_cancelled():
+            shutil.rmtree(str(ts_tmp), ignore_errors=True)
+            return False, "Stopped", 0
+
+        # 7. Collect and export contour masks to case_dir
+        manifest_structures = []
+        exported_count = 0
+
+        try:
+            from fcn_operations.boolean_operations_dialog import DEFAULT_NEW_COLORS
+            palette = DEFAULT_NEW_COLORS
+        except Exception:
+            palette = DEFAULT_COLORS
+
+        out_files = sorted([
+            p for p in ts_out.iterdir()
+            if p.is_file() and (p.name.endswith(".nii.gz") or p.name.endswith(".nii"))
+        ])
+
+        for f in out_files:
+            s_name = f.name
+            for ext in (".nii.gz", ".nii"):
+                if s_name.lower().endswith(ext):
+                    s_name = s_name[:-len(ext)]
+                    break
+            clean_s_name = "".join(c for c in s_name if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
+            dest_filename = f"{safe_stem}_ST_{clean_s_name}.nii.gz"
+            dest_path = case_dir / dest_filename
+
+            try:
+                shutil.move(str(f), str(dest_path))
+            except Exception:
+                shutil.copy2(str(f), str(dest_path))
+
+            color_hex = palette[len(manifest_structures) % len(palette)]
+            manifest_structures.append({
+                "name": clean_s_name,
+                "filename": dest_filename,
+                "color": color_hex,
+            })
+            exported_count += 1
+
+        # 8. Write structures.json manifest
+        manifest_data = {
+            "amigo_version": "1.0",
+            "exported_at": datetime.datetime.now().isoformat(),
+            "parent_series": {
+                "original_file": input_nii.name,
+                "case_id": safe_stem,
+                "modality": "MR" if is_mr else "CT",
+            },
+            "structures": manifest_structures,
+        }
+        manifest_path = case_dir / "structures.json"
+        try:
+            with open(manifest_path, "w", encoding="utf-8") as fp:
+                json.dump(manifest_data, fp, indent=2)
+        except Exception as ex:
+            print(f"[TS Batch] Warning: could not write structures.json: {ex}")
+
+        # 9. Clean up tmp
+        shutil.rmtree(str(ts_tmp), ignore_errors=True)
+
+        return True, f"Done ({exported_count} contours)", exported_count
+
+    except Exception as ex:
+        shutil.rmtree(str(ts_tmp), ignore_errors=True)
+        return False, str(ex), 0
+
