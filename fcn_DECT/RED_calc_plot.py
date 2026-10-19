@@ -92,17 +92,21 @@ def extract_data_and_fit(self):
                 return predicted_rho_e - rho_e
             
             # Initial guess for the parameters a, alpha, and b
-            initial_guess = [1, 1, 1]  # Adjust this based on prior knowledge
+            initial_guess = [1, 1, 1]  
         
             # Set the bounds for the parameters
-            bounds = ([-2, -1, 0.9], [2, 1, 1.1])
+            #bounds = ([-2, -1, 0.9], [2, 1, 1.1])
+
+            # bounds were commented out for now to evaluate the possible impact in the fit; 
+            # while initially tested for many energies, it seems to lead to not optimal fits for low keV
+            # which is currently being verified (19/10/2026)
         
             # Perform least squares optimization using the 'residuals' function
             result = least_squares(
                 residuals,  # residual function
                 initial_guess,  # initial guess for a, alpha, and b
                 args=(HU_data, rho_e),  # pass additional arguments to the residuals function
-                bounds=bounds,  # parameter bounds
+                # bounds=bounds,  # parameter bounds
                 method='trf',   # optimization method (trust region reflective)
                 ftol=1e-10, xtol=1e-10, gtol=1e-10, max_nfev=50000  # tolerance settings for precision
             )
@@ -118,7 +122,7 @@ def extract_data_and_fit(self):
                 return fit_function_hun(HU_data, ce) - rho_e
             # Initial guess and bounds for the parameter
             initial_guess = [-0.8]  # You can adjust this based on prior knowledge
-            bounds = ([-2], [2])  # Expand or tighten based on your needs
+            # bounds = ([-2], [2])  # Expand or tighten based on your needs
             
             # Perform least squares optimization
             # Perform least squares optimization
@@ -126,7 +130,7 @@ def extract_data_and_fit(self):
                 residuals,  # residual function
                 initial_guess,  # initial guess for ce
                 args=(HU_data, rho_e),  # additional arguments to residuals function
-                bounds=bounds,  # parameter bounds
+                #bounds=bounds,  # parameter bounds
                 method='trf',  # optimization method
                 ftol=1e-10, xtol=1e-10, gtol=1e-10, max_nfev=50000  # strict tolerances for precision
             )
