@@ -95,21 +95,22 @@ def initialize_software_tables(self):
         t_ab.setEditTriggers(QAbstractItemView.NoEditTriggers)
         t_ab.resizeColumnsToContents()
     
-    # Material assignment table
-    if hasattr(self, 'table_mat_properties') and self.table_mat_properties is not None:
-        df = create_dataframe_materials(self)
-        update_mat_properties_table(self, df)
-        update_mat_table_style(self)
+    # Material assignment table (widget is created as 'mat_table' in tab_plan.py)
+    if getattr(self, 'mat_table', None) is not None:
+        try:
+            df = create_dataframe_materials(self)
+            update_mat_properties_table(self, df)
+            update_mat_table_style(self)
+        except Exception as e:
+            print(f"Warning: could not load materials database: {e}")
 
-    t_mat_to_hu = safe_table(self, 'tableMatToHU')
-    if t_mat_to_hu is not None:
-        t_mat_to_hu.setColumnCount(4)
-        t_mat_to_hu.setHorizontalHeaderLabels(['Material', 'ID', 'From ', 'To'])
-
-    t_mat_to_struct = safe_table(self, 'mat_to_struct_tab')
-    if t_mat_to_struct is not None:
-        t_mat_to_struct.setColumnCount(3)
-        t_mat_to_struct.setHorizontalHeaderLabels(['Structure', 'Material', 'ID '])
+    # Editable assignment tables (material dropdowns, typed HU ranges)
+    try:
+        from fcn_materialassignment.material_map import setup_mat_hu_table, setup_mat_struct_table
+        setup_mat_hu_table(self)
+        setup_mat_struct_table(self)
+    except Exception as e:
+        print(f"Warning: could not set up material assignment tables: {e}")
 
     b1 = safe_table(self, 'brachy_table_01')
     b2 = safe_table(self, 'brachy_table_02')

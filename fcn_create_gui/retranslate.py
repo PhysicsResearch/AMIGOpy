@@ -195,6 +195,8 @@ def retranslate_ui(w):
         w.tabWidget_9.setTabText(w.tabWidget_9.indexOf(w.tab_35), QCoreApplication.translate("w", u"Data", None))
     if hasattr(w, 'tabView01'):
         w.tabView01.setTabText(w.tabView01.indexOf(w.tab_30), QCoreApplication.translate("w", u"ROI", None))
+    if hasattr(w, 'tabView01') and hasattr(w, 'tab_montecarlo'):
+        w.tabView01.setTabText(w.tabView01.indexOf(w.tab_montecarlo), QCoreApplication.translate("w", u"MonteCarlo", None))
     if hasattr(w, 'tabModules'):
         w.tabModules.setTabText(w.tabModules.indexOf(w.im_display_tab), QCoreApplication.translate("w", u"View", None))
     if hasattr(w, 'View3DgroupBox_12'):
@@ -645,7 +647,7 @@ def retranslate_ui(w):
     if hasattr(w, 'mat_to_struct'):
         w.mat_to_struct.setText(QCoreApplication.translate("w", u"Assign to structure", None))
     if hasattr(w, 'update_mat_struct_list'):
-        w.update_mat_struct_list.setText(QCoreApplication.translate("w", u"Update list", None))
+        w.update_mat_struct_list.setText(QCoreApplication.translate("w", u"Refresh structures", None))
     if hasattr(w, 'groupBox_mat_properties'):
         w.groupBox_mat_properties.setTitle(QCoreApplication.translate("w", u"Properties", None))
     if hasattr(w, 'element'):
@@ -666,12 +668,9 @@ def retranslate_ui(w):
         w.mat_to_HU_box.setTitle(QCoreApplication.translate("w", u"Materials to HU ranges", None))
     if hasattr(w, 'remove_mat_fromhu'):
         w.remove_mat_fromhu.setText(QCoreApplication.translate("w", u"Remove material", None))
-    if hasattr(w, 'del_mat_map'):
-        w.del_mat_map.setText(QCoreApplication.translate("w", u"Delete Material Map", None))
     if hasattr(w, 'create_mat_map'):
         w.create_mat_map.setText(QCoreApplication.translate("w", u"Create Material Map", None))
-    if hasattr(w, 'Plan_tabs'):
-        w.Plan_tabs.setTabText(w.Plan_tabs.indexOf(w.tab_mat_assignment), QCoreApplication.translate("w", u"Material Assignment", None))
+    # (Material Assignment tab label is set in tab_view.py: it lives in View > MonteCarlo)
     if hasattr(w, 'save_changes_ct_cal'):
         w.save_changes_ct_cal.setText(QCoreApplication.translate("w", u"Update", None))
     if hasattr(w, 'Export_ct_cal'):
@@ -690,8 +689,7 @@ def retranslate_ui(w):
         w.delete_density_map.setText(QCoreApplication.translate("w", u"Delete density map", None))
     if hasattr(w, 'override_no_tissue'):
         w.override_no_tissue.setText(QCoreApplication.translate("w", u"Override non tissue materials densities", None))
-    if hasattr(w, 'Plan_tabs'):
-        w.Plan_tabs.setTabText(w.Plan_tabs.indexOf(w.density_map_tab), QCoreApplication.translate("w", u"Density Map", None))
+    # (Density Map tab label is set in tab_view.py: it lives in View > MonteCarlo)
     if hasattr(w, 'tabModules'):
         w.tabModules.setTabText(w.tabModules.indexOf(w.Plan_tab), QCoreApplication.translate("w", u"Plan", None))
     if hasattr(w, 'tabWidget_5'):

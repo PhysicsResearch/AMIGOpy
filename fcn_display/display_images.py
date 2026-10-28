@@ -5,6 +5,8 @@ import vtk
 import numpy as np
 import math
 from fcn_RTFiles.process_contours import build_contours_for_structure, actors_from_contours
+from fcn_processing.mc_grid import update_mc_grid_axial, update_mc_grid_coronal, update_mc_grid_sagittal
+from fcn_materialassignment.mat_overlay import update_mat_overlay_axial, update_mat_overlay_coronal, update_mat_overlay_sagittal
 
 
 def displayaxial(self, Im = None):
@@ -30,6 +32,9 @@ def displayaxial(self, Im = None):
                 self.circle_actors_ax.clear()
                 # self.vtkWidgetAxial.GetRenderWindow().Render() 
                 disp_roi_axial(self)
+
+            update_mc_grid_axial(self)
+            update_mat_overlay_axial(self)
 
             selected_dw_ch = getattr(self, 'brachy_dw_ch_box_01', None)
             is_ref_points_mode = (selected_dw_ch and selected_dw_ch.currentText() == "Ref. Points")
@@ -757,6 +762,9 @@ def displaycoronal(self, Im = None):
                 # self.vtkWidgetAxial.GetRenderWindow().Render() 
                 disp_roi_coronal(self)
 
+            update_mc_grid_coronal(self)
+            update_mat_overlay_coronal(self)
+
             selected_dw_ch = getattr(self, 'brachy_dw_ch_box_01', None)
             is_ref_points_mode = (selected_dw_ch and selected_dw_ch.currentText() == "Ref. Points")
             
@@ -1478,6 +1486,9 @@ def displaysagittal(self,Im = None):
                 self.circle_actors_sa.clear()
                 # self.vtkWidgetAxial.GetRenderWindow().Render() 
                 disp_roi_sagittal(self)
+
+            update_mc_grid_sagittal(self)
+            update_mat_overlay_sagittal(self)
 
             selected_dw_ch = getattr(self, 'brachy_dw_ch_box_01', None)
             is_ref_points_mode = (selected_dw_ch and selected_dw_ch.currentText() == "Ref. Points")

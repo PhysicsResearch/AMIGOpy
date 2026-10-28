@@ -54,18 +54,18 @@ def extract_data_and_fit(self):
         row_count = self.MatInfoTable.rowCount()
         column_count = self.MatInfoTable.columnCount()
     
-        # Assuming the last column is HUH and the second to last is HUL
+        # the last column is HUH and the second to last is HUL
         HUH_column_index = column_count - 1
         HUL_column_index = column_count - 2
     
         HUH = []
         HUL = []
-        rho_e = []  # Assuming you have some measured data for rho_e
+        rho_e = []  # measured data for rho_e
     
         for row in range(row_count):
             HUH_item = self.MatInfoTable.item(row, HUH_column_index)
             HUL_item = self.MatInfoTable.item(row, HUL_column_index)
-            rho_e_item = self.tableRED.item(row, 1)  # Assuming you have rho_e in the first column of tableRED
+            rho_e_item = self.tableRED.item(row, 1)  # rho_e in the first column of tableRED
     
             if HUH_item and HUL_item and rho_e_item:
                 HUH.append(float(HUH_item.text()))

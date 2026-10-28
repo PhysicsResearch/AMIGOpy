@@ -32,6 +32,7 @@ try:
     from PySide6.QtWebEngineWidgets import QWebEngineView
 except ImportError:
     pass
+from fcn_create_gui.range_slider import RangeSlider
 
 
 def create_tab_view(w):
@@ -596,6 +597,126 @@ def create_tab_view(w):
     w.gridLayout_32.addWidget(w.tabWidget_9, 0, 0, 1, 1)
 
     w.tabView01.addTab(w.tab_30, "")
+
+    # --- MonteCarlo tab: calculation + voxelization grid definition ----------
+    w.tab_montecarlo = QWidget()
+    w.tab_montecarlo.setObjectName(u"tab_montecarlo")
+    w.gridLayout_mc_outer = QGridLayout(w.tab_montecarlo)
+    w.gridLayout_mc_outer.setObjectName(u"gridLayout_mc_outer")
+
+    # Sub-tabs (on top): GRID, Source/Scorer, Physics, MCNP, TOPAS
+    w.mc_tabs = QTabWidget(w.tab_montecarlo)
+    w.mc_tabs.setObjectName(u"mc_tabs")
+    w.mc_tabs.setTabPosition(QTabWidget.TabPosition.North)
+    w.gridLayout_mc_outer.addWidget(w.mc_tabs, 0, 0, 1, 1)
+
+    w.mc_tab_grid = QWidget()
+    w.mc_tab_grid.setObjectName(u"mc_tab_grid")
+    w.gridLayout_mc = QGridLayout(w.mc_tab_grid)
+    w.gridLayout_mc.setObjectName(u"gridLayout_mc")
+
+    _mc_axes = (("x", u"X (columns / sagittal)"),
+                ("y", u"Y (slices / axial)"),
+                ("z", u"Z (rows / coronal)"))
+
+    # (prefix, title, accent colour)
+    _mc_grids = (("mc_grid", u"Calculation grid", "#ffd900"),
+                 ("mc_vox",  u"Voxelization grid", "#ff2626"))
+
+    for col, (prefix, title, accent) in enumerate(_mc_grids):
+        gb = QGroupBox(w.mc_tab_grid)
+        gb.setObjectName(f"{prefix}_groupbox")
+        gb.setTitle(f"{title} (voxel indices, inclusive)")
+        gb.setStyleSheet(f"QGroupBox {{ border: 1px solid {accent}; border-radius: 4px; margin-top: 8px; }}"
+                         f"QGroupBox::title {{ color: {accent}; subcontrol-origin: margin; left: 8px; padding: 0 3px; }}")
+        setattr(w, f"{prefix}_groupbox", gb)
+        gl = QGridLayout(gb)
+        gl.setObjectName(f"gridLayout_{prefix}")
+        setattr(w, f"gridLayout_{prefix}", gl)
+
+        gl.addWidget(QLabel(u"Min", gb), 0, 1, 1, 1, Qt.AlignmentFlag.AlignCenter)
+        gl.addWidget(QLabel(u"Range", gb), 0, 2, 1, 1, Qt.AlignmentFlag.AlignCenter)
+        gl.addWidget(QLabel(u"Max", gb), 0, 3, 1, 1, Qt.AlignmentFlag.AlignCenter)
+        gl.addWidget(QLabel(u"Res. (mm)", gb), 0, 4, 1, 1, Qt.AlignmentFlag.AlignCenter)
+        gl.setColumnStretch(2, 1)
+
+        for r, (ax, label) in enumerate(_mc_axes, start=1):
+            gl.addWidget(QLabel(label, gb), r, 0, 1, 1)
+            for c, kind in ((1, "min"), (3, "max")):
+                sb = QSpinBox(gb)
+                sb.setObjectName(f"{prefix}_{ax}{kind}")
+                sb.setRange(0, 99999)
+                sb.setMinimumWidth(70)
+                sb.setFont(font)
+                setattr(w, f"{prefix}_{ax}{kind}", sb)
+                gl.addWidget(sb, r, c, 1, 1)
+            # Two-handle slider, kept in sync with the Min/Max boxes (see mc_grid.py)
+            rs = RangeSlider(gb, accent=accent)
+            rs.setObjectName(f"{prefix}_{ax}slider")
+            rs.setMinimumWidth(160)
+            rs.setRange(0, 511)
+            rs.setValues(0, 0)
+            setattr(w, f"{prefix}_{ax}slider", rs)
+            gl.addWidget(rs, r, 2, 1, 1)
+            # Resolution (bin size) along this axis, in mm
+            res = QDoubleSpinBox(gb)
+            res.setObjectName(f"{prefix}_{ax}res")
+            res.setDecimals(3)
+            res.setRange(0.001, 1000.0)
+            res.setSingleStep(0.1)
+            res.setValue(1.0)
+            res.setMinimumWidth(80)
+            res.setFont(font)
+            setattr(w, f"{prefix}_{ax}res", res)
+            gl.addWidget(res, r, 4, 1, 1)
+
+        cb = QCheckBox(gb)
+        cb.setObjectName(f"{prefix}_display")
+        cb.setText(u"Display")
+        cb.setChecked(False)
+        setattr(w, f"{prefix}_display", cb)
+        gl.addWidget(cb, 4, 0, 1, 1)
+
+        btn = QPushButton(gb)
+        btn.setObjectName(f"{prefix}_fit_btn")
+        btn.setText(u"Fit to image")
+        setattr(w, f"{prefix}_fit_btn", btn)
+        gl.addWidget(btn, 4, 1, 1, 1)
+
+        info = QLabel(gb)
+        info.setObjectName(f"{prefix}_info")
+        info.setText(u"-")
+        setattr(w, f"{prefix}_info", info)
+        gl.addWidget(info, 5, 0, 1, 5)
+
+        w.gridLayout_mc.addWidget(gb, 0, col, 1, 1)
+
+    w.gridLayout_mc.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum), 0, 2, 1, 1)
+    w.gridLayout_mc.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 1, 0, 1, 1)
+
+    w.mc_tabs.addTab(w.mc_tab_grid, u"GRID")
+
+    # Material Assignment and Density Map (moved here from Plan)
+    from fcn_create_gui.tab_plan import create_tab_mat_assignment, create_tab_density_map
+    create_tab_mat_assignment(w)
+    w.mc_tabs.addTab(w.tab_mat_assignment, u"Material Assignment")
+    w.mc_tabs.addTab(w.tab_mat_composition, u"Mat. Composition")
+    create_tab_density_map(w)
+    w.mc_tabs.addTab(w.density_map_tab, u"Density Map")
+
+    # Placeholder sub-tabs (to be populated later)
+    for _name, _label in (("mc_tab_source",  u"Source/Scorer"),
+                          ("mc_tab_physics", u"Physics"),
+                          ("mc_tab_mcnp",    u"MCNP"),
+                          ("mc_tab_topas",   u"TOPAS")):
+        _t = QWidget()
+        _t.setObjectName(_name)
+        QGridLayout(_t).setObjectName(f"gridLayout_{_name}")
+        setattr(w, _name, _t)
+        w.mc_tabs.addTab(_t, _label)
+    w.mc_tabs.setCurrentIndex(0)
+
+    w.tabView01.addTab(w.tab_montecarlo, "")
 
     w.gridLayout_4.addWidget(w.tabView01, 2, 0, 1, 3)
 

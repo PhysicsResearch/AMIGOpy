@@ -4,7 +4,7 @@ from fcn_DECT.DECT_table_disp import on_DECT_list_selection_changed
 from fcn_display.disp_plan_data import update_disp_brachy_plan
 from fcn_display.display_images import update_layer_view
 from fcn_ctcal.ct_cal import update_ct_cal_view,load_ct_cal_curve,update_ct_cal_table
-from fcn_materialassignment.material_map import on_material_change
+# (material assignment is now edited directly in its tables - see material_map.py)
 from fcn_dosecalculations.eqd2_conversion import on_struct_list_change
 import os
 import sys
@@ -145,18 +145,8 @@ def populate_list_menus(self):
             update_ct_cal_table(self, ct_cal_data)
             update_ct_cal_view(self)
 
-    # Material assignment
-    select_mat = getattr(self, 'Select_mat', None)
-    if select_mat is not None and hasattr(select_mat, 'currentTextChanged'):
-        try:
-            select_mat.currentTextChanged.connect(lambda: on_material_change(self))
-        except (TypeError, RuntimeError):
-            pass
-
-    struct_list_mat = getattr(self, 'Struct_list_mat', None)
-    if struct_list_mat is not None and hasattr(struct_list_mat, 'addItem'):
-        if struct_list_mat.count() == 0:
-            struct_list_mat.addItem('...Select Structure...')
+    # Material assignment: the former Select_mat / Struct_list_mat combo boxes
+    # were replaced by dropdowns inside the assignment tables.
     
     
 

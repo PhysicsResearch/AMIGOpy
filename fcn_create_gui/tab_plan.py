@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBo
     QStatusBar, QTabWidget, QTableView, QTableWidget,
     QTableWidgetItem, QTextEdit, QToolBox, QToolButton,
     QTreeView, QTreeWidget, QTreeWidgetItem, QVBoxLayout,
-    QWidget)
+    QWidget, QSplitter)
 try:
     from PySide6.QtWebEngineWidgets import QWebEngineView
 except ImportError:
@@ -44,8 +44,8 @@ def create_tab_plan(w):
         radial dose, anisotropy, along-away tables
       * EQD2: alpha/beta ratio table and EQD2 dose conversion
       * Plan Evaluation: uncertainty analysis and error simulation
-      * Material Assignment: material-to-HU mapping and structure assignment
-      * Density Map: electron/mass density map creation
+      (Material Assignment and Density Map now live in View > MonteCarlo;
+       see create_tab_mat_assignment / create_tab_density_map below.)
 
     This is the largest module (~1500 lines of widget definitions).
 
@@ -1389,10 +1389,31 @@ def create_tab_plan(w):
     w.gridLayout_59.setColumnStretch(1, 2)
     w.gridLayout_59.setColumnStretch(2, 1)
     w.Plan_tabs.addTab(w.Plan_Evaluation, "")
+
+    w.gridLayout_42.addWidget(w.Plan_tabs, 0, 0, 1, 1)
+    # NOTE: "Material Assignment" and "Density Map" were moved to
+    # View > MonteCarlo (see create_tab_mat_assignment / create_tab_density_map,
+    # called from tab_view.py).
+
+
+def create_tab_mat_assignment(w):
+    """
+    Create the Material Assignment widget (w.tab_mat_assignment):
+    material-to-HU mapping, structure assignment, material database table,
+    HU LUT load/save and HU range info of the selected series.
+
+    The caller is responsible for adding w.tab_mat_assignment to a tab widget.
+    """
     w.tab_mat_assignment = QWidget()
     w.tab_mat_assignment.setObjectName(u"tab_mat_assignment")
     w.gridLayout_69 = QGridLayout(w.tab_mat_assignment)
     w.gridLayout_69.setObjectName(u"gridLayout_69")
+    # Left panel (Assign + tables + map buttons); separated from the
+    # Properties box by a draggable splitter (see end of function).
+    w.mat_left_panel = QWidget(w.tab_mat_assignment)
+    w.mat_left_panel.setObjectName(u"mat_left_panel")
+    w.gridLayout_mat_left = QGridLayout(w.mat_left_panel)
+    w.gridLayout_mat_left.setContentsMargins(0, 0, 0, 0)
     w.groupBox_mat_to_struct = QGroupBox(w.tab_mat_assignment)
     w.groupBox_mat_to_struct.setObjectName(u"groupBox_mat_to_struct")
     w.gridLayout_72 = QGridLayout(w.groupBox_mat_to_struct)
@@ -1400,74 +1421,35 @@ def create_tab_plan(w):
     w.mat_to_struct_tab = QTableWidget(w.groupBox_mat_to_struct)
     w.mat_to_struct_tab.setObjectName(u"mat_to_struct_tab")
 
-    w.gridLayout_72.addWidget(w.mat_to_struct_tab, 0, 0, 1, 1)
+    w.gridLayout_72.addWidget(w.mat_to_struct_tab, 0, 0, 4, 1)
+
+    # Buttons on the right of the table (saves vertical space)
+    w.update_mat_struct_list = QPushButton(w.groupBox_mat_to_struct)
+    w.update_mat_struct_list.setObjectName(u"update_mat_struct_list")
+    w.update_mat_struct_list.setToolTip(u"Reload the structures of the selected series")
+    w.gridLayout_72.addWidget(w.update_mat_struct_list, 0, 1, 1, 1)
 
     w.remove_mat_from_struct = QPushButton(w.groupBox_mat_to_struct)
     w.remove_mat_from_struct.setObjectName(u"remove_mat_from_struct")
+    w.remove_mat_from_struct.setToolTip(u"Set the material of the selected structures (or all) to None")
+    w.gridLayout_72.addWidget(w.remove_mat_from_struct, 1, 1, 1, 1)
 
-    w.gridLayout_72.addWidget(w.remove_mat_from_struct, 1, 0, 1, 1)
+    w.mat_struct_toggle_vis = QPushButton(w.groupBox_mat_to_struct)
+    w.mat_struct_toggle_vis.setObjectName(u"mat_struct_toggle_vis")
+    w.mat_struct_toggle_vis.setText(u"Show / Hide all")
+    w.mat_struct_toggle_vis.setToolTip(u"Show all structure overlays (or hide all if all are shown)")
+    w.gridLayout_72.addWidget(w.mat_struct_toggle_vis, 2, 1, 1, 1)
+
+    w.gridLayout_72.addItem(QSpacerItem(10, 10, QSizePolicy.Policy.Minimum,
+                                        QSizePolicy.Policy.Expanding), 3, 1, 1, 1)
+    w.gridLayout_72.setColumnStretch(0, 1)
 
 
-    w.gridLayout_69.addWidget(w.groupBox_mat_to_struct, 1, 1, 1, 1)
+    w.gridLayout_mat_left.addWidget(w.groupBox_mat_to_struct, 0, 1, 1, 1)
 
-    w.assign_mat = QGroupBox(w.tab_mat_assignment)
-    w.assign_mat.setObjectName(u"assign_mat")
-    w.gridLayout_5 = QGridLayout(w.assign_mat)
-    w.gridLayout_5.setObjectName(u"gridLayout_5")
-    w.mat_to_hu = QPushButton(w.assign_mat)
-    w.mat_to_hu.setObjectName(u"mat_to_hu")
-
-    w.gridLayout_5.addWidget(w.mat_to_hu, 0, 6, 1, 1)
-
-    w.Select_mat = QComboBox(w.assign_mat)
-    w.Select_mat.setObjectName(u"Select_mat")
-
-    w.gridLayout_5.addWidget(w.Select_mat, 0, 0, 1, 2)
-
-    w.HU_high = QLineEdit(w.assign_mat)
-    w.HU_high.setObjectName(u"HU_high")
-
-    w.gridLayout_5.addWidget(w.HU_high, 0, 5, 1, 1)
-
-    w.label_mat_2 = QLabel(w.assign_mat)
-    w.label_mat_2.setObjectName(u"label_mat_2")
-
-    w.gridLayout_5.addWidget(w.label_mat_2, 0, 4, 1, 1)
-
-    w.HU_low = QLineEdit(w.assign_mat)
-    w.HU_low.setObjectName(u"HU_low")
-
-    w.gridLayout_5.addWidget(w.HU_low, 0, 3, 1, 1)
-
-    w.label_mat = QLabel(w.assign_mat)
-    w.label_mat.setObjectName(u"label_mat")
-
-    w.gridLayout_5.addWidget(w.label_mat, 0, 2, 1, 1)
-
-    w.Struct_list_mat = QComboBox(w.assign_mat)
-    w.Struct_list_mat.setObjectName(u"Struct_list_mat")
-
-    w.gridLayout_5.addWidget(w.Struct_list_mat, 2, 0, 1, 2)
-
-    w.mat_to_struct = QPushButton(w.assign_mat)
-    w.mat_to_struct.setObjectName(u"mat_to_struct")
-
-    w.gridLayout_5.addWidget(w.mat_to_struct, 2, 2, 1, 3)
-
-    w.update_mat_struct_list = QPushButton(w.assign_mat)
-    w.update_mat_struct_list.setObjectName(u"update_mat_struct_list")
-
-    w.gridLayout_5.addWidget(w.update_mat_struct_list, 2, 5, 1, 2)
-
-    w.gridLayout_5.setColumnStretch(0, 10)
-    w.gridLayout_5.setColumnStretch(1, 1)
-    w.gridLayout_5.setColumnStretch(2, 1)
-    w.gridLayout_5.setColumnStretch(3, 1)
-    w.gridLayout_5.setColumnStretch(4, 1)
-    w.gridLayout_5.setColumnStretch(5, 1)
-    w.gridLayout_5.setColumnStretch(6, 1)
-
-    w.gridLayout_69.addWidget(w.assign_mat, 0, 0, 1, 2)
+    # NOTE: the former "Assign" group (material/structure combo boxes, From/To
+    # fields) was removed: materials, HU ranges and structure materials are
+    # now edited directly in the tables.
 
     w.groupBox_mat_properties = QGroupBox(w.tab_mat_assignment)
     w.groupBox_mat_properties.setObjectName(u"groupBox_mat_properties")
@@ -1518,7 +1500,6 @@ def create_tab_plan(w):
     w.gridLayout_68.addWidget(w.undo_mat_tab, 2, 4, 1, 2)
 
 
-    w.gridLayout_69.addWidget(w.groupBox_mat_properties, 0, 2, 5, 1)
 
     w.mat_to_HU_box = QGroupBox(w.tab_mat_assignment)
     w.mat_to_HU_box.setObjectName(u"mat_to_HU_box")
@@ -1527,33 +1508,96 @@ def create_tab_plan(w):
     w.tableMatToHU = QTableWidget(w.mat_to_HU_box)
     w.tableMatToHU.setObjectName(u"tableMatToHU")
 
-    w.gridLayout_71.addWidget(w.tableMatToHU, 0, 0, 1, 1)
+    w.gridLayout_71.addWidget(w.tableMatToHU, 0, 0, 6, 1)
+
+    # Buttons stacked on the right of the table (saves vertical space)
+    w.add_mat_hu_row = QPushButton(w.mat_to_HU_box)
+    w.add_mat_hu_row.setObjectName(u"add_mat_hu_row")
+    w.add_mat_hu_row.setText(u"Add Material")
+    w.add_mat_hu_row.setToolTip(u"Add a row: pick the material in the first column and type the HU range")
+    w.gridLayout_71.addWidget(w.add_mat_hu_row, 0, 1, 1, 1)
 
     w.remove_mat_fromhu = QPushButton(w.mat_to_HU_box)
     w.remove_mat_fromhu.setObjectName(u"remove_mat_fromhu")
+    w.remove_mat_fromhu.setToolTip(u"Remove the selected rows (or the last row)")
+    w.gridLayout_71.addWidget(w.remove_mat_fromhu, 1, 1, 1, 1)
 
-    w.gridLayout_71.addWidget(w.remove_mat_fromhu, 1, 0, 1, 1)
+    w.mat_hu_toggle_vis = QPushButton(w.mat_to_HU_box)
+    w.mat_hu_toggle_vis.setObjectName(u"mat_hu_toggle_vis")
+    w.mat_hu_toggle_vis.setText(u"Show / Hide all")
+    w.mat_hu_toggle_vis.setToolTip(u"Show all HU-range overlays (or hide all if all are shown)")
+    w.gridLayout_71.addWidget(w.mat_hu_toggle_vis, 2, 1, 1, 1)
+
+    # Save / load lists of HU ranges (HU look-up tables)
+    w.load_hu_lut = QPushButton(w.mat_to_HU_box)
+    w.load_hu_lut.setObjectName(u"load_hu_lut")
+    w.load_hu_lut.setText(u"Load HU LUT")
+    w.load_hu_lut.setToolTip(u"Load a saved list of material HU ranges (CSV: Material,From,To)")
+    w.gridLayout_71.addWidget(w.load_hu_lut, 3, 1, 1, 1)
+
+    w.save_hu_lut = QPushButton(w.mat_to_HU_box)
+    w.save_hu_lut.setObjectName(u"save_hu_lut")
+    w.save_hu_lut.setText(u"Save HU LUT")
+    w.save_hu_lut.setToolTip(u"Save the current material HU ranges to a CSV file")
+    w.gridLayout_71.addWidget(w.save_hu_lut, 4, 1, 1, 1)
+    w.gridLayout_71.addItem(QSpacerItem(10, 10, QSizePolicy.Policy.Minimum,
+                                        QSizePolicy.Policy.Expanding), 5, 1, 1, 1)
+    w.gridLayout_71.setColumnStretch(0, 1)
 
 
-    w.gridLayout_69.addWidget(w.mat_to_HU_box, 1, 0, 1, 1)
+    w.gridLayout_mat_left.addWidget(w.mat_to_HU_box, 0, 0, 1, 1)
+    w.gridLayout_mat_left.setRowStretch(0, 1)
+    w.gridLayout_mat_left.setColumnStretch(0, 1)
+    w.gridLayout_mat_left.setColumnStretch(1, 1)
 
-    w.del_mat_map = QPushButton(w.tab_mat_assignment)
-    w.del_mat_map.setObjectName(u"del_mat_map")
+    # Bottom bar: Create Material Map button and HU range info of the selected series
+    w.bottom_mat_bar = QWidget(w.tab_mat_assignment)
+    w.bottom_mat_bar.setObjectName(u"bottom_mat_bar")
+    w.bottom_mat_layout = QHBoxLayout(w.bottom_mat_bar)
+    w.bottom_mat_layout.setContentsMargins(0, 0, 0, 0)
+    w.bottom_mat_layout.setSpacing(6)
 
-    w.gridLayout_69.addWidget(w.del_mat_map, 2, 1, 1, 1)
-
-    w.create_mat_map = QPushButton(w.tab_mat_assignment)
+    w.create_mat_map = QPushButton(w.bottom_mat_bar)
     w.create_mat_map.setObjectName(u"create_mat_map")
+    w.create_mat_map.setText(u"Create Material Map")
 
-    w.gridLayout_69.addWidget(w.create_mat_map, 2, 0, 1, 1)
+    w.retrieve_mat_map = QPushButton(w.bottom_mat_bar)
+    w.retrieve_mat_map.setObjectName(u"retrieve_mat_map")
+    w.retrieve_mat_map.setText(u"Retrieve from Map")
+    w.retrieve_mat_map.setToolTip(u"Restore HU table and structure assignments from a saved material map")
 
+    w.mat_series_hu_info = QLineEdit(w.bottom_mat_bar)
+    w.mat_series_hu_info.setObjectName(u"mat_series_hu_info")
+    w.mat_series_hu_info.setReadOnly(True)
+    w.mat_series_hu_info.setText(u"Selected series: none")
+    w.mat_series_hu_info.setStyleSheet(u"QLineEdit { color: #93c5fd; }")
+
+    w.bottom_mat_layout.addWidget(w.create_mat_map, 0)
+    w.bottom_mat_layout.addWidget(w.retrieve_mat_map, 0)
+    w.bottom_mat_layout.addWidget(w.mat_series_hu_info, 1)
+
+    w.gridLayout_69.addWidget(w.mat_left_panel, 0, 0, 1, 1)
+    w.gridLayout_69.addWidget(w.bottom_mat_bar, 1, 0, 1, 1)
     w.gridLayout_69.setRowStretch(0, 1)
-    w.gridLayout_69.setRowStretch(1, 10)
-    w.gridLayout_69.setRowStretch(2, 1)
-    w.gridLayout_69.setColumnStretch(0, 1)
-    w.gridLayout_69.setColumnStretch(1, 1)
-    w.gridLayout_69.setColumnStretch(2, 4)
-    w.Plan_tabs.addTab(w.tab_mat_assignment, "")
+    w.gridLayout_69.setRowStretch(1, 0)
+
+    # Material composition (Properties table) lives in its own tab:
+    # w.tab_mat_composition (caller adds it to a tab widget).
+    w.tab_mat_composition = QWidget()
+    w.tab_mat_composition.setObjectName(u"tab_mat_composition")
+    w.gridLayout_mat_comp = QGridLayout(w.tab_mat_composition)
+    w.gridLayout_mat_comp.setObjectName(u"gridLayout_mat_comp")
+    w.groupBox_mat_properties.setParent(w.tab_mat_composition)
+    w.gridLayout_mat_comp.addWidget(w.groupBox_mat_properties, 0, 0, 1, 1)
+
+
+def create_tab_density_map(w):
+    """
+    Create the Density Map widget (w.density_map_tab): CT calibration curves
+    and electron/mass density map creation.
+
+    The caller is responsible for adding w.density_map_tab to a tab widget.
+    """
     w.density_map_tab = QWidget()
     w.density_map_tab.setObjectName(u"density_map_tab")
     w.gridLayout_58 = QGridLayout(w.density_map_tab)
@@ -1636,7 +1680,4 @@ def create_tab_plan(w):
     w.gridLayout_58.setColumnStretch(0, 1)
     w.gridLayout_58.setColumnStretch(1, 1)
     w.gridLayout_58.setColumnStretch(2, 6)
-    w.Plan_tabs.addTab(w.density_map_tab, "")
-
-    w.gridLayout_42.addWidget(w.Plan_tabs, 0, 0, 1, 1)
 

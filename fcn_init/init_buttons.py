@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QAction, QShortcut
 from PySide6 import QtWidgets  # Import the correct module for QMessageBox
 from PySide6.QtGui import QKeySequence
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from fcn_init.vtk_comparison_axes     import create_vtk_elements_comp
 from fcn_IrIS.FindDwell_IrIS import add_row_dw_table, remove_row_dw_table
 from fcn_processing.Im_process_list import image_processing_undo, run_image_processing
@@ -44,11 +44,13 @@ from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
 from fcn_3Dview.volume_3d_viewer import play_4D_sequence_3D
 from fcn_materialassignment.material_assignment_properties import add_mat_row,del_mat_row,add_element,del_element,save_mat_db,undo_changes
 from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
-from fcn_materialassignment.material_map import mat2HU,del_mat2HU,generate_mat_map,delete_mat_map,struct2mat,del_stuct2mat,update_mat_struct_list
+from fcn_materialassignment.material_map import add_mat_HU_row,del_mat2HU,generate_mat_map,delete_mat_map,del_stuct2mat,update_mat_struct_list,refresh_mat_assignment_if_visible,toggle_mat_HU_visibility,toggle_mat_struct_visibility,load_mat_map_into_tables
 from fcn_3DPrinting.material_selection import calculate_red_settings
 from fcn_3DPrinting import handlers as hdl
 from fcn_reg.rigid_reg_manual import update_translation_x, update_translation_y, update_translation_z, update_rotation_x, update_rotation_y, update_rotation_z, set_transformation_step, apply_trasnformation, flip_volume_x, flip_volume_y, flip_volume_z
 from fcn_reg.auto_reg_dialog import open_auto_reg_dialog, apply_last_transform_to_layer
+from fcn_processing.mc_grid import (update_mc_grid_all, mc_grid_fit_to_image, mc_vox_fit_to_image,
+                                    on_grid_spin_changed, on_grid_slider_changed)
 
 
 
@@ -58,8 +60,25 @@ def safe_btn(parent, attr_name, signal_name, callback, style=None):
     btn = getattr(parent, attr_name, None)
     if btn is not None and hasattr(btn, signal_name):
         try:
-            signal = getattr(btn, signal_name)
-            signal.connect(callback)
+            # initialize_software_buttons() is re-run after each lazy tab load.
+            # Avoid connecting the same callback (same source location + bound
+            # defaults) to the same widget/signal more than once, otherwise
+            # handlers fire several times (e.g. dialogs opening twice).
+            key = (signal_name,
+                   getattr(callback, '__code__', callback),
+                   repr(getattr(callback, '__defaults__', None)))
+            done = getattr(btn, '_amigo_connected', None)
+            if done is None:
+                done = set()
+                try:
+                    btn._amigo_connected = done
+                except Exception:
+                    done = None
+            if done is None or key not in done:
+                signal = getattr(btn, signal_name)
+                signal.connect(callback)
+                if done is not None:
+                    done.add(key)
             if style and hasattr(btn, 'setStyleSheet'):
                 btn.setStyleSheet(style)
         except (TypeError, RuntimeError):
@@ -386,14 +405,29 @@ def initialize_software_buttons(self):
     safe_btn(self, 'del_element', 'clicked', lambda:del_element(self))
     safe_btn(self, 'del_mat', 'clicked', lambda:del_mat_row(self))
     safe_btn(self, 'save_mat_table', 'clicked', lambda:save_mat_db(self))
-    safe_btn(self, 'mat_to_hu', 'clicked', lambda:mat2HU(self))
-    safe_btn(self, 'remove_mat_fromhu', 'clicked', lambda:del_mat2HU(self))
-    safe_btn(self, 'create_mat_map', 'clicked', lambda:generate_mat_map(self), "background-color: green; color: white;")
+    safe_btn(self, 'add_mat_hu_row', 'clicked', lambda:add_mat_HU_row(self), "background-color: blue; color: white;")
+    safe_btn(self, 'remove_mat_fromhu', 'clicked', lambda:del_mat2HU(self), "background-color: red; color: white;")
+    safe_btn(self, 'create_mat_map', 'clicked', lambda:generate_mat_map(self), "background-color: blue; color: white;")
+    safe_btn(self, 'retrieve_mat_map', 'clicked', lambda:load_mat_map_into_tables(self), "background-color: blue; color: white;")
     safe_btn(self, 'undo_mat_tab', 'clicked', lambda:undo_changes(self))
-    safe_btn(self, 'del_mat_map', 'clicked', lambda:delete_mat_map(self), "background-color: red; color: white;")
-    safe_btn(self, 'mat_to_struct', 'clicked', lambda:struct2mat(self))
-    safe_btn(self, 'remove_mat_from_struct', 'clicked', lambda: del_stuct2mat(self))
-    safe_btn(self, 'update_mat_struct_list', 'clicked', lambda: update_mat_struct_list(self))
+    safe_btn(self, 'remove_mat_from_struct', 'clicked', lambda: del_stuct2mat(self), "background-color: red; color: white;")
+    safe_btn(self, 'update_mat_struct_list', 'clicked', lambda: update_mat_struct_list(self), "background-color: blue; color: white;")
+    safe_btn(self, 'mat_hu_toggle_vis', 'clicked', lambda: toggle_mat_HU_visibility(self), "background-color: blue; color: white;")
+    safe_btn(self, 'mat_struct_toggle_vis', 'clicked', lambda: toggle_mat_struct_visibility(self), "background-color: blue; color: white;")
+    # HU LUT save/load + HU range of the selected series
+    from fcn_materialassignment.hu_lut import save_hu_lut, load_hu_lut, update_series_hu_info
+    safe_btn(self, 'load_hu_lut', 'clicked', lambda: load_hu_lut(self), "background-color: blue; color: white;")
+    safe_btn(self, 'save_hu_lut', 'clicked', lambda: save_hu_lut(self), "background-color: blue; color: white;")
+    # Material Assignment lives in View > MonteCarlo: refresh when it becomes visible
+    for _tw in ('mc_tabs', 'tabView01', 'tabModules'):
+        safe_btn(self, _tw, 'currentChanged', lambda _i: QTimer.singleShot(0, lambda: update_series_hu_info(self)))
+    # Material overlay is only shown on View > MonteCarlo > Material Assignment
+    from fcn_materialassignment.mat_overlay import update_mat_overlay_all
+    for _tw in ('tabView01', 'tabModules'):
+        safe_btn(self, _tw, 'currentChanged', lambda _i: QTimer.singleShot(0, lambda: update_mat_overlay_all(self)))
+    if getattr(self, 'mc_tabs', None) is not None:
+        safe_btn(self, 'mc_tabs', 'currentChanged',
+                 lambda _i: QTimer.singleShot(0, lambda: refresh_mat_assignment_if_visible(self)))
     
     # 3D Printing buttons connect
     # setStyleSheet("background-color: green; color: white;")
@@ -515,6 +549,23 @@ def initialize_software_buttons(self):
 
     safe_btn(self, 'exp_csv_roi_c_values', 'clicked', lambda: export_roi_circ_values_to_csv(self), "background-color: blue; color: white;")
     self.checkBox_circ_roi_data_2.setChecked(True)
+
+    # Monte Carlo grids (calculation = yellow, voxelization = red) ----------------------------------
+    for _p in ("mc_grid", "mc_vox"):
+        for _a in "xyz":
+            for _k in ("min", "max"):
+                safe_btn(self, f"{_p}_{_a}{_k}", 'valueChanged',
+                         lambda _v, p=_p, a=_a, k=_k: on_grid_spin_changed(self, p, a, k))
+            safe_btn(self, f"{_p}_{_a}slider", 'valuesChanged',
+                     lambda lo, hi, p=_p, a=_a: on_grid_slider_changed(self, p, a, lo, hi))
+        safe_btn(self, f"{_p}_display", 'toggled', lambda _c: update_mc_grid_all(self))
+        for _a in "xyz":
+            safe_btn(self, f"{_p}_{_a}res", 'valueChanged', lambda _v: update_mc_grid_all(self))
+    safe_btn(self, 'mc_grid_fit_btn', 'clicked', lambda: mc_grid_fit_to_image(self), "background-color: blue; color: white;")
+    safe_btn(self, 'mc_vox_fit_btn', 'clicked', lambda: mc_vox_fit_to_image(self), "background-color: blue; color: white;")
+    # Boxes are only visible while the MonteCarlo > GRID tab is selected
+    safe_btn(self, 'tabView01', 'currentChanged', lambda _i: update_mc_grid_all(self))
+    safe_btn(self, 'mc_tabs', 'currentChanged', lambda _i: update_mc_grid_all(self))
     
     
 

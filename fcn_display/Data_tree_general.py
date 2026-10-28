@@ -240,6 +240,15 @@ def on_DataTreeView_clicked(self,index):
                 self.DataType =  self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['DataType']
             except:
                 self.DataType = "DICOM"
+            # Refresh HU range info + structure table in View > MonteCarlo > Material
+            # Assignment (only when that tab is visible)
+            try:
+                from fcn_materialassignment.hu_lut import update_series_hu_info
+                from fcn_materialassignment.material_map import refresh_mat_assignment_if_visible
+                update_series_hu_info(self)
+                refresh_mat_assignment_if_visible(self)
+            except Exception as _e:
+                print(f"HU info update failed: {_e}")
             #
             #
             if self.modality == 'RTPLAN':
@@ -327,9 +336,14 @@ def on_DataTreeView_clicked(self,index):
                 if Ref is not None:
                     ref_series = find_matching_series(self, Ref)
 
-                # Select the struct tab
+                # Switch to View module and select the STRUCT tab (tab_39)
+                if hasattr(self, 'tabModules'):
+                    self.tabModules.setCurrentIndex(0)
                 if hasattr(self, 'tabView01'):
-                    self.tabView01.setCurrentIndex(3)
+                    if hasattr(self, 'tab_39'):
+                        self.tabView01.setCurrentIndex(self.tabView01.indexOf(self.tab_39))
+                    else:
+                        self.tabView01.setCurrentIndex(2)
                 if currentTabText != "_3Dview":
                     return
 
@@ -399,10 +413,20 @@ def on_DataTreeView_clicked(self,index):
                     if hierarchy[5]=='Structures':
                         s_key = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures_keys'][hierarchy_indices[6].row()]
                         self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['structures'][s_key]['Mask3D']
+                        if hasattr(self, 'tabModules'):
+                            self.tabModules.setCurrentIndex(0)
+                        if hasattr(self, 'tabView01') and hasattr(self, 'tab_39'):
+                            self.tabView01.setCurrentIndex(self.tabView01.indexOf(self.tab_39))
                     elif hierarchy[5]=='Density maps':
                        self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['density_maps'][hierarchy[6]]['3DMatrix']
                     elif hierarchy[5]=='Material maps':
-                       self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['mat_maps'][hierarchy[6]]['3DMatrix']
+                       mat_map_entry = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['mat_maps'][hierarchy[6]]
+                       self.display_data[idx] = mat_map_entry['3DMatrix']
+                       self.last_selected_mat_map = hierarchy[6]
+                       tab = getattr(self, 'tab_mat_assignment', None)
+                       if tab is not None and tab.isVisible() and ('HU_table' in mat_map_entry or 'metadata' in mat_map_entry):
+                           from fcn_materialassignment.material_map import load_mat_map_into_tables
+                           load_mat_map_into_tables(self, mat_map_entry)
                         
                 if len(hierarchy)==6:
                     if hierarchy[5] == "α/β":
@@ -776,12 +800,13 @@ def on_DataTreeView_clicked(self,index):
 
                 update_seg_struct_list(self)
                 #
-            if currentTabText=='Plan':
+            # Material Assignment now lives in View > MonteCarlo sub-tabs
+            if (currentTabText == "View" and len(hierarchy) == 5
+                    and hasattr(self, 'mc_tabs') and hasattr(self, 'tab_mat_assignment')
+                    and self.mc_tabs.currentWidget() is self.tab_mat_assignment):
+                update_mat_struct_list(self)
+            if currentTabText=='Plan' and hasattr(self, 'Plan_tabs'):
                 currentSubTabText = self.Plan_tabs.tabText(self.Plan_tabs.currentIndex())
-                print(currentSubTabText)
-                if currentSubTabText=='Material Assignment':
-                    if len(hierarchy) == 5:
-                        update_mat_struct_list(self)
                 if currentSubTabText== 'EQD2':
                     update_doses_list(self)
                     update_structure_list(self)
