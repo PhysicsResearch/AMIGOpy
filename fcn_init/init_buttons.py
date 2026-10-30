@@ -50,7 +50,10 @@ from fcn_3DPrinting import handlers as hdl
 from fcn_reg.rigid_reg_manual import update_translation_x, update_translation_y, update_translation_z, update_rotation_x, update_rotation_y, update_rotation_z, set_transformation_step, apply_trasnformation, flip_volume_x, flip_volume_y, flip_volume_z
 from fcn_reg.auto_reg_dialog import open_auto_reg_dialog, apply_last_transform_to_layer
 from fcn_processing.mc_grid import (update_mc_grid_all, mc_grid_fit_to_image, mc_vox_fit_to_image,
-                                    on_grid_spin_changed, on_grid_slider_changed)
+                                    mc_grid_set_ref_resolution,
+                                    on_grid_spin_changed, on_grid_slider_changed, on_grid_mode_changed)
+from fcn_mcnp.mcnp_lattice import create_mcnp_lattice_map
+from fcn_mcnp.mcnp_input import create_mcnp_input
 
 
 
@@ -562,7 +565,21 @@ def initialize_software_buttons(self):
         for _a in "xyz":
             safe_btn(self, f"{_p}_{_a}res", 'valueChanged', lambda _v: update_mc_grid_all(self))
     safe_btn(self, 'mc_grid_fit_btn', 'clicked', lambda: mc_grid_fit_to_image(self), "background-color: blue; color: white;")
+    safe_btn(self, 'mc_grid_ref_res_btn', 'clicked', lambda: mc_grid_set_ref_resolution(self), "background-color: blue; color: white;")
     safe_btn(self, 'mc_vox_fit_btn', 'clicked', lambda: mc_vox_fit_to_image(self), "background-color: blue; color: white;")
+    safe_btn(self, 'mc_grid_mode_combo', 'currentTextChanged', lambda m: on_grid_mode_changed(self, m))
+    def _run_mcnp_lattice():
+        import importlib, fcn_mcnp.mcnp_lattice as _ml
+        _ml = importlib.reload(_ml)
+        _ml.create_mcnp_lattice_map(self)
+
+    def _run_mcnp_input():
+        import importlib, fcn_mcnp.mcnp_input as _mi
+        _mi = importlib.reload(_mi)
+        _mi.create_mcnp_input(self)
+
+    safe_btn(self, 'mcnp_create_lattice_btn', 'clicked', _run_mcnp_lattice, "background-color: blue; color: white;")
+    safe_btn(self, 'mcnp_create_input_btn', 'clicked', _run_mcnp_input, "background-color: blue; color: white;")
     # Boxes are only visible while the MonteCarlo > GRID tab is selected
     safe_btn(self, 'tabView01', 'currentChanged', lambda _i: update_mc_grid_all(self))
     safe_btn(self, 'mc_tabs', 'currentChanged', lambda _i: update_mc_grid_all(self))

@@ -99,6 +99,12 @@ def populate_ebrt_tab(w, dicom_ds):
     Parse the RTPlan dataset and populate the EBRT-Ph tree widget.
     """
     if not hasattr(w, 'ebrt_tree'):
+        try:
+            from fcn_create_gui.setup_ui import ensure_tab_loaded
+            ensure_tab_loaded(w, 4)
+        except Exception:
+            pass
+    if not hasattr(w, 'ebrt_tree'):
         return
         
     w.ebrt_tree.clear()

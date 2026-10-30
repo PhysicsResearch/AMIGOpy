@@ -252,6 +252,9 @@ def on_DataTreeView_clicked(self,index):
             #
             #
             if self.modality == 'RTPLAN':
+                from fcn_create_gui.setup_ui import ensure_tab_loaded
+                ensure_tab_loaded(self, 4)
+
                 # keep track of the last selected plan ... if user chose and image or dose this will not change
                 self.patientID_plan    = hierarchy[1].replace("PatientID: ", "")
                 self.studyID_plan      = hierarchy[2].replace("StudyID: ", "")
@@ -270,6 +273,8 @@ def on_DataTreeView_clicked(self,index):
                 # Brachy Plan
                 if 'Plan_Brachy_Channels' in self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
                     update_plan_tables(self)
+                    if hasattr(self, 'Plan_tabs') and hasattr(self, 'Brachy_plan_tab'):
+                        self.Plan_tabs.setCurrentIndex(self.Plan_tabs.indexOf(self.Brachy_plan_tab))
                     if is_on_view:
                         if hasattr(self, 'tabWidget_3'):
                             self.tabWidget_3.setCurrentIndex(0) # Brachy tab under View -> PLAN
@@ -278,8 +283,6 @@ def on_DataTreeView_clicked(self,index):
                     else:
                         if hasattr(self, 'tabModules'):
                             self.tabModules.setCurrentIndex(4)  # Plan top tab
-                        if hasattr(self, 'Plan_tabs') and hasattr(self, 'Brachy_plan_tab'):
-                            self.Plan_tabs.setCurrentIndex(self.Plan_tabs.indexOf(self.Brachy_plan_tab))
                     return
                     
                 # EBRT Photon/Electron/Proton Plan
@@ -290,6 +293,8 @@ def on_DataTreeView_clicked(self,index):
                     from fcn_RTFiles.process_ebrt_photons import populate_ebrt_tab
                     populate_ebrt_tab(self, dicom_ds)
 
+                    if hasattr(self, 'Plan_tabs') and hasattr(self, 'ebrt_ph_tab'):
+                        self.Plan_tabs.setCurrentIndex(self.Plan_tabs.indexOf(self.ebrt_ph_tab))
                     if is_on_view:
                         # Activate EBRT-Plan tab under View -> PLAN
                         if hasattr(self, 'tabWidget_3'):
@@ -300,8 +305,6 @@ def on_DataTreeView_clicked(self,index):
                         # Switch to top-level Plan module tab -> EBRT-Ph tab directly!
                         if hasattr(self, 'tabModules'):
                             self.tabModules.setCurrentIndex(4)  # Plan top tab
-                        if hasattr(self, 'Plan_tabs') and hasattr(self, 'ebrt_ph_tab'):
-                            self.Plan_tabs.setCurrentIndex(self.Plan_tabs.indexOf(self.ebrt_ph_tab))
                     return
 
             if self.modality == 'RTSTRUCT':
@@ -427,6 +430,8 @@ def on_DataTreeView_clicked(self,index):
                        if tab is not None and tab.isVisible() and ('HU_table' in mat_map_entry or 'metadata' in mat_map_entry):
                            from fcn_materialassignment.material_map import load_mat_map_into_tables
                            load_mat_map_into_tables(self, mat_map_entry)
+                    elif hierarchy[5]=='MCNP lattice maps':
+                       self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['mcnp_lattice_maps'][hierarchy[6]]['3DMatrix']
                         
                 if len(hierarchy)==6:
                     if hierarchy[5] == "α/β":
@@ -455,6 +460,14 @@ def on_DataTreeView_clicked(self,index):
                 self.slice_thick[idx]         = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['SliceThickness']
                 self.pixel_spac[idx, :2]      = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['PixelSpacing']
                 self.Im_PatPosition[idx, :3]  = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
+                if idx == 0:
+                    try:
+                        from fcn_processing.mc_grid import sync_mc_vox_resolution, update_grid_info
+                        sync_mc_vox_resolution(self)
+                        update_grid_info(self, "mc_vox")
+                        update_grid_info(self, "mc_grid")
+                    except Exception:
+                        pass
                 #
                 # Update image transformation tab if present
                 if hasattr(self, 'Reg_manual_Tx') and self.Reg_manual_Tx is not None:

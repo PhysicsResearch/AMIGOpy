@@ -41,6 +41,28 @@ _LAZY_TABS = {
 }
 
 
+def ensure_tab_loaded(w, index_or_attr):
+    """
+    Ensure that a lazily-loaded tabModules tab is fully instantiated.
+    Safe to call anytime; no-op if already loaded.
+    Preserves the currently active tab in tabModules.
+    """
+    if isinstance(index_or_attr, str):
+        for idx, (attr_name, _, _) in _LAZY_TABS.items():
+            if attr_name == index_or_attr:
+                index = idx
+                break
+        else:
+            return
+    else:
+        index = index_or_attr
+
+    if index not in _LAZY_TABS or index in getattr(w, '_lazy_loaded', set()):
+        return
+
+    _on_tab_changed(w, index)
+
+
 def _on_tab_changed(w, index):
     """
     Lazy-load handler: when a tabModules tab is selected for the first time,
@@ -48,7 +70,7 @@ def _on_tab_changed(w, index):
 
     This is connected to tabModules.currentChanged signal.
     """
-    if index in w._lazy_loaded or index not in _LAZY_TABS:
+    if index in getattr(w, '_lazy_loaded', set()) or index not in _LAZY_TABS:
         return
 
     attr_name, module_name, func_name = _LAZY_TABS[index]
@@ -70,6 +92,7 @@ def _on_tab_changed(w, index):
 
     # Replace the placeholder in tabModules with the real widget safely
     real_widget = getattr(w, attr_name)
+    cur_selected = w.tabModules.currentIndex()
     w.tabModules.blockSignals(True)
     try:
         tab_idx = w.tabModules.indexOf(old_placeholder)
@@ -77,7 +100,10 @@ def _on_tab_changed(w, index):
             tab_text = w.tabModules.tabText(tab_idx)
             w.tabModules.removeTab(tab_idx)
             w.tabModules.insertTab(tab_idx, real_widget, tab_text)
-            w.tabModules.setCurrentIndex(tab_idx)
+            if cur_selected == tab_idx:
+                w.tabModules.setCurrentIndex(tab_idx)
+            elif cur_selected >= 0:
+                w.tabModules.setCurrentIndex(cur_selected)
     finally:
         w.tabModules.blockSignals(False)
     w.setUpdatesEnabled(False)

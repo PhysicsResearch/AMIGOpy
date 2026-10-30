@@ -244,6 +244,14 @@ def populate_medical_image_tree(self):
                                 for name in mat_maps_names:
                                     mat_item = QStandardItem(name)
                                     mat_parent_item.appendRow(mat_item)
+
+                        #If MCNP lattice (universe) maps exist, add them as sublevels
+                        lat_maps = series_data.get('mcnp_lattice_maps')
+                        if lat_maps:
+                            lat_parent_item = QStandardItem("MCNP lattice maps")
+                            series_item.appendRow(lat_parent_item)
+                            for name in lat_maps.keys():
+                                lat_parent_item.appendRow(QStandardItem(name))
                                 
                         #If ab map exists, add it as sublevel
                         ab_matrix = series_data.get('ab_matrix',[])

@@ -19,6 +19,12 @@ import pandas as pd
 
 def update_plan_tables(self):
     if not hasattr(self, 'brachy_N_channels'):
+        try:
+            from fcn_create_gui.setup_ui import ensure_tab_loaded
+            ensure_tab_loaded(self, 4)
+        except Exception:
+            pass
+    if not hasattr(self, 'brachy_N_channels'):
         return
         
     if 'Plan_Brachy_Channels' in self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
@@ -155,7 +161,8 @@ def calculate_total_time(self):
     total_time = 0.0  # Initialize total time across all channels
     selected_channel_time = 0.0  # Initialize total time for the selected channel
     
-    selected_channel_idx = self.brachy_spinBox_02.value() - 1  # Adjust for zero-based indexing
+    spin = getattr(self, 'brachy_spinBox_02', getattr(self, 'brachy_spinBox_01', None))
+    selected_channel_idx = (spin.value() - 1) if spin is not None else 0  # Adjust for zero-based indexing
     
     for idx, channel in enumerate(channels):
         dwell_info = channel.get('DwellInfo')
@@ -200,34 +207,33 @@ def calculate_total_time(self):
             selected_channel_time = channel_total
     
     # Display the total time across all channels
-    self.brachy_total_time.setText(f"{total_time:.4f} s")
+    if hasattr(self, 'brachy_total_time'):
+        self.brachy_total_time.setText(f"{total_time:.4f} s")
     
     # Display the total time for the selected channel
-    self.brachy_ch_time.setText(f"{selected_channel_time:.4f} s")
+    if hasattr(self, 'brachy_ch_time'):
+        self.brachy_ch_time.setText(f"{selected_channel_time:.4f} s")
     
 
     
 def clear_brachy_table(self):
     """
-    Clears all existing rows and columns from the brachy_table_01.
+    Clears all existing rows and columns from brachy_table_01 and brachy_table_02.
     """
-    self.brachy_table_01.blockSignals(True)
-    self.brachy_table_02.blockSignals(True)
-    try:
-        self.brachy_table_01.clear()           # Clears the table content but retains headers
-        self.brachy_table_01.setRowCount(0)    # Removes all rows
-        self.brachy_table_01.setColumnCount(0) # Removes all columns
-        #
-        self.brachy_table_02.clear()   # Clears the table content but retains headers
-        self.brachy_table_02.setRowCount(0)    # Removes all rows
-        self.brachy_table_02.setColumnCount(0) # Removes all columns
-    finally:
-        self.brachy_table_01.blockSignals(False)
-        self.brachy_table_02.blockSignals(False)
+    for tbl_name in ('brachy_table_01', 'brachy_table_02'):
+        table = getattr(self, tbl_name, None)
+        if table is not None:
+            table.blockSignals(True)
+            try:
+                table.clear()           # Clears the table content but retains headers
+                table.setRowCount(0)    # Removes all rows
+                table.setColumnCount(0) # Removes all columns
+            finally:
+                table.blockSignals(False)
     
 def setup_brachy_table_headers(self):
     """
-    Sets up the column headers for brachy_table_01.
+    Sets up the column headers for brachy_table_01 and brachy_table_02.
     """
     selected_dw_ch = self.brachy_combobox_01.currentText()
     if selected_dw_ch == "Dwells": 
@@ -239,17 +245,12 @@ def setup_brachy_table_headers(self):
     else:
         headers = ["X (mm)", "Y (mm)", "Z(mm)"]
     
-    self.brachy_table_01.setColumnCount(len(headers))
-    self.brachy_table_01.setHorizontalHeaderLabels(headers)
-    
-    # Optional: Adjust column widths to fit content
-    self.brachy_table_01.resizeColumnsToContents()
-    #
-    self.brachy_table_02.setColumnCount(len(headers))
-    self.brachy_table_02.setHorizontalHeaderLabels(headers)
-    
-    # Optional: Adjust column widths to fit content
-    self.brachy_table_02.resizeColumnsToContents()
+    for tbl_name in ('brachy_table_01', 'brachy_table_02'):
+        table = getattr(self, tbl_name, None)
+        if table is not None:
+            table.setColumnCount(len(headers))
+            table.setHorizontalHeaderLabels(headers)
+            table.resizeColumnsToContents()
 
 
     

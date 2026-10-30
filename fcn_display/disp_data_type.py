@@ -27,6 +27,10 @@ def adjust_data_type_input(self,idx):
         self.dataImporterAxial[idx].SetDataScalarTypeToDouble()
         self.dataImporterSagittal[idx].SetDataScalarTypeToDouble()
         self.dataImporterCoronal[idx].SetDataScalarTypeToDouble()
+    elif data_type == np.int32:
+        self.dataImporterAxial[idx].SetDataScalarTypeToInt()
+        self.dataImporterSagittal[idx].SetDataScalarTypeToInt()
+        self.dataImporterCoronal[idx].SetDataScalarTypeToInt()
     elif data_type == np.bool_:
         # bool will be treated as unsigned char (0/1)
         scalar_type_method = "SetDataScalarTypeToUnsignedChar"
@@ -49,6 +53,8 @@ def adjust_data_type_comp_input(self,axes,layer):
         self.dataImporterAxComp[axes,layer].SetDataScalarTypeToUnsignedChar()
     elif data_type == np.float64:
         self.dataImporterAxComp[axes,layer].SetDataScalarTypeToDouble()
+    elif data_type == np.int32:
+        self.dataImporterAxComp[axes,layer].SetDataScalarTypeToInt()
     # Add more conditions for other data types if needed
     else:
         raise ValueError(f"Unsupported data type: {data_type}")
@@ -69,6 +75,8 @@ def adjust_data_type_input_IrIS_eval(self,idx):
         self.dataImporterIrEval[idx].SetDataScalarTypeToUnsignedChar()
     elif data_type == np.float64:
         self.dataImporterIrEval[idx].SetDataScalarTypeToDouble()
+    elif data_type == np.int32:
+        self.dataImporterIrEval[idx].SetDataScalarTypeToInt()
     # Add more conditions for other data types if needed
     else:
         raise ValueError(f"Unsupported data type: {data_type}")
@@ -92,6 +100,8 @@ def adjust_data_type_seg_input(self,idx):
         self.dataImporterSeg[idx].SetDataScalarTypeToUnsignedChar()
     elif data_type == np.float64:
         self.dataImporterSeg[idx].SetDataScalarTypeToDouble()
+    elif data_type == np.int32:
+        self.dataImporterSeg[idx].SetDataScalarTypeToInt()
     # Add more conditions for other data types if needed
     else:
         raise ValueError(f"Unsupported data type: {data_type}")

@@ -145,8 +145,8 @@ def save_hu_lut(self):
     if not path.lower().endswith(".csv"):
         path += ".csv"
     try:
-        with open(path, "w", newline="") as f:
-            wr = csv.writer(f)
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            wr = csv.writer(f, lineterminator="\n")
             wr.writerow(["Material", "From", "To", "Color", "Fixed Density"])
             # table order (later rows override); colour only if user-chosen
             for d in getattr(self, "mat_HU_list", []):

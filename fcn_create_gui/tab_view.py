@@ -621,12 +621,12 @@ def create_tab_view(w):
 
     # (prefix, title, accent colour)
     _mc_grids = (("mc_grid", u"Calculation grid", "#ffd900"),
-                 ("mc_vox",  u"Voxelization grid", "#ff2626"))
+                 ("mc_vox",  u"Voxelization grid (voxels only)", "#ff2626"))
 
     for col, (prefix, title, accent) in enumerate(_mc_grids):
         gb = QGroupBox(w.mc_tab_grid)
         gb.setObjectName(f"{prefix}_groupbox")
-        gb.setTitle(f"{title} (voxel indices, inclusive)")
+        gb.setTitle(f"{title} (voxel or mm)" if prefix == "mc_grid" else f"{title} (voxel indices only)")
         gb.setStyleSheet(f"QGroupBox {{ border: 1px solid {accent}; border-radius: 4px; margin-top: 8px; }}"
                          f"QGroupBox::title {{ color: {accent}; subcontrol-origin: margin; left: 8px; padding: 0 3px; }}")
         setattr(w, f"{prefix}_groupbox", gb)
@@ -634,19 +634,36 @@ def create_tab_view(w):
         gl.setObjectName(f"gridLayout_{prefix}")
         setattr(w, f"gridLayout_{prefix}", gl)
 
-        gl.addWidget(QLabel(u"Min", gb), 0, 1, 1, 1, Qt.AlignmentFlag.AlignCenter)
-        gl.addWidget(QLabel(u"Range", gb), 0, 2, 1, 1, Qt.AlignmentFlag.AlignCenter)
-        gl.addWidget(QLabel(u"Max", gb), 0, 3, 1, 1, Qt.AlignmentFlag.AlignCenter)
-        gl.addWidget(QLabel(u"Res. (mm)", gb), 0, 4, 1, 1, Qt.AlignmentFlag.AlignCenter)
+        lbl_min = QLabel(u"Min (vox)", gb)
+        lbl_range = QLabel(u"Range", gb)
+        lbl_max = QLabel(u"Max (vox)", gb)
+        lbl_res = QLabel(u"Res. (mm)", gb)
+        for _hl in (lbl_min, lbl_range, lbl_max, lbl_res):
+            _hl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        setattr(w, f"{prefix}_header_min", lbl_min)
+        setattr(w, f"{prefix}_header_max", lbl_max)
+
+        gl.addWidget(lbl_min, 0, 1, 1, 1)
+        gl.addWidget(lbl_range, 0, 2, 1, 1)
+        gl.addWidget(lbl_max, 0, 3, 1, 1)
+        gl.addWidget(lbl_res, 0, 4, 1, 1)
         gl.setColumnStretch(2, 1)
 
         for r, (ax, label) in enumerate(_mc_axes, start=1):
-            gl.addWidget(QLabel(label, gb), r, 0, 1, 1)
+            ax_lbl = QLabel(label, gb)
+            setattr(w, f"{prefix}_lbl_{ax}", ax_lbl)
+            gl.addWidget(ax_lbl, r, 0, 1, 1)
             for c, kind in ((1, "min"), (3, "max")):
-                sb = QSpinBox(gb)
+                if prefix == "mc_grid":
+                    sb = QDoubleSpinBox(gb)
+                    sb.setDecimals(0)
+                    sb.setRange(-99999.0, 99999.0)
+                    sb.setSingleStep(1.0)
+                else:
+                    sb = QSpinBox(gb)
+                    sb.setRange(0, 99999)
                 sb.setObjectName(f"{prefix}_{ax}{kind}")
-                sb.setRange(0, 99999)
-                sb.setMinimumWidth(70)
+                sb.setMinimumWidth(75)
                 sb.setFont(font)
                 setattr(w, f"{prefix}_{ax}{kind}", sb)
                 gl.addWidget(sb, r, c, 1, 1)
@@ -661,12 +678,15 @@ def create_tab_view(w):
             # Resolution (bin size) along this axis, in mm
             res = QDoubleSpinBox(gb)
             res.setObjectName(f"{prefix}_{ax}res")
-            res.setDecimals(3)
-            res.setRange(0.001, 1000.0)
+            res.setDecimals(8)
+            res.setRange(0.00000001, 1000.0)
             res.setSingleStep(0.1)
             res.setValue(1.0)
-            res.setMinimumWidth(80)
+            res.setMinimumWidth(100)
             res.setFont(font)
+            if prefix == "mc_vox":
+                res.setEnabled(False)
+                res.setToolTip(u"Voxel size matches the image voxel size (editing disabled)")
             setattr(w, f"{prefix}_{ax}res", res)
             gl.addWidget(res, r, 4, 1, 1)
 
@@ -682,6 +702,25 @@ def create_tab_view(w):
         btn.setText(u"Fit to image")
         setattr(w, f"{prefix}_fit_btn", btn)
         gl.addWidget(btn, 4, 1, 1, 1)
+
+        if prefix == "mc_grid":
+            btn_ref = QPushButton(gb)
+            btn_ref.setObjectName(f"{prefix}_ref_res_btn")
+            btn_ref.setText(u"= Ref. image")
+            btn_ref.setToolTip(u"Set calculation grid resolution to match reference image voxel size")
+            setattr(w, f"{prefix}_ref_res_btn", btn_ref)
+            gl.addWidget(btn_ref, 4, 2, 1, 1)
+
+            lbl_unit = QLabel(u"Unit:", gb)
+            lbl_unit.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            gl.addWidget(lbl_unit, 4, 3, 1, 1)
+
+            combo = QComboBox(gb)
+            combo.setObjectName(f"{prefix}_mode_combo")
+            combo.addItems([u"voxel", u"mm"])
+            combo.setMinimumWidth(75)
+            setattr(w, f"{prefix}_mode_combo", combo)
+            gl.addWidget(combo, 4, 4, 1, 1)
 
         info = QLabel(gb)
         info.setObjectName(f"{prefix}_info")
@@ -714,6 +753,104 @@ def create_tab_view(w):
         QGridLayout(_t).setObjectName(f"gridLayout_{_name}")
         setattr(w, _name, _t)
         w.mc_tabs.addTab(_t, _label)
+
+    # MCNP sub-tab: options, sources, tallies, simulation settings & input generation
+    _gl_mcnp = w.mc_tab_mcnp.layout()
+
+    # 1. Scoring / Tallies options
+    gb_tallies = QGroupBox(u"Tallies / Scoring Options", w.mc_tab_mcnp)
+    gb_tallies.setObjectName(u"mcnp_gb_tallies")
+    gb_tallies.setStyleSheet(
+        "QGroupBox { border: 1px solid #4a90e2; border-radius: 4px; margin-top: 8px; font-weight: bold; }"
+        "QGroupBox::title { color: #4a90e2; subcontrol-origin: margin; left: 8px; padding: 0 3px; }"
+    )
+    vbox_tallies = QVBoxLayout(gb_tallies)
+
+    w.mcnp_chk_dwater_water = QCheckBox(u"Dwater in water (Track length)", gb_tallies)
+    w.mcnp_chk_dwater_water.setObjectName(u"mcnp_chk_dwater_water")
+    vbox_tallies.addWidget(w.mcnp_chk_dwater_water)
+
+    w.mcnp_chk_dwater_med = QCheckBox(u"Dwater in medium (Track length)", gb_tallies)
+    w.mcnp_chk_dwater_med.setObjectName(u"mcnp_chk_dwater_med")
+    vbox_tallies.addWidget(w.mcnp_chk_dwater_med)
+
+    w.mcnp_chk_dmed_med_tl = QCheckBox(u"Dose to medium in Medium (Track length)", gb_tallies)
+    w.mcnp_chk_dmed_med_tl.setObjectName(u"mcnp_chk_dmed_med_tl")
+    vbox_tallies.addWidget(w.mcnp_chk_dmed_med_tl)
+
+    w.mcnp_chk_dmed_med_ed = QCheckBox(u"Dose to medium in medium (Energy deposition)", gb_tallies)
+    w.mcnp_chk_dmed_med_ed.setObjectName(u"mcnp_chk_dmed_med_ed")
+    vbox_tallies.addWidget(w.mcnp_chk_dmed_med_ed)
+
+    _gl_mcnp.addWidget(gb_tallies, 0, 0, 1, 1)
+
+    # 2. Source Selection & Simulation settings
+    gb_sim = QGroupBox(u"Source & Simulation Settings", w.mc_tab_mcnp)
+    gb_sim.setObjectName(u"mcnp_gb_sim")
+    gb_sim.setStyleSheet(
+        "QGroupBox { border: 1px solid #50e3c2; border-radius: 4px; margin-top: 8px; font-weight: bold; }"
+        "QGroupBox::title { color: #50e3c2; subcontrol-origin: margin; left: 8px; padding: 0 3px; }"
+    )
+    vbox_sim = QVBoxLayout(gb_sim)
+
+    lbl_source = QLabel(u"Source:", gb_sim)
+    vbox_sim.addWidget(lbl_source)
+    w.mcnp_source_combo = QComboBox(gb_sim)
+    w.mcnp_source_combo.setObjectName(u"mcnp_source_combo")
+    w.mcnp_source_combo.addItems([
+        u"None (External beam / custom)",
+        u"MicroSelectron-v2",
+        u"GammaMedPlus",
+        u"Flexisource",
+        u"TG-186",
+        u"Axxent",
+    ])
+    vbox_sim.addWidget(w.mcnp_source_combo)
+
+    w.mcnp_chk_std_cards = QCheckBox(u"Include standard cards (PHYS:P, cut:p, prdmp, dbcn)", gb_sim)
+    w.mcnp_chk_std_cards.setObjectName(u"mcnp_chk_std_cards")
+    w.mcnp_chk_std_cards.setChecked(True)
+    vbox_sim.addWidget(w.mcnp_chk_std_cards)
+
+    hbox_nps = QHBoxLayout()
+    lbl_nps = QLabel(u"nps (N):", gb_sim)
+    w.mcnp_nps_input = QLineEdit(gb_sim)
+    w.mcnp_nps_input.setObjectName(u"mcnp_nps_input")
+    w.mcnp_nps_input.setText(u"1e6")
+    hbox_nps.addWidget(lbl_nps)
+    hbox_nps.addWidget(w.mcnp_nps_input)
+    vbox_sim.addLayout(hbox_nps)
+
+    _gl_mcnp.addWidget(gb_sim, 0, 1, 1, 1)
+
+    # 3. Actions / Generation
+    gb_actions = QGroupBox(u"Actions", w.mc_tab_mcnp)
+    gb_actions.setObjectName(u"mcnp_gb_actions")
+    gb_actions.setStyleSheet(
+        "QGroupBox { border: 1px solid #f5a623; border-radius: 4px; margin-top: 8px; font-weight: bold; }"
+        "QGroupBox::title { color: #f5a623; subcontrol-origin: margin; left: 8px; padding: 0 3px; }"
+    )
+    vbox_actions = QVBoxLayout(gb_actions)
+
+    w.mcnp_create_lattice_btn = QPushButton(gb_actions)
+    w.mcnp_create_lattice_btn.setObjectName(u"mcnp_create_lattice_btn")
+    w.mcnp_create_lattice_btn.setText(u"Create MCNP lattice map")
+    vbox_actions.addWidget(w.mcnp_create_lattice_btn)
+
+    w.mcnp_create_input_btn = QPushButton(gb_actions)
+    w.mcnp_create_input_btn.setObjectName(u"mcnp_create_input_btn")
+    w.mcnp_create_input_btn.setText(u"Create input")
+    vbox_actions.addWidget(w.mcnp_create_input_btn)
+
+    vbox_actions.addStretch(1)
+
+    _gl_mcnp.addWidget(gb_actions, 0, 2, 1, 1)
+
+    _gl_mcnp.setColumnStretch(0, 1)
+    _gl_mcnp.setColumnStretch(1, 1)
+    _gl_mcnp.setColumnStretch(2, 1)
+    _gl_mcnp.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 1, 0, 1, 3)
+
     w.mc_tabs.setCurrentIndex(0)
 
     w.tabView01.addTab(w.tab_montecarlo, "")
