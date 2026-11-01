@@ -222,13 +222,25 @@ def onMouseMoveSeg(self, caller, event):
             slice_data = self.display_data_seg[idx]
         else:
             slice_data = self.display_data_seg[idx][self.current_axial_slice_index[idx], :, :]
-        P_mm = self.current_axial_slice_index[idx] * self.slice_thick[idx] + self.Im_Offset[idx,2]
+        P_z = self.Im_PatPosition[idx, 2] + self.current_axial_slice_index[idx] * self.slice_thick[idx] + self.Im_Offset[idx, 2]
         if (0 <= image_coord_vox[0] < slice_data.shape[1] and
                 0 <= image_coord_vox[1] < slice_data.shape[0]) or self.selected_point is not None:
-            pixel_value = slice_data[image_coord_vox[1], image_coord_vox[0]]    
-            self.textActorAxial.SetInput(f"Slice: {P_mm:.2f} mm ({image_coord_vox[0]}, {self.current_axial_slice_index[idx]}, {image_coord_vox[1]}) {round(pixel_value,4):.4f}")
+            pixel_value = slice_data[image_coord_vox[1], image_coord_vox[0]]
+            vx = image_coord_vox[0]
+            vy = image_coord_vox[1]
+            vz = self.current_axial_slice_index[idx]
+            x_mm = self.Im_PatPosition[idx, 0] + vx * self.pixel_spac[idx, 1] + self.Im_Offset[idx, 0]
+            y_mm = self.Im_PatPosition[idx, 1] + (self.display_data_seg[idx].shape[1] - 1 - vy) * self.pixel_spac[idx, 0] + self.Im_Offset[idx, 1]
+            z_mm = P_z
+            msg = f"Slice (Y): {P_z:.2f} mm ({vx}, {vy}, {vz}) Vox. ({x_mm:.2f}, {y_mm:.2f}, {z_mm:.2f}) mm {round(pixel_value,4):.4f}"
+            self.textActorAxial.SetInput(msg)
+            if hasattr(self, 'textActorSeg'):
+                self.textActorSeg.SetInput(msg)
         else:
-            self.textActorAxial.SetInput(f"Slice: {self.current_axial_slice_index[idx]} - {P_mm:.2f} mm")
+            msg = f"Slice (Y): {self.current_axial_slice_index[idx]} - {P_z:.2f} mm"
+            self.textActorAxial.SetInput(msg)
+            if hasattr(self, 'textActorSeg'):
+                self.textActorSeg.SetInput(msg)
             
     elif self.segSelectView.currentText() == "Coronal":
         image_coord_vox[0] = int(image_coord_vox[0]/self.pixel_spac[idx,1])
@@ -237,13 +249,25 @@ def onMouseMoveSeg(self, caller, event):
             slice_data = self.display_data_seg[idx]
         else:
             slice_data = self.display_data_seg[idx][:, self.current_coronal_slice_index[idx], :]
-        P_mm = self.current_coronal_slice_index[idx] * self.pixel_spac[idx,0] + self.Im_Offset[idx,0]
+        P_y = self.Im_PatPosition[idx, 1] + (self.display_data_seg[idx].shape[1] - 1 - self.current_coronal_slice_index[idx]) * self.pixel_spac[idx, 0] + self.Im_Offset[idx, 1]
         if (0 <= image_coord_vox[0] < slice_data.shape[1] and
-                0 <= image_coord_vox[1] < slice_data.shape[0]*self.pixel_spac[idx,0]):
+                0 <= image_coord_vox[1] < slice_data.shape[0]):
             pixel_value = slice_data[image_coord_vox[1], image_coord_vox[0]]
-            self.textActorCoronal.SetInput(f"Slice: {P_mm:.1f} mm ({image_coord_vox[0]}, {image_coord_vox[1]}, {self.current_coronal_slice_index[idx]}) {round(pixel_value,4):.4f}")
+            vx = image_coord_vox[0]
+            vy = self.current_coronal_slice_index[idx]
+            vz = image_coord_vox[1]
+            x_mm = self.Im_PatPosition[idx, 0] + vx * self.pixel_spac[idx, 1] + self.Im_Offset[idx, 0]
+            y_mm = P_y
+            z_mm = self.Im_PatPosition[idx, 2] + vz * self.slice_thick[idx] + self.Im_Offset[idx, 2]
+            msg = f"Slice (Z): {P_y:.2f} mm ({vx}, {vy}, {vz}) Vox. ({x_mm:.2f}, {y_mm:.2f}, {z_mm:.2f}) mm {round(pixel_value,4):.4f}"
+            self.textActorCoronal.SetInput(msg)
+            if hasattr(self, 'textActorSeg'):
+                self.textActorSeg.SetInput(msg)
         else:
-            self.textActorCoronal.SetInput(f"Slice: {self.current_coronal_slice_index[idx]}  -  Slice: {P_mm:.2f} mm")
+            msg = f"Slice (Z): {self.current_coronal_slice_index[idx]} - {P_y:.2f} mm"
+            self.textActorCoronal.SetInput(msg)
+            if hasattr(self, 'textActorSeg'):
+                self.textActorSeg.SetInput(msg)
             
     elif self.segSelectView.currentText() == "Sagittal":
         image_coord_vox[0] = int(image_coord_vox[0]/self.pixel_spac[idx,0])
@@ -252,13 +276,25 @@ def onMouseMoveSeg(self, caller, event):
             slice_data = self.display_data_seg[idx]
         else:
             slice_data = self.display_data_seg[idx][:, :, self.current_sagittal_slice_index[idx]]
-        P_mm = self.current_sagittal_slice_index[idx] * self.pixel_spac[idx,1] + self.Im_Offset[idx,0]
+        P_x = self.Im_PatPosition[idx, 0] + self.current_sagittal_slice_index[idx] * self.pixel_spac[idx, 1] + self.Im_Offset[idx, 0]
         if (0 <= image_coord_vox[0] < slice_data.shape[1]
             and 0 <= image_coord_vox[1] < slice_data.shape[0]):
             pixel_value = slice_data[image_coord_vox[1],image_coord_vox[0]]
-            self.textActorSagittal.SetInput (f"Slice: {P_mm:.1f} mm ({self.current_sagittal_slice_index[idx]}, {image_coord_vox[0]}, {image_coord_vox[1]}) {round(pixel_value,4):.4f}")
+            vx = self.current_sagittal_slice_index[idx]
+            vy = image_coord_vox[0]
+            vz = image_coord_vox[1]
+            x_mm = P_x
+            y_mm = self.Im_PatPosition[idx, 1] + (self.display_data_seg[idx].shape[1] - 1 - vy) * self.pixel_spac[idx, 0] + self.Im_Offset[idx, 1]
+            z_mm = self.Im_PatPosition[idx, 2] + vz * self.slice_thick[idx] + self.Im_Offset[idx, 2]
+            msg = f"Slice (X): {P_x:.2f} mm ({vx}, {vy}, {vz}) Vox. ({x_mm:.2f}, {y_mm:.2f}, {z_mm:.2f}) mm {round(pixel_value,4):.4f}"
+            self.textActorSagittal.SetInput(msg)
+            if hasattr(self, 'textActorSeg'):
+                self.textActorSeg.SetInput(msg)
         else:
-            self.textActorSagittal.SetInput(f"Slice: {self.current_sagittal_slice_index[idx]} - Slice: {P_mm:.2f} mm")
+            msg = f"Slice (X): {self.current_sagittal_slice_index[idx]} - {P_x:.2f} mm"
+            self.textActorSagittal.SetInput(msg)
+            if hasattr(self, 'textActorSeg'):
+                self.textActorSeg.SetInput(msg)
 
     # Render the updated data (to refresh the displayed text)
     self.vtkWidgetSeg.GetRenderWindow().Render()
@@ -281,7 +317,17 @@ def change_sliceSeg(self, delta):
         self.current_seg_slice_index[idx] = max_idx - 1
     # Update the display
     displayseg(self)
-    self.textActorSeg.SetInput(f"Slice: {self.current_seg_slice_index[idx]}")
+    if self.segSelectView.currentText() == "Axial":
+        P_z = self.Im_PatPosition[idx, 2] + self.current_seg_slice_index[idx] * self.slice_thick[idx] + self.Im_Offset[idx, 2]
+        self.textActorSeg.SetInput(f"Slice (Y): {self.current_seg_slice_index[idx]} - {P_z:.2f} mm")
+    elif self.segSelectView.currentText() == "Coronal":
+        P_y = self.Im_PatPosition[idx, 1] + (self.display_data_seg[idx].shape[1] - 1 - self.current_seg_slice_index[idx]) * self.pixel_spac[idx, 0] + self.Im_Offset[idx, 1]
+        self.textActorSeg.SetInput(f"Slice (Z): {self.current_seg_slice_index[idx]} - {P_y:.2f} mm")
+    elif self.segSelectView.currentText() == "Sagittal":
+        P_x = self.Im_PatPosition[idx, 0] + self.current_seg_slice_index[idx] * self.pixel_spac[idx, 1] + self.Im_Offset[idx, 0]
+        self.textActorSeg.SetInput(f"Slice (X): {self.current_seg_slice_index[idx]} - {P_x:.2f} mm")
+    else:
+        self.textActorSeg.SetInput(f"Slice: {self.current_seg_slice_index[idx]}")
     # Update the slider's value to match the current slice index
     self.segViewSlider.setValue(self.current_seg_slice_index[idx]) 
     

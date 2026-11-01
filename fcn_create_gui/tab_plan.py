@@ -40,8 +40,9 @@ def create_tab_plan(w):
 
     Creates the treatment planning interface:
     - Plan_tabs QTabWidget with sub-tabs:
-      * Brachy plan: plan data display, TG43 dose calculation,
-        radial dose, anisotropy, along-away tables
+      * Brachy plan: plan data display, TG43 source data (radial dose,
+        anisotropy, along-away tables) and dose grid (the TG43 dose is
+        calculated in View > PLAN > Brachy)
       * EQD2: alpha/beta ratio table and EQD2 dose conversion
       * Plan Evaluation: uncertainty analysis and error simulation
       (Material Assignment and Density Map now live in View > MonteCarlo;
@@ -362,10 +363,7 @@ def create_tab_plan(w):
 
     w.gridLayout_49.addWidget(w.Brachy_DeleteChannel, 4, 1, 1, 1)
 
-    w.Brachy_Calcualte_TG43 = QPushButton(w.Brachy_groupBox_12)
-    w.Brachy_Calcualte_TG43.setObjectName(u"Brachy_Calcualte_TG43")
-
-    w.gridLayout_49.addWidget(w.Brachy_Calcualte_TG43, 3, 1, 1, 1)
+    # (the TG43 dose is calculated in View > PLAN > Brachy > Dose calculation)
 
 
     w.gridLayout_48.addWidget(w.Brachy_groupBox_12, 3, 6, 1, 4)

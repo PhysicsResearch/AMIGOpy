@@ -7,6 +7,15 @@ import math
 from fcn_RTFiles.process_contours import build_contours_for_structure, actors_from_contours
 from fcn_processing.mc_grid import update_mc_grid_axial, update_mc_grid_coronal, update_mc_grid_sagittal
 from fcn_materialassignment.mat_overlay import update_mat_overlay_axial, update_mat_overlay_coronal, update_mat_overlay_sagittal
+from vtkmodules.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray
+from fcn_display.brachy_channel_edit import (brachy_highlight, dwell_directions, view_dir, dwell_glyph_size, dwell_outline,
+                                             channel_visible, ref_point_visible, ref_point_xyz, ref_point_name, view_xy,
+                                             selected_catheter, catheter_label, NORMAL_AXIS, VIEW_SUFFIX, VIEW_WIDGETS,
+                                             _slice_point)
+from fcn_display.brachy_panel import brachy_style, brachy_display, catheter_colors
+
+# Catheter numbers / reference point names: offset (px) from their point
+LABEL_OFFSET_PX = 6
 
 
 def displayaxial(self, Im = None):
@@ -36,10 +45,9 @@ def displayaxial(self, Im = None):
             update_mc_grid_axial(self)
             update_mat_overlay_axial(self)
 
-            selected_dw_ch = getattr(self, 'brachy_dw_ch_box_01', None)
-            is_ref_points_mode = (selected_dw_ch and selected_dw_ch.currentText() == "Ref. Points")
-            
-            if is_ref_points_mode:
+            # Dose reference points and dwells, as set under View > PLAN > Brachy > Display
+            show_ref_points = getattr(self, 'brachy_show_ref_points', None)
+            if show_ref_points is not None and show_ref_points.isChecked():
                 display_ref_points_ax(self)
             else:
                 if hasattr(self, 'ref_point_actors_ax'):
@@ -47,7 +55,7 @@ def displayaxial(self, Im = None):
                         renderer.RemoveActor(actor)
                     self.ref_point_actors_ax.clear()
             
-            if self.display_dw_overlay.isChecked() and not is_ref_points_mode:
+            if self.display_dw_overlay.isChecked():
                 display_dwell_positions_ax(self)
             else:
                 for actor in self.dwell_actors_ax:
@@ -532,12 +540,64 @@ def disp_roi_axial(self):
             print(f'Skipping row {row} due to invalid data')
             continue  
 
+def _dwell_glyph_actors(xy, dirs, sizes, colors, z_floor, style):
+    """
+    Actors for the dwell positions of one view. Each dwell is the outline of a cylinder
+    along its source direction as seen in the image plane, with an almost transparent
+    fill and a solid edge in the dwell color, just above z_floor.
+
+    :param xy: (M, 2) dwell positions in the view
+    :param dirs: (M, 3) source directions in view coordinates (z out of the plane)
+    :param sizes: (M, 2) cylinder length and radius (mm)
+    :param colors: (M, 3) RGB colors in 0-1
+    """
+    outline = dwell_outline(xy, dirs, sizes[:, 0], sizes[:, 1])
+    m, k = outline.shape[:2]
+    ids = np.arange(m * k, dtype=np.int64).reshape(m, k)
+    rgb = numpy_to_vtk(np.round(np.clip(colors, 0.0, 1.0) * 255).astype(np.uint8), deep=True)
+
+    def flat_actor(z, cells, lines, opacity):
+        points = vtk.vtkPoints()
+        points.SetData(numpy_to_vtk(np.column_stack((outline.reshape(-1, 2), np.full(m * k, z))), deep=True))
+        cell_array = vtk.vtkCellArray()
+        cell_array.SetData(numpy_to_vtkIdTypeArray(np.arange(0, cells.size + 1, cells.shape[1], dtype=np.int64), deep=True),
+                           numpy_to_vtkIdTypeArray(cells.ravel(), deep=True))
+        poly = vtk.vtkPolyData()
+        poly.SetPoints(points)
+        if lines:
+            poly.SetLines(cell_array)
+        else:
+            poly.SetPolys(cell_array)
+        poly.GetCellData().SetScalars(rgb)
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(poly)
+        mapper.SetScalarModeToUseCellData()
+        mapper.SetColorModeToDirectScalars()
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetOpacity(opacity)
+        actor.GetProperty().SetLineWidth(style['dw_edge_width'])
+        actor.GetProperty().SetAmbient(1.0)  # flat colors, no shading
+        actor.GetProperty().SetDiffuse(0.0)
+        return actor
+
+    actors = []
+    if style['dw_fill'] > 0:
+        actors.append(flat_actor(z_floor + 0.05, ids, False, style['dw_fill'] / 100.0))
+    # Closed outline, opaque: depth-tested against the translucent catheter points
+    # (drawn lower) instead of being blended under them
+    actors.append(flat_actor(z_floor + 0.1, np.column_stack((ids, ids[:, 0])), True, 1.0))
+    return actors
+
+
 def display_dwell_positions_ax(self):
     """
     Display the dwell positions on top of the DICOM images using VTK.
-    - If self.overlay_all_channels is selected, show all dwell positions from all channels.
-    - Otherwise, show dwell positions for the channel selected by self.brachy_spinBox_01.
-    - Uses the same point size as defined by self.dw_ch_point_size.
+    - Each dwell is the outline of a cylinder along the source direction (plan orientation,
+      else the channel path), with an almost transparent fill.
+    - Dwell positions of the catheters ticked in the catheter list (brachy_tree); those
+      with 0 s only when "0 s" is checked under Display.
+    - Colors and sizes come from the Style panel (brachy_style); by default:
     - Dwell positions with dwell_time == 0 are shown in red.
     - Dwell positions with dwell_time > 0 are shown in dark green.
     - Dwell positions within Ref_Z ± slice_thickness/2 are shown in light green.
@@ -562,21 +622,20 @@ def display_dwell_positions_ax(self):
     if not channels:                     # None or empty list
         return                           # nothing to draw
     
-    # Determine whether to show all channels or only the one selected by the spinbox
-    if self.overlay_all_channels.isChecked():
-        channels_to_display = channels  # Show all channels
-    else:
-        selected_channel_idx = self.brachy_spinBox_01.value() - 1  # Get the index from the spinbox
-        channels_to_display = [channels[selected_channel_idx]]  # Show only the selected channel
+    # Catheters ticked in the catheter list; dwells with 0 s only if shown (Display)
+    channels_to_display = [ch for ch in channels if channel_visible(ch)]
+    show_zero = brachy_display(self)['dw_zero']
 
-    # Get the point size from the spinbox
-    point_size = self.dw_ch_point_size.value() /1.5
+    # Dwells are drawn above the catheter points (spheres of diameter = catheter point size)
+    style = brachy_style(self)
+    z_floor = 0.5 + style['ch_point_size'] / 2
 
     # Get the current slice reference Z position and tolerance
     Ref_z = self.current_axial_slice_index[0] * self.slice_thick[0] + self.Im_Offset[0, 2]
     z_tolerance = self.slice_thick[0] /2
 
-    # Iterate through the channels to display dwell positions
+    # Position, source direction (view coordinates), size and color of every dwell shown
+    xy, dirs, sizes, colors = [], [], [], []
     for current_ch in channels_to_display:
         dwell_info = current_ch.get('DwellInfo')
 
@@ -588,45 +647,20 @@ def display_dwell_positions_ax(self):
         x = dwell_info[:, 3] - self.Im_PatPosition[0, 0]  # X coordinate in mm
         y = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (dwell_info[:, 4] - self.Im_PatPosition[0, 1])  # Y coordinate
         z = dwell_info[:, 5] - self.Im_PatPosition[0, 2]  # Z coordinate in mm
+        keep = show_zero | (dwell_times != 0)
+        xy.append(np.column_stack((x, y))[keep])
+        dirs.append(view_dir('axial', dwell_directions(dwell_info, current_ch.get('ChPos')))[keep])
+        sizes.append(np.tile(dwell_glyph_size(dwell_info[:, 3:6], style['dw_size']), (len(x), 1))[keep])
+        # Dwell time 0, Z position within Ref_Z ± slice_thickness/2, or elsewhere
+        in_slice = (Ref_z - z_tolerance <= z) & (z <= Ref_z + z_tolerance)
+        colors.append(np.where((dwell_times == 0)[:, None], style['dw_zero'],
+                               np.where(in_slice[:, None], style['dw_slice'], style['dw_other']))[keep])
 
-        for i in range(len(x)):
-            # Convert physical coordinates (mm) to pixel coordinates
-            x_pixel = x[i]
-            y_pixel = y[i]
-            z_position = 0.5  # Set Z position slightly above the DICOM slice
-
-            # Determine the color based on dwell time and Z position
-            if dwell_times[i] == 0:
-                # Dwell time is 0, show in red
-                color = (1.0, 0.0, 0.0)  # Red
-            elif Ref_z - z_tolerance <= z[i] <= Ref_z + z_tolerance:
-                # Z position is within Ref_Z ± slice_thickness/2, show in light green
-                color = (0.6, 1.0, 0.8)  # Light green
-            else:
-                # Dwell time > 0 and Z position is outside the tolerance, show in dark green
-                color = (0.0, 0.5, 0.0)  # Dark green
-
-            # Create a sphere to represent the dwell position
-            sphere_source = vtk.vtkSphereSource()
-            sphere_source.SetCenter(x_pixel, y_pixel, z_position)
-            sphere_source.SetRadius(point_size)  # Use point size from the spinbox
-            sphere_source.SetPhiResolution(20)
-            sphere_source.SetThetaResolution(20)
-
-            # Map the sphere to an actor
-            sphere_mapper = vtk.vtkPolyDataMapper()
-            sphere_mapper.SetInputConnection(sphere_source.GetOutputPort())
-
-            sphere_actor = vtk.vtkActor()
-            sphere_actor.SetMapper(sphere_mapper)
-
-            # Set the color based on the logic above
-            sphere_actor.GetProperty().SetColor(*color)
-            sphere_actor.GetProperty().SetOpacity(0.8)  # Full opacity
-
-            # Add the actor for the sphere to the renderer
-            renderer.AddActor(sphere_actor)
-            self.dwell_actors_ax.append(sphere_actor)
+    xy = np.vstack(xy) if xy else np.zeros((0, 2))
+    if len(xy):
+        for dwell_actor in _dwell_glyph_actors(xy, np.vstack(dirs), np.vstack(sizes), np.vstack(colors), z_floor, style):
+            renderer.AddActor(dwell_actor)
+            self.dwell_actors_ax.append(dwell_actor)
 
     # Re-render to show the updated scene with dwell positions
     self.vtkWidgetAxial.GetRenderWindow().Render()
@@ -634,9 +668,11 @@ def display_dwell_positions_ax(self):
 
 def display_brachy_channel_overlay_ax(self):
     """
-    Display brachytherapy channels as connected blue lines with solid blue spheres at each channel point.
-    - If the checkbox self.overlay_all_channels is selected, display all channels.
-    - Otherwise, display only the channel indicated by self.brachy_spinBox_01.
+    Display brachytherapy channels as connected lines with spheres at each channel point
+    (colors and sizes from the Style panel: blue by default, the catheter selected in the
+    catheter list green, the one being edited yellow).
+    - Only the catheters ticked in the catheter list (brachy_tree); their points, path
+      and numbers (next to the first point) as set under Display.
     """
     renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
@@ -658,18 +694,22 @@ def display_brachy_channel_overlay_ax(self):
     if not channels:                     # None or empty list
         return                           # nothing to draw
 
-    # Determine whether to show all channels or only the one selected by the spinbox
-    if self.overlay_all_channels.isChecked():
-        channels_to_display = channels  # Show all channels
-    else:
-        selected_channel_idx = self.brachy_spinBox_01.value() - 1  # Get the index from the spinbox
-        channels_to_display = [channels[selected_channel_idx]]  # Show only the selected channel
+    # Points, path and numbers of the catheters as set under Display
+    show = brachy_display(self)
 
-    # Get the point size from the spinbox and halve it
-    point_size = self.dw_ch_point_size.value() / 2
+    # Colors and sizes from the Style panel; spheres of diameter = catheter point size
+    style = brachy_style(self)
+    point_size = style['ch_point_size'] / 2
+    # Catheter / point being edited (edit tools) and catheter selected in the list
+    edit_ch, edit_pt = brachy_highlight(self, channels)
+    sel_ch = selected_catheter(self, channels)
 
-    # Iterate through the channels to display
-    for current_ch in channels_to_display:
+    # Iterate through the catheters ticked in the catheter list, the selected / edited one last (on top)
+    for k in sorted(range(len(channels)), key=lambda j: channels[j] is edit_ch or channels[j] is sel_ch):
+        current_ch = channels[k]
+        if not channel_visible(current_ch):
+            continue
+        point_color, line_color = catheter_colors(style, current_ch is edit_ch, current_ch is sel_ch)
         ch_points = current_ch.get('ChPos')
 
         # Check if 'ChPos' exists and contains valid data
@@ -694,6 +734,8 @@ def display_brachy_channel_overlay_ax(self):
                 line.GetPointIds().SetId(1, i)
                 lines.InsertNextCell(line)
 
+            if not show['ch_points']:
+                continue
             # Create solid blue spheres for each point
             sphere_source = vtk.vtkSphereSource()
             sphere_source.SetCenter(x[i], y[i], 0.5)
@@ -708,8 +750,11 @@ def display_brachy_channel_overlay_ax(self):
             sphere_actor = vtk.vtkActor()
             sphere_actor.SetMapper(sphere_mapper)
 
-            # Set the color to solid blue for the spheres
-            sphere_actor.GetProperty().SetColor(0.0, 0.0, 1.0)  # Solid blue spheres
+            # Catheter point color (the point being edited in the edit point color)
+            if current_ch is edit_ch and i == edit_pt:
+                sphere_actor.GetProperty().SetColor(*style['edit_point'])
+            else:
+                sphere_actor.GetProperty().SetColor(*point_color)
             sphere_actor.GetProperty().SetOpacity(0.7)  # Full opacity
 
             # Add the actor for the sphere to the renderer
@@ -727,12 +772,19 @@ def display_brachy_channel_overlay_ax(self):
 
         polyline_actor = vtk.vtkActor()
         polyline_actor.SetMapper(polyline_mapper)
-        polyline_actor.GetProperty().SetColor(0.0, 0.0, 1.0)  # Blue for the line
-        polyline_actor.GetProperty().SetLineWidth(2)  # Line width
+        polyline_actor.GetProperty().SetColor(*line_color)
+        polyline_actor.GetProperty().SetLineWidth(style['ch_line_width'])
 
-        # Add the polyline actor to the renderer
-        renderer.AddActor(polyline_actor)
-        self.channel_actors_ax.append(polyline_actor)
+        # Add the polyline actor to the renderer (the path, if shown)
+        if show['ch_path']:
+            renderer.AddActor(polyline_actor)
+            self.channel_actors_ax.append(polyline_actor)
+
+        # Catheter name (its number unless renamed) next to its first point (tip)
+        if show['ch_labels'] and len(x):
+            label = brachy_label_actor(x[0], y[0], 0.5, catheter_label(current_ch, k), line_color, style['label_size'])
+            renderer.AddActor(label)
+            self.channel_actors_ax.append(label)
 
     # Render the updated display with the channels
     self.vtkWidgetAxial.GetRenderWindow().Render()
@@ -765,10 +817,9 @@ def displaycoronal(self, Im = None):
             update_mc_grid_coronal(self)
             update_mat_overlay_coronal(self)
 
-            selected_dw_ch = getattr(self, 'brachy_dw_ch_box_01', None)
-            is_ref_points_mode = (selected_dw_ch and selected_dw_ch.currentText() == "Ref. Points")
-            
-            if is_ref_points_mode:
+            # Dose reference points and dwells, as set under View > PLAN > Brachy > Display
+            show_ref_points = getattr(self, 'brachy_show_ref_points', None)
+            if show_ref_points is not None and show_ref_points.isChecked():
                 display_ref_points_co(self)
             else:
                 if hasattr(self, 'ref_point_actors_co'):
@@ -776,7 +827,7 @@ def displaycoronal(self, Im = None):
                         renderer.RemoveActor(actor)
                     self.ref_point_actors_co.clear()
             
-            if self.display_dw_overlay.isChecked() and not is_ref_points_mode:
+            if self.display_dw_overlay.isChecked():
                 display_dwell_positions_co(self)
             else:
                 for actor in self.dwell_actors_co:
@@ -1257,9 +1308,11 @@ def disp_roi_coronal(self):
 def display_dwell_positions_co(self):
     """
     Display the dwell positions on top of the DICOM images using VTK.
-    - If self.overlay_all_channels is selected, show all dwell positions from all channels.
-    - Otherwise, show dwell positions for the channel selected by self.brachy_spinBox_01.
-    - Uses the same point size as defined by self.dw_ch_point_size.
+    - Each dwell is the outline of a cylinder along the source direction (plan orientation,
+      else the channel path), with an almost transparent fill.
+    - Dwell positions of the catheters ticked in the catheter list (brachy_tree); those
+      with 0 s only when "0 s" is checked under Display.
+    - Colors and sizes come from the Style panel (brachy_style); by default:
     - Dwell positions with dwell_time == 0 are shown in red.
     - Dwell positions with dwell_time > 0 are shown in dark green.
     - Dwell positions within Ref_Z ± slice_thickness/2 are shown in light green.
@@ -1284,21 +1337,20 @@ def display_dwell_positions_co(self):
     if not channels:                     # None or empty list
         return                           # nothing to draw
 
-    # Determine whether to show all channels or only the one selected by the spinbox
-    if self.overlay_all_channels.isChecked():
-        channels_to_display = channels  # Show all channels
-    else:
-        selected_channel_idx = self.brachy_spinBox_01.value() - 1  # Get the index from the spinbox
-        channels_to_display = [channels[selected_channel_idx]]  # Show only the selected channel
+    # Catheters ticked in the catheter list; dwells with 0 s only if shown (Display)
+    channels_to_display = [ch for ch in channels if channel_visible(ch)]
+    show_zero = brachy_display(self)['dw_zero']
 
-    # Get the point size from the spinbox
-    point_size = self.dw_ch_point_size.value() /1.5
+    # Dwells are drawn above the catheter points (spheres of diameter = catheter point size)
+    style = brachy_style(self)
+    z_floor = 0.5 + style['ch_point_size'] / 2
 
     # Get the current slice reference Z position and tolerance
-    Ref_z = self.current_coronal_slice_index[0] * self.pixel_spac[0, 1] #+ self.Im_Offset[1, 2]
-    z_tolerance = self.pixel_spac[0, 1] /2
+    Ref_z = self.current_coronal_slice_index[0] * self.pixel_spac[0, 0] #+ self.Im_Offset[1, 2]
+    z_tolerance = self.pixel_spac[0, 0] /2
 
-    # Iterate through the channels to display dwell positions
+    # Position, source direction (view coordinates), size and color of every dwell shown
+    xy, dirs, sizes, colors = [], [], [], []
     for current_ch in channels_to_display:
         dwell_info = current_ch.get('DwellInfo')
 
@@ -1310,45 +1362,20 @@ def display_dwell_positions_co(self):
         x = dwell_info[:, 3] - self.Im_PatPosition[0, 0]  # X coordinate in mm
         z = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (dwell_info[:, 4] - self.Im_PatPosition[0, 1])  # Y coordinate
         y = dwell_info[:, 5] - self.Im_PatPosition[0, 2]  # Z coordinate in mm
+        keep = show_zero | (dwell_times != 0)
+        xy.append(np.column_stack((x, y))[keep])
+        dirs.append(view_dir('coronal', dwell_directions(dwell_info, current_ch.get('ChPos')))[keep])
+        sizes.append(np.tile(dwell_glyph_size(dwell_info[:, 3:6], style['dw_size']), (len(x), 1))[keep])
+        # Dwell time 0, position within Ref_Z ± slice_thickness/2, or elsewhere
+        in_slice = (Ref_z - z_tolerance <= z) & (z <= Ref_z + z_tolerance)
+        colors.append(np.where((dwell_times == 0)[:, None], style['dw_zero'],
+                               np.where(in_slice[:, None], style['dw_slice'], style['dw_other']))[keep])
 
-        for i in range(len(x)):
-            # Convert physical coordinates (mm) to pixel coordinates
-            x_pixel = x[i]
-            y_pixel = y[i]
-            z_position = 0.5  # Set Z position slightly above the DICOM slice
-
-            # Determine the color based on dwell time and Z position
-            if dwell_times[i] == 0:
-                # Dwell time is 0, show in red
-                color = (1.0, 0.0, 0.0)  # Red
-            elif Ref_z - z_tolerance <= z[i] <= Ref_z + z_tolerance:
-                # Z position is within Ref_Z ± slice_thickness/2, show in light green
-                color = (0.6, 1.0, 0.6)  # Light green
-            else:
-                # Dwell time > 0 and Z position is outside the tolerance, show in dark green
-                color = (0.0, 0.5, 0.0)  # Dark green
-
-            # Create a sphere to represent the dwell position
-            sphere_source = vtk.vtkSphereSource()
-            sphere_source.SetCenter(x_pixel, y_pixel, z_position)
-            sphere_source.SetRadius(point_size)  # Use point size from the spinbox
-            sphere_source.SetPhiResolution(20)
-            sphere_source.SetThetaResolution(20)
-
-            # Map the sphere to an actor
-            sphere_mapper = vtk.vtkPolyDataMapper()
-            sphere_mapper.SetInputConnection(sphere_source.GetOutputPort())
-
-            sphere_actor = vtk.vtkActor()
-            sphere_actor.SetMapper(sphere_mapper)
-
-            # Set the color based on the logic above
-            sphere_actor.GetProperty().SetColor(*color)
-            sphere_actor.GetProperty().SetOpacity(0.8)  # Full opacity
-
-            # Add the actor for the sphere to the renderer
-            renderer.AddActor(sphere_actor)
-            self.dwell_actors_co.append(sphere_actor)
+    xy = np.vstack(xy) if xy else np.zeros((0, 2))
+    if len(xy):
+        for dwell_actor in _dwell_glyph_actors(xy, np.vstack(dirs), np.vstack(sizes), np.vstack(colors), z_floor, style):
+            renderer.AddActor(dwell_actor)
+            self.dwell_actors_co.append(dwell_actor)
 
     # Re-render to show the updated scene with dwell positions
     self.vtkWidgetCoronal.GetRenderWindow().Render()
@@ -1356,9 +1383,11 @@ def display_dwell_positions_co(self):
 
 def display_brachy_channel_overlay_co(self):
     """
-    Display brachytherapy channels as connected blue lines with solid blue spheres at each channel point.
-    - If the checkbox self.overlay_all_channels is selected, display all channels.
-    - Otherwise, display only the channel indicated by self.brachy_spinBox_01.
+    Display brachytherapy channels as connected lines with spheres at each channel point
+    (colors and sizes from the Style panel: blue by default, the catheter selected in the
+    catheter list green, the one being edited yellow).
+    - Only the catheters ticked in the catheter list (brachy_tree); their points, path
+      and numbers (next to the first point) as set under Display.
     """
     renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
@@ -1380,18 +1409,22 @@ def display_brachy_channel_overlay_co(self):
     if not channels:                     # None or empty list
         return                           # nothing to draw
 
-    # Determine whether to show all channels or only the one selected by the spinbox
-    if self.overlay_all_channels.isChecked():
-        channels_to_display = channels  # Show all channels
-    else:
-        selected_channel_idx = self.brachy_spinBox_01.value() - 1  # Get the index from the spinbox
-        channels_to_display = [channels[selected_channel_idx]]  # Show only the selected channel
+    # Points, path and numbers of the catheters as set under Display
+    show = brachy_display(self)
 
-    # Get the point size from the spinbox and halve it
-    point_size = self.dw_ch_point_size.value() / 2
+    # Colors and sizes from the Style panel; spheres of diameter = catheter point size
+    style = brachy_style(self)
+    point_size = style['ch_point_size'] / 2
+    # Catheter / point being edited (edit tools) and catheter selected in the list
+    edit_ch, edit_pt = brachy_highlight(self, channels)
+    sel_ch = selected_catheter(self, channels)
 
-    # Iterate through the channels to display
-    for current_ch in channels_to_display:
+    # Iterate through the catheters ticked in the catheter list, the selected / edited one last (on top)
+    for k in sorted(range(len(channels)), key=lambda j: channels[j] is edit_ch or channels[j] is sel_ch):
+        current_ch = channels[k]
+        if not channel_visible(current_ch):
+            continue
+        point_color, line_color = catheter_colors(style, current_ch is edit_ch, current_ch is sel_ch)
         ch_points = current_ch.get('ChPos')
 
         # Check if 'ChPos' exists and contains valid data
@@ -1416,6 +1449,8 @@ def display_brachy_channel_overlay_co(self):
                 line.GetPointIds().SetId(1, i)
                 lines.InsertNextCell(line)
 
+            if not show['ch_points']:
+                continue
             # Create solid blue spheres for each point
             sphere_source = vtk.vtkSphereSource()
             sphere_source.SetCenter(x[i], y[i], 0.5)
@@ -1430,8 +1465,11 @@ def display_brachy_channel_overlay_co(self):
             sphere_actor = vtk.vtkActor()
             sphere_actor.SetMapper(sphere_mapper)
 
-            # Set the color to solid blue for the spheres
-            sphere_actor.GetProperty().SetColor(0.0, 0.0, 1.0)  # Solid blue spheres
+            # Catheter point color (the point being edited in the edit point color)
+            if current_ch is edit_ch and i == edit_pt:
+                sphere_actor.GetProperty().SetColor(*style['edit_point'])
+            else:
+                sphere_actor.GetProperty().SetColor(*point_color)
             sphere_actor.GetProperty().SetOpacity(0.7)  # Full opacity
 
             # Add the actor for the sphere to the renderer
@@ -1449,12 +1487,19 @@ def display_brachy_channel_overlay_co(self):
 
         polyline_actor = vtk.vtkActor()
         polyline_actor.SetMapper(polyline_mapper)
-        polyline_actor.GetProperty().SetColor(0.0, 0.0, 1.0)  # Blue for the line
-        polyline_actor.GetProperty().SetLineWidth(2)  # Line width
+        polyline_actor.GetProperty().SetColor(*line_color)
+        polyline_actor.GetProperty().SetLineWidth(style['ch_line_width'])
 
-        # Add the polyline actor to the renderer
-        renderer.AddActor(polyline_actor)
-        self.channel_actors_co.append(polyline_actor)
+        # Add the polyline actor to the renderer (the path, if shown)
+        if show['ch_path']:
+            renderer.AddActor(polyline_actor)
+            self.channel_actors_co.append(polyline_actor)
+
+        # Catheter name (its number unless renamed) next to its first point (tip)
+        if show['ch_labels'] and len(x):
+            label = brachy_label_actor(x[0], y[0], 0.5, catheter_label(current_ch, k), line_color, style['label_size'])
+            renderer.AddActor(label)
+            self.channel_actors_co.append(label)
 
     # Render the updated display with the channels
     self.vtkWidgetCoronal.GetRenderWindow().Render()
@@ -1490,10 +1535,9 @@ def displaysagittal(self,Im = None):
             update_mc_grid_sagittal(self)
             update_mat_overlay_sagittal(self)
 
-            selected_dw_ch = getattr(self, 'brachy_dw_ch_box_01', None)
-            is_ref_points_mode = (selected_dw_ch and selected_dw_ch.currentText() == "Ref. Points")
-            
-            if is_ref_points_mode:
+            # Dose reference points and dwells, as set under View > PLAN > Brachy > Display
+            show_ref_points = getattr(self, 'brachy_show_ref_points', None)
+            if show_ref_points is not None and show_ref_points.isChecked():
                 display_ref_points_sa(self)
             else:
                 if hasattr(self, 'ref_point_actors_sa'):
@@ -1501,7 +1545,7 @@ def displaysagittal(self,Im = None):
                         renderer.RemoveActor(actor)
                     self.ref_point_actors_sa.clear()
             
-            if self.display_dw_overlay.isChecked() and not is_ref_points_mode:
+            if self.display_dw_overlay.isChecked():
                 display_dwell_positions_sa(self)
             else:
                 for actor in self.dwell_actors_sa:
@@ -1961,9 +2005,11 @@ def disp_roi_sagittal(self):
 def display_dwell_positions_sa(self):
     """
     Display the dwell positions on top of the DICOM images using VTK.
-    - If self.overlay_all_channels is selected, show all dwell positions from all channels.
-    - Otherwise, show dwell positions for the channel selected by self.brachy_spinBox_01.
-    - Uses the same point size as defined by self.dw_ch_point_size.
+    - Each dwell is the outline of a cylinder along the source direction (plan orientation,
+      else the channel path), with an almost transparent fill.
+    - Dwell positions of the catheters ticked in the catheter list (brachy_tree); those
+      with 0 s only when "0 s" is checked under Display.
+    - Colors and sizes come from the Style panel (brachy_style); by default:
     - Dwell positions with dwell_time == 0 are shown in red.
     - Dwell positions with dwell_time > 0 are shown in dark green.
     - Dwell positions within Ref_Z ± slice_thickness/2 are shown in light green.
@@ -1988,20 +2034,19 @@ def display_dwell_positions_sa(self):
     if not channels:                     # None or empty list
         return                           # nothing to draw
 
-    # Determine whether to show all channels or only the one selected by the spinbox
-    if self.overlay_all_channels.isChecked():
-        channels_to_display = channels  # Show all channels
-    else:
-        selected_channel_idx = self.brachy_spinBox_01.value() - 1  # Get the index from the spinbox
-        channels_to_display = [channels[selected_channel_idx]]  # Show only the selected channel
+    # Catheters ticked in the catheter list; dwells with 0 s only if shown (Display)
+    channels_to_display = [ch for ch in channels if channel_visible(ch)]
+    show_zero = brachy_display(self)['dw_zero']
 
-    # Get the point size from the spinbox
-    point_size = self.dw_ch_point_size.value() /1.5
+    # Dwells are drawn above the catheter points (spheres of diameter = catheter point size)
+    style = brachy_style(self)
+    z_floor = 0.5 + style['ch_point_size'] / 2
 
     # Get the current slice reference Z position and tolerance
-    Ref_z = self.current_sagittal_slice_index[0] * self.pixel_spac[0, 0] #- self.Im_Offset[1, 2]
-    z_tolerance = self.pixel_spac[0, 0] /2
-    # Iterate through the channels to display dwell positions
+    Ref_z = self.current_sagittal_slice_index[0] * self.pixel_spac[0, 1] #- self.Im_Offset[1, 2]
+    z_tolerance = self.pixel_spac[0, 1] /2
+    # Position, source direction (view coordinates), size and color of every dwell shown
+    xy, dirs, sizes, colors = [], [], [], []
     for current_ch in channels_to_display:
         dwell_info = current_ch.get('DwellInfo')
 
@@ -2013,44 +2058,20 @@ def display_dwell_positions_sa(self):
         z = dwell_info[:, 3] - self.Im_PatPosition[0, 0]                                                              # X coordinate in mm
         x = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (dwell_info[:, 4] - self.Im_PatPosition[0, 1])  # Y coordinate
         y = dwell_info[:, 5] - self.Im_PatPosition[0, 2]                                                              # Z coordinate in mm
-        for i in range(len(x)):
-            # Convert physical coordinates (mm) to pixel coordinates
-            x_pixel = x[i]
-            y_pixel = y[i]
-            z_position = 0.5  # Set Z position slightly above the DICOM slice
+        keep = show_zero | (dwell_times != 0)
+        xy.append(np.column_stack((x, y))[keep])
+        dirs.append(view_dir('sagittal', dwell_directions(dwell_info, current_ch.get('ChPos')))[keep])
+        sizes.append(np.tile(dwell_glyph_size(dwell_info[:, 3:6], style['dw_size']), (len(x), 1))[keep])
+        # Dwell time 0, position within Ref_Z ± slice_thickness/2, or elsewhere
+        in_slice = (Ref_z - z_tolerance <= z) & (z <= Ref_z + z_tolerance)
+        colors.append(np.where((dwell_times == 0)[:, None], style['dw_zero'],
+                               np.where(in_slice[:, None], style['dw_slice'], style['dw_other']))[keep])
 
-            # Determine the color based on dwell time and Z position
-            if dwell_times[i] == 0:
-                # Dwell time is 0, show in red
-                color = (1.0, 0.0, 0.0)  # Red
-            elif Ref_z - z_tolerance <= z[i] <= Ref_z + z_tolerance:
-                # Z position is within Ref_Z ± slice_thickness/2, show in light green
-                color = (0.6, 1.0, 0.6)  # Light green
-            else:
-                # Dwell time > 0 and Z position is outside the tolerance, show in dark green
-                color = (0.0, 0.5, 0.0)  # Dark green
-
-            # Create a sphere to represent the dwell position
-            sphere_source = vtk.vtkSphereSource()
-            sphere_source.SetCenter(x_pixel, y_pixel, z_position)
-            sphere_source.SetRadius(point_size)  # Use point size from the spinbox
-            sphere_source.SetPhiResolution(20)
-            sphere_source.SetThetaResolution(20)
-
-            # Map the sphere to an actor
-            sphere_mapper = vtk.vtkPolyDataMapper()
-            sphere_mapper.SetInputConnection(sphere_source.GetOutputPort())
-
-            sphere_actor = vtk.vtkActor()
-            sphere_actor.SetMapper(sphere_mapper)
-
-            # Set the color based on the logic above
-            sphere_actor.GetProperty().SetColor(*color)
-            sphere_actor.GetProperty().SetOpacity(0.8)  # Full opacity
-
-            # Add the actor for the sphere to the renderer
-            renderer.AddActor(sphere_actor)
-            self.dwell_actors_sa.append(sphere_actor)
+    xy = np.vstack(xy) if xy else np.zeros((0, 2))
+    if len(xy):
+        for dwell_actor in _dwell_glyph_actors(xy, np.vstack(dirs), np.vstack(sizes), np.vstack(colors), z_floor, style):
+            renderer.AddActor(dwell_actor)
+            self.dwell_actors_sa.append(dwell_actor)
 
     # Re-render to show the updated scene with dwell positions
     self.vtkWidgetSagittal.GetRenderWindow().Render()
@@ -2058,9 +2079,11 @@ def display_dwell_positions_sa(self):
 
 def display_brachy_channel_overlay_sa(self):
     """
-    Display brachytherapy channels as connected blue lines with solid blue spheres at each channel point.
-    - If the checkbox self.overlay_all_channels is selected, display all channels.
-    - Otherwise, display only the channel indicated by self.brachy_spinBox_01.
+    Display brachytherapy channels as connected lines with spheres at each channel point
+    (colors and sizes from the Style panel: blue by default, the catheter selected in the
+    catheter list green, the one being edited yellow).
+    - Only the catheters ticked in the catheter list (brachy_tree); their points, path
+      and numbers (next to the first point) as set under Display.
     """
     renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
@@ -2082,18 +2105,22 @@ def display_brachy_channel_overlay_sa(self):
     if not channels:                     # None or empty list
         return                           # nothing to draw
 
-    # Determine whether to show all channels or only the one selected by the spinbox
-    if self.overlay_all_channels.isChecked():
-        channels_to_display = channels  # Show all channels
-    else:
-        selected_channel_idx = self.brachy_spinBox_01.value() - 1  # Get the index from the spinbox
-        channels_to_display = [channels[selected_channel_idx]]  # Show only the selected channel
+    # Points, path and numbers of the catheters as set under Display
+    show = brachy_display(self)
 
-    # Get the point size from the spinbox and halve it
-    point_size = self.dw_ch_point_size.value() / 2
+    # Colors and sizes from the Style panel; spheres of diameter = catheter point size
+    style = brachy_style(self)
+    point_size = style['ch_point_size'] / 2
+    # Catheter / point being edited (edit tools) and catheter selected in the list
+    edit_ch, edit_pt = brachy_highlight(self, channels)
+    sel_ch = selected_catheter(self, channels)
 
-    # Iterate through the channels to display
-    for current_ch in channels_to_display:
+    # Iterate through the catheters ticked in the catheter list, the selected / edited one last (on top)
+    for k in sorted(range(len(channels)), key=lambda j: channels[j] is edit_ch or channels[j] is sel_ch):
+        current_ch = channels[k]
+        if not channel_visible(current_ch):
+            continue
+        point_color, line_color = catheter_colors(style, current_ch is edit_ch, current_ch is sel_ch)
         ch_points = current_ch.get('ChPos')
 
         # Check if 'ChPos' exists and contains valid data
@@ -2118,6 +2145,8 @@ def display_brachy_channel_overlay_sa(self):
                 line.GetPointIds().SetId(1, i)
                 lines.InsertNextCell(line)
 
+            if not show['ch_points']:
+                continue
             # Create solid blue spheres for each point
             sphere_source = vtk.vtkSphereSource()
             sphere_source.SetCenter(x[i], y[i], 0.5)
@@ -2132,8 +2161,11 @@ def display_brachy_channel_overlay_sa(self):
             sphere_actor = vtk.vtkActor()
             sphere_actor.SetMapper(sphere_mapper)
 
-            # Set the color to solid blue for the spheres
-            sphere_actor.GetProperty().SetColor(0.0, 0.0, 1.0)  # Solid blue spheres
+            # Catheter point color (the point being edited in the edit point color)
+            if current_ch is edit_ch and i == edit_pt:
+                sphere_actor.GetProperty().SetColor(*style['edit_point'])
+            else:
+                sphere_actor.GetProperty().SetColor(*point_color)
             sphere_actor.GetProperty().SetOpacity(0.7)  # Full opacity
 
             # Add the actor for the sphere to the renderer
@@ -2151,12 +2183,19 @@ def display_brachy_channel_overlay_sa(self):
 
         polyline_actor = vtk.vtkActor()
         polyline_actor.SetMapper(polyline_mapper)
-        polyline_actor.GetProperty().SetColor(0.0, 0.0, 1.0)  # Blue for the line
-        polyline_actor.GetProperty().SetLineWidth(2)  # Line width
+        polyline_actor.GetProperty().SetColor(*line_color)
+        polyline_actor.GetProperty().SetLineWidth(style['ch_line_width'])
 
-        # Add the polyline actor to the renderer
-        renderer.AddActor(polyline_actor)
-        self.channel_actors_sa.append(polyline_actor)
+        # Add the polyline actor to the renderer (the path, if shown)
+        if show['ch_path']:
+            renderer.AddActor(polyline_actor)
+            self.channel_actors_sa.append(polyline_actor)
+
+        # Catheter name (its number unless renamed) next to its first point (tip)
+        if show['ch_labels'] and len(x):
+            label = brachy_label_actor(x[0], y[0], 0.5, catheter_label(current_ch, k), line_color, style['label_size'])
+            renderer.AddActor(label)
+            self.channel_actors_sa.append(label)
 
     # Render the updated display with the channels
     self.vtkWidgetSagittal.GetRenderWindow().Render()
@@ -2238,148 +2277,80 @@ def create_cross_actor(x_c, y_c, z_c, size, color, thickness=2.0):
     return actor
 
 
-def display_ref_points_ax(self):
-    renderer = self.vtkWidgetAxial.GetRenderWindow().GetRenderers().GetFirstRenderer()
-    if not hasattr(self, 'ref_point_actors_ax'):
-        self.ref_point_actors_ax = []
-    for actor in self.ref_point_actors_ax:
+def brachy_label_actor(x, y, z, text, color, size):
+    """Text next to a point (x, y, z) of a 2D view: a few pixels up and right of it, on top of the image."""
+    anchor = vtk.vtkCoordinate()
+    anchor.SetCoordinateSystemToWorld()
+    anchor.SetValue(x, y, z)
+    actor = vtk.vtkTextActor()
+    actor.SetInput(text)
+    position = actor.GetPositionCoordinate()
+    position.SetCoordinateSystemToDisplay()
+    position.SetReferenceCoordinate(anchor)
+    position.SetValue(LABEL_OFFSET_PX, LABEL_OFFSET_PX)
+    prop = actor.GetTextProperty()
+    prop.SetFontSize(int(size))
+    prop.SetColor(*color)
+    prop.SetBold(True)
+    prop.ShadowOn()
+    return actor
+
+
+def display_ref_points(self, view):
+    """
+    Crosses at the dose reference points ticked in the catheter list (brachy_tree), with
+    their names when "names" is checked under Display. Colors and sizes come from the
+    Style panel; the points in the current slice are drawn in the "in slice" color.
+    """
+    suffix = VIEW_SUFFIX[view]
+    widget = getattr(self, dict(VIEW_WIDGETS)[view])
+    renderer = widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
+    actors = getattr(self, 'ref_point_actors_' + suffix, None)
+    if actors is None:
+        actors = []
+        setattr(self, 'ref_point_actors_' + suffix, actors)
+    for actor in actors:
         renderer.RemoveActor(actor)
-    self.ref_point_actors_ax.clear()
+    actors.clear()
 
     try:
         meta = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
-        ref_points = meta.get('Plan_Dose_References', [])
-    except KeyError:
-        return
+        ref_points = meta.get('Plan_Dose_References') or []
+    except (KeyError, IndexError, TypeError):
+        ref_points = []
+    # (index, point, coordinates) of the points shown that have coordinates
+    shown = [(k, pt, ref_point_xyz(pt)) for k, pt in enumerate(ref_points) if ref_point_visible(pt)]
+    shown = [item for item in shown if item[2] is not None]
+    if shown:
+        style, labels = brachy_style(self), brachy_display(self)['ref_labels']
+        xyz = np.array([item[2] for item in shown])
+        xy = view_xy(view, xyz, self.Im_PatPosition[0], self.display_data[0].shape[1] * self.pixel_spac[0, 0])
+        # in the current slice: within half a voxel of it along the view normal
+        axis = NORMAL_AXIS[view]
+        half = (self.pixel_spac[0, 1], self.pixel_spac[0, 0], self.slice_thick[0])[axis] / 2
+        in_slice = np.abs(xyz[:, axis] - _slice_point(self)[axis]) <= half
+        z = 0.7 + style['ch_point_size'] / 2  # above the dwells
+        for (k, pt, _xyz), (x, y), here in zip(shown, xy, in_slice):
+            color = style['ref_slice'] if here else style['ref_other']
+            actors.append(create_cross_actor(x, y, z, style['ref_size'] / 2, color, style['ref_width']))
+            if labels:
+                actors.append(brachy_label_actor(x, y, z, ref_point_name(pt, k), color, style['label_size']))
+        for actor in actors:
+            renderer.AddActor(actor)
 
-    if not ref_points:
-        return
+    widget.GetRenderWindow().Render()
 
-    point_size = self.dw_ch_point_size.value() / 1.5 if hasattr(self, 'dw_ch_point_size') else 3.0
-    cross_size = point_size * 1.5
 
-    Ref_z = self.current_axial_slice_index[0] * self.slice_thick[0] + self.Im_Offset[0, 2]
-    z_tolerance = self.slice_thick[0] / 2
-
-    for pt in ref_points:
-        if not pt.get('Visible', False):
-            continue
-        coords = pt.get('DoseReferencePointCoordinates')
-        if not isinstance(coords, list) or len(coords) < 3:
-            continue
-        
-        pt_x, pt_y, pt_z = coords[0], coords[1], coords[2]
-        
-        x_pixel = pt_x - self.Im_PatPosition[0, 0]
-        y_pixel = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (pt_y - self.Im_PatPosition[0, 1])
-        z_phys = pt_z - self.Im_PatPosition[0, 2]
-        
-        if Ref_z - z_tolerance <= z_phys <= Ref_z + z_tolerance:
-            color = (1.0, 0.6, 0.6)  # Light red
-        else:
-            color = (1.0, 0.0, 0.0)  # Red
-            
-        actor = create_cross_actor(x_pixel, y_pixel, 0.5, cross_size, color)
-        renderer.AddActor(actor)
-        self.ref_point_actors_ax.append(actor)
-
-    self.vtkWidgetAxial.GetRenderWindow().Render()
+def display_ref_points_ax(self):
+    display_ref_points(self, 'axial')
 
 
 def display_ref_points_co(self):
-    renderer = self.vtkWidgetCoronal.GetRenderWindow().GetRenderers().GetFirstRenderer()
-    if not hasattr(self, 'ref_point_actors_co'):
-        self.ref_point_actors_co = []
-    for actor in self.ref_point_actors_co:
-        renderer.RemoveActor(actor)
-    self.ref_point_actors_co.clear()
-
-    try:
-        meta = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
-        ref_points = meta.get('Plan_Dose_References', [])
-    except KeyError:
-        return
-
-    if not ref_points:
-        return
-
-    point_size = self.dw_ch_point_size.value() / 1.5 if hasattr(self, 'dw_ch_point_size') else 3.0
-    cross_size = point_size * 1.5
-
-    Ref_z = self.current_coronal_slice_index[0] * self.pixel_spac[0, 1]
-    z_tolerance = self.pixel_spac[0, 1] / 2
-
-    for pt in ref_points:
-        if not pt.get('Visible', False):
-            continue
-        coords = pt.get('DoseReferencePointCoordinates')
-        if not isinstance(coords, list) or len(coords) < 3:
-            continue
-        
-        pt_x, pt_y, pt_z = coords[0], coords[1], coords[2]
-        
-        x_pixel = pt_x - self.Im_PatPosition[0, 0]
-        z_coronal = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (pt_y - self.Im_PatPosition[0, 1])
-        y_pixel = pt_z - self.Im_PatPosition[0, 2]
-        
-        if Ref_z - z_tolerance <= z_coronal <= Ref_z + z_tolerance:
-            color = (1.0, 0.6, 0.6)  # Light red
-        else:
-            color = (1.0, 0.0, 0.0)  # Red
-            
-        actor = create_cross_actor(x_pixel, y_pixel, 0.5, cross_size, color)
-        renderer.AddActor(actor)
-        self.ref_point_actors_co.append(actor)
-
-    self.vtkWidgetCoronal.GetRenderWindow().Render()
+    display_ref_points(self, 'coronal')
 
 
 def display_ref_points_sa(self):
-    renderer = self.vtkWidgetSagittal.GetRenderWindow().GetRenderers().GetFirstRenderer()
-    if not hasattr(self, 'ref_point_actors_sa'):
-        self.ref_point_actors_sa = []
-    for actor in self.ref_point_actors_sa:
-        renderer.RemoveActor(actor)
-    self.ref_point_actors_sa.clear()
-
-    try:
-        meta = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']
-        ref_points = meta.get('Plan_Dose_References', [])
-    except KeyError:
-        return
-
-    if not ref_points:
-        return
-
-    point_size = self.dw_ch_point_size.value() / 1.5 if hasattr(self, 'dw_ch_point_size') else 3.0
-    cross_size = point_size * 1.5
-
-    Ref_z = self.current_sagittal_slice_index[0] * self.pixel_spac[0, 0]
-    z_tolerance = self.pixel_spac[0, 0] / 2
-
-    for pt in ref_points:
-        if not pt.get('Visible', False):
-            continue
-        coords = pt.get('DoseReferencePointCoordinates')
-        if not isinstance(coords, list) or len(coords) < 3:
-            continue
-        
-        pt_x, pt_y, pt_z = coords[0], coords[1], coords[2]
-        
-        z_sagittal = pt_x - self.Im_PatPosition[0, 0]
-        x_pixel = (self.display_data[0].shape[1] * self.pixel_spac[0, 0]) - (pt_y - self.Im_PatPosition[0, 1])
-        y_pixel = pt_z - self.Im_PatPosition[0, 2]
-        
-        if Ref_z - z_tolerance <= z_sagittal <= Ref_z + z_tolerance:
-            color = (1.0, 0.6, 0.6)  # Light red
-        else:
-            color = (1.0, 0.0, 0.0)  # Red
-            
-        actor = create_cross_actor(x_pixel, y_pixel, 0.5, cross_size, color)
-        renderer.AddActor(actor)
-        self.ref_point_actors_sa.append(actor)
-
-    self.vtkWidgetSagittal.GetRenderWindow().Render()
+    display_ref_points(self, 'sagittal')
 
 
 def _compute_ebrt_beam_3d_geom(beam):

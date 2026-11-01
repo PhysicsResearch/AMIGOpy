@@ -174,11 +174,16 @@ def create_mcnp_lattice_map(self):
     if not getattr(self, 'patientID', None):
         QMessageBox.critical(self, 'Error', 'No patient selected')
         return
-    try:
-        target = self.medical_image[self.patientID][self.studyID]['CT'][self.series_index]
-    except Exception:
+    ct_list = self.medical_image.get(self.patientID, {}).get(self.studyID, {}).get('CT', [])
+    if not ct_list:
         QMessageBox.critical(self, 'Error', 'No CT found')
         return
+    cur_m = getattr(self, 'modality', None)
+    cur_idx = getattr(self, 'series_index', 0)
+    ct_idx = cur_idx if (cur_m == 'CT' and 0 <= cur_idx < len(ct_list)) else 0
+    self.modality = 'CT'
+    self.series_index = ct_idx
+    target = ct_list[ct_idx]
 
     mat_maps = target.get('mat_maps', {}) or {}
     den_maps = target.get('density_maps', {}) or {}

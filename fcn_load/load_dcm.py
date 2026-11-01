@@ -212,6 +212,50 @@ def assemble_and_reorient_volume(series_data):
     ]
 
 
+def rtplan_metadata(dicom_file, file_info=None, file_path=''):
+    """
+    Metadata of an RTPLAN series ('DCM_Info': the dataset). Also used for the plans saved
+    in AMIGOpy (no file), so that they are the same as the loaded ones.
+    """
+    file_info = file_info or {}
+    # Define the private creator tag explicitly - Used in ONCENTRA so it is not always available
+    private_creator_tag = Tag(0x300b, 0x0010) # NuCLETRON if created using ONCENTRA/ACE
+    creator_value = dicom_file.get(Tag(0x300b, 0x0010), '').value if Tag(0x300b, 0x0010) in dicom_file else ''
+    if creator_value == '':
+        creator_value = dicom_file.get(Tag(0x300f, 0x0010), '').value if Tag(0x300f, 0x0010) in dicom_file else ''
+
+    private_channels = Tag(0x300f, 0x1000) # Cathether position if created using ONCENTRA/ACE (or AMIGOpy)
+    return {
+        'Modality': 'RTPLAN',
+        'Manufacturer': getattr(dicom_file, "Manufacturer", "N/A"),
+        'BrachyTreatmentType': getattr(dicom_file, "BrachyTreatmentType", "N/A"),
+        'LUTLabel': "N/A",
+        'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),
+        'RTPlanLabel': getattr(dicom_file, "RTPlanLabel", ''),
+        'RTPlanName': getattr(dicom_file, "RTPlanName", ''),
+        'RTPlanDescription': getattr(dicom_file, "RTPlanDescription", ''),
+        'RTPlanDate': getattr(dicom_file, "RTPlanDate", getattr(dicom_file, "SeriesDate", '')),
+        'StudyDescription': getattr(dicom_file, "StudyDescription", ''),
+        'ReferencedStructureSetSequence': getattr(dicom_file, "ReferencedStructureSetSequence", []),
+        'ApplicationSetupSequence': getattr(dicom_file, "ApplicationSetupSequence", []),
+        'BeamSequence': getattr(dicom_file, "BeamSequence", []),
+        'FractionGroupSequence': getattr(dicom_file, "FractionGroupSequence", []),
+        'SourceSequence': getattr(dicom_file, "SourceSequence", []),
+        'PrivateCreator': creator_value,
+        'CatOnc': getattr(dicom_file, 'get', lambda *args: [])(private_channels, []),
+        'DoseReferenceSequence': getattr(dicom_file, "DoseReferenceSequence", "N/A"),
+        'TreatmentProtocols': getattr(dicom_file, "TreatmentProtocols", "N/A"),
+        'SeriesInstanceUID': getattr(dicom_file, "SeriesInstanceUID", file_info.get('SeriesInstanceUID', 'N/A')),
+        'StudyInstanceUID': getattr(dicom_file, "StudyInstanceUID", file_info.get('StudyInstanceUID', 'N/A')),
+        'FrameOfReferenceUID': getattr(dicom_file, "FrameOfReferenceUID", file_info.get('FrameOfReferenceUID', 'N/A')),
+        'SOPInstanceUID': getattr(dicom_file, "SOPInstanceUID", file_info.get('SOPInstanceUID', 'N/A')),
+        'StudyDate': getattr(dicom_file, "StudyDate", ''),
+        'SeriesDate': getattr(dicom_file, "SeriesDate", ''),
+        'DCM_Info': dicom_file,
+        'OriginalFilePath': file_path,
+    }
+
+
 def load_images(self,detailed_files_info, progress_callback=None, total_steps=None):
     """
     Load DICOM images and organize them hierarchically based on their DICOM headers.
@@ -378,44 +422,9 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                     'US_name': None,  # name that could be defined by the user in the interface (manual)
                 }
             elif modality == 'RTPLAN':
-                # Define the private creator tag explicitly - Used in ONCENTRA so it is not always available
-                private_creator_tag = Tag(0x300b, 0x0010) # NuCLETRON if created using ONCENTRA/ACE
-                creator_value = dicom_file.get(Tag(0x300b, 0x0010), '').value if Tag(0x300b, 0x0010) in dicom_file else ''
-                if creator_value == '':
-                    creator_value = dicom_file.get(Tag(0x300f, 0x0010), '').value if Tag(0x300f, 0x0010) in dicom_file else ''
-                
-                private_channels = Tag(0x300f, 0x1000) # Cathether position if created using ONCENTRA/ACE
                 existing_series_data = {
                     'SeriesNumber': series_number,
-                    'metadata': {
-                        'Modality': modality,
-                        'Manufacturer': getattr(dicom_file, "Manufacturer", "N/A"),
-                        'BrachyTreatmentType': getattr(dicom_file, "BrachyTreatmentType", "N/A"),
-                        'LUTLabel': "N/A",
-                        'AcquisitionNumber': getattr(dicom_file, "AcquisitionNumber", "N/A"),
-                        'RTPlanLabel': getattr(dicom_file, "RTPlanLabel", ''),
-                        'RTPlanName': getattr(dicom_file, "RTPlanName", ''),
-                        'RTPlanDescription': getattr(dicom_file, "RTPlanDescription", ''),
-                        'RTPlanDate': getattr(dicom_file, "RTPlanDate", getattr(dicom_file, "SeriesDate", '')),
-                        'StudyDescription': getattr(dicom_file, "StudyDescription", ''),
-                        'ReferencedStructureSetSequence': getattr(dicom_file, "ReferencedStructureSetSequence", []),
-                        'ApplicationSetupSequence': getattr(dicom_file, "ApplicationSetupSequence", []),
-                        'BeamSequence': getattr(dicom_file, "BeamSequence", []),
-                        'FractionGroupSequence': getattr(dicom_file, "FractionGroupSequence", []),
-                        'SourceSequence': getattr(dicom_file, "SourceSequence", []),
-                        'PrivateCreator': creator_value,
-                        'CatOnc': getattr(dicom_file, 'get', lambda *args: [])(Tag(0x300f, 0x1000), []),
-                        'DoseReferenceSequence': getattr(dicom_file, "DoseReferenceSequence", "N/A"),
-                        'TreatmentProtocols': getattr(dicom_file, "TreatmentProtocols", "N/A"),
-                        'SeriesInstanceUID': getattr(dicom_file, "SeriesInstanceUID", file_info.get('SeriesInstanceUID', 'N/A')),
-                        'StudyInstanceUID': getattr(dicom_file, "StudyInstanceUID", file_info.get('StudyInstanceUID', 'N/A')),
-                        'FrameOfReferenceUID': getattr(dicom_file, "FrameOfReferenceUID", file_info.get('FrameOfReferenceUID', 'N/A')),
-                        'SOPInstanceUID': getattr(dicom_file, "SOPInstanceUID", file_info.get('SOPInstanceUID', 'N/A')),
-                        'StudyDate': getattr(dicom_file, "StudyDate", ''),
-                        'SeriesDate': getattr(dicom_file, "SeriesDate", ''),
-                        'DCM_Info': dicom_file,
-                        'OriginalFilePath': file_path,
-                    },
+                    'metadata': rtplan_metadata(dicom_file, file_info, file_path),
                     'images': {},
                     'ImagePositionPatients': [],
                     'SliceImageComments': {},

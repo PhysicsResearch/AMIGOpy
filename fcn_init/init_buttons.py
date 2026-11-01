@@ -25,6 +25,19 @@ from fcn_DECT.DECT_table_disp import c_roi_getdata_HU_high_low
 from fcn_DECT.Ivalue_Zeff_fit import plot_I_value_points, plot_I_value_precalc, cal_plot_I_value_points
 from fcn_DECT.create_process_dect import creat_DECT_derived_maps, c_roi_scatter_plot, export_all_DECT_tables, save_parameters_to_csv, load_parameters_from_csv
 from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwell_channels, export_all_brachy_channels_to_csv
+from fcn_display.brachy_channel_edit import (brachy_add_channel_point, brachy_delete_channel_point, on_brachy_new_catheter_toggled,
+                                             brachy_delete_catheter, brachy_undo, on_brachy_undo_key, on_brachy_tool_toggled,
+                                             on_brachy_edit_context_changed, refresh_brachy_overlays, brachy_duplicate_catheter,
+                                             brachy_zero_catheter_times, brachy_zero_all_times)
+from fcn_display.brachy_dwells import brachy_set_dwell_positions
+from fcn_create_gui.brachy_widgets import colored_button_style
+from fcn_display.brachy_panel import (COLOR_BUTTONS, SIZE_WIDGETS, DISPLAY_OPTIONS, PANEL_BOXES, pick_brachy_color, update_brachy_color_buttons,
+                                      toggle_brachy_table_mode, set_brachy_table_mode, update_brachy_table_header,
+                                      update_brachy_display_options, on_brachy_display_changed, update_brachy_panels)
+from fcn_display.brachy_tree import (on_brachy_tree_item_changed, on_brachy_tree_current_changed, on_brachy_tree_double_clicked,
+                                     brachy_tree_context_menu)
+from fcn_display.brachy_plan_actions import brachy_new_plan, brachy_save_plan, brachy_save_plan_as, update_brachy_plan_box
+from fcn_display.brachy_dose_calc import brachy_calculate_dose, on_brachy_sk_edited, update_brachy_dose_sources
 from fcn_brachy_sources.process_brachy_database import (on_brachy_load_sources, on_brachy_source_selection, select_Radial_file2load, plot_brachy_radial_fit, plot_brachy_ani,
                                                         select_Anisotropy_file2load)
 from fcn_brachy_sources.process_brachy_database import dose_along_away_Disp_eval
@@ -40,10 +53,8 @@ from fcn_segmentation.functions_segmentation import (threshSeg, on_brush_click, 
                                                      DeleteSeg, undo_brush_seg, apply_morph_oper, undo_morph_oper, on_boolean_seg_clicked)
 from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes,add_row_to_ct_table, export_ct_cal_to_csv
 from fcn_densitymap.density_map import create_density_map,del_density_map
-from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
 from fcn_3Dview.volume_3d_viewer import play_4D_sequence_3D
 from fcn_materialassignment.material_assignment_properties import add_mat_row,del_mat_row,add_element,del_element,save_mat_db,undo_changes
-from fcn_brachy.cal_TG43_dose import calculate_TG43_plan_dose
 from fcn_materialassignment.material_map import add_mat_HU_row,del_mat2HU,generate_mat_map,delete_mat_map,del_stuct2mat,update_mat_struct_list,refresh_mat_assignment_if_visible,toggle_mat_HU_visibility,toggle_mat_struct_visibility,load_mat_map_into_tables
 from fcn_3DPrinting.material_selection import calculate_red_settings
 from fcn_3DPrinting import handlers as hdl
@@ -355,9 +366,74 @@ def initialize_software_buttons(self):
     #
     safe_style(self, 'brachy_export_dw_channels_csv', "background-color: blue; color: white;")
     safe_btn(self, 'brachy_export_dw_channels_csv', 'clicked', lambda: export_all_brachy_channels_to_csv(self))
+    # table: the mode button switches dwells / catheter points (the menu also has the ref. points)
+    safe_btn(self, 'brachy_mode_btn', 'clicked', lambda: toggle_brachy_table_mode(self))
+    safe_btn(self, 'brachy_mode_act_dwells', 'triggered', lambda: set_brachy_table_mode(self, "Dwells"))
+    safe_btn(self, 'brachy_mode_act_channels', 'triggered', lambda: set_brachy_table_mode(self, "Channels"))
+    safe_btn(self, 'brachy_mode_act_refpts', 'triggered', lambda: set_brachy_table_mode(self, "Ref. Points"))
+    safe_btn(self, 'brachy_combobox_01', 'currentTextChanged', lambda _t: update_brachy_table_header(self))
+    # catheter editing: tools on the 2D views, undo, points and catheters
+    tool_style = ("QToolButton { background-color: #eceff1; border: 1px solid #90a4ae; border-radius: 3px; padding: 2px; }"
+                  "QToolButton:hover { background-color: #cfd8dc; }"
+                  "QToolButton:checked { background-color: #ffca28; border: 1px solid #ff8f00; }"
+                  "QToolButton:disabled { background-color: #f5f5f5; border: 1px solid #cfd8dc; }")
+    safe_btn(self, 'brachy_tool_move', 'toggled', lambda checked: on_brachy_tool_toggled(self, 'move', checked), tool_style)
+    safe_btn(self, 'brachy_tool_translate', 'toggled', lambda checked: on_brachy_tool_toggled(self, 'translate', checked), tool_style)
+    safe_btn(self, 'brachy_tool_rotate', 'toggled', lambda checked: on_brachy_tool_toggled(self, 'rotate', checked), tool_style)
+    safe_btn(self, 'brachy_undo_btn', 'clicked', lambda: brachy_undo(self), tool_style)
+    if hasattr(self, 'im_display_tab') and not hasattr(self, 'brachy_undo_shortcut'):
+        self.brachy_undo_shortcut = QShortcut(QKeySequence(QKeySequence.StandardKey.Undo), self.im_display_tab)
+        self.brachy_undo_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.brachy_undo_shortcut.activated.connect(lambda: on_brachy_undo_key(self))
+    safe_btn(self, 'brachy_add_point_btn', 'clicked', lambda: brachy_add_channel_point(self), colored_button_style("background-color: #28a745; color: white;"))
+    safe_btn(self, 'brachy_del_point_btn', 'clicked', lambda: brachy_delete_channel_point(self), colored_button_style("background-color: black; color: red; border: 1px solid red;"))
+    # New / Stop (text and color follow the state): clicks on the images add points to a new catheter
+    safe_btn(self, 'brachy_new_catheter_btn', 'toggled', lambda checked: on_brachy_new_catheter_toggled(self, checked))
+    safe_btn(self, 'brachy_del_catheter_btn', 'clicked', lambda: brachy_delete_catheter(self), colored_button_style("background-color: black; color: red; border: 1px solid red;"))
+    safe_btn(self, 'brachy_dup_catheter_btn', 'clicked', lambda: brachy_duplicate_catheter(self), colored_button_style("background-color: #1c5fa8; color: white;"))
+    # dwell positions along the catheter (dialog) and dwell times to 0 s
+    safe_btn(self, 'brachy_set_dwells_btn', 'clicked', lambda: brachy_set_dwell_positions(self), colored_button_style("background-color: #1c5fa8; color: white;"))
+    safe_btn(self, 'brachy_zero_catheter_btn', 'clicked', lambda: brachy_zero_catheter_times(self), colored_button_style("background-color: #a85d00; color: white;"))
+    safe_btn(self, 'brachy_zero_all_btn', 'clicked', lambda: brachy_zero_all_times(self), colored_button_style("background-color: #a85d00; color: white;"))
+    safe_btn(self, 'brachy_table_01', 'itemSelectionChanged', lambda: on_brachy_edit_context_changed(self))
+    safe_btn(self, 'tabWidget_3', 'currentChanged', lambda _i: on_brachy_edit_context_changed(self))
+    safe_btn(self, 'tabView01', 'currentChanged', lambda _i: on_brachy_edit_context_changed(self))
+    # overlay style: colors and sizes of the catheters, dwells and reference points
+    for key, attr in COLOR_BUTTONS:
+        safe_btn(self, attr, 'clicked', lambda _checked=False, k=key: pick_brachy_color(self, k))
+    for _key, attr in SIZE_WIDGETS:
+        safe_btn(self, attr, 'valueChanged', lambda _v: refresh_brachy_overlays(self))
+    # Display: the options of the catheters / dwells / reference points (those two redraw everything above)
+    safe_btn(self, 'display_brachy_channel_overlay', 'toggled', lambda _c: update_brachy_display_options(self))
+    safe_btn(self, 'display_dw_overlay', 'toggled', lambda _c: update_brachy_display_options(self))
+    safe_btn(self, 'brachy_show_ref_points', 'toggled', lambda _c: on_brachy_display_changed(self))
+    for _key, attr, _group in DISPLAY_OPTIONS:
+        safe_btn(self, attr, 'toggled', lambda _c: on_brachy_display_changed(self))
+    update_brachy_display_options(self)
+    # Display: the parts of the tab shown (table, Edit, Dose, Style; the list always is)
+    for attr, _part in PANEL_BOXES:
+        safe_btn(self, attr, 'toggled', lambda _c: update_brachy_panels(self))
+    update_brachy_panels(self)
+    # catheter / reference point list: check boxes show / hide, a click selects, double-click goes to
+    safe_btn(self, 'brachy_tree', 'itemChanged', lambda item, col: on_brachy_tree_item_changed(self, item, col))
+    safe_btn(self, 'brachy_tree', 'currentItemChanged', lambda item, _prev: on_brachy_tree_current_changed(self, item))
+    safe_btn(self, 'brachy_tree', 'itemDoubleClicked', lambda item, _col: on_brachy_tree_double_clicked(self, item))
+    safe_btn(self, 'brachy_tree', 'customContextMenuRequested', lambda pos: brachy_tree_context_menu(self, pos))
+    # Plan box: new plan, save / save as into the data tree
+    safe_btn(self, 'brachy_new_plan_btn', 'clicked', lambda: brachy_new_plan(self), colored_button_style("background-color: #28a745; color: white;"))
+    safe_btn(self, 'brachy_save_plan_btn', 'clicked', lambda: brachy_save_plan(self), colored_button_style("background-color: #1c5fa8; color: white;"))
+    safe_btn(self, 'brachy_save_plan_as_btn', 'clicked', lambda: brachy_save_plan_as(self), colored_button_style("background-color: #1c5fa8; color: white;"))
+    # Dose calculation: the source, the air kerma strength of the plan and its TG43 dose
+    safe_btn(self, 'brachy_sk_spin', 'editingFinished', lambda: on_brachy_sk_edited(self))
+    safe_btn(self, 'brachy_calc_dose_btn', 'clicked', lambda: brachy_calculate_dose(self), colored_button_style("background-color: #1c5fa8; color: white;"))
+    update_brachy_dose_sources(self)
+    update_brachy_color_buttons(self)
+    update_brachy_table_header(self)
+    update_brachy_plan_box(self)
     #
     safe_btn(self, 'Brachy_load_sources', 'clicked', lambda: on_brachy_load_sources(self), "background-color: blue; color: white;")
     safe_btn(self, 'Brachy_load_sources', 'clicked', lambda: plot_brachy_ani(self))
+    safe_btn(self, 'Brachy_load_sources', 'clicked', lambda: update_brachy_dose_sources(self))  # (View > PLAN > Brachy too)
     safe_btn(self, 'brachy_source_list', 'currentIndexChanged', lambda: on_brachy_source_selection(self))
     safe_btn(self, 'comboBox_tg43_along_away', 'currentIndexChanged', lambda: dose_along_away_Disp_eval(self))
     #
@@ -381,9 +457,7 @@ def initialize_software_buttons(self):
     safe_btn(self, 'Brach_plot_ani', 'clicked', lambda: plot_brachy_ani(self))
     safe_style(self, 'Brachy_load_ani', "background-color: blue; color: white;")
     safe_btn(self, 'Brachy_load_ani', 'clicked', lambda: select_Anisotropy_file2load(self))
-
-    # using a place holder button for testing
-    safe_btn(self, 'Brachy_Calcualte_TG43', 'clicked', lambda: calculate_TG43_plan_dose(self), "background-color: blue; color: white;")
+    # (the TG43 dose is calculated in View > PLAN > Brachy: brachy_calc_dose_btn)
     #EQD2
     safe_btn(self, 'calc_eqd2', 'clicked', lambda: generate_eqd2_dose(self))
     safe_btn(self, 'add_to_ab_list', 'clicked', lambda: add_ab(self))

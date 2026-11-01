@@ -6,6 +6,7 @@ from vtkmodules.all import  vtkAxesActor, vtkOrientationMarkerWidget, vtkTransfo
 from PySide6.QtWidgets import QVBoxLayout
 from PySide6 import QtWidgets
 from fcn_display.mouse_move_slicechanges import onMouseMoveCoronal, onMouseMoveSagittal, onMouseMoveAxial, left_button_pressaxial_event, left_button_releaseaxial_event
+from fcn_display.brachy_channel_edit import add_brachy_edit_observers
 
 # ---------------------------------------------------------------------------
 # View-tab viewports style. We use standard vtkInteractorStyleImage to avoid
@@ -652,4 +653,6 @@ def set_mouse_button_custom_fcn(self):
      self.vtkWidgetSagittal.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event: onMouseMoveSagittal(self, caller, event))
      self.vtkWidgetCoronal.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event: onMouseMoveCoronal(self, caller, event))
      self.vtkWidgetAxial.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event:onMouseMoveAxial(self, caller, event))
+     # drag brachy channel points (View > PLAN > Brachy > Edit mode)
+     add_brachy_edit_observers(self)
      #

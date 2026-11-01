@@ -569,18 +569,22 @@ def refresh_mat_assignment_if_visible(self):
 
 def generate_mat_map(self):
 
-    #Retrive CT_info
-    if self.patientID:
-        target_dict=self.medical_image[self.patientID][self.studyID]
-    else:
+    # Retrive CT_info
+    if not getattr(self, 'patientID', None):
         QMessageBox.critical(self, 'Error', 'No Patient selected')
         return
-    try:
-        ct_matrix=target_dict['CT'][self.series_index]['3DMatrix']
-
-    except:
+    target_dict = self.medical_image.get(self.patientID, {}).get(self.studyID, {})
+    ct_list = target_dict.get('CT', [])
+    if not ct_list:
         QMessageBox.critical(self, 'Error', 'No CT found')
         return
+    cur_m = getattr(self, 'modality', None)
+    cur_idx = getattr(self, 'series_index', 0)
+    ct_idx = cur_idx if (cur_m == 'CT' and 0 <= cur_idx < len(ct_list)) else 0
+    self.modality = 'CT'
+    self.series_index = ct_idx
+    target = ct_list[ct_idx]
+    ct_matrix = target['3DMatrix']
 
     mat_used={}
     mat_map=np.full(ct_matrix.shape,-1,dtype=np.int16)
@@ -607,7 +611,7 @@ def generate_mat_map(self):
         mats=[d['material'] for d in self.mat_struct.values()]
         IDs=[d['key'] for d in self.mat_struct.values()]
         try:
-            struct_dict=target_dict['CT'][self.series_index]['structures']
+            struct_dict = target.get('structures', {})
         except:
             QMessageBox.critical(self, 'Error','Structures missing. Are you selecting the correct CT set?')
             return
@@ -719,7 +723,6 @@ def generate_mat_map(self):
     }
 
     # Store the material map
-    target = target_dict['CT'][self.series_index]
     existing = target.get('mat_maps', {})
     if not existing:
         target['mat_maps'] = {}
@@ -739,16 +742,18 @@ def generate_mat_map(self):
 def load_mat_map_into_tables(self, map_entry_or_name=None):
     """Retrieve the HU ranges and structure material assignments stored in a material map
     and restore them into tableMatToHU and mat_to_struct_tab."""
-    if getattr(self, 'patientID', None):
-        target_dict = self.medical_image[self.patientID][self.studyID]
-    else:
+    if not getattr(self, 'patientID', None):
         QMessageBox.critical(self, 'Error', 'No Patient selected')
         return False
-    try:
-        target = target_dict['CT'][self.series_index]
-    except Exception:
+    target_dict = self.medical_image.get(self.patientID, {}).get(self.studyID, {})
+    ct_list = target_dict.get('CT', [])
+    if not ct_list:
         QMessageBox.critical(self, 'Error', 'No CT found')
         return False
+    cur_m = getattr(self, 'modality', None)
+    cur_idx = getattr(self, 'series_index', 0)
+    ct_idx = cur_idx if (cur_m == 'CT' and 0 <= cur_idx < len(ct_list)) else 0
+    target = ct_list[ct_idx]
 
     mat_maps = target.get('mat_maps', {})
     if not mat_maps:
@@ -825,17 +830,20 @@ def load_mat_map_into_tables(self, map_entry_or_name=None):
     
 
 def delete_mat_map(self):
-    if self.patientID:
-        target_dict=self.medical_image[self.patientID][self.studyID]
-    else:
+    if not getattr(self, 'patientID', None):
         QMessageBox.critical(self, 'Error', 'No Patient selected')
         return
-    try:
-        target=target_dict['CT'][self.series_index]
-
-    except:
+    target_dict = self.medical_image.get(self.patientID, {}).get(self.studyID, {})
+    ct_list = target_dict.get('CT', [])
+    if not ct_list:
         QMessageBox.critical(self, 'Error', 'No CT found')
         return
+    cur_m = getattr(self, 'modality', None)
+    cur_idx = getattr(self, 'series_index', 0)
+    ct_idx = cur_idx if (cur_m == 'CT' and 0 <= cur_idx < len(ct_list)) else 0
+    self.modality = 'CT'
+    self.series_index = ct_idx
+    target = ct_list[ct_idx]
     mat_maps=target.get('mat_maps',{})
     if not mat_maps:
         QMessageBox.critical(self, 'Error', 'No material maps found for this CT')

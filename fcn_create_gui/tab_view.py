@@ -18,7 +18,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBox,
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox, QDoubleSpinBox,
     QFrame, QGraphicsView, QGridLayout, QGroupBox,
     QHBoxLayout, QHeaderView, QLCDNumber, QLabel,
     QLayout, QLineEdit, QListWidget, QListWidgetItem,
@@ -27,12 +27,13 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBo
     QStatusBar, QTabWidget, QTableView, QTableWidget,
     QTableWidgetItem, QTextEdit, QToolBox, QToolButton,
     QTreeView, QTreeWidget, QTreeWidgetItem, QVBoxLayout,
-    QWidget)
+    QWidget, QMenu, QScrollArea, QSplitter)
 try:
     from PySide6.QtWebEngineWidgets import QWebEngineView
 except ImportError:
     pass
 from fcn_create_gui.range_slider import RangeSlider
+from fcn_create_gui.brachy_widgets import CheckTree, ContentWidthTable, FitScrollArea, TrimmedDoubleSpinBox, tool_icon
 
 
 def create_tab_view(w):
@@ -218,67 +219,526 @@ def create_tab_view(w):
     w.tab_37.setObjectName(u"tab_37")
     w.gridLayout_8 = QGridLayout(w.tab_37)
     w.gridLayout_8.setObjectName(u"gridLayout_8")
-    w.display_brachy_channel_overlay = QCheckBox(w.tab_37)
-    w.display_brachy_channel_overlay.setObjectName(u"display_brachy_channel_overlay")
 
-    w.gridLayout_8.addWidget(w.display_brachy_channel_overlay, 2, 4, 1, 1)
+    # The parts side by side (catheter list, table, Edit, Dose, Style); drag the bars between them to resize
+    w.brachy_splitter = QSplitter(Qt.Orientation.Horizontal, w.tab_37)
+    w.brachy_splitter.setObjectName(u"brachy_splitter")
+    w.brachy_splitter.setChildrenCollapsible(False)
+    w.brachy_splitter.setHandleWidth(7)
+    w.brachy_splitter.setStyleSheet("QSplitter#brachy_splitter::handle { background-color: #78909c; margin: 6px 2px; border-radius: 1px; }"
+                                    " QSplitter#brachy_splitter::handle:hover { background-color: #b0bec5; }")
 
-    w.verticalSpacer_28 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+    # Catheters and dose reference points of the plan; the check boxes show / hide them on the images
+    w.brachy_tree = CheckTree(w.brachy_splitter)
+    w.brachy_tree.setObjectName(u"brachy_tree")
+    w.brachy_tree.setFont(font)
+    w.brachy_tree.setColumnCount(1)
+    w.brachy_tree.setHeaderHidden(True)
+    w.brachy_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+    w.brachy_tree.setMinimumWidth(120)  # (names readable: in a narrow window the table gives up space first)
+    # rename: click the selected item again or F2 (a double click goes to the item)
+    w.brachy_tree.setEditTriggers(QAbstractItemView.EditTrigger.SelectedClicked | QAbstractItemView.EditTrigger.EditKeyPressed)
 
-    w.gridLayout_8.addItem(w.verticalSpacer_28, 0, 5, 1, 1)
+    w.brachy_splitter.addWidget(w.brachy_tree)
 
-    w.brachy_table_01 = QTableWidget(w.tab_37)
+    # Title (what the table lists), the table (as wide as its columns) and, below it,
+    # the table mode and the export
+    w.brachy_table_panel = QWidget(w.brachy_splitter)
+    w.brachy_table_panel.setObjectName(u"brachy_table_panel")
+    w.gridLayout_brachy_table = QGridLayout(w.brachy_table_panel)
+    w.gridLayout_brachy_table.setObjectName(u"gridLayout_brachy_table")
+    w.gridLayout_brachy_table.setContentsMargins(0, 0, 0, 0)
+    w.brachy_table_title = QLabel(w.brachy_table_panel)
+    w.brachy_table_title.setObjectName(u"brachy_table_title")
+    w.brachy_table_title.setFont(font1)
+    w.brachy_table_title.setWordWrap(True)
+    # the title wraps instead of widening the table part
+    w.brachy_table_title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+
+    w.gridLayout_brachy_table.addWidget(w.brachy_table_title, 0, 0, 1, 3)
+
+    w.brachy_table_01 = ContentWidthTable(w.brachy_table_panel)
     w.brachy_table_01.setObjectName(u"brachy_table_01")
     font2 = QFont()
     font2.setPointSize(12)
     w.brachy_table_01.setFont(font2)
 
-    w.gridLayout_8.addWidget(w.brachy_table_01, 0, 0, 4, 4)
+    w.gridLayout_brachy_table.addWidget(w.brachy_table_01, 1, 0, 1, 3)
 
-    w.brachy_export_dw_channels_csv = QPushButton(w.tab_37)
+    # Click: dwell positions <-> catheter points; the menu also has the reference points
+    w.brachy_mode_btn = QToolButton(w.brachy_table_panel)
+    w.brachy_mode_btn.setObjectName(u"brachy_mode_btn")
+    w.brachy_mode_btn.setFont(font)
+    w.brachy_mode_btn.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+    w.brachy_mode_btn.setMinimumWidth(110)
+    w.brachy_mode_menu = QMenu(w.brachy_mode_btn)
+    w.brachy_mode_menu.setObjectName(u"brachy_mode_menu")
+    w.brachy_mode_act_dwells = w.brachy_mode_menu.addAction(u"")
+    w.brachy_mode_act_channels = w.brachy_mode_menu.addAction(u"")
+    w.brachy_mode_act_refpts = w.brachy_mode_menu.addAction(u"")
+    w.brachy_mode_btn.setMenu(w.brachy_mode_menu)
+
+    w.gridLayout_brachy_table.addWidget(w.brachy_mode_btn, 2, 0, 1, 1)
+
+    w.brachy_export_dw_channels_csv = QPushButton(w.brachy_table_panel)
     w.brachy_export_dw_channels_csv.setObjectName(u"brachy_export_dw_channels_csv")
 
-    w.gridLayout_8.addWidget(w.brachy_export_dw_channels_csv, 5, 4, 1, 1)
+    w.gridLayout_brachy_table.addWidget(w.brachy_export_dw_channels_csv, 2, 2, 1, 1)
+    w.gridLayout_brachy_table.setColumnStretch(1, 1)
+    w.gridLayout_brachy_table.setRowStretch(1, 1)
 
-    w.display_dw_overlay = QCheckBox(w.tab_37)
-    w.display_dw_overlay.setObjectName(u"display_dw_overlay")
+    w.brachy_splitter.addWidget(w.brachy_table_panel)
 
-    w.gridLayout_8.addWidget(w.display_dw_overlay, 3, 4, 1, 1)
-
-    w.lineEdit_63 = QLineEdit(w.tab_37)
-    w.lineEdit_63.setObjectName(u"lineEdit_63")
-    w.lineEdit_63.setEnabled(False)
-    w.lineEdit_63.setFont(font)
-
-    w.gridLayout_8.addWidget(w.lineEdit_63, 5, 2, 1, 1)
-
+    # Hidden: the table mode (kept in sync with the Plan module, set with brachy_mode_btn) and
+    # the selected catheter (set by clicking it in brachy_tree)
     w.brachy_combobox_01 = QComboBox(w.tab_37)
     w.brachy_combobox_01.setObjectName(u"brachy_combobox_01")
-
-    w.gridLayout_8.addWidget(w.brachy_combobox_01, 5, 0, 1, 1)
-
+    w.brachy_combobox_01.setVisible(False)
     w.brachy_spinBox_01 = QSpinBox(w.tab_37)
     w.brachy_spinBox_01.setObjectName(u"brachy_spinBox_01")
-    w.brachy_spinBox_01.setFont(font)
+    w.brachy_spinBox_01.setVisible(False)
 
-    w.gridLayout_8.addWidget(w.brachy_spinBox_01, 5, 1, 1, 1)
+    # Catheter editing: tools for the 2D views (toggle buttons), undo, points, catheters,
+    # dwell positions and times. In a scroll area (vertical: it keeps the width of its content).
+    w.brachy_edit_scroll = FitScrollArea(w.brachy_splitter, keep_width=True)
+    w.brachy_edit_scroll.setObjectName(u"brachy_edit_scroll")
+    w.brachy_edit_scroll.setWidgetResizable(True)
+    w.brachy_edit_scroll.setFrameShape(QFrame.Shape.NoFrame)
+    w.brachy_edit_group = QGroupBox(w.brachy_edit_scroll)
+    w.brachy_edit_group.setObjectName(u"brachy_edit_group")
+    w.gridLayout_brachy_edit = QGridLayout(w.brachy_edit_group)
+    w.gridLayout_brachy_edit.setObjectName(u"gridLayout_brachy_edit")
+    w.horizontalLayout_brachy_tools = QHBoxLayout()
+    w.horizontalLayout_brachy_tools.setObjectName(u"horizontalLayout_brachy_tools")
+    w.brachy_tool_move = QToolButton(w.brachy_edit_group)
+    w.brachy_tool_move.setObjectName(u"brachy_tool_move")
+    w.brachy_tool_move.setIcon(tool_icon('move'))
+    w.brachy_tool_move.setIconSize(QSize(24, 24))
+    w.brachy_tool_move.setCheckable(True)
+    w.horizontalLayout_brachy_tools.addWidget(w.brachy_tool_move)
+    w.brachy_tool_translate = QToolButton(w.brachy_edit_group)
+    w.brachy_tool_translate.setObjectName(u"brachy_tool_translate")
+    w.brachy_tool_translate.setIcon(tool_icon('translate'))
+    w.brachy_tool_translate.setIconSize(QSize(24, 24))
+    w.brachy_tool_translate.setCheckable(True)
+    w.horizontalLayout_brachy_tools.addWidget(w.brachy_tool_translate)
+    w.brachy_tool_rotate = QToolButton(w.brachy_edit_group)
+    w.brachy_tool_rotate.setObjectName(u"brachy_tool_rotate")
+    w.brachy_tool_rotate.setIcon(tool_icon('rotate'))
+    w.brachy_tool_rotate.setIconSize(QSize(24, 24))
+    w.brachy_tool_rotate.setCheckable(True)
+    w.horizontalLayout_brachy_tools.addWidget(w.brachy_tool_rotate)
+    w.horizontalLayout_brachy_tools.addSpacing(8)
+    w.brachy_undo_btn = QToolButton(w.brachy_edit_group)
+    w.brachy_undo_btn.setObjectName(u"brachy_undo_btn")
+    w.brachy_undo_btn.setIcon(tool_icon('undo'))
+    w.brachy_undo_btn.setIconSize(QSize(24, 24))
+    w.brachy_undo_btn.setEnabled(False)
+    w.horizontalLayout_brachy_tools.addWidget(w.brachy_undo_btn)
+    w.horizontalLayout_brachy_tools.addSpacing(12)
+    w.brachy_hold_idd = QCheckBox(w.brachy_edit_group)
+    w.brachy_hold_idd.setObjectName(u"brachy_hold_idd")
+    w.horizontalLayout_brachy_tools.addWidget(w.brachy_hold_idd)
+    w.horizontalLayout_brachy_tools.addStretch()
 
-    w.overlay_all_channels = QCheckBox(w.tab_37)
-    w.overlay_all_channels.setObjectName(u"overlay_all_channels")
-    w.overlay_all_channels.setChecked(True)
+    w.gridLayout_brachy_edit.addLayout(w.horizontalLayout_brachy_tools, 0, 0, 1, 4)
 
-    w.gridLayout_8.addWidget(w.overlay_all_channels, 1, 4, 1, 1)
+    w.brachy_point_label = QLabel(w.brachy_edit_group)
+    w.brachy_point_label.setObjectName(u"brachy_point_label")
 
-    w.dw_ch_point_size = QSpinBox(w.tab_37)
+    w.gridLayout_brachy_edit.addWidget(w.brachy_point_label, 1, 0, 1, 1)
+
+    w.brachy_add_point_btn = QPushButton(w.brachy_edit_group)
+    w.brachy_add_point_btn.setObjectName(u"brachy_add_point_btn")
+
+    w.gridLayout_brachy_edit.addWidget(w.brachy_add_point_btn, 1, 1, 1, 1)
+
+    w.brachy_del_point_btn = QPushButton(w.brachy_edit_group)
+    w.brachy_del_point_btn.setObjectName(u"brachy_del_point_btn")
+
+    w.gridLayout_brachy_edit.addWidget(w.brachy_del_point_btn, 1, 2, 1, 1)
+
+    w.brachy_catheter_edit_label = QLabel(w.brachy_edit_group)
+    w.brachy_catheter_edit_label.setObjectName(u"brachy_catheter_edit_label")
+
+    w.gridLayout_brachy_edit.addWidget(w.brachy_catheter_edit_label, 2, 0, 1, 1)
+
+    w.brachy_new_catheter_btn = QPushButton(w.brachy_edit_group)
+    w.brachy_new_catheter_btn.setObjectName(u"brachy_new_catheter_btn")
+    w.brachy_new_catheter_btn.setCheckable(True)
+
+    w.gridLayout_brachy_edit.addWidget(w.brachy_new_catheter_btn, 2, 1, 1, 1)
+
+    w.brachy_dup_catheter_btn = QPushButton(w.brachy_edit_group)
+    w.brachy_dup_catheter_btn.setObjectName(u"brachy_dup_catheter_btn")
+
+    w.gridLayout_brachy_edit.addWidget(w.brachy_dup_catheter_btn, 2, 2, 1, 1)
+
+    w.brachy_del_catheter_btn = QPushButton(w.brachy_edit_group)
+    w.brachy_del_catheter_btn.setObjectName(u"brachy_del_catheter_btn")
+
+    w.gridLayout_brachy_edit.addWidget(w.brachy_del_catheter_btn, 2, 3, 1, 1)
+
+    w.brachy_dwells_edit_label = QLabel(w.brachy_edit_group)
+    w.brachy_dwells_edit_label.setObjectName(u"brachy_dwells_edit_label")
+
+    w.gridLayout_brachy_edit.addWidget(w.brachy_dwells_edit_label, 3, 0, 1, 1)
+
+    w.brachy_set_dwells_btn = QPushButton(w.brachy_edit_group)
+    w.brachy_set_dwells_btn.setObjectName(u"brachy_set_dwells_btn")
+
+    w.gridLayout_brachy_edit.addWidget(w.brachy_set_dwells_btn, 3, 1, 1, 1)
+
+    w.brachy_zero_catheter_btn = QPushButton(w.brachy_edit_group)
+    w.brachy_zero_catheter_btn.setObjectName(u"brachy_zero_catheter_btn")
+
+    w.gridLayout_brachy_edit.addWidget(w.brachy_zero_catheter_btn, 3, 2, 1, 1)
+
+    w.brachy_zero_all_btn = QPushButton(w.brachy_edit_group)
+    w.brachy_zero_all_btn.setObjectName(u"brachy_zero_all_btn")
+
+    w.gridLayout_brachy_edit.addWidget(w.brachy_zero_all_btn, 3, 3, 1, 1)
+    w.gridLayout_brachy_edit.setRowStretch(4, 1)
+    w.gridLayout_brachy_edit.setColumnMinimumWidth(1, 70)
+    w.gridLayout_brachy_edit.setColumnMinimumWidth(2, 70)
+    w.gridLayout_brachy_edit.setColumnMinimumWidth(3, 70)
+
+    w.brachy_edit_scroll.setWidget(w.brachy_edit_group)
+    # same background as the other parts (setWidget turns filling on)
+    w.brachy_edit_scroll.viewport().setAutoFillBackground(False)
+    w.brachy_edit_group.setAutoFillBackground(False)
+    w.brachy_splitter.addWidget(w.brachy_edit_scroll)
+
+    # Dose calculation: the source (TG43 source database), the air kerma strength of the plan
+    # and the TG43 dose of the plan (into the data tree). In a scroll area (vertical: it keeps
+    # the width of its content, the other parts give up space first).
+    w.brachy_dose_scroll = FitScrollArea(w.brachy_splitter, keep_width=True)
+    w.brachy_dose_scroll.setObjectName(u"brachy_dose_scroll")
+    w.brachy_dose_scroll.setWidgetResizable(True)
+    w.brachy_dose_scroll.setFrameShape(QFrame.Shape.NoFrame)
+    w.brachy_dose_group = QGroupBox(w.brachy_dose_scroll)
+    w.brachy_dose_group.setObjectName(u"brachy_dose_group")
+    w.gridLayout_brachy_dose = QGridLayout(w.brachy_dose_group)
+    w.gridLayout_brachy_dose.setObjectName(u"gridLayout_brachy_dose")
+    w.brachy_source_label = QLabel(w.brachy_dose_group)
+    w.brachy_source_label.setObjectName(u"brachy_source_label")
+
+    w.gridLayout_brachy_dose.addWidget(w.brachy_source_label, 0, 0, 1, 1)
+
+    w.brachy_dose_source = QComboBox(w.brachy_dose_group)
+    w.brachy_dose_source.setObjectName(u"brachy_dose_source")
+    w.brachy_dose_source.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+
+    w.gridLayout_brachy_dose.addWidget(w.brachy_dose_source, 0, 1, 1, 1)
+
+    w.brachy_sk_label = QLabel(w.brachy_dose_group)
+    w.brachy_sk_label.setObjectName(u"brachy_sk_label")
+
+    w.gridLayout_brachy_dose.addWidget(w.brachy_sk_label, 1, 0, 1, 1)
+
+    # (typed; Enter or leaving the box sets it)
+    w.brachy_sk_spin = TrimmedDoubleSpinBox(w.brachy_dose_group)
+    w.brachy_sk_spin.setObjectName(u"brachy_sk_spin")
+    w.brachy_sk_spin.setDecimals(2)
+    w.brachy_sk_spin.setRange(0.01, 99999.99)
+    w.brachy_sk_spin.setValue(40700.0)
+    w.brachy_sk_spin.setSuffix(u" U")
+    w.brachy_sk_spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+    w.brachy_sk_spin.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+    w.brachy_sk_spin.setKeyboardTracking(False)
+
+    w.gridLayout_brachy_dose.addWidget(w.brachy_sk_spin, 1, 1, 1, 1)
+
+    w.brachy_calc_dose_btn = QPushButton(w.brachy_dose_group)
+    w.brachy_calc_dose_btn.setObjectName(u"brachy_calc_dose_btn")
+
+    w.gridLayout_brachy_dose.addWidget(w.brachy_calc_dose_btn, 2, 0, 1, 2)
+    w.gridLayout_brachy_dose.setRowStretch(3, 1)
+    w.gridLayout_brachy_dose.setColumnStretch(2, 1)
+
+    w.brachy_dose_scroll.setWidget(w.brachy_dose_group)
+    # same background as the other parts (setWidget turns filling on)
+    w.brachy_dose_scroll.viewport().setAutoFillBackground(False)
+    w.brachy_dose_group.setAutoFillBackground(False)
+    w.brachy_splitter.addWidget(w.brachy_dose_scroll)
+
+    # Colors (each button opens a color dialog) and sizes of the catheter, dwell and
+    # reference point overlays, and the size of their labels. In a scroll area, so the
+    # Style part can be made narrower than its content (it gives up space first).
+    # Not shown at first (Display > Panels > Style).
+    w.brachy_style_scroll = FitScrollArea(w.brachy_splitter)
+    w.brachy_style_scroll.setObjectName(u"brachy_style_scroll")
+    w.brachy_style_scroll.setWidgetResizable(True)
+    w.brachy_style_scroll.setFrameShape(QFrame.Shape.NoFrame)
+    w.brachy_style_group = QGroupBox(w.brachy_style_scroll)
+    w.brachy_style_group.setObjectName(u"brachy_style_group")
+    w.gridLayout_brachy_style = QGridLayout(w.brachy_style_group)
+    w.gridLayout_brachy_style.setObjectName(u"gridLayout_brachy_style")
+    w.gridLayout_brachy_style.setVerticalSpacing(3)
+    w.brachy_style_ch_label = QLabel(w.brachy_style_group)
+    w.brachy_style_ch_label.setObjectName(u"brachy_style_ch_label")
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_style_ch_label, 0, 0, 1, 1)
+
+    w.brachy_col_ch_point = QToolButton(w.brachy_style_group)
+    w.brachy_col_ch_point.setObjectName(u"brachy_col_ch_point")
+    w.brachy_col_ch_point.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_col_ch_point, 0, 1, 1, 1)
+
+    w.brachy_col_ch_line = QToolButton(w.brachy_style_group)
+    w.brachy_col_ch_line.setObjectName(u"brachy_col_ch_line")
+    w.brachy_col_ch_line.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_col_ch_line, 0, 2, 1, 1)
+
+    w.brachy_col_ch_selected = QToolButton(w.brachy_style_group)
+    w.brachy_col_ch_selected.setObjectName(u"brachy_col_ch_selected")
+    w.brachy_col_ch_selected.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_col_ch_selected, 0, 3, 1, 1)
+
+    w.brachy_col_edit = QToolButton(w.brachy_style_group)
+    w.brachy_col_edit.setObjectName(u"brachy_col_edit")
+    w.brachy_col_edit.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_col_edit, 0, 4, 1, 1)
+
+    w.brachy_col_edit_point = QToolButton(w.brachy_style_group)
+    w.brachy_col_edit_point.setObjectName(u"brachy_col_edit_point")
+    w.brachy_col_edit_point.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_col_edit_point, 0, 5, 1, 1)
+
+    w.dw_ch_point_size = QSpinBox(w.brachy_style_group)
     w.dw_ch_point_size.setObjectName(u"dw_ch_point_size")
     w.dw_ch_point_size.setFont(font)
+    w.dw_ch_point_size.setRange(1, 30)
     w.dw_ch_point_size.setValue(3)
 
-    w.gridLayout_8.addWidget(w.dw_ch_point_size, 5, 3, 1, 1)
+    w.gridLayout_brachy_style.addWidget(w.dw_ch_point_size, 1, 1, 1, 1)
 
-    w.horizontalSpacer_45 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+    w.brachy_ov_line_width = QSpinBox(w.brachy_style_group)
+    w.brachy_ov_line_width.setObjectName(u"brachy_ov_line_width")
+    w.brachy_ov_line_width.setFont(font)
+    w.brachy_ov_line_width.setRange(1, 10)
+    w.brachy_ov_line_width.setValue(2)
 
-    w.gridLayout_8.addItem(w.horizontalSpacer_45, 4, 0, 1, 1)
+    w.gridLayout_brachy_style.addWidget(w.brachy_ov_line_width, 1, 2, 1, 1)
+
+    w.brachy_style_dw_label = QLabel(w.brachy_style_group)
+    w.brachy_style_dw_label.setObjectName(u"brachy_style_dw_label")
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_style_dw_label, 2, 0, 1, 1)
+
+    w.brachy_col_dw_slice = QToolButton(w.brachy_style_group)
+    w.brachy_col_dw_slice.setObjectName(u"brachy_col_dw_slice")
+    w.brachy_col_dw_slice.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_col_dw_slice, 2, 1, 1, 1)
+
+    w.brachy_col_dw_other = QToolButton(w.brachy_style_group)
+    w.brachy_col_dw_other.setObjectName(u"brachy_col_dw_other")
+    w.brachy_col_dw_other.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_col_dw_other, 2, 2, 1, 1)
+
+    w.brachy_col_dw_zero = QToolButton(w.brachy_style_group)
+    w.brachy_col_dw_zero.setObjectName(u"brachy_col_dw_zero")
+    w.brachy_col_dw_zero.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_col_dw_zero, 2, 3, 1, 1)
+
+    w.brachy_ov_dw_size = QDoubleSpinBox(w.brachy_style_group)
+    w.brachy_ov_dw_size.setObjectName(u"brachy_ov_dw_size")
+    w.brachy_ov_dw_size.setFont(font)
+    w.brachy_ov_dw_size.setDecimals(1)
+    w.brachy_ov_dw_size.setRange(0.5, 30.0)
+    w.brachy_ov_dw_size.setSingleStep(0.5)
+    w.brachy_ov_dw_size.setValue(3.0)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_ov_dw_size, 3, 1, 1, 1)
+
+    w.brachy_ov_dw_edge = QSpinBox(w.brachy_style_group)
+    w.brachy_ov_dw_edge.setObjectName(u"brachy_ov_dw_edge")
+    w.brachy_ov_dw_edge.setFont(font)
+    w.brachy_ov_dw_edge.setRange(1, 10)
+    w.brachy_ov_dw_edge.setValue(2)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_ov_dw_edge, 3, 2, 1, 1)
+
+    w.brachy_ov_dw_fill = QSpinBox(w.brachy_style_group)
+    w.brachy_ov_dw_fill.setObjectName(u"brachy_ov_dw_fill")
+    w.brachy_ov_dw_fill.setFont(font)
+    w.brachy_ov_dw_fill.setRange(0, 100)
+    w.brachy_ov_dw_fill.setSingleStep(5)
+    w.brachy_ov_dw_fill.setValue(15)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_ov_dw_fill, 3, 3, 1, 1)
+
+    w.brachy_style_ref_label = QLabel(w.brachy_style_group)
+    w.brachy_style_ref_label.setObjectName(u"brachy_style_ref_label")
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_style_ref_label, 4, 0, 1, 1)
+
+    w.brachy_col_ref_slice = QToolButton(w.brachy_style_group)
+    w.brachy_col_ref_slice.setObjectName(u"brachy_col_ref_slice")
+    w.brachy_col_ref_slice.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_col_ref_slice, 4, 1, 1, 1)
+
+    w.brachy_col_ref_other = QToolButton(w.brachy_style_group)
+    w.brachy_col_ref_other.setObjectName(u"brachy_col_ref_other")
+    w.brachy_col_ref_other.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_col_ref_other, 4, 2, 1, 1)
+
+    w.brachy_ov_ref_size = QDoubleSpinBox(w.brachy_style_group)
+    w.brachy_ov_ref_size.setObjectName(u"brachy_ov_ref_size")
+    w.brachy_ov_ref_size.setFont(font)
+    w.brachy_ov_ref_size.setDecimals(1)
+    w.brachy_ov_ref_size.setRange(1.0, 50.0)
+    w.brachy_ov_ref_size.setSingleStep(1.0)
+    w.brachy_ov_ref_size.setValue(6.0)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_ov_ref_size, 4, 3, 1, 1)
+
+    w.brachy_ov_ref_width = QSpinBox(w.brachy_style_group)
+    w.brachy_ov_ref_width.setObjectName(u"brachy_ov_ref_width")
+    w.brachy_ov_ref_width.setFont(font)
+    w.brachy_ov_ref_width.setRange(1, 10)
+    w.brachy_ov_ref_width.setValue(2)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_ov_ref_width, 4, 4, 1, 1)
+
+    w.brachy_ov_label_size = QSpinBox(w.brachy_style_group)
+    w.brachy_ov_label_size.setObjectName(u"brachy_ov_label_size")
+    w.brachy_ov_label_size.setFont(font)
+    w.brachy_ov_label_size.setRange(6, 40)
+    w.brachy_ov_label_size.setValue(12)
+
+    w.gridLayout_brachy_style.addWidget(w.brachy_ov_label_size, 1, 3, 1, 1)
+    w.gridLayout_brachy_style.setRowStretch(5, 1)
+    w.gridLayout_brachy_style.setColumnStretch(6, 1)
+
+    w.brachy_style_scroll.setWidget(w.brachy_style_group)
+    # same background as the other parts (setWidget turns filling on)
+    w.brachy_style_scroll.viewport().setAutoFillBackground(False)
+    w.brachy_style_group.setAutoFillBackground(False)
+    w.brachy_style_scroll.setVisible(False)
+    w.brachy_splitter.addWidget(w.brachy_style_scroll)
+    # the last part shown (Dose, or Style when shown) takes the spare width; the others keep
+    # the width they were given (update_brachy_panels)
+    w.brachy_splitter.setStretchFactor(w.brachy_splitter.indexOf(w.brachy_dose_scroll), 1)
+
+    w.gridLayout_8.addWidget(w.brachy_splitter, 0, 0, 1, 2)
+
+    # Display: the parts shown in the tab (the list always is) and the overlays drawn on the
+    # images. The options after a bold box (catheters, dwells, reference points) need that box.
+    font_bold = QFont(font)
+    font_bold.setBold(True)
+    w.brachy_display_group = QGroupBox(w.tab_37)
+    w.brachy_display_group.setObjectName(u"brachy_display_group")
+    w.brachy_display_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+    w.horizontalLayout_brachy_display = QHBoxLayout(w.brachy_display_group)
+    w.horizontalLayout_brachy_display.setObjectName(u"horizontalLayout_brachy_display")
+    w.brachy_panels_label = QLabel(w.brachy_display_group)
+    w.brachy_panels_label.setObjectName(u"brachy_panels_label")
+    w.brachy_panels_label.setFont(font_bold)
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_panels_label)
+    w.brachy_show_table_panel = QCheckBox(w.brachy_display_group)
+    w.brachy_show_table_panel.setObjectName(u"brachy_show_table_panel")
+    w.brachy_show_table_panel.setChecked(True)
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_show_table_panel)
+    w.brachy_show_edit_panel = QCheckBox(w.brachy_display_group)
+    w.brachy_show_edit_panel.setObjectName(u"brachy_show_edit_panel")
+    w.brachy_show_edit_panel.setChecked(True)
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_show_edit_panel)
+    w.brachy_show_dose_panel = QCheckBox(w.brachy_display_group)
+    w.brachy_show_dose_panel.setObjectName(u"brachy_show_dose_panel")
+    w.brachy_show_dose_panel.setChecked(True)
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_show_dose_panel)
+    w.brachy_show_style_panel = QCheckBox(w.brachy_display_group)
+    w.brachy_show_style_panel.setObjectName(u"brachy_show_style_panel")
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_show_style_panel)
+    w.horizontalLayout_brachy_display.addSpacing(8)
+    w.brachy_display_sep_0 = QFrame(w.brachy_display_group)
+    w.brachy_display_sep_0.setObjectName(u"brachy_display_sep_0")
+    w.brachy_display_sep_0.setFrameShape(QFrame.Shape.VLine)
+    w.brachy_display_sep_0.setFrameShadow(QFrame.Shadow.Sunken)
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_display_sep_0)
+    w.horizontalLayout_brachy_display.addSpacing(8)
+    w.display_brachy_channel_overlay = QCheckBox(w.brachy_display_group)
+    w.display_brachy_channel_overlay.setObjectName(u"display_brachy_channel_overlay")
+    w.display_brachy_channel_overlay.setFont(font_bold)
+    w.horizontalLayout_brachy_display.addWidget(w.display_brachy_channel_overlay)
+    w.brachy_show_ch_points = QCheckBox(w.brachy_display_group)
+    w.brachy_show_ch_points.setObjectName(u"brachy_show_ch_points")
+    w.brachy_show_ch_points.setChecked(True)
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_show_ch_points)
+    w.brachy_show_ch_path = QCheckBox(w.brachy_display_group)
+    w.brachy_show_ch_path.setObjectName(u"brachy_show_ch_path")
+    w.brachy_show_ch_path.setChecked(True)
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_show_ch_path)
+    w.brachy_show_ch_labels = QCheckBox(w.brachy_display_group)
+    w.brachy_show_ch_labels.setObjectName(u"brachy_show_ch_labels")
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_show_ch_labels)
+    w.horizontalLayout_brachy_display.addSpacing(8)
+    w.brachy_display_sep_1 = QFrame(w.brachy_display_group)
+    w.brachy_display_sep_1.setObjectName(u"brachy_display_sep_1")
+    w.brachy_display_sep_1.setFrameShape(QFrame.Shape.VLine)
+    w.brachy_display_sep_1.setFrameShadow(QFrame.Shadow.Sunken)
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_display_sep_1)
+    w.horizontalLayout_brachy_display.addSpacing(8)
+    w.display_dw_overlay = QCheckBox(w.brachy_display_group)
+    w.display_dw_overlay.setObjectName(u"display_dw_overlay")
+    w.display_dw_overlay.setFont(font_bold)
+    w.horizontalLayout_brachy_display.addWidget(w.display_dw_overlay)
+    w.brachy_show_dw_zero = QCheckBox(w.brachy_display_group)
+    w.brachy_show_dw_zero.setObjectName(u"brachy_show_dw_zero")
+    w.brachy_show_dw_zero.setChecked(True)
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_show_dw_zero)
+    w.horizontalLayout_brachy_display.addSpacing(8)
+    w.brachy_display_sep_2 = QFrame(w.brachy_display_group)
+    w.brachy_display_sep_2.setObjectName(u"brachy_display_sep_2")
+    w.brachy_display_sep_2.setFrameShape(QFrame.Shape.VLine)
+    w.brachy_display_sep_2.setFrameShadow(QFrame.Shadow.Sunken)
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_display_sep_2)
+    w.horizontalLayout_brachy_display.addSpacing(8)
+    w.brachy_show_ref_points = QCheckBox(w.brachy_display_group)
+    w.brachy_show_ref_points.setObjectName(u"brachy_show_ref_points")
+    w.brachy_show_ref_points.setFont(font_bold)
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_show_ref_points)
+    w.brachy_show_ref_labels = QCheckBox(w.brachy_display_group)
+    w.brachy_show_ref_labels.setObjectName(u"brachy_show_ref_labels")
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_show_ref_labels)
+    w.horizontalLayout_brachy_display.addStretch()
+
+    w.gridLayout_8.addWidget(w.brachy_display_group, 1, 0, 1, 1)
+
+    # Plan: a new plan, save / save as (into the data tree, as a DICOM RT plan made in AMIGOpy);
+    # the title has the plan's name and whether it is saved
+    w.brachy_plan_group = QGroupBox(w.tab_37)
+    w.brachy_plan_group.setObjectName(u"brachy_plan_group")
+    w.brachy_plan_group.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+    w.horizontalLayout_brachy_plan = QHBoxLayout(w.brachy_plan_group)
+    w.horizontalLayout_brachy_plan.setObjectName(u"horizontalLayout_brachy_plan")
+    w.brachy_new_plan_btn = QPushButton(w.brachy_plan_group)
+    w.brachy_new_plan_btn.setObjectName(u"brachy_new_plan_btn")
+    w.brachy_new_plan_btn.setMinimumWidth(46)
+    w.horizontalLayout_brachy_plan.addWidget(w.brachy_new_plan_btn)
+    w.brachy_save_plan_btn = QPushButton(w.brachy_plan_group)
+    w.brachy_save_plan_btn.setObjectName(u"brachy_save_plan_btn")
+    w.brachy_save_plan_btn.setMinimumWidth(46)
+    w.horizontalLayout_brachy_plan.addWidget(w.brachy_save_plan_btn)
+    w.brachy_save_plan_as_btn = QPushButton(w.brachy_plan_group)
+    w.brachy_save_plan_as_btn.setObjectName(u"brachy_save_plan_as_btn")
+    w.brachy_save_plan_as_btn.setMinimumWidth(60)
+    w.horizontalLayout_brachy_plan.addWidget(w.brachy_save_plan_as_btn)
+
+    w.gridLayout_8.addWidget(w.brachy_plan_group, 1, 1, 1, 1)
+    w.gridLayout_8.setRowStretch(0, 1)
+    w.gridLayout_8.setColumnStretch(0, 1)
 
     w.tabWidget_3.addTab(w.tab_37, "")
     w.tab_38 = QWidget()

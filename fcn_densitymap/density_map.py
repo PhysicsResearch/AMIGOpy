@@ -144,20 +144,25 @@ def compute_density(ct_matrix, ct_cal_curve):
 
 def create_density_map(self, use_mat_map=False):
     # Retrieve CT_info
-    if getattr(self, 'patientID', None):
-        target_dict = self.medical_image[self.patientID][self.studyID]
-    else:
+    if not getattr(self, 'patientID', None):
         display_message_box('No patient selected')
         return
-    try:
-        ct_matrix = target_dict['CT'][self.series_index]['3DMatrix']
-    except Exception:
+    target_dict = self.medical_image.get(self.patientID, {}).get(self.studyID, {})
+    ct_list = target_dict.get('CT', [])
+    if not ct_list:
         display_message_box('No CT found')
         return
+    cur_m = getattr(self, 'modality', None)
+    cur_idx = getattr(self, 'series_index', 0)
+    ct_idx = cur_idx if (cur_m == 'CT' and 0 <= cur_idx < len(ct_list)) else 0
+    self.modality = 'CT'
+    self.series_index = ct_idx
+    target = ct_list[ct_idx]
+    ct_matrix = target['3DMatrix']
 
     # If using material map
     if use_mat_map:
-        mat_maps = target_dict['CT'][self.series_index].get('mat_maps', {})
+        mat_maps = target.get('mat_maps', {})
         if not mat_maps:
             QMessageBox.critical(self, 'Error', 'No material maps found for this CT')
             return
@@ -170,7 +175,7 @@ def create_density_map(self, use_mat_map=False):
         if not ok_2 or not map_type:
             return  # Cancelled safely
 
-        mat_map_entry = target_dict['CT'][self.series_index]['mat_maps'][item]
+        mat_map_entry = target['mat_maps'][item]
         mat_map_matrix = mat_map_entry['3DMatrix']
         mat_used = mat_map_entry.get('Material_used', {})
 
@@ -241,7 +246,7 @@ def create_density_map(self, use_mat_map=False):
                 density_matrix[mat_map_matrix == mat_key] = ct_density[mat_map_matrix == mat_key]
 
         # Apply structure-level overrides if individual structures were given specific fixed_density
-        struct_dict = target_dict['CT'][self.series_index].get('structures', {})
+        struct_dict = target.get('structures', {})
         for s_name, s_info in s_items:
             s_mat = s_info.get('material')
             s_fixed = s_info.get('fixed_density', True)
@@ -268,7 +273,7 @@ def create_density_map(self, use_mat_map=False):
 
         # Check if override density is checked
         if getattr(self, 'override_no_tissue', None) and self.override_no_tissue.isChecked():
-            mat_maps = target_dict['CT'][self.series_index].get('mat_maps', {})
+            mat_maps = target.get('mat_maps', {})
             if not mat_maps:
                 QMessageBox.critical(self, 'Error', 'No material maps found for this CT')
                 return
@@ -277,8 +282,8 @@ def create_density_map(self, use_mat_map=False):
             if not ok or not item:
                 return  # Cancelled safely
 
-            mat_map_matrix = target_dict['CT'][self.series_index]['mat_maps'][item]['3DMatrix']
-            mat_used = target_dict['CT'][self.series_index]['mat_maps'][item]['Material_used']
+            mat_map_matrix = target['mat_maps'][item]['3DMatrix']
+            mat_used = target['mat_maps'][item]['Material_used']
             for mat_key in mat_used.keys():
                 material = mat_used[mat_key]
                 mat_info = self.Mat_df[self.Mat_df['Name'] == material]
@@ -293,7 +298,6 @@ def create_density_map(self, use_mat_map=False):
                     density_matrix[mat_map_matrix == mat_key] = value
 
     # Store the density map
-    target = target_dict['CT'][self.series_index]
     existing = target.get('density_maps', {})
     if not existing:
         target['density_maps'] = {}
@@ -304,16 +308,20 @@ def create_density_map(self, use_mat_map=False):
 
 
 def del_density_map(self):
-    if getattr(self, 'patientID', None):
-        target_dict = self.medical_image[self.patientID][self.studyID]
-    else:
+    if not getattr(self, 'patientID', None):
         QMessageBox.critical(self, 'Error', 'No Patient selected')
         return
-    try:
-        target = target_dict['CT'][self.series_index]
-    except Exception:
+    target_dict = self.medical_image.get(self.patientID, {}).get(self.studyID, {})
+    ct_list = target_dict.get('CT', [])
+    if not ct_list:
         QMessageBox.critical(self, 'Error', 'No CT found')
         return
+    cur_m = getattr(self, 'modality', None)
+    cur_idx = getattr(self, 'series_index', 0)
+    ct_idx = cur_idx if (cur_m == 'CT' and 0 <= cur_idx < len(ct_list)) else 0
+    self.modality = 'CT'
+    self.series_index = ct_idx
+    target = ct_list[ct_idx]
     density_maps = target.get('density_maps', {})
     if not density_maps:
         QMessageBox.critical(self, 'Error', 'No density maps found for this CT')

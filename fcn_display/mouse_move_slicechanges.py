@@ -55,13 +55,19 @@ def onMouseMoveAxial(self, caller, event):
             self.textActorAxial.SetInput(f"Slice: {self.current_axial_slice_index[idx]} ({int(image_coords[0])}, {int(image_coords[1])}) px  "
                                          f"({(image_coords[0]*self.IrIS_data[self.patientID]['Resolution']*10):.2f}, {(image_coords[1]*self.IrIS_data[self.patientID]['Resolution']*10):.2f}) mm  "
                                          f"Value: {round(pixel_value,3)} ")
-        elif self.DataType == "DICOM":
-            # convert values to mm
-            P_mm = self.current_axial_slice_index[idx] * self.slice_thick[idx] + self.Im_Offset[idx,2]
-            self.textActorAxial.SetInput(f"Slice: {P_mm:.2f} mm ({image_coord_vox[0]}, {self.current_axial_slice_index[idx]}, {image_coord_vox[1]}) {round(pixel_value,4):.4f}")
+        else:
+            # convert values to physical DICOM mm
+            P_z = self.Im_PatPosition[idx, 2] + self.current_axial_slice_index[idx] * self.slice_thick[idx] + self.Im_Offset[idx, 2]
+            vx = image_coord_vox[0]
+            vy = image_coord_vox[1]
+            vz = self.current_axial_slice_index[idx]
+            x_mm = self.Im_PatPosition[idx, 0] + vx * self.pixel_spac[idx, 1] + self.Im_Offset[idx, 0]
+            y_mm = self.Im_PatPosition[idx, 1] + (self.display_data[idx].shape[1] - 1 - vy) * self.pixel_spac[idx, 0] + self.Im_Offset[idx, 1]
+            z_mm = P_z
+            self.textActorAxial.SetInput(f"Slice (Y): {P_z:.2f} mm ({vx}, {vy}, {vz}) Vox. ({x_mm:.2f}, {y_mm:.2f}, {z_mm:.2f}) mm {round(pixel_value,4):.4f}")
     else:
-        P_mm = self.current_axial_slice_index[idx] * self.slice_thick[idx] + self.Im_Offset[idx,2]
-        self.textActorAxial.SetInput(f"Slice: {self.current_axial_slice_index[idx]} - {P_mm:.2f} mm")
+        P_z = self.Im_PatPosition[idx, 2] + self.current_axial_slice_index[idx] * self.slice_thick[idx] + self.Im_Offset[idx, 2]
+        self.textActorAxial.SetInput(f"Slice (Y): {self.current_axial_slice_index[idx]} - {P_z:.2f} mm")
 
 
     if self.selected_point == 0: 
@@ -197,13 +203,19 @@ def onMouseMoveSagittal(self, caller, event):
         slice_data = self.display_data[idx][:, :, self.current_sagittal_slice_index[idx]]
     # slice_data = np.flipud(slice_data);
     # Make sure the image coordinates are within the image bounds
-    P_mm = self.current_sagittal_slice_index[idx] * self.pixel_spac[idx,1] + self.Im_Offset[idx,0]
+    P_x = self.Im_PatPosition[idx, 0] + self.current_sagittal_slice_index[idx] * self.pixel_spac[idx, 1] + self.Im_Offset[idx, 0]
     if (0 <= image_coord_vox[0] < slice_data.shape[1]
         and 0 <= image_coord_vox[1] < slice_data.shape[0]):
         pixel_value = slice_data[image_coord_vox[1],image_coord_vox[0]]
-        self.textActorSagittal.SetInput (f"Slice: {P_mm:.1f} mm ({self.current_sagittal_slice_index[idx]}, {image_coord_vox[0]}, {image_coord_vox[1]}) {round(pixel_value,4):.4f}")
+        vx = self.current_sagittal_slice_index[idx]
+        vy = image_coord_vox[0]
+        vz = image_coord_vox[1]
+        x_mm = P_x
+        y_mm = self.Im_PatPosition[idx, 1] + (self.display_data[idx].shape[1] - 1 - vy) * self.pixel_spac[idx, 0] + self.Im_Offset[idx, 1]
+        z_mm = self.Im_PatPosition[idx, 2] + vz * self.slice_thick[idx] + self.Im_Offset[idx, 2]
+        self.textActorSagittal.SetInput(f"Slice (X): {P_x:.2f} mm ({vx}, {vy}, {vz}) Vox. ({x_mm:.2f}, {y_mm:.2f}, {z_mm:.2f}) mm {round(pixel_value,4):.4f}")
     else:
-        self.textActorSagittal.SetInput(f"Slice: {self.current_sagittal_slice_index[idx]} - Slice: {P_mm:.2f} mm")
+        self.textActorSagittal.SetInput(f"Slice (X): {self.current_sagittal_slice_index[idx]} - {P_x:.2f} mm")
     
     if self.DataType == "IrIS":
         self.textActorSagittalMetaTime.SetInput(f"Time {self.IrIS_data[self.patientID]['AcquisitionTime'][int(image_coords[1])]:.2f} s")
@@ -273,13 +285,19 @@ def onMouseMoveCoronal(self, caller, event):
     slice_data = self.display_data[idx][:, self.current_coronal_slice_index[idx], :]
     #slice_data = np.flipud(slice_data);
     # Make sure the image coordinates are within the image bounds
-    P_mm = self.current_coronal_slice_index[idx] * self.pixel_spac[idx,0] + self.Im_Offset[idx,0]
+    P_y = self.Im_PatPosition[idx, 1] + (self.display_data[idx].shape[1] - 1 - self.current_coronal_slice_index[idx]) * self.pixel_spac[idx, 0] + self.Im_Offset[idx, 1]
     if (0 <= image_coord_vox[0] < slice_data.shape[1] and
-            0 <= image_coord_vox[1] < slice_data.shape[0]*self.pixel_spac[idx,0]):
+            0 <= image_coord_vox[1] < slice_data.shape[0]):
         pixel_value = slice_data[image_coord_vox[1], image_coord_vox[0]]
-        self.textActorCoronal.SetInput(f"Slice: {P_mm:.1f} mm ({image_coord_vox[0]}, {image_coord_vox[1]}, {self.current_coronal_slice_index[idx]}) {round(pixel_value,4):.4f}")
+        vx = image_coord_vox[0]
+        vy = self.current_coronal_slice_index[idx]
+        vz = image_coord_vox[1]
+        x_mm = self.Im_PatPosition[idx, 0] + vx * self.pixel_spac[idx, 1] + self.Im_Offset[idx, 0]
+        y_mm = P_y
+        z_mm = self.Im_PatPosition[idx, 2] + vz * self.slice_thick[idx] + self.Im_Offset[idx, 2]
+        self.textActorCoronal.SetInput(f"Slice (Z): {P_y:.2f} mm ({vx}, {vy}, {vz}) Vox. ({x_mm:.2f}, {y_mm:.2f}, {z_mm:.2f}) mm {round(pixel_value,4):.4f}")
     else:
-        self.textActorCoronal.SetInput(f"Slice: {self.current_coronal_slice_index[idx]}  -  Slice: {P_mm:.2f} mm")
+        self.textActorCoronal.SetInput(f"Slice (Z): {self.current_coronal_slice_index[idx]} - {P_y:.2f} mm")
     
          
     if self.DataType == "IrIS":
@@ -306,7 +324,8 @@ def change_sliceAxial(self, delta):
         self.current_axial_slice_index[idx] = self.display_data[idx].shape[0] - 1
     # Update the display
     displayaxial(self)
-    self.textActorAxial.SetInput(f"Slice: {self.current_axial_slice_index[idx]}")
+    P_z = self.Im_PatPosition[idx, 2] + self.current_axial_slice_index[idx] * self.slice_thick[idx] + self.Im_Offset[idx, 2]
+    self.textActorAxial.SetInput(f"Slice (Y): {self.current_axial_slice_index[idx]} - {P_z:.2f} mm")
     # Update the slider's value to match the current slice index
     self.AxialSlider.setValue(self.current_axial_slice_index[idx])
     
@@ -331,7 +350,8 @@ def change_sliceSagittal(self, delta):
         self.current_sagittal_slice_index[idx] = self.display_data[idx].shape[2] - 1
     # Update the display
     displaysagittal(self)
-    self.textActorSagittal.SetInput(f"Slice: {self.current_sagittal_slice_index[idx]}")
+    P_x = self.Im_PatPosition[idx, 0] + self.current_sagittal_slice_index[idx] * self.pixel_spac[idx, 1] + self.Im_Offset[idx, 0]
+    self.textActorSagittal.SetInput(f"Slice (X): {self.current_sagittal_slice_index[idx]} - {P_x:.2f} mm")
     # Update the slider's value to match the current slice index
     self.SagittalSlider.setValue(self.current_sagittal_slice_index[idx])        
     
@@ -352,6 +372,7 @@ def change_sliceCoronal(self, delta):
         self.current_coronal_slice_index[idx] = self.display_data[idx].shape[1] - 1
     # Update the display
     displaycoronal(self)
-    self.textActorCoronal.SetInput(f"Slice: {self.current_coronal_slice_index[idx]}")
+    P_y = self.Im_PatPosition[idx, 1] + (self.display_data[idx].shape[1] - 1 - self.current_coronal_slice_index[idx]) * self.pixel_spac[idx, 0] + self.Im_Offset[idx, 1]
+    self.textActorCoronal.SetInput(f"Slice (Z): {self.current_coronal_slice_index[idx]} - {P_y:.2f} mm")
     # Update the slider's value to match the current slice index
     self.CoronalSlider.setValue(self.current_coronal_slice_index[idx])   

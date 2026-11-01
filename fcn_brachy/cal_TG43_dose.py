@@ -1,20 +1,25 @@
-from fcn_brachy_sources.process_brachy_database import on_brachy_load_sources
+from fcn_brachy_sources.process_brachy_database import on_brachy_load_sources, on_brachy_source_selection
 import numpy as np
 from scipy.ndimage import rotate, shift
 from scipy.spatial.transform import Rotation as R
-from fcn_load.populate_med_image_list import populate_medical_image_tree
+from fcn_RTFiles.amigo_rtplan import plan_sk
 from PySide6.QtWidgets import QMessageBox
 
-def calculate_TG43_plan_dose(self):
-    # if the TG43 parameters are not initialized, call the function to do so
-    if self.TG43.activesource.DoseMatrix is None:
-        on_brachy_init_tg43(self)
+def calculate_TG43_plan_dose(self, source_name):
+    """
+    TG43 dose (Gy) of the brachy plan shown (View > PLAN > Brachy) with a source of the TG43
+    source database and the plan's air kerma strength. Returns (dose, meta) to store with
+    store_dose_to_medical_image, or None.
+    """
     # check if plan was laoded
     if not hasattr(self, 'patientID_plan') or not hasattr(self, 'studyID_plan'):
         QMessageBox.warning(self, "Missing Plan Data",
                             "Patient or Study ID for plan is not set.\n"
                             "Cannot load brachy channels.")
-        return []
+        return None
+    # the source's TG43 data and reference dose matrix (loaded once)
+    if not load_tg43_source(self, source_name):
+        return None
 
     # Reset progress bar for the actual dose calculation
     if hasattr(self, 'progressBar') and self.progressBar is not None:
@@ -23,77 +28,79 @@ def calculate_TG43_plan_dose(self):
     # get the dwell times and positions to calculate the dose matrix
     # dwells: ndarray (N, 7): [X_mm, Y_mm, Z_mm, ThetaX, ThetaY, ThetaZ, Time]
     dwells = get_all_brachy_dwells(self)
-    # if dwells is not None:
-    #     print(dwells)
-    #
+    if dwells is None or len(dwells) == 0:
+        return None
+    # only the dwells with a position and a dwell time give dose
     dws = np.array(dwells, copy=True)
+    dws = dws[np.all(np.isfinite(dws[:, :3]), axis=1) & (np.nan_to_num(dws[:, 6]) > 0)]
+    if len(dws) == 0:
+        QMessageBox.warning(self, "Warning", "No dwell position has a dwell time: there is no dose to calculate.")
+        return None
+    # Air kerma strength of the plan (read before the calculation, which lets the window update)
+    metadata = self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']
+    kerma_value = plan_sk(metadata)
     output_res_mm = float(self.brachy_tg43_dose_grid.currentText().strip())
     dose, meta = transform_and_sum_dose_matrix_centered_3D(
         dws, self.TG43.activesource.DoseMatrix, self.TG43.activesource.DoseMatrix_res_mm,
         output_margin_mm=100, output_res_mm=output_res_mm, parent=self
     )
     # account for Air kerma and h unit
-    kerma_str   = self.brachy_plan_Ac.text()
-    kerma_value = float(kerma_str)
     dose = (dose * kerma_value / 3600) / 100.0
 
     # Flip Y-axis (axis=1) to match the vertical flip applied to CT/MR/RTDOSE layers in load_dcm.py
     dose = np.flip(dose, axis=1)
 
-    store_dose_to_medical_image(self, dose, meta)
-    populate_medical_image_tree(self)
     if hasattr(self, 'progressBar') and self.progressBar is not None:
         self.progressBar.setValue(100)
-    if hasattr(self, 'label_2') and self.label_2 is not None:
-        self.label_2.setText("TG43 dose calculation completed")
-        self.label_2.show()
+    return dose, meta
 
- 
-def store_dose_to_medical_image(self, dose,meta):
+
+def store_dose_to_medical_image(self, dose, meta, patient_id, study_id, series_number=1, plan_uid=None):
     """
-    Stores a dose matrix into self.medical_image under RTDOSE at a given index.
-    
+    Stores a dose matrix into self.medical_image as a new RTDOSE of a study (the plan's) and
+    returns its index. plan_uid: SOP instance UID of the plan it is the dose of (the data tree
+    shows the plan's name with the dose).
+
     If RTDOSE does not exist, it is created as a list.
-    If the list has fewer elements than `index`, it is extended.
     """
-    if self.patientID is None:
-        self.patientID = 'TG43'
-    if self.studyID is None:
-        self.studyID = 'TG43_AMB'
-
     # Ensure patient level
-    if self.patientID not in self.medical_image:
-        self.medical_image[self.patientID] = {}
+    if patient_id not in self.medical_image:
+        self.medical_image[patient_id] = {}
 
     # Ensure study level
-    if self.studyID not in self.medical_image[self.patientID]:
-        self.medical_image[self.patientID][self.studyID] = {}
+    if study_id not in self.medical_image[patient_id]:
+        self.medical_image[patient_id][study_id] = {}
 
     # Ensure RTDOSE list exists
-    if 'RTDOSE' not in self.medical_image[self.patientID][self.studyID]:
-        self.medical_image[self.patientID][self.studyID]['RTDOSE'] = []
+    if 'RTDOSE' not in self.medical_image[patient_id][study_id]:
+        self.medical_image[patient_id][study_id]['RTDOSE'] = []
 
-    # Append 
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'].append({})
+    # Append
+    rtdose_list = self.medical_image[patient_id][study_id]['RTDOSE']
+    rtdose_list.append({})
+    rtdose = rtdose_list[-1]
     #
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['3DMatrix']                      = dose
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']                      = {}
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['SeriesDescription'] = 'TG43_AMIGOpy'
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['SeriesNumber']                  = 1
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['WindowWidth']       = 10 
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['WindowCenter']      = 5
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['AcquisitionNumber'] = 1
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['DCM_Info']          = {}
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['StudyDescription']  = 'AMIGOpy'
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['ImageComments']     = 'Not for clinical use'
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['SliceThickness']    = meta['pixel_spacing_mm']
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['PixelSpacing']      = [meta['pixel_spacing_mm'], meta['pixel_spacing_mm']]
+    rtdose['3DMatrix']                      = dose
+    rtdose['metadata']                      = {}
+    rtdose['metadata']['SeriesDescription'] = 'TG43_AMIGOpy'
+    rtdose['SeriesNumber']                  = series_number
+    rtdose['metadata']['WindowWidth']       = 10
+    rtdose['metadata']['WindowCenter']      = 5
+    rtdose['metadata']['AcquisitionNumber'] = 1
+    rtdose['metadata']['DCM_Info']          = {}
+    rtdose['metadata']['StudyDescription']  = 'AMIGOpy'
+    rtdose['metadata']['ImageComments']     = 'Not for clinical use'
+    rtdose['metadata']['SliceThickness']    = meta['pixel_spacing_mm']
+    rtdose['metadata']['PixelSpacing']      = [meta['pixel_spacing_mm'], meta['pixel_spacing_mm']]
+    if plan_uid:
+        rtdose['metadata']['ReferencedRTPlanSOPInstanceUID'] = plan_uid
     #
     # orig = np.array(meta['origin_mm'], dtype=float)  # turn into array
     # neg_orig = -orig                                 # elementwise negation
     # # If DICOM wants a tuple/list, convert back
-    # self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['ImagePositionPatient'] = tuple(neg_orig.tolist())
-    self.medical_image[self.patientID][self.studyID]['RTDOSE'][-1]['metadata']['ImagePositionPatient'] = meta['origin_mm']
+    # rtdose['metadata']['ImagePositionPatient'] = tuple(neg_orig.tolist())
+    rtdose['metadata']['ImagePositionPatient'] = meta['origin_mm']
+    return len(rtdose_list) - 1
 
 
 def get_all_brachy_dwells(self):
@@ -154,25 +161,36 @@ def get_all_brachy_dwells(self):
     return all_dwells_array
 
 
-def on_brachy_init_tg43(self):
-    # this part initializes the TG43 parameters and calculate the TG43 reference dose 
-    # it needs to be done just once at the beginning of the program ... 
+def load_tg43_source(self, name):
+    """
+    Loads the TG43 data of a source of the source database (a folder of fcn_brachy_sources)
+    and calculates its reference dose matrix, unless that source is loaded already. Loaded as
+    when it is selected in Plan > Brachy > TG43, whose tables show its data and whose dose
+    grid and matrix size are used. False if it could not be loaded.
+    """
+    src = self.TG43.activesource
+    if src.source_model == name and src.DoseMatrix is not None:
+        return True
     if hasattr(self, 'label_2') and self.label_2 is not None:
-        self.label_2.setText("TG43 dose calculation initialized")
+        self.label_2.setText(f"TG43: loading the source {name}")
         self.label_2.show()
-    # set list menu to define the dose grid and matrix size
-    # DoseGrid = ["0.5","1","2","3","4","5"]
-    self.brachy_tg43_dose_grid.setCurrentIndex(1)
-    #
-    # MatrixSize = ["50x50","100x100","150x150","200x200"]
-    self.brachy_tg43_matrix_size.setCurrentIndex(3)
-    # Load sources
-    on_brachy_load_sources(self)
-    #
-    # on_brachy_source_selection(self)
-    # The code above will calculate the reference for the first loaded source ... if you want to calculate it for another source
-    # change the list men u index and it will update automatically 
-    self.brachy_source_list.setCurrentIndex(0)
+        self.label_2.repaint()  # (shown now: the window does not update while the source loads)
+    from fcn_create_gui.setup_ui import ensure_tab_loaded
+    ensure_tab_loaded(self, 4)  # (the Plan module holds the source's tables)
+    source_list = self.brachy_source_list
+    source_list.blockSignals(True)  # (selecting it there loads the source: done once, below)
+    try:
+        if source_list.findText(name) < 0:
+            on_brachy_load_sources(self)
+        source_list.setCurrentIndex(source_list.findText(name))
+    finally:
+        source_list.blockSignals(False)
+    if source_list.currentText() != name:
+        QMessageBox.warning(self, "TG43 dose", f"The source \"{name}\" is not in the source database.")
+        return False
+    src.DoseMatrix = None  # (if the source fails to load, no dose with the matrix of the previous one)
+    on_brachy_source_selection(self)
+    return src.DoseMatrix is not None
 
 
 
@@ -189,11 +207,12 @@ def _rotation_matrix_from_direction(cosX, cosY, cosZ):
     Edge cases:
         - If target ≈ [0, 0, 1]  → identity (no rotation needed)
         - If target ≈ [0, 0, -1] → 180° rotation around X axis
+        - If there is no direction (zero or NaN, a dwell without orientation) → identity
     """
     ref = np.array([0.0, 0.0, 1.0])
     tgt = np.array([cosX, cosY, cosZ], dtype=np.float64)
     norm = np.linalg.norm(tgt)
-    if norm < 1e-12:
+    if not np.isfinite(norm) or norm < 1e-12:
         return np.eye(3)
     tgt /= norm
 

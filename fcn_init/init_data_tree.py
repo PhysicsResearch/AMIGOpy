@@ -89,6 +89,9 @@ def on_tree_context_menu(self, pos):
             # if not _confirm(self, "Delete series", f"Delete series at {Patient}/{Study}/{Modality}[{Series}]?"): return
             delete_series(self, Patient, Study, Modality, Series)
             populate_medical_image_tree(self)
+        elif action == exp_action_dcm and Modality == 'RTPLAN':
+            from fcn_display.brachy_plan_actions import export_rtplan
+            export_rtplan(self, Patient, Study, Series)
         elif action == exp_action_dcm:
             meta_data   = self.medical_image[Patient][Study][Modality][Series]['metadata'].get('DCM_Info')
             data        = self.medical_image[Patient][Study][Modality][Series].get('3DMatrix')

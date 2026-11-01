@@ -676,14 +676,23 @@ def read_brachy_plan(plan,ref_str,structured_data):
         }
         #
         channel_info.append(info)
-        #
-        structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['Plan_Brachy_Channels'] = channel_info
-        structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['ReferenceAirKermaRate']= structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']['SourceSequence'][0]['ReferenceAirKermaRate']
+    #
+    # (also for a plan without channels, e.g. a new plan saved in AMIGOpy before its catheters were added)
+    metadata = structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']
+    metadata['Plan_Brachy_Channels'] = channel_info
+    source_sequence = metadata.get('SourceSequence') or []
+    if len(source_sequence) > 0 and 'ReferenceAirKermaRate' in source_sequence[0]:
+        metadata['ReferenceAirKermaRate'] = source_sequence[0]['ReferenceAirKermaRate']
+    # AMIGOpy (as Oncentra) stores the catheter points in the plan itself
+    from fcn_RTFiles.amigo_rtplan import apply_embedded_catheters, is_amigo_plan
+    if is_amigo_plan(metadata):
+        apply_embedded_catheters(metadata)
 
     # Extract reference dose points (DoseReferenceSequence)
     dose_ref_info = []
-    metadata = structured_data[plan['patient_id']][plan['study_id']][plan['modality']][plan['series_index']]['metadata']
     dose_ref_seq = metadata.get('DoseReferenceSequence')
+    if dose_ref_seq is None or isinstance(dose_ref_seq, str):  # 'N/A': the plan has none
+        dose_ref_seq = None
     if dose_ref_seq is None:
         dicom_file = metadata.get('DCM_Info')
         if dicom_file is not None:

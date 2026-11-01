@@ -28,6 +28,9 @@ def update_plan_tables(self):
         return
         
     if 'Plan_Brachy_Channels' in self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
+        # the plan as loaded (or last saved): to tell whether it was changed since
+        from fcn_RTFiles.amigo_rtplan import ensure_saved_state
+        ensure_saved_state(self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata'])
         N_channels = len(self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']['Plan_Brachy_Channels'])
         #
         self.brachy_N_channels.setText(f"{N_channels:.0f}")
@@ -35,9 +38,9 @@ def update_plan_tables(self):
         # set spinbo min value
         self.brachy_spinBox_01.setMinimum(1)
         self.brachy_spinBox_02.setMinimum(1)
-        # Set the maximum value
-        self.brachy_spinBox_01.setMaximum(N_channels)
-        self.brachy_spinBox_02.setMaximum(N_channels)
+        # Set the maximum value (a new plan has no catheters yet)
+        self.brachy_spinBox_01.setMaximum(max(N_channels, 1))
+        self.brachy_spinBox_02.setMaximum(max(N_channels, 1))
         # Set the current value
         self.brachy_spinBox_01.setValue(1)
         self.brachy_spinBox_02.setValue(1)
@@ -82,9 +85,12 @@ def update_disp_brachy_plan(self):
                 'TargetPrescriptionDose': 'N/A',
                 'TargedPrescritionDose': 'N/A',
                 'DoseReferencePointCoordinates': ['N/A', 'N/A', 'N/A'],
-                'Visible': False
+                'Visible': True
             }]
             metadata['Plan_Dose_References'] = ref_points
+            # (a row to add points from, not a change of the plan)
+            from fcn_RTFiles.amigo_rtplan import adopt_placeholder_ref
+            adopt_placeholder_ref(metadata)
         rtdose_list = self.medical_image[self.patientID_plan][self.studyID_plan].get('RTDOSE', [])
         selected_rtdose = None
         if len(rtdose_list) == 1:
@@ -113,6 +119,9 @@ def update_disp_brachy_plan(self):
         
         if selected_rtdose is not None:
             calculate_ref_points_dose(self, selected_rtdose)
+    elif not channels:
+        # a plan without catheters (a new plan): empty table
+        populate_brachy_table(self, np.empty((0, 9 if selected_dw_ch == "Dwells" else 3), dtype=np.float32))
     else:
         try:
             current_ch = channels[self.brachy_spinBox_01.value() - 1]
@@ -134,6 +143,9 @@ def update_disp_brachy_plan(self):
         self.brachy_plan_Ac.setText("N/A")
 
     apply_alternating_row_colors(self)
+    # Title, width and edit buttons of the View > PLAN > Brachy table
+    from fcn_display.brachy_panel import update_brachy_table_header
+    update_brachy_table_header(self)
 
     if selected_dw_ch != "Ref. Points":
         plot_brachy_dwell_channels(self)
@@ -302,14 +314,14 @@ def populate_brachy_table(self, table_info):
                 self.current_axial_slice_index[idx] = axial_index
                 
                 # Coronal slice index calculation:
-                coronal_space_z = (self.display_data[idx].shape[1] * self.pixel_spac[idx, 0]) - (pt_y - self.Im_PatPosition[idx, 1])
-                coronal_index = int(round(coronal_space_z / self.pixel_spac[idx, 1]))
+                y_val = (pt_y - self.Im_PatPosition[idx, 1] - self.Im_Offset[idx, 1]) / self.pixel_spac[idx, 0]
+                coronal_index = int(round((self.display_data[idx].shape[1] - 1) - y_val))
                 coronal_index = max(0, min(coronal_index, self.display_data[idx].shape[1] - 1))
                 self.current_coronal_slice_index[idx] = coronal_index
                 
                 # Sagittal slice index calculation:
-                sagittal_space_z = pt_x - self.Im_PatPosition[idx, 0]
-                sagittal_index = int(round(sagittal_space_z / self.pixel_spac[idx, 0]))
+                x_val = pt_x - self.Im_PatPosition[idx, 0] - self.Im_Offset[idx, 0]
+                sagittal_index = int(round(x_val / self.pixel_spac[idx, 1]))
                 sagittal_index = max(0, min(sagittal_index, self.display_data[idx].shape[2] - 1))
                 self.current_sagittal_slice_index[idx] = sagittal_index
                 
@@ -330,9 +342,9 @@ def populate_brachy_table(self, table_info):
                 sagittal_index = self.current_sagittal_slice_index[idx]
                 
                 # Reverse calculation to physical space
-                pt_z = axial_index * self.slice_thick[idx] + self.Im_Offset[idx, 2] + self.Im_PatPosition[idx, 2]
-                pt_x = sagittal_index * self.pixel_spac[idx, 0] + self.Im_PatPosition[idx, 0]
-                pt_y = (self.display_data[idx].shape[1] * self.pixel_spac[idx, 0]) - (coronal_index * self.pixel_spac[idx, 1]) + self.Im_PatPosition[idx, 1]
+                pt_z = self.Im_PatPosition[idx, 2] + axial_index * self.slice_thick[idx] + self.Im_Offset[idx, 2]
+                pt_x = self.Im_PatPosition[idx, 0] + sagittal_index * self.pixel_spac[idx, 1] + self.Im_Offset[idx, 0]
+                pt_y = self.Im_PatPosition[idx, 1] + (self.display_data[idx].shape[1] - 1 - coronal_index) * self.pixel_spac[idx, 0] + self.Im_Offset[idx, 1]
                 
                 pt_x = float(f"{pt_x:.2f}")
                 pt_y = float(f"{pt_y:.2f}")
@@ -354,11 +366,11 @@ def populate_brachy_table(self, table_info):
                         item_x.setTextAlignment(Qt.AlignCenter)
                         table.setItem(row_idx, 5, item_x)
                         
-                        item_y = QTableWidgetItem(str(pt_z))
+                        item_y = QTableWidgetItem(str(pt_y))
                         item_y.setTextAlignment(Qt.AlignCenter)
                         table.setItem(row_idx, 6, item_y)
                         
-                        item_z = QTableWidgetItem(str(pt_y))
+                        item_z = QTableWidgetItem(str(pt_z))
                         item_z.setTextAlignment(Qt.AlignCenter)
                         table.setItem(row_idx, 7, item_z)
                         
@@ -412,6 +424,8 @@ def populate_brachy_table(self, table_info):
                     self.brachy_table_02.blockSignals(False)
                     
                 # Trigger display updates to refresh marker positions
+                from fcn_display.brachy_tree import refresh_brachy_tree
+                refresh_brachy_tree(self)
                 from fcn_display.display_images import displayaxial, displaysagittal, displaycoronal
                 displayaxial(self)
                 displaysagittal(self)
@@ -432,12 +446,14 @@ def populate_brachy_table(self, table_info):
                     'TargetPrescriptionDose': 'N/A',
                     'TargedPrescritionDose': 'N/A',
                     'DoseReferencePointCoordinates': ['N/A', 'N/A', 'N/A'],
-                    'Visible': False
+                    'Visible': True
                 }
                 ref_points.append(new_pt)
                 populate_brachy_table(self, ref_points)
                 if hasattr(self, 'selected_rtdose_ref') and self.selected_rtdose_ref is not None:
                     calculate_ref_points_dose(self, self.selected_rtdose_ref)
+                from fcn_display.brachy_panel import update_brachy_table_header
+                update_brachy_table_header(self)
 
             def trigger_delete_pt(row_idx):
                 if not hasattr(self, 'patientID_plan') or not self.patientID_plan:
@@ -449,6 +465,8 @@ def populate_brachy_table(self, table_info):
                     populate_brachy_table(self, ref_points)
                     if hasattr(self, 'selected_rtdose_ref') and self.selected_rtdose_ref is not None:
                         calculate_ref_points_dose(self, self.selected_rtdose_ref)
+                    from fcn_display.brachy_panel import update_brachy_table_header
+                    update_brachy_table_header(self)
                         
                     from fcn_display.display_images import displayaxial, displaysagittal, displaycoronal
                     displayaxial(self)
@@ -467,8 +485,8 @@ def populate_brachy_table(self, table_info):
                     data_dict.get('DoseReferenceType', 'N/A'),
                     data_dict.get('TargetPrescriptionDose', 'N/A'),
                     coords[0],
-                    coords[2],
                     coords[1],
+                    coords[2],
                     'N/A'  # Dose (cGy) default
                 ]
                 
@@ -483,7 +501,7 @@ def populate_brachy_table(self, table_info):
 
                 # Add checkbox in the last column as an always-visible QCheckBox widget centered in the cell
                 checkbox1 = QCheckBox()
-                checkbox1.setChecked(data_dict.get('Visible', False))
+                checkbox1.setChecked(data_dict.get('Visible', True))
                 layout1 = QHBoxLayout()
                 layout1.addWidget(checkbox1)
                 layout1.setAlignment(Qt.AlignCenter)
@@ -493,7 +511,7 @@ def populate_brachy_table(self, table_info):
                 self.brachy_table_01.setCellWidget(row, 9, container1)
                 
                 checkbox2 = QCheckBox()
-                checkbox2.setChecked(data_dict.get('Visible', False))
+                checkbox2.setChecked(data_dict.get('Visible', True))
                 layout2 = QHBoxLayout()
                 layout2.addWidget(checkbox2)
                 layout2.setAlignment(Qt.AlignCenter)
@@ -550,6 +568,8 @@ def populate_brachy_table(self, table_info):
                         cb2.blockSignals(True)
                         cb2.setChecked(is_checked)
                         cb2.blockSignals(False)
+                        from fcn_display.brachy_tree import refresh_brachy_tree
+                        refresh_brachy_tree(self)
                         
                         # Refresh overlays on all slice views
                         from fcn_display.display_images import displayaxial, displaysagittal, displaycoronal
@@ -596,11 +616,6 @@ def populate_brachy_table(self, table_info):
                 for col in range(num_columns):
                     val = table_info[row, col]
                     if selected_dw_ch == "Dwells":
-                        if col == 4:
-                            val = table_info[row, 5]
-                        elif col == 5:
-                            val = table_info[row, 4]
-                        
                         try:
                             if col in (3, 4, 5):
                                 val = f"{float(val):.2f}"
@@ -609,10 +624,10 @@ def populate_brachy_table(self, table_info):
                         except ValueError:
                             pass
                     elif selected_dw_ch == "Channels":
-                        if col == 1:
-                            val = table_info[row, 2]
-                        elif col == 2:
-                            val = table_info[row, 1]
+                        try:
+                            val = f"{float(val):.2f}"
+                        except ValueError:
+                            pass
                             
                     item = QTableWidgetItem(str(val))
                     item.setTextAlignment(Qt.AlignCenter)
@@ -621,6 +636,9 @@ def populate_brachy_table(self, table_info):
                     item2 = QTableWidgetItem(str(val))
                     item2.setTextAlignment(Qt.AlignCenter)
                     self.brachy_table_02.setItem(row, col, item2)
+            # "Go" buttons (slices through the point) in the View > PLAN > Brachy table
+            from fcn_display.brachy_panel import add_brachy_goto_column
+            add_brachy_goto_column(self)
 
         self.brachy_table_01.resizeColumnsToContents()
         self.brachy_table_02.resizeColumnsToContents()
@@ -807,6 +825,8 @@ def plot_brachy_3D_dwell_channels(self):
         
         if dwell_info is None or not isinstance(dwell_info, np.ndarray) or dwell_info.ndim != 2 or dwell_info.shape[1] < 7:
             continue
+        if dwell_info.shape[0] == 0:
+            continue  # no dwells (e.g. a new catheter)
 
         # Filter first point if it has dwell time > 0, when self.checkBox_show_dw_plot is selected
         if self.checkBox_show_dw_plot.isChecked() and dwell_info[0, 2] <= 0:  # Assuming dwell time in column 2
@@ -1034,10 +1054,9 @@ def calculate_ref_points_dose(self, rtdose_series):
                 
                 if val_x != 'N/A' and val_y != 'N/A' and val_z != 'N/A':
                     try:
-                        # Table X is physical X, Table Y is physical Z, Table Z is physical Y
                         x_phys = float(val_x)
-                        y_phys = float(val_z)
-                        z_phys = float(val_y)
+                        y_phys = float(val_y)
+                        z_phys = float(val_z)
                         
                         # Interpolate dose (Gy) and convert to cGy
                         dose_Gy = float(interp([z_phys, y_phys, x_phys])[0])
@@ -1077,6 +1096,12 @@ def on_brachy_table_item_changed(self, table, item):
     row = item.row()
     col = item.column()
     
+    # Description (col 2): the name of the reference point, as in the catheter list
+    if col == 2:
+        from fcn_display.brachy_tree import rename_ref_point
+        rename_ref_point(self, row, item.text())
+        return
+
     # We only care about X, Y, Z coordinates (cols 5, 6, 7)
     if col not in (5, 6, 7):
         return
@@ -1114,10 +1139,9 @@ def on_brachy_table_item_changed(self, table, item):
             
             if val_x != 'N/A' and val_y != 'N/A' and val_z != 'N/A' and val_x != '' and val_y != '' and val_z != '':
                 try:
-                    # Table X is physical X, Table Y is physical Z, Table Z is physical Y
                     x = float(val_x) # physical X
-                    y = float(val_z) # physical Y
-                    z = float(val_y) # physical Z
+                    y = float(val_y) # physical Y
+                    z = float(val_z) # physical Z
                     
                     # Update coordinates in metadata
                     ref_points[row]['DoseReferencePointCoordinates'] = [x, y, z]
@@ -1173,6 +1197,8 @@ def on_brachy_table_item_changed(self, table, item):
                     other_table.setItem(row, 8, d_item2)
 
                     # Update VTK marker positions on image views
+                    from fcn_display.brachy_tree import refresh_brachy_tree
+                    refresh_brachy_tree(self)
                     from fcn_display.display_images import displayaxial, displaysagittal, displaycoronal
                     displayaxial(self)
                     displaysagittal(self)

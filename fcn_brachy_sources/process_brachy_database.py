@@ -8,24 +8,30 @@ from PySide6.QtWidgets import QVBoxLayout, QMessageBox, QTableWidgetItem, QFileD
 from PySide6.QtGui import QColor, QBrush
 from PySide6.QtCore import Qt 
 
+def brachy_source_folder():
+    """The 'fcn_brachy_sources' folder: the TG43 source database, a subfolder per source."""
+    # When compiled (e.g., with PyInstaller), __file__ might not work as expected.
+    if getattr(sys, 'frozen', False):
+        # In a compiled application, use the directory of the executable.
+        return os.path.join(os.path.dirname(sys.executable), "fcn_brachy_sources")
+    # When running as a Python script, use the directory of the current file.
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def brachy_source_names(brachy_folder=None):
+    """Names of the sources of the database (its subfolders but "__pycache__"); OSError if it cannot be listed."""
+    brachy_folder = brachy_folder or brachy_source_folder()
+    return [name for name in os.listdir(brachy_folder)
+            if os.path.isdir(os.path.join(brachy_folder, name)) and name != "__pycache__"]
+
+
 def on_brachy_load_sources(self):
     """
     Callback for the Brachy_load_sources button.
     Scans the 'fcn_brachy_sources' folder for subfolders and updates the combobox 'brachy_source_list'.
     """
-    # Determine the base directory:
-    # When compiled (e.g., with PyInstaller), __file__ might not work as expected.
-    if getattr(sys, 'frozen', False):
-        # In a compiled application, use the directory of the executable.
-        base_dir = os.path.dirname(sys.executable)  
-        # Construct the path to the 'fcn_brachy_sources' folder.
-        brachy_folder = os.path.join(base_dir, "fcn_brachy_sources")
-    else:
-        # When running as a Python script, use the directory of the current file.
-        brachy_folder = os.path.dirname(os.path.abspath(__file__))
-    
-  
-    
+    brachy_folder = brachy_source_folder()
+
     # Check if the folder exists.
     if not os.path.exists(brachy_folder):
         QMessageBox.critical(self, "Error", f"The folder {brachy_folder} does not exist.")
@@ -33,10 +39,7 @@ def on_brachy_load_sources(self):
 
     try:
         # List only subdirectory names, ignoring the folder named "_pycache_".
-        subfolder_names = [
-            name for name in os.listdir(brachy_folder)
-            if os.path.isdir(os.path.join(brachy_folder, name)) and name != "__pycache__"
-        ]
+        subfolder_names = brachy_source_names(brachy_folder)
     except Exception as e:
         QMessageBox.critical(self, "Error", f"Failed to list subfolders in {brachy_folder}.\nError: {e}")
         subfolder_names = []
@@ -95,7 +98,7 @@ def on_brachy_source_selection(self):
     
         # Check if the radial.txt file exists.
     if not os.path.exists(anisotropy_file_path):
-        QMessageBox.critical(self, "Error", f"along_away.txt not found in folder:\n{along_away_file_path}")
+        QMessageBox.critical(self, "Error", f"anisotropy.txt not found in folder:\n{anisotropy_file_path}")
         return
     else:
         load_anisotropy_data(self,anisotropy_file_path)

@@ -77,7 +77,31 @@ def populate_image(self):
     self.DataTreeView.expandAll()
 
 
+def rtdose_tree_label(study_data, series_data):
+    """Label of a dose in the data tree, with the name of its plan if it references a plan of the study."""
+    meta = series_data['metadata']
+    dose_label = meta.get('SeriesDescription') or meta.get('DoseSummationType') or 'Dose'
+    ref_plan_uid = meta.get('ReferencedRTPlanSOPInstanceUID')
+    plan_name = None
+    if ref_plan_uid and 'RTPLAN' in study_data:
+        for p in study_data['RTPLAN']:
+            if p['metadata'].get('SOPInstanceUID') == ref_plan_uid:
+                from fcn_RTFiles.amigo_rtplan import plan_display_name
+                plan_name = plan_display_name(p['metadata'])  # (made in AMIGOpy: its full name)
+                break
+    if plan_name:
+        return f"{dose_label} ({plan_name})_Series: {series_data['SeriesNumber']}"
+    return f"{dose_label}_Series: {series_data['SeriesNumber']}"
+
+
 def populate_medical_image_tree(self):
+    # Remember currently active tabs so refreshing the tree never yanks the user away from their current workspace
+    saved_tab_module = self.tabModules.currentIndex() if hasattr(self, 'tabModules') and self.tabModules is not None else None
+    saved_tab_view = self.tabView01.currentIndex() if hasattr(self, 'tabView01') and self.tabView01 is not None else None
+    saved_mc_tab = self.mc_tabs.currentIndex() if hasattr(self, 'mc_tabs') and self.mc_tabs is not None else None
+    saved_plan_tab = self.Plan_tabs.currentIndex() if hasattr(self, 'Plan_tabs') and self.Plan_tabs is not None else None
+    saved_view_plan_subtab = self.tabWidget_3.currentIndex() if hasattr(self, 'tabWidget_3') and self.tabWidget_3 is not None else None
+
     #self.medical_image=load_all_dcm(folder_path=None, progress_callback=self.update_progress,update_label=self.label);
     # Create the data model for the tree view
     # Create the data model for the tree view if it doesn't exist
@@ -140,6 +164,10 @@ def populate_medical_image_tree(self):
                             type_tag = "[Plan]"
 
                         series_label = f"{type_tag} {Plan_label}_Series: {series_data['SeriesNumber']}"
+                        if is_brachy:
+                            # marked if made in AMIGOpy, not saved yet or changed since saved
+                            from fcn_RTFiles.amigo_rtplan import plan_tree_label
+                            series_label = plan_tree_label(series_data, type_tag)
                         series_item = QStandardItem(series_label)
                         modality_item.appendRow(series_item)
                     elif modality == 'RTSTRUCT':
@@ -161,18 +189,7 @@ def populate_medical_image_tree(self):
                                 structures_parent_item.appendRow(structure_item)
 
                     elif modality == 'RTDOSE':
-                        Dose_label = series_data['metadata'].get('SeriesDescription') or series_data['metadata'].get('DoseSummationType') or 'Dose'
-                        ref_plan_uid = series_data['metadata'].get('ReferencedRTPlanSOPInstanceUID')
-                        plan_name = None
-                        if ref_plan_uid and 'RTPLAN' in study_data:
-                            for p in study_data['RTPLAN']:
-                                if p['metadata'].get('SOPInstanceUID') == ref_plan_uid:
-                                    plan_name = p['metadata'].get('RTPlanLabel') or p['metadata'].get('RTPlanName')
-                                    break
-                        if plan_name:
-                            series_label = f"{Dose_label} ({plan_name})_Series: {series_data['SeriesNumber']}"
-                        else:
-                            series_label = f"{Dose_label}_Series: {series_data['SeriesNumber']}"
+                        series_label = rtdose_tree_label(study_data, series_data)
                         series_item = QStandardItem(series_label)
                         modality_item.appendRow(series_item)
                     elif modality == 'REG':
@@ -277,6 +294,23 @@ def populate_medical_image_tree(self):
     # Auto-click the current series if still present, else first series
     select_current_or_first_image_series(self)
 
+    # Restore user's active tabs so tree refreshes never pull the user away to another tab
+    if saved_tab_module is not None and hasattr(self, 'tabModules') and self.tabModules is not None:
+        if self.tabModules.currentIndex() != saved_tab_module:
+            self.tabModules.setCurrentIndex(saved_tab_module)
+    if saved_tab_view is not None and hasattr(self, 'tabView01') and self.tabView01 is not None:
+        if self.tabView01.currentIndex() != saved_tab_view:
+            self.tabView01.setCurrentIndex(saved_tab_view)
+    if saved_mc_tab is not None and hasattr(self, 'mc_tabs') and self.mc_tabs is not None:
+        if self.mc_tabs.currentIndex() != saved_mc_tab:
+            self.mc_tabs.setCurrentIndex(saved_mc_tab)
+    if saved_plan_tab is not None and hasattr(self, 'Plan_tabs') and self.Plan_tabs is not None:
+        if self.Plan_tabs.currentIndex() != saved_plan_tab:
+            self.Plan_tabs.setCurrentIndex(saved_plan_tab)
+    if saved_view_plan_subtab is not None and hasattr(self, 'tabWidget_3') and self.tabWidget_3 is not None:
+        if self.tabWidget_3.currentIndex() != saved_view_plan_subtab:
+            self.tabWidget_3.setCurrentIndex(saved_view_plan_subtab)
+
 def _get_or_create_parent_item(self, label):
     # Check if model is None
     if self.model is None:
@@ -292,7 +326,42 @@ def _get_or_create_parent_item(self, label):
     # Create a new parent item if it doesn't exist
     new_item = QStandardItem(label)
     self.model.appendRow(new_item)
-    return new_item    
+    return new_item
+
+def find_tree_item(self, path):
+    """Item of the data tree at a path of item texts from the top ("Medical Image", "PatientID: p", ...), or None."""
+    model = getattr(self, 'model', None)
+    if model is None:
+        return None
+    item = None
+    for text in path:
+        children = ([model.item(r) for r in range(model.rowCount())] if item is None
+                    else [item.child(r) for r in range(item.rowCount())])
+        item = next((child for child in children if child is not None and child.text() == text), None)
+        if item is None:
+            return None
+    return item
+
+def add_series_tree_item(self, patient_id, study_id, modality, index, label):
+    """
+    Item of a new series (series 'index', the last of its modality in the study) in the data
+    tree, added to the tree as it is: rebuilding it would click the current series again (it is
+    reloaded, the slices go back to the middle). If the tree does not match the data, it is
+    rebuilt instead (None).
+    """
+    study_path = ("Medical Image", f"PatientID: {patient_id}", f"StudyID: {study_id}")
+    study_item = find_tree_item(self, study_path)
+    modality_item = find_tree_item(self, study_path + (f"Modality: {modality}",))
+    if study_item is not None and modality_item is None:
+        modality_item = QStandardItem(f"Modality: {modality}")
+        study_item.appendRow(modality_item)
+    if modality_item is None or modality_item.rowCount() != index:
+        populate_medical_image_tree(self)
+        return None
+    item = QStandardItem(label)
+    modality_item.appendRow(item)
+    self.DataTreeView.expand(modality_item.index())
+    return item
 
 def select_current_or_first_image_series(self):
     model = self.DataTreeView.model()
@@ -303,6 +372,25 @@ def select_current_or_first_image_series(self):
     cur_s = getattr(self, 'studyID', None)
     cur_m = getattr(self, 'modality', None)
     cur_idx = getattr(self, 'series_index', None)
+
+    # If cur_m is a non-image modality like RTPLAN, RTSTRUCT, or REG,
+    # do NOT auto-trigger a click on it (which would switch tabs and views).
+    # Instead, resolve the underlying image series in this study (preferring CT).
+    if (
+        cur_m in ("RTPLAN", "RTSTRUCT", "REG")
+        and hasattr(self, 'medical_image')
+        and cur_p in self.medical_image
+    ):
+        study_dict = self.medical_image.get(cur_p, {}).get(cur_s, {})
+        if "CT" in study_dict and len(study_dict["CT"]) > 0:
+            cur_m = "CT"
+            cur_idx = 0
+        else:
+            for mod in study_dict.keys():
+                if mod not in ("RTPLAN", "RTSTRUCT", "REG", "Operation") and len(study_dict[mod]) > 0:
+                    cur_m = mod
+                    cur_idx = 0
+                    break
 
     if (
         cur_p is not None and cur_s is not None and cur_m is not None and cur_idx is not None
