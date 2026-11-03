@@ -24,13 +24,12 @@ from fcn_DECT.spr_calc_plot import SPR_copy_ref_columns, SPR_fit_plot_fcn
 from fcn_DECT.DECT_table_disp import c_roi_getdata_HU_high_low
 from fcn_DECT.Ivalue_Zeff_fit import plot_I_value_points, plot_I_value_precalc, cal_plot_I_value_points
 from fcn_DECT.create_process_dect import creat_DECT_derived_maps, c_roi_scatter_plot, export_all_DECT_tables, save_parameters_to_csv, load_parameters_from_csv
-from fcn_display.disp_plan_data import update_disp_brachy_plan,  plot_brachy_dwell_channels, export_all_brachy_channels_to_csv
+from fcn_display.disp_plan_data import update_disp_brachy_plan, export_all_brachy_channels_to_csv
 from fcn_display.brachy_channel_edit import (brachy_add_channel_point, brachy_delete_channel_point, on_brachy_new_catheter_toggled,
                                              brachy_delete_catheter, brachy_undo, on_brachy_undo_key, on_brachy_tool_toggled,
                                              on_brachy_edit_context_changed, refresh_brachy_overlays, brachy_duplicate_catheter,
                                              brachy_zero_catheter_times, brachy_zero_all_times)
 from fcn_display.brachy_dwells import brachy_set_dwell_positions
-from fcn_create_gui.brachy_widgets import colored_button_style
 from fcn_display.brachy_panel import (COLOR_BUTTONS, SIZE_WIDGETS, DISPLAY_OPTIONS, PANEL_BOXES, pick_brachy_color, update_brachy_color_buttons,
                                       toggle_brachy_table_mode, set_brachy_table_mode, update_brachy_table_header,
                                       update_brachy_display_options, on_brachy_display_changed, update_brachy_panels)
@@ -51,8 +50,11 @@ from fcn_breathing_curves.functions_phantom_operation import setDuetIP, defineIn
 from fcn_dosecalculations.eqd2_conversion import add_ab, delete_ab, generate_eqd2_dose, create_ab_matrix, eqd2_calc
 from fcn_segmentation.functions_segmentation import (threshSeg, on_brush_click, on_erase_click, InitSeg, calcStrucStats, exportStrucStats, exportSegStruc, 
                                                      DeleteSeg, undo_brush_seg, apply_morph_oper, undo_morph_oper, on_boolean_seg_clicked)
-from fcn_ctcal.ct_cal import load_ct_cal_curve,save_changes,add_row_to_ct_table, export_ct_cal_to_csv
-from fcn_densitymap.density_map import create_density_map,del_density_map
+from fcn_ctcal.ct_cal import (init_ct_cal_selector, select_ct_cal_table, new_ct_cal_table, duplicate_ct_cal_table,
+                              rename_ct_cal_table, delete_ct_cal_table, import_ct_cal_table, export_ct_cal_table,
+                              add_row_to_ct_table, delete_ct_table_rows, on_ct_cal_table_edited,
+                              on_ct_cal_type_changed, on_ct_cal_hold_toggled, plot_ct_cal)
+from fcn_densitymap.density_map import create_density_map
 from fcn_3Dview.volume_3d_viewer import play_4D_sequence_3D
 from fcn_materialassignment.material_assignment_properties import add_mat_row,del_mat_row,add_element,del_element,save_mat_db,undo_changes
 from fcn_materialassignment.material_map import add_mat_HU_row,del_mat2HU,generate_mat_map,delete_mat_map,del_stuct2mat,update_mat_struct_list,refresh_mat_assignment_if_visible,toggle_mat_HU_visibility,toggle_mat_struct_visibility,load_mat_map_into_tables
@@ -61,7 +63,7 @@ from fcn_3DPrinting import handlers as hdl
 from fcn_reg.rigid_reg_manual import update_translation_x, update_translation_y, update_translation_z, update_rotation_x, update_rotation_y, update_rotation_z, set_transformation_step, apply_trasnformation, flip_volume_x, flip_volume_y, flip_volume_z
 from fcn_reg.auto_reg_dialog import open_auto_reg_dialog, apply_last_transform_to_layer
 from fcn_processing.mc_grid import (update_mc_grid_all, mc_grid_fit_to_image, mc_vox_fit_to_image,
-                                    mc_grid_set_ref_resolution,
+                                    mc_grid_set_ref_resolution, mc_grid_import_dose_menu,
                                     on_grid_spin_changed, on_grid_slider_changed, on_grid_mode_changed)
 from fcn_mcnp.mcnp_lattice import create_mcnp_lattice_map
 from fcn_mcnp.mcnp_input import create_mcnp_input
@@ -113,6 +115,14 @@ def safe_style(parent, attr_name, style):
             pass
     return btn
 
+def connect_3dp_flow_infill_buttons(self):
+    """3D Printing > Flow_Infill buttons (safe_btn: no-op before that tab is loaded, connected once)."""
+    safe_btn(self, 'import_reference_btn', 'clicked', lambda: hdl.import_reference_file(self))
+    safe_btn(self, 'import_tested_filaments_btn', 'clicked', lambda: hdl.load_gammex_file(self))
+    safe_btn(self, 'load_cal_btn', 'clicked', lambda: hdl.load_cal_file(self))
+    safe_btn(self, 'show_filaments_button', 'clicked', lambda: hdl.show_best_matching_filaments(self))
+    safe_btn(self, 'RED_calc_button', 'clicked', lambda: hdl.calculate_red(self))
+
 def initialize_software_buttons(self):
 
 
@@ -124,26 +134,26 @@ def initialize_software_buttons(self):
     safe_btn(self, 'metadata_search', 'textChanged', lambda text: on_metadata_search_text_changed(self,text))
 
     # Image processing
-    safe_btn(self, 'ImageUndo_operation', 'clicked', lambda: image_processing_undo(self), "background-color: green; color: white;")
+    safe_btn(self, 'ImageUndo_operation', 'clicked', lambda: image_processing_undo(self))
     #
 
     # Breathing curves explore
-    safe_btn(self, 'loadCSVView_BrCv', 'clicked', lambda: openCSVFile_BrCv(self), "background-color: green; color: white;")
+    safe_btn(self, 'loadCSVView_BrCv', 'clicked', lambda: openCSVFile_BrCv(self))
     safe_btn(self, 'setParamsCreateCv', 'clicked', lambda: setParams(self))
-    safe_btn(self, 'createCv', 'clicked', lambda: createCurve(self), "background-color: green; color: white;")
-    safe_btn(self, 'calcStats_BrCv', 'clicked', lambda: calcStats(self), "background-color: green; color: white;")
-    safe_btn(self, 'plotView_BrCv', 'clicked', lambda: plotViewData_BrCv_plot(self), "background-color: green; color: white;")
+    safe_btn(self, 'createCv', 'clicked', lambda: createCurve(self))
+    safe_btn(self, 'calcStats_BrCv', 'clicked', lambda: calcStats(self))
+    safe_btn(self, 'plotView_BrCv', 'clicked', lambda: plotViewData_BrCv_plot(self))
     # self.plotExport_BrCv.clicked.connect(lambda: exportPlot(self))
     # self.plotExport_BrCv.setStyleSheet("background-color: blue; color: white")
-    safe_btn(self, 'applyOper_BrCv', 'clicked', lambda: applyOperations(self), "background-color: green; color: white")
-    safe_btn(self, 'undoOperations_BrCv', 'clicked', lambda: undoOperations(self), "background-color: green; color: white")
-    safe_btn(self, 'exportData_BrCv', 'clicked', lambda: exportData(self), "background-color: blue; color: white")
-    safe_btn(self, 'exportGCODE_BrCv', 'clicked', lambda: exportGCODE(self), "background-color: blue; color: white")
-    safe_btn(self, 'cropRangeEdit_BrCv', 'clicked', lambda: cropRange_BrCv_edit(self), "background-color: blue; color:white")
-    safe_btn(self, 'loadDuetPage', 'clicked', lambda: setDuetIP(self), "background-color: blue; color:white")
-    safe_btn(self, 'definePhOperFolder', 'clicked', lambda: defineInputFolder(self), "background-color: blue; color:white")
-    safe_btn(self, 'MoVeAcqStart', 'clicked', lambda: setAcqStart(self), "background-color: green; color:white")
-    safe_btn(self, 'exportDataMoVe', 'clicked', lambda: exportMoVeData(self), "background-color: green; color:white")
+    safe_btn(self, 'applyOper_BrCv', 'clicked', lambda: applyOperations(self))
+    safe_btn(self, 'undoOperations_BrCv', 'clicked', lambda: undoOperations(self))
+    safe_btn(self, 'exportData_BrCv', 'clicked', lambda: exportData(self))
+    safe_btn(self, 'exportGCODE_BrCv', 'clicked', lambda: exportGCODE(self))
+    safe_btn(self, 'cropRangeEdit_BrCv', 'clicked', lambda: cropRange_BrCv_edit(self))
+    safe_btn(self, 'loadDuetPage', 'clicked', lambda: setDuetIP(self))
+    safe_btn(self, 'definePhOperFolder', 'clicked', lambda: defineInputFolder(self))
+    safe_btn(self, 'MoVeAcqStart', 'clicked', lambda: setAcqStart(self))
+    safe_btn(self, 'exportDataMoVe', 'clicked', lambda: exportMoVeData(self))
 
     # Segmentation
     from fcn_display.display_images_seg import update_seg_slider, disp_seg_image_slice
@@ -176,25 +186,25 @@ def initialize_software_buttons(self):
     if b_undo is not None and hasattr(b_undo, 'setIcon'):
         b_undo.setIcon(QIcon("./icons/undo.png"))
 
-    safe_btn(self, 'applyThreshSeg', 'clicked', lambda: threshSeg(self), "background-color: blue; color:white")
+    safe_btn(self, 'applyThreshSeg', 'clicked', lambda: threshSeg(self))
     safe_btn(self, 'segBrushButton', 'clicked', lambda: on_brush_click(self))
     safe_btn(self, 'segEraseButton', 'clicked', lambda: on_erase_click(self))
     safe_btn(self, 'undoSeg', 'clicked', lambda: undo_brush_seg(self))
-    safe_btn(self, 'createSegStruct', 'clicked', lambda: InitSeg(self), "background-color: green; color:white")
-    safe_btn(self, 'calcSegStatsButton', 'clicked', lambda: calcStrucStats(self), "background-color: green; color:white")
-    safe_btn(self, 'deleteSegStruct', 'clicked', lambda: DeleteSeg(self), "background-color: red; color:white")
-    safe_btn(self, 'booleanSegStruct', 'clicked', lambda: on_boolean_seg_clicked(self), "background-color: #1976D2; color:white; font-weight: bold;")
-    safe_btn(self, 'exportSegStatsButton', 'clicked', lambda: exportStrucStats(self), "background-color: blue; color:white")
-    safe_btn(self, 'exportSegStrucButton', 'clicked', lambda: exportSegStruc(self), "background-color: blue; color:white")
-    safe_btn(self, 'ApplyMorphOper', 'clicked', lambda: apply_morph_oper(self), "background-color: blue; color:white")
-    safe_btn(self, 'UndoMorphOper', 'clicked', lambda: undo_morph_oper(self), "background-color: blue; color:white")
+    safe_btn(self, 'createSegStruct', 'clicked', lambda: InitSeg(self))
+    safe_btn(self, 'calcSegStatsButton', 'clicked', lambda: calcStrucStats(self))
+    safe_btn(self, 'deleteSegStruct', 'clicked', lambda: DeleteSeg(self))
+    safe_btn(self, 'booleanSegStruct', 'clicked', lambda: on_boolean_seg_clicked(self), "font-weight: bold;")
+    safe_btn(self, 'exportSegStatsButton', 'clicked', lambda: exportStrucStats(self))
+    safe_btn(self, 'exportSegStrucButton', 'clicked', lambda: exportSegStruc(self))
+    safe_btn(self, 'ApplyMorphOper', 'clicked', lambda: apply_morph_oper(self))
+    safe_btn(self, 'UndoMorphOper', 'clicked', lambda: undo_morph_oper(self))
     
     # Connect the button's clicked signal to the slot function - run im processing operations
-    safe_btn(self, 'run_im_process', 'clicked', lambda: run_image_processing(self), "background-color: blue; color: white;")
+    safe_btn(self, 'run_im_process', 'clicked', lambda: run_image_processing(self))
     
     # IrIS correction
-    safe_btn(self, 'IrIS_Load_Offset', 'clicked', lambda: load_offset_IrIS(self), "background-color: red; color: white;")
-    safe_btn(self, 'IrIS_Load_CorrectionFrame', 'clicked', lambda: load_CorrectionFrame_IrIS(self), "background-color: red; color: white;")
+    safe_btn(self, 'IrIS_Load_Offset', 'clicked', lambda: load_offset_IrIS(self))
+    safe_btn(self, 'IrIS_Load_CorrectionFrame', 'clicked', lambda: load_CorrectionFrame_IrIS(self))
     
     # create vtk comp axes -button (only if im_compare_tab has been created)
     if hasattr(self, 'gridLayout_16') and self.gridLayout_16 is not None:
@@ -253,14 +263,13 @@ def initialize_software_buttons(self):
         safe_btn(self, 'Comp_view_sel_box', 'currentIndexChanged', lambda idx: change_comp_view_orientation(self, idx))
         safe_btn(self, 'Comp_im_idx', 'valueChanged', lambda idx: sync_comp_dropdown_to_viewport(self, idx))
 
-        safe_btn(self, 'but_create_comp_axes', 'clicked', lambda: create_vtk_elements_comp(self), "background-color: blue; color: white;")
+        safe_btn(self, 'but_create_comp_axes', 'clicked', lambda: create_vtk_elements_comp(self))
 
         # Modeless comparison window level popup button
         from fcn_init.view_hist import open_compare_histogram
         self.but_hist_comp = QtWidgets.QPushButton(self.im_compare_tab)
         self.but_hist_comp.setObjectName("but_hist_comp")
         self.but_hist_comp.setText("Window")
-        self.but_hist_comp.setStyleSheet("background-color: blue; color: white;")
         # Place it to the right of Create button (column 9)
         self.gridLayout_16.addWidget(self.but_hist_comp, 3, 9, 1, 1)
         safe_btn(self, 'but_hist_comp', 'clicked', lambda: open_compare_histogram(self))
@@ -271,65 +280,65 @@ def initialize_software_buttons(self):
         self.shortcut_comp_window.activated.connect(lambda: open_compare_histogram(self))
 
     # 4D Display
-    safe_btn(self, 'Play4D_Buttom', 'toggled', lambda: play_4D_sequence(self), "background-color: blue; color: white;")
+    safe_btn(self, 'Play4D_Buttom', 'toggled', lambda: play_4D_sequence(self))
 
     # 3D viewer
     # 4D video
     if hasattr(self, 'View3D_play4D') and self.View3D_play4D is not None:
         self.View3D_play4D.setCheckable(True)
-    safe_btn(self, 'View3D_play4D', 'toggled', lambda: play_4D_sequence_3D(self,1), "background-color: blue; color: white;")
-    safe_btn(self, 'View3D_clear_all', 'clicked', getattr(self, 'clear_3d_axes', None), "background-color: blue; color: white;")
-    safe_btn(self, 'View3D_reset_camera', 'clicked', getattr(self, 'reset_3d_camera', None), "background-color: blue; color: white;")
+    safe_btn(self, 'View3D_play4D', 'toggled', lambda: play_4D_sequence_3D(self,1))
+    safe_btn(self, 'View3D_clear_all', 'clicked', getattr(self, 'clear_3d_axes', None))
+    safe_btn(self, 'View3D_reset_camera', 'clicked', getattr(self, 'reset_3d_camera', None))
     
 
     # DECT
-    safe_btn(self, 'add_coll_table_mat', 'clicked', lambda: add_coll2table(self), "background-color: blue; color: white;")
-    safe_btn(self, 'remove_coll_table_mat', 'clicked', lambda: remove_coll2table(self), "background-color: blue; color: white;")
-    safe_btn(self, 'add_row_table_mat', 'clicked', lambda: add_row2table(self), "background-color: blue; color: white;")
-    safe_btn(self, 'remove_row_table_mat', 'clicked', lambda: remove_row2table(self), "background-color: blue; color: white;")
-    safe_btn(self, 'reset_table_mat', 'clicked', lambda: reset_matTable(self), "background-color: blue; color: white;")
+    safe_btn(self, 'add_coll_table_mat', 'clicked', lambda: add_coll2table(self))
+    safe_btn(self, 'remove_coll_table_mat', 'clicked', lambda: remove_coll2table(self))
+    safe_btn(self, 'add_row_table_mat', 'clicked', lambda: add_row2table(self))
+    safe_btn(self, 'remove_row_table_mat', 'clicked', lambda: remove_row2table(self))
+    safe_btn(self, 'reset_table_mat', 'clicked', lambda: reset_matTable(self))
     
     # Load material composition and additional info
-    safe_btn(self, 'Load_csv_mat', 'clicked', lambda: load_csv_mat_info(self), "background-color: blue; color: white;")
-    safe_btn(self, 'cal_mat_ref_info', 'clicked', lambda: calc_material_parameters(self), "background-color: blue; color: white;")
+    safe_btn(self, 'Load_csv_mat', 'clicked', lambda: load_csv_mat_info(self))
+    safe_btn(self, 'cal_mat_ref_info', 'clicked', lambda: calc_material_parameters(self))
     # I-value plot
-    safe_btn(self, 'Ivalue_plot', 'clicked', lambda: plot_I_value_points(self), "background-color: blue; color: white;")
+    safe_btn(self, 'Ivalue_plot', 'clicked', lambda: plot_I_value_points(self))
     # Instead of plotting from data use the providded coefficients
-    safe_btn(self, 'Ivalue_pre_calc_fit', 'clicked', lambda: plot_I_value_precalc(self), "background-color: blue; color: white;")
-    safe_btn(self, 'Ivalue_calc_fit', 'clicked', lambda: cal_plot_I_value_points(self), "background-color: blue; color: white;")
+    safe_btn(self, 'Ivalue_pre_calc_fit', 'clicked', lambda: plot_I_value_precalc(self))
+    safe_btn(self, 'Ivalue_calc_fit', 'clicked', lambda: cal_plot_I_value_points(self))
     # export mat table
-    safe_btn(self, 'export_table_mat', 'clicked', lambda: export_matinfotable_to_csv(self), "background-color: blue; color: white;")
-    safe_btn(self, 'get_HU_high', 'clicked', lambda: c_roi_getdata_HU_high_low(self), "background-color: green; color: white;")
+    safe_btn(self, 'export_table_mat', 'clicked', lambda: export_matinfotable_to_csv(self))
+    safe_btn(self, 'get_HU_high', 'clicked', lambda: c_roi_getdata_HU_high_low(self))
     # RED
-    safe_btn(self, 'RED_get_ref', 'clicked', lambda: RED_copy_ref_columns(self), "background-color: green; color: white;")
-    safe_btn(self, 'RED_calc_cal', 'clicked', lambda: RED_fit_plot_fcn(self), "background-color: blue; color: white;")
+    safe_btn(self, 'RED_get_ref', 'clicked', lambda: RED_copy_ref_columns(self))
+    safe_btn(self, 'RED_calc_cal', 'clicked', lambda: RED_fit_plot_fcn(self))
     
     # Zeff
-    safe_btn(self, 'Zeff_get_ref', 'clicked', lambda: Zeff_copy_ref_columns(self), "background-color: green; color: white;")
-    safe_btn(self, 'Zeff_calc_cal', 'clicked', lambda: Zeff_fit_plot_fcn(self), "background-color: blue; color: white;")
+    safe_btn(self, 'Zeff_get_ref', 'clicked', lambda: Zeff_copy_ref_columns(self))
+    safe_btn(self, 'Zeff_calc_cal', 'clicked', lambda: Zeff_fit_plot_fcn(self))
     
     # I-value
-    safe_btn(self, 'Iv_get_ref', 'clicked', lambda: Iv_copy_ref_columns(self), "background-color: green; color: white;")
-    safe_btn(self, 'Iv_calc_cal', 'clicked', lambda: Iv_fit_plot_fcn(self), "background-color: blue; color: white;")
+    safe_btn(self, 'Iv_get_ref', 'clicked', lambda: Iv_copy_ref_columns(self))
+    safe_btn(self, 'Iv_calc_cal', 'clicked', lambda: Iv_fit_plot_fcn(self))
     
     # SPR
-    safe_btn(self, 'SPR_get_ref', 'clicked', lambda: SPR_copy_ref_columns(self), "background-color: green; color: white;")
-    safe_btn(self, 'SPR_calc_cal', 'clicked', lambda: SPR_fit_plot_fcn(self), "background-color: blue; color: white;")
+    safe_btn(self, 'SPR_get_ref', 'clicked', lambda: SPR_copy_ref_columns(self))
+    safe_btn(self, 'SPR_calc_cal', 'clicked', lambda: SPR_fit_plot_fcn(self))
     
     # Process Eval - DECT
-    safe_btn(self, 'Create_DECT_Images', 'clicked', lambda: creat_DECT_derived_maps(self), "background-color: green; color: white;")
+    safe_btn(self, 'Create_DECT_Images', 'clicked', lambda: creat_DECT_derived_maps(self))
     #
-    safe_btn(self, 'plot_roi_scatter', 'clicked', lambda: c_roi_scatter_plot(self), "background-color: green; color: white;")
+    safe_btn(self, 'plot_roi_scatter', 'clicked', lambda: c_roi_scatter_plot(self))
     
     #
-    safe_btn(self, 'export_all_DECT_tables', 'clicked', lambda: export_all_DECT_tables(self), "background-color: blue; color: white;")
+    safe_btn(self, 'export_all_DECT_tables', 'clicked', lambda: export_all_DECT_tables(self))
     #
-    safe_btn(self, 'DECT_exp_fit_par', 'clicked', lambda: save_parameters_to_csv(self), "background-color: blue; color: white;")
+    safe_btn(self, 'DECT_exp_fit_par', 'clicked', lambda: save_parameters_to_csv(self))
     #
-    safe_btn(self, 'DECT_load_fit_par', 'clicked', lambda: load_parameters_from_csv(self), "background-color: green; color: white;")
+    safe_btn(self, 'DECT_load_fit_par', 'clicked', lambda: load_parameters_from_csv(self))
     
     # Struct
-    safe_btn(self, 'CreateMask_Structures', 'clicked', lambda: create_contour_masks(self), "background-color: blue; color: white;")
+    safe_btn(self, 'CreateMask_Structures', 'clicked', lambda: create_contour_masks(self))
     
     # Layer selection shortcuts (Ctrl+1 to Ctrl+4)
     def _switch_layer(parent, target_idx):
@@ -354,17 +363,10 @@ def initialize_software_buttons(self):
     #
     # spin
     safe_btn(self, 'brachy_spinBox_01', 'valueChanged', lambda: update_disp_brachy_plan(self))
-    safe_btn(self, 'brachy_spinBox_02', 'valueChanged', lambda: sync_spinBox_01(self))
-    def sync_spinBox_01(self):
-        # Update brachy_spinBox_01's value to match brachy_spinBox_02
-        self.brachy_spinBox_01.setValue(self.brachy_spinBox_02.value())
     #
     safe_btn(self, 'display_dw_overlay', 'stateChanged', lambda: on_display_dw_overlay_clicked(self))
     safe_btn(self, 'display_brachy_channel_overlay', 'stateChanged', lambda: on_display_dw_overlay_clicked(self))
-    # buttom    
-    safe_btn(self, 'brachy_ch_plot', 'clicked', lambda:  plot_brachy_dwell_channels(self), "background-color: blue; color: white;")
     #
-    safe_style(self, 'brachy_export_dw_channels_csv', "background-color: blue; color: white;")
     safe_btn(self, 'brachy_export_dw_channels_csv', 'clicked', lambda: export_all_brachy_channels_to_csv(self))
     # table: the mode button switches dwells / catheter points (the menu also has the ref. points)
     safe_btn(self, 'brachy_mode_btn', 'clicked', lambda: toggle_brachy_table_mode(self))
@@ -385,16 +387,16 @@ def initialize_software_buttons(self):
         self.brachy_undo_shortcut = QShortcut(QKeySequence(QKeySequence.StandardKey.Undo), self.im_display_tab)
         self.brachy_undo_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.brachy_undo_shortcut.activated.connect(lambda: on_brachy_undo_key(self))
-    safe_btn(self, 'brachy_add_point_btn', 'clicked', lambda: brachy_add_channel_point(self), colored_button_style("background-color: #28a745; color: white;"))
-    safe_btn(self, 'brachy_del_point_btn', 'clicked', lambda: brachy_delete_channel_point(self), colored_button_style("background-color: black; color: red; border: 1px solid red;"))
+    safe_btn(self, 'brachy_add_point_btn', 'clicked', lambda: brachy_add_channel_point(self))
+    safe_btn(self, 'brachy_del_point_btn', 'clicked', lambda: brachy_delete_channel_point(self))
     # New / Stop (text and color follow the state): clicks on the images add points to a new catheter
     safe_btn(self, 'brachy_new_catheter_btn', 'toggled', lambda checked: on_brachy_new_catheter_toggled(self, checked))
-    safe_btn(self, 'brachy_del_catheter_btn', 'clicked', lambda: brachy_delete_catheter(self), colored_button_style("background-color: black; color: red; border: 1px solid red;"))
-    safe_btn(self, 'brachy_dup_catheter_btn', 'clicked', lambda: brachy_duplicate_catheter(self), colored_button_style("background-color: #1c5fa8; color: white;"))
+    safe_btn(self, 'brachy_del_catheter_btn', 'clicked', lambda: brachy_delete_catheter(self))
+    safe_btn(self, 'brachy_dup_catheter_btn', 'clicked', lambda: brachy_duplicate_catheter(self))
     # dwell positions along the catheter (dialog) and dwell times to 0 s
-    safe_btn(self, 'brachy_set_dwells_btn', 'clicked', lambda: brachy_set_dwell_positions(self), colored_button_style("background-color: #1c5fa8; color: white;"))
-    safe_btn(self, 'brachy_zero_catheter_btn', 'clicked', lambda: brachy_zero_catheter_times(self), colored_button_style("background-color: #a85d00; color: white;"))
-    safe_btn(self, 'brachy_zero_all_btn', 'clicked', lambda: brachy_zero_all_times(self), colored_button_style("background-color: #a85d00; color: white;"))
+    safe_btn(self, 'brachy_set_dwells_btn', 'clicked', lambda: brachy_set_dwell_positions(self))
+    safe_btn(self, 'brachy_zero_catheter_btn', 'clicked', lambda: brachy_zero_catheter_times(self))
+    safe_btn(self, 'brachy_zero_all_btn', 'clicked', lambda: brachy_zero_all_times(self))
     safe_btn(self, 'brachy_table_01', 'itemSelectionChanged', lambda: on_brachy_edit_context_changed(self))
     safe_btn(self, 'tabWidget_3', 'currentChanged', lambda _i: on_brachy_edit_context_changed(self))
     safe_btn(self, 'tabView01', 'currentChanged', lambda _i: on_brachy_edit_context_changed(self))
@@ -420,18 +422,18 @@ def initialize_software_buttons(self):
     safe_btn(self, 'brachy_tree', 'itemDoubleClicked', lambda item, _col: on_brachy_tree_double_clicked(self, item))
     safe_btn(self, 'brachy_tree', 'customContextMenuRequested', lambda pos: brachy_tree_context_menu(self, pos))
     # Plan box: new plan, save / save as into the data tree
-    safe_btn(self, 'brachy_new_plan_btn', 'clicked', lambda: brachy_new_plan(self), colored_button_style("background-color: #28a745; color: white;"))
-    safe_btn(self, 'brachy_save_plan_btn', 'clicked', lambda: brachy_save_plan(self), colored_button_style("background-color: #1c5fa8; color: white;"))
-    safe_btn(self, 'brachy_save_plan_as_btn', 'clicked', lambda: brachy_save_plan_as(self), colored_button_style("background-color: #1c5fa8; color: white;"))
+    safe_btn(self, 'brachy_new_plan_btn', 'clicked', lambda: brachy_new_plan(self))
+    safe_btn(self, 'brachy_save_plan_btn', 'clicked', lambda: brachy_save_plan(self))
+    safe_btn(self, 'brachy_save_plan_as_btn', 'clicked', lambda: brachy_save_plan_as(self))
     # Dose calculation: the source, the air kerma strength of the plan and its TG43 dose
     safe_btn(self, 'brachy_sk_spin', 'editingFinished', lambda: on_brachy_sk_edited(self))
-    safe_btn(self, 'brachy_calc_dose_btn', 'clicked', lambda: brachy_calculate_dose(self), colored_button_style("background-color: #1c5fa8; color: white;"))
+    safe_btn(self, 'brachy_calc_dose_btn', 'clicked', lambda: brachy_calculate_dose(self))
     update_brachy_dose_sources(self)
     update_brachy_color_buttons(self)
     update_brachy_table_header(self)
     update_brachy_plan_box(self)
     #
-    safe_btn(self, 'Brachy_load_sources', 'clicked', lambda: on_brachy_load_sources(self), "background-color: blue; color: white;")
+    safe_btn(self, 'Brachy_load_sources', 'clicked', lambda: on_brachy_load_sources(self))
     safe_btn(self, 'Brachy_load_sources', 'clicked', lambda: plot_brachy_ani(self))
     safe_btn(self, 'Brachy_load_sources', 'clicked', lambda: update_brachy_dose_sources(self))  # (View > PLAN > Brachy too)
     safe_btn(self, 'brachy_source_list', 'currentIndexChanged', lambda: on_brachy_source_selection(self))
@@ -445,17 +447,13 @@ def initialize_software_buttons(self):
     safe_btn(self, 'display_ebrt_cax', 'stateChanged', lambda: on_ebrt_overlay_toggled(self))
     safe_btn(self, 'display_ebrt_beam_fan', 'stateChanged', lambda: on_ebrt_overlay_toggled(self))
     safe_btn(self, 'ebrt_overlay_all_fields', 'stateChanged', lambda: on_ebrt_all_fields_toggled(self))
-    safe_style(self, 'ebrt_export_csv', "background-color: blue; color: white;")
     safe_btn(self, 'ebrt_export_csv', 'clicked', lambda: export_ebrt_beams_to_csv(self))
 
     #
     # TG43 
-    safe_style(self, 'Brachy_Radial_load', "background-color: blue; color: white;")
     safe_btn(self, 'Brachy_Radial_load', 'clicked', lambda: select_Radial_file2load(self))
     safe_btn(self, 'Brachy_Radial_table', 'itemChanged', lambda: plot_brachy_radial_fit(self))
-    safe_style(self, 'Brach_plot_ani', "background-color: blue; color: white;")
     safe_btn(self, 'Brach_plot_ani', 'clicked', lambda: plot_brachy_ani(self))
-    safe_style(self, 'Brachy_load_ani', "background-color: blue; color: white;")
     safe_btn(self, 'Brachy_load_ani', 'clicked', lambda: select_Anisotropy_file2load(self))
     # (the TG43 dose is calculated in View > PLAN > Brachy: brachy_calc_dose_btn)
     #EQD2
@@ -467,14 +465,24 @@ def initialize_software_buttons(self):
     safe_btn(self, 'ab_matrix', 'clicked', lambda: create_ab_matrix(self))
 
     #CT CALIBRATION--------------------------------------------------------------------------
-    safe_btn(self, 'load_ct_cal', 'clicked', lambda: load_ct_cal_curve(self))
-    safe_btn(self, 'save_changes_ct_cal', 'clicked', lambda: save_changes(self))
+    # HU tables (saved in AppData, every edit saved) and their graph (Figures menu style, Hold plot)
+    safe_btn(self, 'ct_cal_list', 'currentTextChanged', lambda name: select_ct_cal_table(self, name))
+    safe_btn(self, 'ct_cal_new', 'clicked', lambda: new_ct_cal_table(self))
+    safe_btn(self, 'ct_cal_duplicate', 'clicked', lambda: duplicate_ct_cal_table(self))
+    safe_btn(self, 'ct_cal_rename', 'clicked', lambda: rename_ct_cal_table(self))
+    safe_btn(self, 'ct_cal_delete', 'clicked', lambda: delete_ct_cal_table(self))
+    safe_btn(self, 'ct_cal_type', 'currentIndexChanged', lambda _i: on_ct_cal_type_changed(self))
+    safe_btn(self, 'ct_cal_table', 'itemChanged', lambda _item: on_ct_cal_table_edited(self))
+    safe_btn(self, 'ct_cal_hold', 'toggled', lambda _c: on_ct_cal_hold_toggled(self))
     safe_btn(self, 'ct_cal_add_row', 'clicked', lambda: add_row_to_ct_table(self))
-    safe_btn(self, 'Export_ct_cal', 'clicked', lambda: export_ct_cal_to_csv(self))
-    safe_btn(self, 'ct_cal_save_copy', 'clicked', lambda:export_ct_cal_to_csv(self,export=False))
-    safe_btn(self, 'create_density_map', 'clicked', lambda:create_density_map(self), "background-color: green; color: white;")
-    safe_btn(self, 'create_density_map__from_mat_map', 'clicked', lambda:create_density_map(self,use_mat_map=True), "background-color: green; color: white;")
-    safe_btn(self, 'delete_density_map', 'clicked', lambda:del_density_map(self), "background-color: red; color: white;")
+    safe_btn(self, 'ct_cal_del_row', 'clicked', lambda: delete_ct_table_rows(self))
+    safe_btn(self, 'load_ct_cal', 'clicked', lambda: import_ct_cal_table(self))
+    safe_btn(self, 'Export_ct_cal', 'clicked', lambda: export_ct_cal_table(self))
+    safe_btn(self, 'create_density_map', 'clicked', lambda:create_density_map(self))
+    if getattr(self, 'ct_cal_list', None) is not None:
+        from fcn_init.create_menu import add_figure_style_listener
+        add_figure_style_listener(self, "ct_cal", lambda: plot_ct_cal(self))
+    init_ct_cal_selector(self)   # last used HU table shown (once); the bundled ones copied on first start
     
     #Material assignment
     safe_btn(self, 'Add_mat', 'clicked', lambda: add_mat_row(self))
@@ -482,19 +490,24 @@ def initialize_software_buttons(self):
     safe_btn(self, 'del_element', 'clicked', lambda:del_element(self))
     safe_btn(self, 'del_mat', 'clicked', lambda:del_mat_row(self))
     safe_btn(self, 'save_mat_table', 'clicked', lambda:save_mat_db(self))
-    safe_btn(self, 'add_mat_hu_row', 'clicked', lambda:add_mat_HU_row(self), "background-color: blue; color: white;")
-    safe_btn(self, 'remove_mat_fromhu', 'clicked', lambda:del_mat2HU(self), "background-color: red; color: white;")
-    safe_btn(self, 'create_mat_map', 'clicked', lambda:generate_mat_map(self), "background-color: blue; color: white;")
-    safe_btn(self, 'retrieve_mat_map', 'clicked', lambda:load_mat_map_into_tables(self), "background-color: blue; color: white;")
+    safe_btn(self, 'add_mat_hu_row', 'clicked', lambda:add_mat_HU_row(self))
+    safe_btn(self, 'remove_mat_fromhu', 'clicked', lambda:del_mat2HU(self))
+    safe_btn(self, 'create_mat_map', 'clicked', lambda:generate_mat_map(self))
+    safe_btn(self, 'retrieve_mat_map', 'clicked', lambda:load_mat_map_into_tables(self))
     safe_btn(self, 'undo_mat_tab', 'clicked', lambda:undo_changes(self))
-    safe_btn(self, 'remove_mat_from_struct', 'clicked', lambda: del_stuct2mat(self), "background-color: red; color: white;")
-    safe_btn(self, 'update_mat_struct_list', 'clicked', lambda: update_mat_struct_list(self), "background-color: blue; color: white;")
-    safe_btn(self, 'mat_hu_toggle_vis', 'clicked', lambda: toggle_mat_HU_visibility(self), "background-color: blue; color: white;")
-    safe_btn(self, 'mat_struct_toggle_vis', 'clicked', lambda: toggle_mat_struct_visibility(self), "background-color: blue; color: white;")
-    # HU LUT save/load + HU range of the selected series
-    from fcn_materialassignment.hu_lut import save_hu_lut, load_hu_lut, update_series_hu_info
-    safe_btn(self, 'load_hu_lut', 'clicked', lambda: load_hu_lut(self), "background-color: blue; color: white;")
-    safe_btn(self, 'save_hu_lut', 'clicked', lambda: save_hu_lut(self), "background-color: blue; color: white;")
+    safe_btn(self, 'remove_mat_from_struct', 'clicked', lambda: del_stuct2mat(self))
+    safe_btn(self, 'update_mat_struct_list', 'clicked', lambda: update_mat_struct_list(self))
+    safe_btn(self, 'mat_hu_toggle_vis', 'clicked', lambda: toggle_mat_HU_visibility(self))
+    safe_btn(self, 'mat_struct_toggle_vis', 'clicked', lambda: toggle_mat_struct_visibility(self))
+    # HU LUTs (dropdown above the HU table, edits saved automatically) + HU range of the selected series
+    from fcn_materialassignment.hu_lut import (init_hu_lut_selector, select_hu_lut, new_hu_lut, duplicate_hu_lut,
+                                               rename_hu_lut, delete_hu_lut, update_series_hu_info)
+    safe_btn(self, 'hu_lut_combo', 'currentTextChanged', lambda name: select_hu_lut(self, name))
+    safe_btn(self, 'hu_lut_new', 'clicked', lambda: new_hu_lut(self))
+    safe_btn(self, 'hu_lut_duplicate', 'clicked', lambda: duplicate_hu_lut(self))
+    safe_btn(self, 'hu_lut_rename', 'clicked', lambda: rename_hu_lut(self))
+    safe_btn(self, 'hu_lut_delete', 'clicked', lambda: delete_hu_lut(self))
+    init_hu_lut_selector(self)   # Default LUT on first start, last used LUT shown (once)
     # Material Assignment lives in View > MonteCarlo: refresh when it becomes visible
     for _tw in ('mc_tabs', 'tabView01', 'tabModules'):
         safe_btn(self, _tw, 'currentChanged', lambda _i: QTimer.singleShot(0, lambda: update_series_hu_info(self)))
@@ -506,13 +519,8 @@ def initialize_software_buttons(self):
         safe_btn(self, 'mc_tabs', 'currentChanged',
                  lambda _i: QTimer.singleShot(0, lambda: refresh_mat_assignment_if_visible(self)))
     
-    # 3D Printing buttons connect
-    # setStyleSheet("background-color: green; color: white;")
-    safe_btn(self, 'import_reference_btn', 'clicked', lambda: hdl.import_reference_file(self))
-    safe_btn(self, 'import_tested_filaments_btn', 'clicked', lambda: hdl.load_gammex_file(self))
-    safe_btn(self, 'load_cal_btn', 'clicked', lambda: hdl.load_cal_file(self))
-    safe_btn(self, 'show_filaments_button', 'clicked', lambda: hdl.show_best_matching_filaments(self))
-    safe_btn(self, 'RED_calc_button', 'clicked', lambda: hdl.calculate_red(self))
+    # 3D Printing buttons connect (when that tab loads, too: setup_ui does not run this function again for it)
+    connect_3dp_flow_infill_buttons(self)
 
 
  
@@ -520,26 +528,26 @@ def initialize_software_buttons(self):
     # display (or not) ROI
     safe_btn(self, 'checkBox_circ_roi_data_2', 'clicked', lambda: toggle_rois(self))
     self.roi_circle_add_row.setText("Add")
-    safe_style(self, 'roi_circle_add_row', "background-color: blue; color: white;")
     safe_btn(self, 'roi_circle_add_row', 'clicked', lambda: roi_c_add_row(self))
     self.roi_circle_remove_row.setText("Remove")
-    safe_style(self, 'roi_circle_remove_row', "background-color: blue; color: white;")
     safe_btn(self, 'roi_circle_remove_row', 'clicked', lambda: roi_c_remove_row(self))
-    safe_btn(self, 'circ_roi_exp_csv', 'clicked', lambda: export_roi_circ_table_to_csv(self), "background-color: blue; color: white;")
-    safe_btn(self, 'circ_roi_load_csv', 'clicked', lambda: import_roi_circ_table(self), "background-color: green; color: white;")
-    safe_btn(self, 'get_circ_roi_data', 'clicked', lambda: c_roi_getdata(self, ask_user=True), "background-color: blue; color: white;")
-    safe_btn(self, 'get_circ_roi_data2', 'clicked', lambda: c_roi_getdata(self, ask_user=True), "background-color: blue; color: white;")
+    safe_btn(self, 'circ_roi_exp_csv', 'clicked', lambda: export_roi_circ_table_to_csv(self))
+    safe_btn(self, 'circ_roi_load_csv', 'clicked', lambda: import_roi_circ_table(self))
+    safe_btn(self, 'get_circ_roi_data', 'clicked', lambda: c_roi_getdata(self, ask_user=True))
+    safe_btn(self, 'get_circ_roi_data2', 'clicked', lambda: c_roi_getdata(self, ask_user=True))
     safe_btn(self, 'checkBox_circ_roi_data_01', 'clicked', lambda: on_all_series_checkbox_toggled(self))
     if hasattr(self, 'holdOnROI'):
         self.holdOnROI.setVisible(False)
         
-    self.btn_clear_all_rois = QPushButton("Clear All ROIs", self.tab_34)
-    safe_style(self, 'btn_clear_all_rois', "background-color: #ef4444; color: white; font-weight: bold;")
+    # the buttons made here only once: this function runs again after each lazy tab load
+    if getattr(self, 'btn_clear_all_rois', None) is None:
+        self.btn_clear_all_rois = QPushButton("Clear All ROIs", self.tab_34)
+    safe_style(self, 'btn_clear_all_rois', "font-weight: bold;")
     safe_btn(self, 'btn_clear_all_rois', 'clicked', lambda: roi_c_clear_all_rois(self))
 
     # Create Export Voxel Values button and place it where GET DATA was (2, 1)
-    self.btn_export_voxel_values = QPushButton("Export Voxel Values", self.tab_34)
-    safe_style(self, 'btn_export_voxel_values', "background-color: blue; color: white;")
+    if getattr(self, 'btn_export_voxel_values', None) is None:
+        self.btn_export_voxel_values = QPushButton("Export Voxel Values", self.tab_34)
     safe_btn(self, 'btn_export_voxel_values', 'clicked', lambda: export_all_roi_voxel_values_to_csv(self))
 
     # Shift GET DATA, Clear All ROIs, and All image series one column to the right
@@ -555,14 +563,16 @@ def initialize_software_buttons(self):
     if hasattr(self, 'checkBox_circ_roi_data_01'):
         self.gridLayout_45.addWidget(self.checkBox_circ_roi_data_01, 2, 4, 1, 1)
 
-    self.btn_clear_all_roi_data = QPushButton("Clear All Data", self.tab_35)
-    safe_style(self, 'btn_clear_all_roi_data', "background-color: #ef4444; color: white; font-weight: bold;")
+    if getattr(self, 'btn_clear_all_roi_data', None) is None:
+        self.btn_clear_all_roi_data = QPushButton("Clear All Data", self.tab_35)
+    safe_style(self, 'btn_clear_all_roi_data', "font-weight: bold;")
     safe_btn(self, 'btn_clear_all_roi_data', 'clicked', lambda: roi_c_clear_all_data(self))
     self.gridLayout_34.addWidget(self.btn_clear_all_roi_data, 1, 2, 1, 1)
 
     # Push the ROI statistics straight into the 3D-printing calibration database
-    self.btn_add_roi_to_3dp = QPushButton("Add to 3DP Database...", self.tab_35)
-    safe_style(self, 'btn_add_roi_to_3dp', "background-color: #16a34a; color: white; font-weight: bold;")
+    if getattr(self, 'btn_add_roi_to_3dp', None) is None:
+        self.btn_add_roi_to_3dp = QPushButton("Add to 3DP Database...", self.tab_35)
+    safe_style(self, 'btn_add_roi_to_3dp', "font-weight: bold;")
     def _open_add_roi_to_3dp():
         from fcn_3DPrinting.add_to_cal_mat_db import open_add_roi_to_3dp_dialog
         open_add_roi_to_3dp_dialog(self)
@@ -624,7 +634,7 @@ def initialize_software_buttons(self):
         """)
         grp_layout.addWidget(self.roi_direction_combo)
 
-    safe_btn(self, 'exp_csv_roi_c_values', 'clicked', lambda: export_roi_circ_values_to_csv(self), "background-color: blue; color: white;")
+    safe_btn(self, 'exp_csv_roi_c_values', 'clicked', lambda: export_roi_circ_values_to_csv(self))
     self.checkBox_circ_roi_data_2.setChecked(True)
 
     # Monte Carlo grids (calculation = yellow, voxelization = red) ----------------------------------
@@ -638,9 +648,10 @@ def initialize_software_buttons(self):
         safe_btn(self, f"{_p}_display", 'toggled', lambda _c: update_mc_grid_all(self))
         for _a in "xyz":
             safe_btn(self, f"{_p}_{_a}res", 'valueChanged', lambda _v: update_mc_grid_all(self))
-    safe_btn(self, 'mc_grid_fit_btn', 'clicked', lambda: mc_grid_fit_to_image(self), "background-color: blue; color: white;")
-    safe_btn(self, 'mc_grid_ref_res_btn', 'clicked', lambda: mc_grid_set_ref_resolution(self), "background-color: blue; color: white;")
-    safe_btn(self, 'mc_vox_fit_btn', 'clicked', lambda: mc_vox_fit_to_image(self), "background-color: blue; color: white;")
+    safe_btn(self, 'mc_grid_fit_btn', 'clicked', lambda: mc_grid_fit_to_image(self))
+    safe_btn(self, 'mc_grid_ref_res_btn', 'clicked', lambda: mc_grid_set_ref_resolution(self))
+    safe_btn(self, 'mc_grid_from_dose_btn', 'clicked', lambda: mc_grid_import_dose_menu(self))
+    safe_btn(self, 'mc_vox_fit_btn', 'clicked', lambda: mc_vox_fit_to_image(self))
     safe_btn(self, 'mc_grid_mode_combo', 'currentTextChanged', lambda m: on_grid_mode_changed(self, m))
     def _run_mcnp_lattice():
         import importlib, fcn_mcnp.mcnp_lattice as _ml
@@ -652,8 +663,8 @@ def initialize_software_buttons(self):
         _mi = importlib.reload(_mi)
         _mi.create_mcnp_input(self)
 
-    safe_btn(self, 'mcnp_create_lattice_btn', 'clicked', _run_mcnp_lattice, "background-color: blue; color: white;")
-    safe_btn(self, 'mcnp_create_input_btn', 'clicked', _run_mcnp_input, "background-color: blue; color: white;")
+    safe_btn(self, 'mcnp_create_lattice_btn', 'clicked', _run_mcnp_lattice)
+    safe_btn(self, 'mcnp_create_input_btn', 'clicked', _run_mcnp_input)
     # Boxes are only visible while the MonteCarlo > GRID tab is selected
     safe_btn(self, 'tabView01', 'currentChanged', lambda _i: update_mc_grid_all(self))
     safe_btn(self, 'mc_tabs', 'currentChanged', lambda _i: update_mc_grid_all(self))

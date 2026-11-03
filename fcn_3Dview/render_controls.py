@@ -113,7 +113,13 @@ def init_3D_render_controls(self):
     # Connect Reset Camera and Clear All Buttons
     self.View3D_reset_camera.clicked.connect(self.reset_3d_camera)
     self.View3D_clear_all.clicked.connect(self.clear_3d_axes)
-    
+
+    # orientation axes (bottom right) shown from the start
+    self.View3D_shoiw_axes_checkBox.blockSignals(True)
+    self.View3D_shoiw_axes_checkBox.setChecked(True)
+    self.View3D_shoiw_axes_checkBox.blockSignals(False)
+    apply_3d_axes_visibility(self)
+
     self._render_controls_initialized = True
 
 
@@ -236,11 +242,18 @@ def apply_3d_axes_visibility(self):
     show_axes = self.View3D_shoiw_axes_checkBox.isChecked()
     if show_axes:
         if not hasattr(self, '_3d_axes_widget'):
+            # the 3D view axes (volume_3d_viewer.patient_to_view): X = DICOM x (patient left),
+            # Y = DICOM z (superior), Z = -DICOM y (anterior); they turn with the camera
             axes_actor = vtk.vtkAxesActor()
+            axes_actor.SetXAxisLabelText("X (L)")
+            axes_actor.SetYAxisLabelText("Y (S)")
+            axes_actor.SetZAxisLabelText("Z (A)")
             axes_widget = vtk.vtkOrientationMarkerWidget()
             axes_widget.SetOrientationMarker(axes_actor)
             axes_widget.SetInteractor(self.VTK3D_interactor)
-            axes_widget.InteractiveOff()
+            axes_widget.SetViewport(0.8, 0.0, 1.0, 0.2)        # bottom right
+            axes_widget.SetEnabled(1)
+            axes_widget.InteractiveOff()                       # only once enabled (VTK ignores it before)
             self._3d_axes_widget = axes_widget
         self._3d_axes_widget.SetEnabled(1)
     else:

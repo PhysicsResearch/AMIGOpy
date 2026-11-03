@@ -252,9 +252,6 @@ def on_DataTreeView_clicked(self,index):
             #
             #
             if self.modality == 'RTPLAN':
-                from fcn_create_gui.setup_ui import ensure_tab_loaded
-                ensure_tab_loaded(self, 4)
-
                 # keep track of the last selected plan ... if user chose and image or dose this will not change
                 self.patientID_plan    = hierarchy[1].replace("PatientID: ", "")
                 self.studyID_plan      = hierarchy[2].replace("StudyID: ", "")
@@ -270,23 +267,21 @@ def on_DataTreeView_clicked(self,index):
                     cur_idx = self.tabModules.currentIndex()
                     is_on_view = (cur_idx == 0 or (hasattr(self, 'im_display_tab') and self.tabModules.widget(cur_idx) == self.im_display_tab))
                 
-                # Brachy Plan
+                # Brachy Plan: shown in View -> PLAN -> Brachy (from any module)
                 if 'Plan_Brachy_Channels' in self.medical_image[self.patientID_plan][self.studyID_plan][self.modality_plan][self.series_index_plan]['metadata']:
                     update_plan_tables(self)
-                    if hasattr(self, 'Plan_tabs') and hasattr(self, 'Brachy_plan_tab'):
-                        self.Plan_tabs.setCurrentIndex(self.Plan_tabs.indexOf(self.Brachy_plan_tab))
-                    if is_on_view:
-                        if hasattr(self, 'tabWidget_3'):
-                            self.tabWidget_3.setCurrentIndex(0) # Brachy tab under View -> PLAN
-                        if hasattr(self, 'tabView01') and hasattr(self, 'tab_14'):
-                            self.tabView01.setCurrentIndex(self.tabView01.indexOf(self.tab_14))
-                    else:
-                        if hasattr(self, 'tabModules'):
-                            self.tabModules.setCurrentIndex(4)  # Plan top tab
+                    if not is_on_view and hasattr(self, 'tabModules') and hasattr(self, 'im_display_tab'):
+                        self.tabModules.setCurrentWidget(self.im_display_tab)
+                    if hasattr(self, 'tabWidget_3'):
+                        self.tabWidget_3.setCurrentIndex(0) # Brachy tab under View -> PLAN
+                    if hasattr(self, 'tabView01') and hasattr(self, 'tab_14'):
+                        self.tabView01.setCurrentIndex(self.tabView01.indexOf(self.tab_14))
                     return
-                    
+
                 # EBRT Photon/Electron/Proton Plan
                 if hasattr(dicom_ds, 'BeamSequence') or hasattr(dicom_ds, 'IonBeamSequence'):
+                    from fcn_create_gui.setup_ui import ensure_tab_loaded
+                    ensure_tab_loaded(self, 4)
                     from fcn_display.disp_ebrt_plan import update_disp_ebrt_plan
                     update_disp_ebrt_plan(self)
 
@@ -429,7 +424,7 @@ def on_DataTreeView_clicked(self,index):
                        tab = getattr(self, 'tab_mat_assignment', None)
                        if tab is not None and tab.isVisible() and ('HU_table' in mat_map_entry or 'metadata' in mat_map_entry):
                            from fcn_materialassignment.material_map import load_mat_map_into_tables
-                           load_mat_map_into_tables(self, mat_map_entry)
+                           load_mat_map_into_tables(self, mat_map_entry, map_name=hierarchy[6])
                     elif hierarchy[5]=='MCNP lattice maps':
                        self.display_data[idx] = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['mcnp_lattice_maps'][hierarchy[6]]['3DMatrix']
                         

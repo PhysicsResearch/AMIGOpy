@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QVBoxLayout
 from PySide6 import QtWidgets
 from fcn_display.mouse_move_slicechanges import onMouseMoveCoronal, onMouseMoveSagittal, onMouseMoveAxial, left_button_pressaxial_event, left_button_releaseaxial_event
 from fcn_display.brachy_channel_edit import add_brachy_edit_observers
+from fcn_processing.mc_grid import add_mc_grid_drag_observers
 
 # ---------------------------------------------------------------------------
 # View-tab viewports style. We use standard vtkInteractorStyleImage to avoid
@@ -655,4 +656,6 @@ def set_mouse_button_custom_fcn(self):
      self.vtkWidgetAxial.GetRenderWindow().GetInteractor().AddObserver("MouseMoveEvent",lambda caller, event:onMouseMoveAxial(self, caller, event))
      # drag brachy channel points (View > PLAN > Brachy > Edit mode)
      add_brachy_edit_observers(self)
+     # drag the MonteCarlo grid boxes (MonteCarlo > GRID, Display checked)
+     add_mc_grid_drag_observers(self)
      #

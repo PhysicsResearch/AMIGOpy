@@ -11,28 +11,42 @@ Generates an MCNP input file for a voxel phantom based on:
 
 Key MCNP constraints:
   * Maximum 80 columns per line (strictly enforced).
+  * Title card (line 1, mesh_title): FMESH origin and bin size, source and Sk of the plan, file
+    name; MCNP prints it as line 2 of the meshtal, where mcnp_meshtal reads it.
   * Lattice card uses run-length repeat notation (e.g. 1 7r for 8 repetitions).
   * Container cell 500 (fill=999).
-  * Lattice cell 600 (lat=1 u=999 fill 0:nx 0:ny 0:nz).
+  * Lattice cell 600 (lat=1 u=999), surfaces in the order X, Z, Y
+    (-602 601 -606 605 -604 603); fill 0:nx-1 0:nz-1 0:ny-1 in the same order:
+    columns fastest, then rows (as shown, posterior to anterior), then slices.
   * Individual universe cell cards for each material/density combination.
   * Cell 998 (air region of interest around phantom, +2 cm margin).
   * Cell 999 (graveyard, outside universe, imp:p=0).
   * Surfaces 501-506 (phantom outer box, cm).
   * Surfaces 601-606 (lattice unit cell, cm).
   * Surfaces 971-976 (air margin boundary box, cm).
+
+MCNP axes (as in AMIGO, see to_mcnp_axes): X = DICOM X (image columns),
+Y = DICOM Z (slices, axial), Z = -DICOM Y (image rows, anterior up as in the
+axial view): the patient is rotated, not mirrored. Boxes run from the lower
+edge of their first voxel to the upper edge of their last voxel
+(ImagePositionPatient is the centre of the first voxel).
 """
 
 from datetime import datetime
 import os
+import re
 import numpy as np
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QFileDialog, QInputDialog, QMessageBox, QProgressDialog
 
+from fcn_RTFiles.amigo_rtplan import plan_sk
+from fcn_mcnp.mcnp_transform import (MAX_TR, cable_directions, check_summary, check_tr_cards, smallest_rotation,
+                                     tr_card_lines)
 from fcn_processing.mc_grid import (
     get_grid_bounds,
-    get_grid_origin_abs,
     get_grid_resolution,
     is_grid_mm_mode,
+    _fields,
     _ref_origin_and_spacing,
 )
 
@@ -93,6 +107,188 @@ def pack_tokens_to_lines(tokens, max_col=MAX_COL, indent=LINE_INDENT):
     if curr.strip():
         lines.append(curr)
     return lines
+
+
+# =============================================================================
+# Geometry: DICOM patient coordinates -> MCNP axes
+# =============================================================================
+def to_mcnp_axes(x, y, z):
+    """
+    MCNP (X, Y, Z) of DICOM (x, y, z), as AMIGO shows the patient: X = x (image columns),
+    Y = z (slices, axial), Z = -y (image rows, anterior up as in the axial view). A rotation,
+    not a mirror; for points and directions (sizes: mcnp_sizes, boxes: mcnp_box).
+    """
+    return x, z, 0.0 - y    # 0.0 - y: no -0.0 in the cards
+
+
+def mcnp_sizes(sx, sy, sz):
+    """MCNP (X, Y, Z) sizes of DICOM (x, y, z) sizes (voxel spacing, resolution)."""
+    return tuple(abs(v) for v in to_mcnp_axes(sx, sy, sz))
+
+
+def mcnp_box(box_mm):
+    """MCNP ((X0, X1), (Y0, Y1), (Z0, Z1)) of a DICOM box ((x0, x1), (y0, y1), (z0, z1)), low to high."""
+    lo, hi = (to_mcnp_axes(*corner) for corner in zip(*box_mm))
+    return tuple((min(a, b), max(a, b)) for a, b in zip(lo, hi))
+
+
+SURFACE_DECIMALS = 6    # plane surfaces in cm: steps of 1e-6 cm (0.01 um)
+PHANTOM_INSET = 1       # steps the phantom box (502, 504, 506) ends inside its last lattice elements
+
+
+def lattice_axis(lo_cm, pitch_cm, n):
+    """
+    Planes of one MCNP axis as written (cm, whole steps of 10**-SURFACE_DECIMALS): phantom box start
+    and end (501 / 502), lattice cell start and end (601 / 602). The cell is the rounded pitch from
+    the rounded start, so its n elements end exactly at start + n * pitch; the phantom box ends
+    PHANTOM_INSET steps before that, so rounding never leaves a slab of the box without lattice
+    elements (MCNP would find points there in an element outside the fill).
+    """
+    step = 10.0 ** -SURFACE_DECIMALS
+    start, pitch = round(lo_cm / step), round(pitch_cm / step)
+    return start * step, (start + n * pitch - PHANTOM_INSET) * step, start * step, (start + pitch) * step
+
+
+def voxel_box_mm(bounds, origin, spacing, n_rows=None):
+    """
+    DICOM extents (mm) of the voxels within bounds (inclusive), from the lower edge of the
+    first voxel to the upper edge of the last one: ((x0, x1), (y0, y1), (z0, z1)).
+
+    bounds:  (col_min, col_max, row_min, row_max, slice_min, slice_max) voxel indices
+    origin:  ImagePositionPatient, the centre of the voxel with the lowest x, y and z
+    spacing: (column, row, slice) spacing (mm)
+    n_rows:  number of image rows when the row bounds are rows as shown in AMIGOpy (stored
+             flipped: row r is DICOM row n_rows - 1 - r); None for DICOM row indices.
+    """
+    cmin, cmax, rmin, rmax, smin, smax = bounds
+    (ox, oy, oz), (ps_col, ps_row, st) = origin, spacing
+    if n_rows is not None:
+        rmin, rmax = n_rows - 1 - rmax, n_rows - 1 - rmin
+    return ((ox + (cmin - 0.5) * ps_col, ox + (cmax + 0.5) * ps_col),
+            (oy + (rmin - 0.5) * ps_row, oy + (rmax + 0.5) * ps_row),
+            (oz + (smin - 0.5) * st, oz + (smax + 0.5) * st))
+
+
+def ct_origin_and_spacing(self, target):
+    """
+    (ox, oy, oz), (ps_col, ps_row, st) of the CT series 'target' (mm), not of the series
+    selected in the data tree (it may be the plan); that one only if the CT has no geometry.
+    """
+    meta = target.get("metadata", {}) or {}
+    try:
+        ox, oy, oz = (float(v) for v in meta["ImagePositionPatient"][:3])
+        ps_row, ps_col = (float(v) for v in meta["PixelSpacing"][:2])
+        st = float(meta["SliceThickness"])
+        if ps_col > 0 and ps_row > 0 and st > 0:
+            return (ox, oy, oz), (ps_col, ps_row, st)
+    except (KeyError, IndexError, TypeError, ValueError):
+        pass
+    return _ref_origin_and_spacing(self)
+
+
+# =============================================================================
+# AMIGO reference block of the header: what mcnp_import needs to read an input back
+# =============================================================================
+REFERENCE_FORMAT = 1
+_REFERENCE_LINE = re.compile(r"^[cC] +@ *(\S+) *(.*?)\s*$")
+
+
+def amigo_reference(self, target, vox_info, universes):
+    """
+    Reference of an input (reference_lines): the voxels written to the lattice (ipp: DICOM mm of the
+    centre of the one with the lowest x, y, z; shape: slices, rows, columns), their indices in the
+    image (crop: columns, rows as AMIGOpy stores them, slices), the image, and the materials
+    (MCNP material number -> (AMIGO material ID, name)).
+    """
+    meta = target.get("metadata", {}) or {}
+    image_ipp, (ps_col, ps_row, st) = ct_origin_and_spacing(self, target)
+    (x0, _), (y0, _), (z0, _) = vox_info["box_mm"]
+    materials = {}
+    for row in universes:
+        materials.setdefault(int(row["material_index"]), (row.get("material_key"), str(row.get("material", ""))))
+    return {"format": REFERENCE_FORMAT,
+            "patient": getattr(self, "patientID", None), "study": getattr(self, "studyID", None),
+            "series_uid": meta.get("SeriesInstanceUID"), "frame_uid": meta.get("FrameOfReferenceUID"),
+            "series_number": target.get("SeriesNumber"),
+            "image_shape": tuple(int(n) for n in vox_info["img_shape"]),
+            "image_ipp": image_ipp, "spacing": (ps_col, ps_row, st),
+            "crop": tuple(int(vox_info[k]) for k in ("cmin", "cmax", "rmin", "rmax", "smin", "smax")),
+            "ipp": (x0 + ps_col / 2.0, y0 + ps_row / 2.0, z0 + st / 2.0),
+            "shape": (int(vox_info["ns"]), int(vox_info["nr"]), int(vox_info["nc"])),
+            "materials": materials}
+
+
+def reference_lines(ref):
+    """Header comment lines of the AMIGO reference ('c @ key value'; parse_reference reads them)."""
+    def text(v):
+        return "N/A" if v is None or str(v).strip() == "" else str(v).strip()
+
+    def mm(values):
+        return " ".join(f"{float(v):.6f}" for v in values)
+
+    def ints(values):
+        return " ".join(str(int(v)) for v in values)
+
+    lines = [_comment("AMIGO REFERENCE - read back by AMIGOpy (File > Open > MCNPinp):"),
+             _comment("  ipp: DICOM mm of the centre of the written voxel with the lowest x, y, z;"),
+             _comment("  shape: written voxels (slices rows columns); spacing: column row slice mm;"),
+             _comment("  crop: their indices in the image (columns, rows as AMIGOpy stores them,"),
+             _comment("  slices; inclusive); fill: i = columns, j = rows as stored (posterior to"),
+             _comment("  anterior), k = slices; material: MCNP number, AMIGO material ID, name"),
+             _comment(f"@ format {ref['format']}"),
+             _comment(f"@ patient {text(ref.get('patient'))}"),
+             _comment(f"@ study {text(ref.get('study'))}"),
+             _comment(f"@ series_uid {text(ref.get('series_uid'))}"),
+             _comment(f"@ frame_uid {text(ref.get('frame_uid'))}"),
+             _comment(f"@ series_number {text(ref.get('series_number'))}"),
+             _comment(f"@ image_shape {ints(ref['image_shape'])}"),
+             _comment(f"@ image_ipp {mm(ref['image_ipp'])}"),
+             _comment(f"@ spacing {mm(ref['spacing'])}"),
+             _comment(f"@ crop {ints(ref['crop'])}"),
+             _comment(f"@ ipp {mm(ref['ipp'])}"),
+             _comment(f"@ shape {ints(ref['shape'])}")]
+    for number, (key, name) in sorted(ref["materials"].items()):
+        lines.append(_comment(f"@ material {number} {text(key)} {text(name)}"))
+    return lines
+
+
+def parse_reference(lines):
+    """The AMIGO reference of an input's header (reference_lines) as a dict, None if it has none."""
+    raw, materials = {}, {}
+    for line in lines:
+        m = _REFERENCE_LINE.match(line)
+        if m is None:
+            continue
+        key, value = m.group(1).lower(), m.group(2)
+        if key == "material":
+            parts = value.split(None, 2)
+            if len(parts) >= 2 and parts[0].isdigit():
+                amigo_id = int(parts[1]) if re.fullmatch(r"-?\d+", parts[1]) else None
+                materials[int(parts[0])] = (amigo_id, parts[2] if len(parts) > 2 else "")
+        else:
+            raw.setdefault(key, value)
+    if "format" not in raw:
+        return None
+    missing = [k for k in ("image_shape", "image_ipp", "spacing", "crop", "ipp", "shape") if k not in raw]
+    if missing:
+        raise ValueError(f"the AMIGO reference of the header has no {', '.join(missing)}")
+
+    def text(key):
+        value = raw.get(key, "N/A")
+        return None if value == "N/A" else value
+
+    def numbers(key, kind, n):
+        values = tuple(kind(float(v)) for v in raw[key].split())
+        if len(values) != n:
+            raise ValueError(f"'@ {key}' has {len(values)} values, {n} expected")
+        return values
+
+    return {"format": int(raw["format"]), "patient": text("patient"), "study": text("study"),
+            "series_uid": text("series_uid"), "frame_uid": text("frame_uid"),
+            "series_number": text("series_number"),
+            "image_shape": numbers("image_shape", int, 3), "image_ipp": numbers("image_ipp", float, 3),
+            "spacing": numbers("spacing", float, 3), "crop": numbers("crop", int, 6),
+            "ipp": numbers("ipp", float, 3), "shape": numbers("shape", int, 3), "materials": materials}
 
 
 def get_mcnp_sim_options(self):
@@ -274,6 +470,24 @@ SOURCE_SURFACES = {
 }
 
 
+# Per source model: abbreviation in the title card and air kerma strength per source particle
+# (MATLAB AMIGO source.mat 'sk'). The SSR weight is the total dwell time (s), so the dose is
+# meshtal result x Sk / (sk x 3600 x 1e6) Gy (MATLAB AMIGO), Sk in U: mcnp_meshtal applies it
+SOURCE_DOSE = {
+    "microselectron": ("mSv2", 7.32e-08),
+    "gammamed": ("GMP", 7.28e-08),
+    "flexisource": ("Flexi", 7.32e-08),
+    "tg186": ("TG186", 7.28e-08),
+    "axxent": ("Axx", 7.32e-08),
+}
+
+
+def source_key(source_name):
+    """Key of SOURCE_SURFACES / SOURCE_DOSE of a source model name (Source combo), None if none."""
+    s = str(source_name).strip().lower().replace("-", "").replace("_", "").replace(" ", "")
+    return next((key for key in SOURCE_SURFACES if key in s), None)
+
+
 def get_source_surfaces(source_name):
     """Return list of MCNP surface card lines for the selected source model.
 
@@ -284,20 +498,7 @@ def get_source_surfaces(source_name):
       * TG-186:            surfaces 5, 7, 8
       * Axxent:            surfaces 18, 20, 42
     """
-    s = str(source_name).strip().lower().replace("-", "").replace("_", "").replace(" ", "")
-
-    key = None
-    if "microselectron" in s:
-        key = "microselectron"
-    elif "gammamed" in s:
-        key = "gammamed"
-    elif "flexisource" in s:
-        key = "flexisource"
-    elif "tg186" in s:
-        key = "tg186"
-    elif "axxent" in s:
-        key = "axxent"
-
+    key = source_key(source_name)
     if key is None:
         return []
 
@@ -312,17 +513,12 @@ def get_source_surfaces(source_name):
     return res
 
 
-def extract_plan_dwells(self, target=None):
-    """Retrieve brachy dwell positions in original coordinates (cm) and dwell time in s.
-
-    Matches MATLAB AMIGO logic:
-      simulation.dwells(:,1:3) = dwells(:,1:3) / 10; % cm
-      simulation.dwells(:,4)   = dwells(:,4); % time in s
-
-    Returns: (dwell_list, total_dwell_time, total_air_kerma)
+def find_plan_entry(self, target=None):
     """
-
-    # 1. Look for RTPLAN entry in medical_image
+    The RTPLAN entry (series dict) whose brachy channels go into the input: the plan selected for
+    the plan views, else the first one with channels of the patient shown, of any patient, or the
+    target itself if it holds channels; None without one.
+    """
     plan_entry = None
     pat_id_plan = getattr(self, "patientID_plan", None)
     study_id_plan = getattr(self, "studyID_plan", None)
@@ -372,7 +568,25 @@ def extract_plan_dwells(self, target=None):
         meta = target.get("metadata", {}) or {}
         if "Plan_Brachy_Channels" in meta:
             plan_entry = target
+    return plan_entry
 
+
+def plan_air_kerma_strength(self, target=None):
+    """Sk (U) of the plan of the input (find_plan_entry), as the TG43 dose takes it; None without a plan."""
+    plan_entry = find_plan_entry(self, target)
+    return None if plan_entry is None else plan_sk(plan_entry.get("metadata", {}) or {})
+
+
+def extract_plan_dwells(self, target=None):
+    """Retrieve brachy dwell positions in original coordinates (cm) and dwell time in s.
+
+    Matches MATLAB AMIGO logic:
+      simulation.dwells(:,1:3) = dwells(:,1:3) / 10; % cm
+      simulation.dwells(:,4)   = dwells(:,4); % time in s
+
+    Returns: (dwell_list, total_dwell_time, total_air_kerma)
+    """
+    plan_entry = find_plan_entry(self, target)
     dwell_list = []
     total_time = 0.0
     total_air_kerma = None
@@ -383,6 +597,7 @@ def extract_plan_dwells(self, target=None):
         total_air_kerma = meta.get("TotalAirKerma")
         ref_rate = meta.get("ReferenceAirKermaRate")
 
+        catheters = []      # (channel number, its dwells with time, its points from the tip)
         for ch_idx, ch in enumerate(channels, start=1):
             ch_pos = ch.get("ChPos")
             cat_pts = None
@@ -447,60 +662,34 @@ def extract_plan_dwells(self, target=None):
                     "dir_x": dir_x, "dir_y": dir_y, "dir_z": dir_z,
                 })
 
-            # Second pass: compute direction cosines matching MATLAB calculate_source_inclination
-            for k, it in enumerate(ch_active):
-                p = np.array([it["x_mm"], it["y_mm"], it["z_mm"]])
-                ux, uy, uz = 0.0, 0.0, 0.0
+            if ch_active:
+                catheters.append((ch_idx, ch_active, cat_pts))
 
-                has_dicom_dir = (
-                    not (np.isnan(it["dir_x"]) or np.isnan(it["dir_y"]) or np.isnan(it["dir_z"]))
-                    and (abs(it["dir_x"]) > 1e-4 or abs(it["dir_y"]) > 1e-4 or abs(it["dir_z"]) > 1e-4)
-                )
-                # 1. Direct orientation from DICOM (planned by TPS)
-                if has_dicom_dir:
-                    v = np.array([it["dir_x"], it["dir_y"], it["dir_z"]])
-                    norm = np.linalg.norm(v)
-                    if norm > 1e-4:
-                        ux, uy, uz = v[0] / norm, v[1] / norm, v[2] / norm
-                # 2. Catheter path points
-                elif cat_pts is not None:
-                    dists = np.sum((cat_pts - p) ** 2, axis=1)
-                    idx = int(np.argmin(dists))
-                    if idx == len(cat_pts) - 1 or (
-                        idx > 0 and np.sum((cat_pts[idx - 1] - p) ** 2) < np.sum((cat_pts[idx + 1] - p) ** 2)
-                    ):
-                        idx = idx - 1
-                    v = cat_pts[idx + 1] - cat_pts[idx]
-                    norm = np.linalg.norm(v)
-                    if norm > 1e-6:
-                        ux, uy, uz = v[0] / norm, v[1] / norm, v[2] / norm
-                # 3. Adjacent active dwells
-                elif len(ch_active) > 1:
-                    if k + 1 < len(ch_active):
-                        v = np.array([ch_active[k + 1]["x_mm"], ch_active[k + 1]["y_mm"], ch_active[k + 1]["z_mm"]]) - p
-                    else:
-                        v = p - np.array([ch_active[k - 1]["x_mm"], ch_active[k - 1]["y_mm"], ch_active[k - 1]["z_mm"]])
-                    norm = np.linalg.norm(v)
-                    if norm > 1e-6:
-                        ux, uy, uz = v[0] / norm, v[1] / norm, v[2] / norm
-
+        # Second pass: the source axis x' at each dwell, towards the cable (away from the catheter
+        # tip): the plan's orientation with its sign checked on the catheter path, else the path,
+        # else the neighbouring dwells (mcnp_transform.cable_directions)
+        axes = cable_directions([(np.array([[it["x_mm"], it["y_mm"], it["z_mm"]] for it in active]),
+                                  np.array([[it["dir_x"], it["dir_y"], it["dir_z"]] for it in active]),
+                                  cat_pts) for _, active, cat_pts in catheters])
+        for (ch_idx, ch_active, _), (dirs, bases, checked, tangents) in zip(catheters, axes):
+            for it, direction, basis, tangent in zip(ch_active, dirs, bases, tangents):
                 # Dwell coordinates in cm in original patient coordinate system (not shifted to 0)
-                x_cm = it["x_mm"] / 10.0
-                y_cm = it["y_mm"] / 10.0
-                z_cm = it["z_mm"] / 10.0
-
                 dwell_list.append({
                     "channel": ch_idx,
-                    "x_cm": x_cm,
-                    "y_cm": y_cm,
-                    "z_cm": z_cm,
+                    "x_cm": it["x_mm"] / 10.0,
+                    "y_cm": it["y_mm"] / 10.0,
+                    "z_cm": it["z_mm"] / 10.0,
                     "time_s": it["t_s"],
                     "x_mm": it["x_mm"],
                     "y_mm": it["y_mm"],
                     "z_mm": it["z_mm"],
-                    "dir_x": ux,
-                    "dir_y": uy,
-                    "dir_z": uz,
+                    "dir_x": float(direction[0]),
+                    "dir_y": float(direction[1]),
+                    "dir_z": float(direction[2]),
+                    "dir_basis": basis,             # how the axis was found, for check_tr_cards
+                    "sign_checked": checked,
+                    "plan_dir": (it["dir_x"], it["dir_y"], it["dir_z"]),
+                    "path_dir": tuple(float(v) for v in tangent),
                 })
                 total_time += it["t_s"]
 
@@ -550,13 +739,28 @@ def extract_plan_dwells(self, target=None):
     return dwell_list, total_time, total_air_kerma
 
 
-def build_mcnp_header(self, target, lat_map_name, lat_entry, vox_info, grid_info, sim_options=None, dwells_info=None):
-    """Build MCNP header comment cards listing geometry, metadata, and grid extents."""
-    lines = []
+def build_mcnp_header(self, target, lat_map_name, lat_entry, vox_info, grid_info, sim_options=None, dwells_info=None,
+                      file_name=None):
+    """Title card (mesh_title) and header comment cards listing geometry, metadata, and grid extents."""
+    if dwells_info is not None:
+        dwells, total_dwell_time, air_kerma = dwells_info
+    else:
+        dwells, total_dwell_time, air_kerma = extract_plan_dwells(self, target)
+    origin, voxel, key, sk = title_fields(self, target, grid_info, sim_options, dwells)
+    abbr, sk_particle = SOURCE_DOSE[key] if key else (None, None)
+
+    lines = [mesh_title(origin, voxel, abbr, sk, file_name)]
     lines.append(_sep("="))
     lines.append(_comment("MCNP VOXEL PHANTOM INPUT FILE"))
     lines.append(_comment("Created with AMIGOpy"))
     lines.append(_comment(f"Date/Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"))
+    lines.append(_comment("Title (line 1 = line 2 of the meshtal, read back by File > Open > MCNPout):"))
+    lines.append(_comment("  origin, voxel: FMESH origin and bin size (cm, MCNP X Y Z)"))
+    if key:
+        lines.append(_comment(f"  {abbr} Sk={sk:.6g}: source {sim_options['source_model']}, air kerma strength (U)"))
+        lines.append(_comment(f"  dose (Gy) = result x Sk / ({sk_particle:.3g} x 3600 x 1e6), SSR WGT = time (s)"))
+    else:
+        lines.append(_comment("  no source and Sk (no brachy source or plan): results per source particle"))
     lines.append(_sep("-"))
 
     # Series & Patient metadata
@@ -576,6 +780,8 @@ def build_mcnp_header(self, target, lat_map_name, lat_entry, vox_info, grid_info
     if sim_options is not None:
         lines.append(_comment("SIMULATION SETTINGS:"))
         lines.append(_comment(f"  Source model:          {sim_options['source_model']}"))
+        if sk:
+            lines.append(_comment(f"  Air kerma strength Sk: {sk:.6g} U (plan)"))
         lines.append(_comment(f"  Particles (nps / N):   {sim_options['nps']}"))
         lines.append(_comment(f"  Standard physics cards:{'Included' if sim_options['std_cards'] else 'Excluded'}"))
         lines.append(_comment("  Scoring / Tallies requested:"))
@@ -586,69 +792,83 @@ def build_mcnp_header(self, target, lat_map_name, lat_entry, vox_info, grid_info
         lines.append(_sep("-"))
 
     # Dwell positions (written similarly to MATLAB write_header, strictly dwell time > 0)
-    if dwells_info is not None:
-        dwells, total_dwell_time, air_kerma = dwells_info
-    else:
-        dwells, total_dwell_time, air_kerma = extract_plan_dwells(self, target)
-
     if dwells:
         lines.append(_comment("BRACHYTHERAPY DWELL POSITIONS (dwell time > 0 only):"))
         lines.append(_comment(f"  Total Dwell Points: {len(dwells)}"))
         lines.append(_comment(f"  Total Dwell Time:   {total_dwell_time:.4f} s"))
         if air_kerma is not None:
             lines.append(_comment(f"  Total Air Kerma:    {air_kerma:.2f}"))
-        lines.append(_comment("  Format: c <X_cm> <Y_cm> <Z_cm> <Time_s> (AMIGO patient coordinates [cm])"))
+        lines.append(_comment("  Format: c <X_cm> <Y_cm> <Z_cm> <Time_s> (MCNP axes, as the tr cards)"))
         for d in dwells:
-            card = f"c {d['x_cm']:6.2f} {d['y_cm']:6.2f} {d['z_cm']:6.2f} {d['time_s']:6.2f}"
+            x_c, y_c, z_c = to_mcnp_axes(d['x_cm'], d['y_cm'], d['z_cm'])
+            card = f"c {x_c:6.2f} {y_c:6.2f} {z_c:6.2f} {d['time_s']:6.2f}"
             lines.append(card[:MAX_COL])
         lines.append(_sep("-"))
 
     # Original Image Geometry
-    (ox, oy, oz), (ps_col, ps_row, st) = _ref_origin_and_spacing(self)
+    (ox, oy, oz), (ps_col, ps_row, st) = ct_origin_and_spacing(self, target)
     d0 = target.get("3DMatrix")
     if d0 is not None:
         ns, nr, nc = d0.shape
     else:
         ns, nr, nc = vox_info["img_shape"]
 
-    lines.append(_comment("ORIGINAL IMAGE GEOMETRY:"))
-    lines.append(_comment(f"  Dimensions (Z, Y, X): {ns} x {nr} x {nc} voxels"))
-    lines.append(_comment(f"  Voxel size (dx,dy,dz): {ps_col:.4f} x {ps_row:.4f} x {st:.4f} mm"))
-    lines.append(_comment(f"  Image Origin (IPP):   [{ox:.3f}, {oy:.3f}, {oz:.3f}] mm"))
+    lines.append(_comment("ORIGINAL IMAGE GEOMETRY (MCNP axes as AMIGOpy shows them):"))
+    lines.append(_comment("  X = DICOM X (cols), Y = DICOM Z (slices), Z = -DICOM Y (rows, anterior up)"))
+    lines.append(_comment(f"  Dimensions (X, Y, Z): {nc} x {ns} x {nr} voxels"))
+    lines.append(_comment(f"  Voxel size (X, Y, Z): {ps_col:.4f} x {st:.4f} x {ps_row:.4f} mm"))
+    lines.append(_comment(f"  Image Origin (DICOM IPP, x y z): [{ox:.3f}, {oy:.3f}, {oz:.3f}] mm"))
     lines.append(_comment(f"  Extents in mm (X):    0.000 to {nc * ps_col:.3f} mm"))
-    lines.append(_comment(f"  Extents in mm (Y):    0.000 to {nr * ps_row:.3f} mm"))
-    lines.append(_comment(f"  Extents in mm (Z):    0.000 to {ns * st:.3f} mm"))
+    lines.append(_comment(f"  Extents in mm (Y):    0.000 to {ns * st:.3f} mm"))
+    lines.append(_comment(f"  Extents in mm (Z):    0.000 to {nr * ps_row:.3f} mm"))
     lines.append(_sep("-"))
 
     # Voxelization Grid (Phantom)
     vx = vox_info
+    (vx0, vx1), (vy0, vy1), (vz0, vz1) = mcnp_box(vx["box_mm"])
     lines.append(_comment("VOXELIZATION GRID (mc_vox) - PHANTOM BOUNDS:"))
-    lines.append(_comment(f"  Voxel index range (inclusive, 0-based):"))
+    lines.append(_comment("  MCNP axes: X = DICOM X, Y = DICOM Z (slices), Z = -DICOM Y (anterior up)"))
+    lines.append(_comment(f"  Voxel index range (inclusive, 0-based, rows as shown in AMIGOpy):"))
     lines.append(_comment(f"    MCNP X (cols / sagittal):  [{vx['cmin']}, {vx['cmax']}] ({vx['nc']} voxels)"))
-    lines.append(_comment(f"    MCNP Y (rows / coronal):   [{vx['rmin']}, {vx['rmax']}] ({vx['nr']} voxels)"))
-    lines.append(_comment(f"    MCNP Z (slices / axial):   [{vx['smin']}, {vx['smax']}] ({vx['ns']} voxels)"))
-    lines.append(_comment(f"  Offset from image origin (mm):"))
-    lines.append(_comment(f"    MCNP X (cols):   {vx['x_rel_min']:.3f} to {vx['x_rel_max']:.3f} mm ({vx['x_rel_min']/10:.4f} to {vx['x_rel_max']/10:.4f} cm)"))
-    lines.append(_comment(f"    MCNP Y (rows):   {vx['y_rel_min']:.3f} to {vx['y_rel_max']:.3f} mm ({vx['y_rel_min']/10:.4f} to {vx['y_rel_max']/10:.4f} cm)"))
-    lines.append(_comment(f"    MCNP Z (slices): {vx['z_rel_min']:.3f} to {vx['z_rel_max']:.3f} mm ({vx['z_rel_min']/10:.4f} to {vx['z_rel_max']/10:.4f} cm)"))
-    lines.append(_comment(f"  Absolute DICOM coordinates (mm):"))
-    lines.append(_comment(f"    X (cols):   {vx['x_abs_min']:.3f} to {vx['x_abs_max']:.3f} mm"))
-    lines.append(_comment(f"    Y (rows):   {vx['y_abs_min']:.3f} to {vx['y_abs_max']:.3f} mm"))
-    lines.append(_comment(f"    Z (slices): {vx['z_abs_min']:.3f} to {vx['z_abs_max']:.3f} mm"))
+    lines.append(_comment(f"    MCNP Y (slices / axial):   [{vx['smin']}, {vx['smax']}] ({vx['ns']} voxels)"))
+    lines.append(_comment(f"    MCNP Z (rows / coronal):   [{vx['rmin']}, {vx['rmax']}] ({vx['nr']} voxels)"))
+    lines.append(_comment(f"  Absolute coordinates, MCNP axes (mm, voxel edges):"))
+    lines.append(_comment(f"    X (cols):   {vx0:.3f} to {vx1:.3f} mm"))
+    lines.append(_comment(f"    Y (slices): {vy0:.3f} to {vy1:.3f} mm"))
+    lines.append(_comment(f"    Z (rows):   {vz0:.3f} to {vz1:.3f} mm"))
+    # Lattice coverage: pitches as written, end of the phantom box vs the CT voxel edge
+    planes = vx["planes_cm"]
+    pitch = [c1 - c0 for _, _, c0, c1 in planes]
+    dev_mm = [(b1 - hi / 10.0) * 10.0 for (_, b1, _, _), (_, hi) in zip(planes, mcnp_box(vx["box_mm"]))]
+    lines.append(_comment(f"  Lattice pitch (cm, 601-606): X {pitch[0]:.6f}, Y {pitch[1]:.6f}, Z {pitch[2]:.6f}"))
+    lines.append(_comment(f"  Phantom box (501-506) ends {PHANTOM_INSET * 10.0 ** -SURFACE_DECIMALS:.0e} cm inside "
+                          f"the last lattice elements;"))
+    lines.append(_comment(f"  box end - CT voxel edge (mm): X {dev_mm[0]:+.4f}, Y {dev_mm[1]:+.4f}, "
+                          f"Z {dev_mm[2]:+.4f}"))
+    if max(abs(d) for d in dev_mm) > 0.01:
+        lines.append(_comment("  WARNING: more than 0.01 mm (rounding of the pitch over many voxels)"))
     lines.append(_sep("-"))
 
     # Calculation Grid
     gx = grid_info
+    (gx0, gx1), (gy0, gy1), (gz0, gz1) = mcnp_box(gx["box_mm"])
     lines.append(_comment("CALCULATION GRID (mc_grid) - DOSE / TALLY BOUNDS:"))
     lines.append(_comment(f"  Mode: {gx['mode']}"))
-    lines.append(_comment(f"  Resolution (col, row, slice mm):"))
-    lines.append(_comment(f"    {gx['res_col_mm']:.8f} x {gx['res_row_mm']:.8f} x {gx['res_slice_mm']:.8f} mm"))
-    lines.append(_comment(f"  Voxel index range (inclusive):"))
-    lines.append(_comment(f"    MCNP X / UI X (cols / sagittal):  [{gx['cmin']:.1f}, {gx['cmax']:.1f}]"))
-    lines.append(_comment(f"    MCNP Y / UI Z (rows / coronal):   [{gx['rmin']:.1f}, {gx['rmax']:.1f}]"))
-    lines.append(_comment(f"    MCNP Z / UI Y (slices / axial):   [{gx['smin']:.1f}, {gx['smax']:.1f}]"))
-    lines.append(_comment(f"  Absolute origin (mm): [{gx['orig_x']:.3f}, {gx['orig_y']:.3f}, {gx['orig_z']:.3f}] mm"))
-    lines.append(_comment(f"  Absolute origin (cm): [{gx['orig_x']/10:.4f}, {gx['orig_y']/10:.4f}, {gx['orig_z']/10:.4f}] cm"))
+    lines.append(_comment(f"  Resolution (X cols, Y slices, Z rows mm):"))
+    lines.append(_comment(f"    {gx['res_col_mm']:.8f} x {gx['res_slice_mm']:.8f} x {gx['res_row_mm']:.8f} mm"))
+    if gx["mode"] == "voxel":
+        lines.append(_comment(f"  Voxel index range (inclusive, rows as shown in AMIGOpy):"))
+        lines.append(_comment(f"    MCNP X / UI X (cols / sagittal):  [{gx['cmin']:.1f}, {gx['cmax']:.1f}]"))
+        lines.append(_comment(f"    MCNP Y / UI Y (slices / axial):   [{gx['smin']:.1f}, {gx['smax']:.1f}]"))
+        lines.append(_comment(f"    MCNP Z / UI Z (rows / coronal):   [{gx['rmin']:.1f}, {gx['rmax']:.1f}]"))
+    lines.append(_comment(f"  Absolute coordinates, MCNP axes (mm, voxel edges):"))
+    lines.append(_comment(f"    X (cols):   {gx0:.3f} to {gx1:.3f} mm"))
+    lines.append(_comment(f"    Y (slices): {gy0:.3f} to {gy1:.3f} mm"))
+    lines.append(_comment(f"    Z (rows):   {gz0:.3f} to {gz1:.3f} mm"))
+    lines.append(_comment(f"  FMESH origin, MCNP axes (cm): [{origin[0]:.6f}, {origin[1]:.6f}, {origin[2]:.6f}]"))
+    lines.append(_comment(f"  FMESH bin size (cm):          [{voxel[0]:.7f}, {voxel[1]:.7f}, {voxel[2]:.7f}]"))
+    lines.append(_sep("-"))
+    lines.extend(reference_lines(amigo_reference(self, target, vox_info, lat_entry.get("universes", []))))
     lines.append(_sep("="))
     return lines
 
@@ -666,9 +886,14 @@ def build_source_cards(sim_options, dwells, total_dwell_time, max_col=MAX_COL):
       SP1   13.6 13.6 ... 
             13.6 ... 
       c
-      tr1 <X_cm> <Y_cm> <Z_cm> <dir_X> <dir_Y> <dir_Z>
+      tr1 <X_cm> <Y_cm> <Z_cm> &
+           <x' of the source frame> &
+           <y'> &
+           <z'>
       ...
       c
+    tr cards: all 9 rotation values (mcnp_transform), x' the source axis towards the cable, checked
+    back against the plan (comment lines before the cards).
     """
     source_model = sim_options.get("source_model", "")
     s = str(source_model).strip().lower().replace("-", "").replace("_", "").replace(" ", "")
@@ -705,6 +930,9 @@ def build_source_cards(sim_options, dwells, total_dwell_time, max_col=MAX_COL):
         surf_str = "987 989 990 992 993"
 
     n_dwells = len(dwells)
+    if n_dwells > MAX_TR:
+        raise ValueError(f"MCNP allows at most {MAX_TR} TR cards (one per dwell position): "
+                         f"the plan has {n_dwells} dwell positions with a dwell time.")
     tot_wgt = total_dwell_time if total_dwell_time > 0 else sum(d["time_s"] for d in dwells)
 
     # 1. SSR card
@@ -741,24 +969,21 @@ def build_source_cards(sim_options, dwells, total_dwell_time, max_col=MAX_COL):
                 lines.append((curr + " ")[:max_col])
         lines.append("c")
 
-    # 4. Translation cards (tr1, tr2, ... trN) matching DICOM / MCNP coordinate convention:
+    # 4. Transformation cards (tr1, tr2, ... trN) in MCNP axes (to_mcnp_axes), positions and directions:
     # MCNP X -> DICOM X (columns / sagittal)
-    # MCNP Y -> DICOM Y (rows / coronal)
-    # MCNP Z -> DICOM Z (slices / axial)
+    # MCNP Y -> DICOM Z (slices / axial)
+    # MCNP Z -> -DICOM Y (rows / coronal, anterior up)
+    # Each card: the dwell position, then the source frame axes x' (the source axis, towards the cable),
+    # y', z' (the smallest rotation taking X onto x'), all 9 values (mcnp_transform)
+    tr_lines = []
     for i, d in enumerate(dwells, start=1):
-        x_c = d["x_cm"]
-        y_c = d["y_cm"]
-        z_c = d["z_cm"]
-        dir_x = d.get("dir_x", 0.0)
-        dir_y = d.get("dir_y", 0.0)
-        dir_z = d.get("dir_z", 0.0)
-
-        # Check if direction cosines are available
-        if abs(dir_x) > 1e-5 or abs(dir_y) > 1e-5 or abs(dir_z) > 1e-5:
-            tr_card = f"tr{i} {x_c:6.5f} {y_c:6.5f} {z_c:6.5f} {dir_x:6.5f} {dir_y:6.5f} {dir_z:6.5f}"
-        else:
-            tr_card = f"tr{i} {x_c:6.5f} {y_c:6.5f} {z_c:6.5f}"
-        lines.append(tr_card[:max_col])
+        origin = to_mcnp_axes(d["x_cm"], d["y_cm"], d["z_cm"])
+        axis = to_mcnp_axes(d.get("dir_x", 0.0), d.get("dir_y", 0.0), d.get("dir_z", 0.0))
+        tr_lines.extend(tr_card_lines(i, origin, smallest_rotation(axis), indent=LINE_INDENT))
+    _result, report = check_tr_cards(tr_lines, dwells)
+    lines.append(_comment("trN: dwell position (cm), then the source axes x' (to the cable), y', z'"))
+    lines.extend(_comment(text) for text in report)
+    lines.extend(tr_lines)
 
     lines.append("c")
     return lines
@@ -796,6 +1021,57 @@ NIST_WATER_COEF_LINES = [
 ]
 
 
+def fmesh_mesh(grid_info):
+    """
+    FMESH mesh of the calculation grid in MCNP axes: lower corner (ORIGIN), upper corner (IMESH,
+    JMESH, KMESH) in cm and bins (IINTS, JINTS, KINTS) of about res_*_mm across grid_info["box_mm"].
+    """
+    box = [(lo / 10.0, hi / 10.0) for lo, hi in mcnp_box(grid_info["box_mm"])]
+    res_mm = mcnp_sizes(grid_info["res_col_mm"], grid_info["res_row_mm"], grid_info["res_slice_mm"])
+    ints = tuple(max(1, int(round((hi - lo) * 10.0 / res))) if res > 0 else 1 for (lo, hi), res in zip(box, res_mm))
+    return tuple(lo for lo, _ in box), tuple(hi for _, hi in box), ints
+
+
+def _short(value, decimals):
+    """value with at most 'decimals' decimals and no trailing zeros ('-0' as '0')."""
+    text = f"{value:.{decimals}f}".rstrip("0").rstrip(".")
+    return "0" if text in ("-0", "") else text
+
+
+TITLE_FORMATS = (("origin", "voxel", 4, 6), ("o", "v", 4, 6), ("o", "v", 3, 5))
+
+
+def mesh_title(origin, voxel, source=None, sk=None, file_name=None, max_col=MAX_COL):
+    """
+    Title card (line 1 of the input; MCNP copies it to line 2 of the meshtal, whose bin boundaries
+    have 2 decimals only), read back by mcnp_meshtal.read_title:
+        origin=X,Y,Z voxel=dX,dY,dZ [source Sk=Sk] [input file]
+    FMESH origin and bin size (cm, MCNP axes) with 4 and 6 decimals, the source abbreviation
+    (SOURCE_DOSE) and its air kerma strength (U), then the file name if it fits in max_col. Shorter
+    labels and fewer decimals only if the numbers alone would not fit (TITLE_FORMATS).
+    """
+    tail = f" {source} Sk={sk:.6g}" if source and sk else ""
+    for o_label, v_label, o_dec, v_dec in TITLE_FORMATS:
+        title = (f"{o_label}=" + ",".join(_short(v, o_dec) for v in origin)
+                 + f" {v_label}=" + ",".join(_short(v, v_dec) for v in voxel) + tail)
+        if len(title) <= max_col:
+            break
+    if file_name and file_name.isascii() and file_name.isprintable() and len(title) + 1 + len(file_name) <= max_col:
+        title += " " + file_name
+    return title
+
+
+def title_fields(self, target, grid_info, sim_options, dwells):
+    """
+    What the title of an input holds: FMESH origin and bin size (cm, MCNP axes) of grid_info, and
+    the source (SOURCE_DOSE key) and Sk (U) of the plan when it has dwells (else None, None).
+    """
+    origin, far, ints = fmesh_mesh(grid_info)
+    key = source_key(sim_options.get("source_model", "")) if sim_options else None
+    sk = plan_air_kerma_strength(self, target) if dwells and key else None
+    return origin, tuple((b - a) / n for a, b, n in zip(origin, far, ints)), (key if sk else None), sk
+
+
 def build_mcnp_tallies(grid_info, sim_options, max_col=MAX_COL):
     """
     Generate MCNP FMESH tally cards matching MATLAB AMIGO simulation_main write_tally.
@@ -803,62 +1079,15 @@ def build_mcnp_tallies(grid_info, sim_options, max_col=MAX_COL):
       - Dose to water in water / Dose to water in medium (Track length): *FMESH4:p with NIST water coefficients
       - Dose to medium in medium (Track length): FMESH14:p with FM14 -1 -0 -5 -6
 
-    MCNP Coordinate System mapping matching AMIGO:
-      - MCNP X-axis (px, IMESH, IINTS): Columns (sagittal, AMIGO X)
-      - MCNP Y-axis (py, JMESH, JINTS): Slices (axial, AMIGO Y)
-      - MCNP Z-axis (pz, KMESH, KINTS): Rows (coronal, AMIGO Z)
+    MCNP Coordinate System mapping matching AMIGO (to_mcnp_axes):
+      - MCNP X-axis (IMESH, IINTS): Columns (sagittal, DICOM X)
+      - MCNP Y-axis (JMESH, JINTS): Slices (axial, DICOM Z)
+      - MCNP Z-axis (KMESH, KINTS): Rows (coronal, -DICOM Y: anterior up)
+    The mesh covers grid_info["box_mm"] (DICOM mm, voxel edges of the calculation grid).
     """
-    st_mm = float(grid_info.get("st", grid_info.get("res_slice_mm", 1.0)))
-    ps_col_mm = float(grid_info.get("ps_col", grid_info.get("res_col_mm", 1.0)))
-    ps_row_mm = float(grid_info.get("ps_row", grid_info.get("res_row_mm", 1.0)))
-
-    # Calculation grid bin sizes (in mm)
-    res_col_mm = float(grid_info.get("res_col_mm", grid_info.get("res_x", ps_col_mm)))
-    res_slice_mm = float(grid_info.get("res_slice_mm", grid_info.get("res_y", st_mm)))
-    res_row_mm = float(grid_info.get("res_row_mm", grid_info.get("res_z", ps_row_mm)))
-
-    # Bounds in voxel units (0-based)
-    cmin = float(grid_info.get("cmin", 0))
-    cmax = float(grid_info.get("cmax", 0))
-    smin = float(grid_info.get("smin", 0))
-    smax = float(grid_info.get("smax", 0))
-    rmin = float(grid_info.get("rmin", 0))
-    rmax = float(grid_info.get("rmax", 0))
-
-    # Reference image origin (in mm)
-    ox = float(grid_info.get("ox", 0.0))
-    oy = float(grid_info.get("oy", 0.0))
-    oz = float(grid_info.get("oz", 0.0))
-
-    span_x_mm = (cmax - cmin + 1.0) * ps_col_mm
-    span_y_mm = (rmax - rmin + 1.0) * ps_row_mm
-    span_z_mm = (smax - smin + 1.0) * st_mm
-    mcnp_x_ints = max(1, int(round(span_x_mm / res_col_mm)))
-    mcnp_y_ints = max(1, int(round(span_y_mm / res_row_mm)))
-    mcnp_z_ints = max(1, int(round(span_z_mm / res_slice_mm)))
-
-    if grid_info.get("mode") == "mm":
-        # Absolute coordinates from calculation grid spinboxes (already in DICOM mm)
-        orig_x = float(grid_info.get("orig_x", ox))
-        orig_y = float(grid_info.get("orig_y", oy)) # Coronal / Row -> DICOM Y
-        orig_z = float(grid_info.get("orig_z", oz)) # Axial / Slice -> DICOM Z
-        mcnp_x0_cm = orig_x / 10.0
-        mcnp_x1_cm = mcnp_x0_cm + span_x_mm / 10.0
-        mcnp_y0_cm = orig_y / 10.0
-        mcnp_y1_cm = mcnp_y0_cm + span_y_mm / 10.0
-        mcnp_z0_cm = orig_z / 10.0
-        mcnp_z1_cm = mcnp_z0_cm + span_z_mm / 10.0
-    else:
-        # Voxel mode: true DICOM coordinates (not shifted to 0)
-        # MCNP X-axis (Columns / Sagittal, DICOM X)
-        mcnp_x0_cm = (ox + cmin * ps_col_mm) / 10.0
-        mcnp_x1_cm = (ox + (cmax + 1.0) * ps_col_mm) / 10.0
-        # MCNP Y-axis (Rows / Coronal, DICOM Y)
-        mcnp_y0_cm = (oy + rmin * ps_row_mm) / 10.0
-        mcnp_y1_cm = (oy + (rmax + 1.0) * ps_row_mm) / 10.0
-        # MCNP Z-axis (Slices / Axial, DICOM Z)
-        mcnp_z0_cm = (oz + smin * st_mm) / 10.0
-        mcnp_z1_cm = (oz + (smax + 1.0) * st_mm) / 10.0
+    # Mesh corners and bins in MCNP axes (true DICOM coordinates, not shifted to 0)
+    ((mcnp_x0_cm, mcnp_y0_cm, mcnp_z0_cm), (mcnp_x1_cm, mcnp_y1_cm, mcnp_z1_cm),
+     (mcnp_x_ints, mcnp_y_ints, mcnp_z_ints)) = fmesh_mesh(grid_info)
 
     want_dwm = bool(sim_options.get("dwater_water") or sim_options.get("dwater_med"))
     want_dmm = bool(sim_options.get("dmed_med_tl"))
@@ -893,8 +1122,9 @@ def build_mcnp_tallies(grid_info, sim_options, max_col=MAX_COL):
     return lines
 
 
-def build_mcnp_cards(self, target, lat_map_name, progress_cb=None):
-    """Assemble all MCNP cards (Header, Cells, Surfaces, Data) into a list of lines."""
+def build_mcnp_cards(self, target, lat_map_name, progress_cb=None, file_name=None):
+    """Assemble all MCNP cards (Title, Header, Cells, Surfaces, Data) into a list of lines; file_name goes
+    into the title when it fits (mesh_title)."""
     if progress_cb:
         progress_cb(10, "Reading lattice map and geometry...")
 
@@ -903,7 +1133,7 @@ def build_mcnp_cards(self, target, lat_map_name, progress_cb=None):
     universes = lat_entry.get("universes", [])
 
     img_shape = uni_map.shape  # (ns, nr, nc)
-    (ox, oy, oz), (ps_col, ps_row, st) = _ref_origin_and_spacing(self)
+    (ox, oy, oz), (ps_col, ps_row, st) = ct_origin_and_spacing(self, target)
 
     # 1. Determine Voxelization Grid bounds (phantom subvolume)
     if progress_cb:
@@ -931,57 +1161,58 @@ def build_mcnp_cards(self, target, lat_map_name, progress_cb=None):
         "cmin": cmin_i, "cmax": cmax_i, "nc": nc_vox,
         "rmin": rmin_i, "rmax": rmax_i, "nr": nr_vox,
         "smin": smin_i, "smax": smax_i, "ns": ns_vox,
-        "x_rel_min": cmin_i * ps_col, "x_rel_max": (cmax_i + 1) * ps_col,
-        "y_rel_min": rmin_i * ps_row, "y_rel_max": (rmax_i + 1) * ps_row,
-        "z_rel_min": smin_i * st,     "z_rel_max": (smax_i + 1) * st,
-        "x_abs_min": ox + cmin_i * ps_col, "x_abs_max": ox + (cmax_i + 1) * ps_col,
-        "y_abs_min": oy + rmin_i * ps_row, "y_abs_max": oy + (rmax_i + 1) * ps_row,
-        "z_abs_min": oz + smin_i * st,     "z_abs_max": oz + (smax_i + 1) * st,
+        # DICOM extents (mm, voxel edges); the MonteCarlo tab rows are rows as shown (flipped)
+        "box_mm": voxel_box_mm((cmin_i, cmax_i, rmin_i, rmax_i, smin_i, smax_i), (ox, oy, oz),
+                               (ps_col, ps_row, st), n_rows=img_shape[1]),
     }
+    # Phantom box and lattice cell planes per MCNP axis (X: columns, Y: slices, Z: rows), cm as
+    # written: the lattice elements cover the box whatever the rounding (lattice_axis)
+    vox_info["planes_cm"] = [lattice_axis(lo / 10.0, pitch / 10.0, n) for (lo, _), pitch, n in
+                             zip(mcnp_box(vox_info["box_mm"]), mcnp_sizes(ps_col, ps_row, st),
+                                 (nc_vox, ns_vox, nr_vox))]
 
     # 2. Determine Calculation Grid bounds
     grid_bounds = get_grid_bounds(self, "mc_grid")
+    mm_mode = grid_bounds is not None and is_grid_mm_mode(self, "mc_grid")
     if grid_bounds is None:
-        gc_min, gc_max, gr_min, gr_max, gs_min, gs_max = 0, img_shape[2] - 1, 0, img_shape[1] - 1, 0, img_shape[0] - 1
-    else:
-        gc_min, gc_max, gr_min, gr_max, gs_min, gs_max = grid_bounds
+        grid_bounds = (0, img_shape[2] - 1, 0, img_shape[1] - 1, 0, img_shape[0] - 1)
+    gc_min, gc_max, gr_min, gr_max, gs_min, gs_max = grid_bounds
     gres = get_grid_resolution(self, "mc_grid")
     # UI order: x -> cols (ps_col), y -> slices (st), z -> rows (ps_row)
     col_res_mm = gres[0] if gres else ps_col
     slice_res_mm = gres[1] if gres else st
     row_res_mm = gres[2] if gres else ps_row
-    gorig = get_grid_origin_abs(self, "mc_grid") or (ox, oy, oz)
+    if mm_mode:
+        # the boxes hold mm of the first / last voxel centres in MCNP axes: X, Y = DICOM z, Z = -DICOM y
+        xmin, xmax, ymin, ymax, zmin, zmax = (float(getattr(self, f).value()) for f in _fields("mc_grid"))
+        grid_box = ((min(xmin, xmax) - ps_col / 2.0, max(xmin, xmax) + ps_col / 2.0),
+                    (0.0 - max(zmin, zmax) - ps_row / 2.0, 0.0 - min(zmin, zmax) + ps_row / 2.0),
+                    (min(ymin, ymax) - st / 2.0, max(ymin, ymax) + st / 2.0))
+    else:
+        grid_box = voxel_box_mm(grid_bounds, (ox, oy, oz), (ps_col, ps_row, st), n_rows=img_shape[1])
 
     grid_info = {
-        "mode": "mm" if is_grid_mm_mode(self, "mc_grid") else "voxel",
+        "mode": "mm" if mm_mode else "voxel",
         "res_col_mm": col_res_mm,
         "res_slice_mm": slice_res_mm,
         "res_row_mm": row_res_mm,
-        "ps_col": ps_col,
-        "ps_row": ps_row,
-        "st": st,
         "cmin": gc_min, "cmax": gc_max,
         "rmin": gr_min, "rmax": gr_max,
         "smin": gs_min, "smax": gs_max,
-        "res_x": col_res_mm,
-        "res_y": slice_res_mm,
-        "res_z": row_res_mm,
-        "orig_x": gorig[0], "orig_y": gorig[1], "orig_z": gorig[2],
-        "ox": ox, "oy": oy, "oz": oz,
+        "box_mm": grid_box,   # DICOM extents (mm, voxel edges)
     }
 
     # Extract subvolume for the phantom
     if progress_cb:
         progress_cb(35, "Extracting phantom subvolume...")
     sub = uni_map[smin_i:smax_i + 1, rmin_i:rmax_i + 1, cmin_i:cmax_i + 1]
-    # Rows in AMIGO display_data were flipped along axis 1 (vol = np.flip(vol, axis=1)).
-    # Flip axis 1 back to match DICOM physical Y (Anterior-to-Posterior):
-    sub_mcnp = np.flip(sub, axis=1)
-    # M matrix for lattice filling matching DICOM / MCNP coordinate convention:
-    #   Dimension 1 (px, cols, size nc_vox, advances fastest in 'F' order): axis 2 of sub_mcnp
-    #   Dimension 2 (py, rows, size nr_vox, advances second in 'F' order):  axis 1 of sub_mcnp
-    #   Dimension 3 (pz, slices, size ns_vox, advances slowest in 'F' order): axis 0 of sub_mcnp
-    M = sub_mcnp.transpose(2, 1, 0)
+    # M matrix for lattice filling, in the order of the lattice cell 600 (X, Z, Y):
+    #   i (MCNP X, cols, size nc_vox, advances fastest in 'F' order):             axis 2 of sub
+    #   j (MCNP Z, rows, size nr_vox, advances second in 'F' order):              axis 1 of sub
+    #   k (MCNP Y, slices / DICOM Z, size ns_vox, advances slowest in 'F' order): axis 0 of sub
+    # MCNP Z = -DICOM Y runs anterior-ward like the stored rows (display_data rows were flipped,
+    # vol = np.flip(vol, axis=1), and AMIGO shows them bottom to top): read them as stored.
+    M = sub.transpose(2, 1, 0)
     flat = M.flatten(order="F")
 
     if progress_cb:
@@ -1000,7 +1231,8 @@ def build_mcnp_cards(self, target, lat_map_name, progress_cb=None):
     out_lines = []
 
     # --- Header ---
-    out_lines.extend(build_mcnp_header(self, target, lat_map_name, lat_entry, vox_info, grid_info, sim_options, dwells_info=dwells_info))
+    out_lines.extend(build_mcnp_header(self, target, lat_map_name, lat_entry, vox_info, grid_info, sim_options,
+                                       dwells_info=dwells_info, file_name=file_name))
 
     # =========================================================================
     # BLOCK 1: CELL CARDS
@@ -1009,8 +1241,8 @@ def build_mcnp_cards(self, target, lat_map_name, progress_cb=None):
     out_lines.append(_comment("Container Cell 500 (Voxel Phantom)"))
     out_lines.append("500 0        501 -502 503 -504 505 -506      fill=999  imp:p=1")
 
-    out_lines.append(_comment("Lattice Cell 600"))
-    out_lines.append("600 0       -606 605 -604 603 -602 601     lat=1 u=999 imp:p=1 &")
+    out_lines.append(_comment("Lattice Cell 600 (planes and fill in the order X, Z, Y)"))
+    out_lines.append("600 0       -602 601 -606 605 -604 603     lat=1 u=999 imp:p=1 &")
     out_lines.append(f"     fill 0:{nc_vox - 1} 0:{nr_vox - 1} 0:{ns_vox - 1} &")
 
     # Packed RLE fill lines
@@ -1028,7 +1260,7 @@ def build_mcnp_cards(self, target, lat_map_name, progress_cb=None):
         mat_idx = row["material_index"]
         density = row["density"]
         cell_id = 1000 + u
-        card = f"{cell_id} {mat_idx} -{density:.6f} -606 605 -604 603 -602 601 u={u} imp:p=1"
+        card = f"{cell_id} {mat_idx} -{density:.6f} -602 601 -606 605 -604 603 u={u} imp:p=1"
         out_lines.append(card[:MAX_COL])
 
     out_lines.append(_comment("Region of interest (air margin around phantom)"))
@@ -1042,22 +1274,15 @@ def build_mcnp_cards(self, target, lat_map_name, progress_cb=None):
     # =========================================================================
     # BLOCK 2: SURFACE CARDS
     # =========================================================================
-    # Coordinates in cm (divided by 10) in original patient coordinate system (not shifted to 0):
-    # Mapping matching DICOM / MCNP Cartesian convention:
+    # Coordinates in cm (divided by 10) in original patient coordinate system (not shifted to 0),
+    # in MCNP axes (to_mcnp_axes), at the voxel edges of the phantom:
     #   px -> cols   (sagittal, DICOM X)
-    #   py -> rows   (coronal,  DICOM Y)
-    #   pz -> slices (axial,    DICOM Z)
-    px_min_cm = (ox + cmin_i * ps_col) / 10.0
-    px_max_cm = (ox + (cmax_i + 1) * ps_col) / 10.0
-    py_min_cm = (oy + rmin_i * ps_row) / 10.0
-    py_max_cm = (oy + (rmax_i + 1) * ps_row) / 10.0
-    pz_min_cm = (oz + smin_i * st) / 10.0
-    pz_max_cm = (oz + (smax_i + 1) * st) / 10.0
-
-    # Lattice unit voxel (1 voxel width starting from min)
-    px_vox_cm = (ox + (cmin_i + 1) * ps_col) / 10.0
-    py_vox_cm = (oy + (rmin_i + 1) * ps_row) / 10.0
-    pz_vox_cm = (oz + (smin_i + 1) * st) / 10.0
+    #   py -> slices (axial,    DICOM Z)
+    #   pz -> rows   (coronal, -DICOM Y, anterior up)
+    # Phantom box (min, max) and lattice unit voxel (min, min + 1 voxel), as lattice_axis rounds
+    # them: the box ends just inside the last lattice elements
+    ((px_min_cm, px_max_cm, px_lat_cm, px_vox_cm), (py_min_cm, py_max_cm, py_lat_cm, py_vox_cm),
+     (pz_min_cm, pz_max_cm, pz_lat_cm, pz_vox_cm)) = vox_info["planes_cm"]
 
     # Air margin: 2 cm padding
     margin_cm = 2.0
@@ -1081,11 +1306,11 @@ def build_mcnp_cards(self, target, lat_map_name, progress_cb=None):
     out_lines.append(f"   506 pz  {pz_max_cm:.6f}")
 
     out_lines.append(_comment("Lattice Unit Voxel Surfaces (cm)"))
-    out_lines.append(f"   601 px  {px_min_cm:.6f}")
+    out_lines.append(f"   601 px  {px_lat_cm:.6f}")
     out_lines.append(f"   602 px  {px_vox_cm:.6f}")
-    out_lines.append(f"   603 py  {py_min_cm:.6f}")
+    out_lines.append(f"   603 py  {py_lat_cm:.6f}")
     out_lines.append(f"   604 py  {py_vox_cm:.6f}")
-    out_lines.append(f"   605 pz  {pz_min_cm:.6f}")
+    out_lines.append(f"   605 pz  {pz_lat_cm:.6f}")
     out_lines.append(f"   606 pz  {pz_vox_cm:.6f}")
 
     out_lines.append(_comment("World / Air Margin Bounding Surfaces (+2 cm, cm)"))
@@ -1155,19 +1380,26 @@ def build_mcnp_cards(self, target, lat_map_name, progress_cb=None):
     return out_lines, vox_info, grid_info
 
 
+def input_ct(self):
+    """The CT series an input is written for: the CT selected in the data tree, else the first CT of the study shown."""
+    study = ((getattr(self, "medical_image", None) or {}).get(getattr(self, "patientID", None)) or {}).get(
+        getattr(self, "studyID", None)) or {}
+    ct_list = study.get("CT") or []
+    if not ct_list:
+        return None
+    cur_idx = getattr(self, "series_index", 0)
+    return ct_list[cur_idx if (getattr(self, "modality", None) == "CT" and 0 <= cur_idx < len(ct_list)) else 0]
+
+
 def create_mcnp_input(self):
     """Button callback: prompts user for output file and writes MCNP input."""
     if not getattr(self, "patientID", None):
         QMessageBox.critical(self, "Error", "No patient selected")
         return
-    ct_list = self.medical_image.get(self.patientID, {}).get(self.studyID, {}).get("CT", [])
-    if not ct_list:
+    target = input_ct(self)
+    if target is None:
         QMessageBox.critical(self, "Error", "No CT series found")
         return
-    cur_m = getattr(self, "modality", None)
-    cur_idx = getattr(self, "series_index", 0)
-    ct_idx = cur_idx if (cur_m == "CT" and 0 <= cur_idx < len(ct_list)) else 0
-    target = ct_list[ct_idx]
 
     lat_maps = target.get("mcnp_lattice_maps", {}) or {}
     if not lat_maps:
@@ -1217,7 +1449,7 @@ def create_mcnp_input(self):
 
     try:
         cards, vox_info, grid_info = build_mcnp_cards(
-            self, target, lat_map_name, progress_cb=update_prog
+            self, target, lat_map_name, progress_cb=update_prog, file_name=os.path.basename(file_path)
         )
         update_prog(95, "Writing file to disk...")
         with open(file_path, "w", encoding="utf-8", newline="\n") as f:
@@ -1238,11 +1470,14 @@ def create_mcnp_input(self):
     lat_entry = target["mcnp_lattice_maps"][lat_map_name]
     n_uni = len(lat_entry.get("universes", []))
     dim_str = f"{vox_info['nc']} x {vox_info['nr']} x {vox_info['ns']}"
+    # the TR cards as written, back against the plan (also in the comments before them)
+    dwells = extract_plan_dwells(self, target)[0]
+    tr_check = f"\n{check_summary(check_tr_cards(cards, dwells)[0])}" if dwells else ""
 
     QMessageBox.information(
         self, "MCNP Input Created",
         f"MCNP input file successfully generated:\n{file_path}\n\n"
         f"Total lines: {len(cards)} (all <= {MAX_COL} columns)\n"
         f"Phantom lattice dimensions: {dim_str} (cols x rows x slices)\n"
-        f"Universes defined: {n_uni}"
+        f"Universes defined: {n_uni}{tr_check}"
     )

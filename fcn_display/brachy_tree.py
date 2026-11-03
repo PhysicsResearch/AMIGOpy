@@ -18,7 +18,7 @@ from PySide6.QtWidgets import QCheckBox, QMenu, QMessageBox, QTreeWidgetItem
 from fcn_display.brachy_channel_edit import (_plan_channels, brachy_delete_catheter, brachy_duplicate_catheter,
                                              catheter_being_drawn, catheter_name, channel_visible, current_slice_position,
                                              go_to_point, plan_ref_points, push_undo, ref_point_name, ref_point_visible,
-                                             ref_point_xyz, refresh_brachy_overlays)
+                                             ref_point_xyz, refresh_brachy_overlays, table_xyz)
 from fcn_display.brachy_panel import catheter_table_mode, update_brachy_table_header
 
 
@@ -91,7 +91,7 @@ def _ref_rows(refs):
     rows = []
     for k, pt in enumerate(refs):
         xyz, name = ref_point_xyz(pt), ref_point_name(pt, k)
-        where = (f"({xyz[0]:.1f}, {xyz[1]:.1f}, {xyz[2]:.1f}) mm" if xyz is not None
+        where = ("({:.1f}, {:.1f}, {:.1f}) mm".format(*table_xyz(*xyz)) if xyz is not None   # X, Y, Z as the table
                  else "no position (set it in the reference point table)")
         rows.append((name, ref_point_visible(pt), f"{name}: {where}", xyz is not None))
     return rows
@@ -182,21 +182,18 @@ def on_brachy_tree_current_changed(self, item):
 
 
 def _sync_ref_table_check_boxes(self):
-    """The "Visible" check boxes of the reference point tables follow the list."""
+    """The "Visible" check boxes of the reference point table follow the list."""
     if self.brachy_combobox_01.currentText() != "Ref. Points":
         return
     refs = plan_ref_points(self)
-    for name in ('brachy_table_01', 'brachy_table_02'):
-        table = getattr(self, name, None)
-        if table is None:
-            continue
-        for k, pt in enumerate(refs):
-            cell = table.cellWidget(k, 9)
-            box = cell.findChild(QCheckBox) if cell is not None else None
-            if box is not None:
-                box.blockSignals(True)
-                box.setChecked(ref_point_visible(pt))
-                box.blockSignals(False)
+    table = self.brachy_table_01
+    for k, pt in enumerate(refs):
+        cell = table.cellWidget(k, 9)
+        box = cell.findChild(QCheckBox) if cell is not None else None
+        if box is not None:
+            box.blockSignals(True)
+            box.setChecked(ref_point_visible(pt))
+            box.blockSignals(False)
 
 
 def _elements(self, kind):
@@ -230,13 +227,12 @@ def rename_ref_point(self, k, text):
             if key in refs[k]:
                 refs[k][key] = name
     if self.brachy_combobox_01.currentText() == "Ref. Points":
-        for table_name in ('brachy_table_01', 'brachy_table_02'):  # Description column
-            table = getattr(self, table_name, None)
-            cell = table.item(k, 2) if table is not None else None
-            if cell is not None:
-                table.blockSignals(True)
-                cell.setText(ref_point_name(refs[k], k))
-                table.blockSignals(False)
+        table = self.brachy_table_01
+        cell = table.item(k, 2)  # Description column
+        if cell is not None:
+            table.blockSignals(True)
+            cell.setText(ref_point_name(refs[k], k))
+            table.blockSignals(False)
     refresh_brachy_tree(self)
     refresh_brachy_overlays(self)
 

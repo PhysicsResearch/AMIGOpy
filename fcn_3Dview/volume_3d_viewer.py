@@ -25,6 +25,19 @@ CMAPS = [
     "Plasma", "Jet", "Rainbow", "Spectral", "BlueWhiteRed",
 ]
 
+
+# -------------------------------------------------------------------------
+# Coordinates of the 3D view
+# -------------------------------------------------------------------------
+def patient_to_view(points):
+    """
+    Patient mm (DICOM x, y, z) to the 3D view: X = x, Y = z (slices), Z = -y (anterior up), as in the MCNP
+    files. Everything shown (volumes, catheters, structures, spots) is placed in patient mm, so nothing
+    depends on which image is loaded first.
+    """
+    pts = np.asarray(points, dtype=float).reshape(-1, 3)
+    return np.column_stack((pts[:, 0], pts[:, 2], -pts[:, 1]))
+
 # -------------------------------------------------------------------------
 # Window/level (threshold) widget helpers
 # -------------------------------------------------------------------------
@@ -406,8 +419,8 @@ def _apply_crop(self):
 # 4D playback helper
 # -------------------------------------------------------------------------
 def play_4D_sequence_3D(self, play: bool):
+    # playing while the button is checked (its role style shows it: fcn_create_gui/button_style.py)
     if play:
-        self.View3D_play4D.setStyleSheet("background-color: red; color: white;")
         checked = []
         table   = self.CT4D_table_display
         for row in range(table.rowCount()):
@@ -438,7 +451,6 @@ def play_4D_sequence_3D(self, play: bool):
 
         _advance()
     else:
-        self.View3D_play4D.setStyleSheet("")
         self._play3D_index = 0
 
 def find_row_by_name_stl(self, stl_name):
@@ -526,13 +538,9 @@ class VTK3DViewerMixin:
         - name: optional unique string, else uses len(self._clouds)
         """
   
-        # Prepare VTK points
+        # Prepare VTK points (points in patient mm)
         vtk_points = vtk.vtkPoints()
-        # Swap Y and Z, then flip Z
-        transformed = np.zeros_like(points)
-        transformed[:, 0] = points[:, 0]
-        transformed[:, 1] = points[:, 2] # new Y is old Z
-        transformed[:, 2] = -points[:, 1] # new Z is -old Y
+        transformed = patient_to_view(points)
         for pt in transformed:
             vtk_points.InsertNextPoint(float(pt[0]), float(pt[1]), float(pt[2]))
 
@@ -727,8 +735,11 @@ class VTK3DViewerMixin:
                              volume_np: np.ndarray,
                              voxel_spacing=(1.0,1.0,1.0),
                              layer_idx=None,
-                             offset=(0.0,0.0,0.0)):
-        """Load a new 3D numpy array into a VTK volume and display it."""
+                             position=(0.0,0.0,0.0)):
+        """
+        Load a new 3D numpy array (slices, rows, cols) into a VTK volume and display it.
+        voxel_spacing: (cols, rows, slices) mm; position: patient mm (ImagePositionPatient) of its first voxel.
+        """
         if layer_idx is None:
             layer_idx = self.layer_selected.currentIndex()
 
@@ -755,7 +766,8 @@ class VTK3DViewerMixin:
             print(f"[3Dview] Subsampling volume from {volume_np.shape} with steps ({step_z}, {step_y}, {step_x}) "
                   f"to ensure high performance and stay strictly under GPU MAX_3D_TEXTURE_SIZE (2048).")
 
-        # Flip Y axis to match VTK coordinate system and subsample in a single operation
+        # Rows back in DICOM order (the stored matrices have them flipped, see load_dcm) and subsample in a single
+        # operation: image axes = patient (x, y, z), turned into the 3D view below (patient_to_view)
         vol = np.ascontiguousarray(volume_np[::step_z, ::-step_y, ::step_x])
         nz, ny, nx = vol.shape
 
@@ -859,7 +871,10 @@ class VTK3DViewerMixin:
         volobj = vtk.vtkVolume()
         volobj.SetMapper(mapper)
         volobj.SetProperty(volp)
-        volobj.SetPosition(*offset)
+        # image axes = patient (x, y, z) from its first voxel -> view (X, Y, Z) = (x, z, -y):
+        # -90 degrees about X, then the patient position of that voxel
+        volobj.SetOrientation(-90.0, 0.0, 0.0)
+        volobj.SetPosition(*patient_to_view(position)[0])
         self._volumes[layer_idx] = volobj
         self.VTK3D_renderer.AddVolume(volobj)
 
@@ -1086,17 +1101,8 @@ class VTK3DViewerMixin:
             self.VTK3D_renderer.RemoveActor(self._proton_spots[name])
             del self._proton_spots[name]
 
-        # ---- Subtract the reference from all spots ----
-        ref = self.Im_PatPosition3Dview[0, :3] if hasattr(self, "Im_PatPosition3Dview") else np.zeros(3)
-        shifted_points = points - ref  # shape (N,3)
-        # Swap Y and Z, then flip Z
-        transformed = np.zeros_like(shifted_points)
-        transformed[:, 0] = shifted_points[:, 0]
-        transformed[:, 1] = shifted_points[:, 2] # new Y is old Z
-        transformed[:, 2] = -shifted_points[:, 1] # new Z is -old Y
-        shifted_points = transformed
-
-        # subtract this image reference from spots: self.Im_PatPosition3Dview[0, :3]
+        # spots in patient mm, placed in the 3D view as everything else
+        shifted_points = patient_to_view(points)
 
         # Build a single vtkAppendPolyData of all crosses for performance
         append = vtk.vtkAppendPolyData()

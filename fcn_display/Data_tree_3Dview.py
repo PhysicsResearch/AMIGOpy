@@ -34,8 +34,7 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
         if Points3D is not None and Points3D.size > 0:
             Points3D = Points3D.reshape(-1, 3)
             if Points3D.shape[1] == 3:
-                # Subtract position from all rows
-                Points3D = Points3D - self.Im_PatPosition3Dview[0, :3]
+                # points in patient mm (the 3D view places everything in patient mm)
                 cloud_name = self.add_3d_point_cloud(points=Points3D, name=name)
                 add_cloud_to_table(self, name=cloud_name, color=(1,0,0), size=4,transparency=1.0)
         return
@@ -96,8 +95,7 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
             if Points3D is not None and Points3D.size > 0:
                 Points3D = Points3D.reshape(-1, 3)
                 if Points3D.shape[1] == 3:
-                    # Subtract position from all rows
-                    Points3D = Points3D - self.Im_PatPosition3Dview[0, :3]
+                    # points in patient mm (the 3D view places everything in patient mm)
                     cloud_name = self.add_3d_point_cloud(points=Points3D, name=name)
                     add_cloud_to_table(self, name=cloud_name, color=(1,0,0), size=4,transparency=1.0)
             return            
@@ -109,24 +107,17 @@ def set_3DViewer_data(self, hierarchy,hierarchy_indices):
     #
     self.Im_PatPosition3Dview[idx, :3]  = self.medical_image[self.patientID][self.studyID][self.modality][self.series_index]['metadata']['ImagePositionPatient']
     #
-    if idx == 0:
-        offset = (0.0, 0.0, 0.0)
-    else:
-        base_pos = self.Im_PatPosition3Dview[0]
-        curr_pos = self.Im_PatPosition3Dview[idx]
-        offset   = tuple(np.array(curr_pos) - np.array(base_pos))
-        self.Im_Offset3Dview[idx] = offset
-
-    # load into VTK and display
+    # load into VTK and display, at its patient position (each layer, and the plans and structures, in
+    # patient mm); PixelSpacing is (rows, cols)
     self.display_numpy_volume(
         self.display_3D_data[idx],
         voxel_spacing=(
-            self.pixel_spacing3Dview[idx,0],
             self.pixel_spacing3Dview[idx,1],
+            self.pixel_spacing3Dview[idx,0],
             self.slice_thickness3Dview[idx]
         ),
         layer_idx=idx,
-        offset=offset
+        position=self.Im_PatPosition3Dview[idx, :3]
     )
 
     # ── reset thresholds & crop-region sliders for this layer using the displayed VTK volume

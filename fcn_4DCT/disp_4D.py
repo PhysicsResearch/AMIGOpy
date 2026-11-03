@@ -6,10 +6,8 @@ from PySide6.QtCore import QTimer
 def play_4D_sequence(self):
     # Initialize an empty list to hold (index, sequence_id) tuples
     checked_items = []
-    if self.Play4D_Buttom.isChecked():
-        self.Play4D_Buttom.setStyleSheet("background-color: red; color: white;")
-    else:
-        self.Play4D_Buttom.setStyleSheet("background-color: blue; color: white;")
+    # playing while the button is checked (its role style shows it: fcn_create_gui/button_style.py)
+    if not self.Play4D_Buttom.isChecked():
         return
     # Iterate over the table rows
     for row in range(self.CT4D_table_display.rowCount()):

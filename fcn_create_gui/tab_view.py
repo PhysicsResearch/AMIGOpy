@@ -43,13 +43,16 @@ def create_tab_view(w):
     This is the main image viewing area containing:
     - VTK orthogonal view containers (VTK_view_01, VTK_view_02, VTK_view_03)
     - Axial, Sagittal, and Coronal slice sliders
-    - tabView01 QTabWidget (west-positioned) with sub-tabs:
+    - tabView01 QTabWidget with sub-tabs, its titles in two columns on its left
+      (tabView01_bar, column_tabs.py; both in tabView01_box):
       * View: histogram container + MetaData viewer container (MetaViewTable, search)
       * PLAN: brachy plan overlay with channel/dwell display
       * STRUCT: structure list and mask creation
       * IrIS: load/operations/calibration sub-tabs
       * 4DCT: 4D CT playback and average calculation
       * ROI: circular ROI management (Circles + Data sub-tabs)
+      * Evaluation: isodoses and gamma (tab_evaluation.py)
+      * MonteCarlo: grid, material assignment / composition, density map, MCNP input (mc_tabs)
 
     Args:
         w: The main application window (QMainWindow instance).
@@ -680,6 +683,10 @@ def create_tab_view(w):
     w.brachy_show_ch_path.setObjectName(u"brachy_show_ch_path")
     w.brachy_show_ch_path.setChecked(True)
     w.horizontalLayout_brachy_display.addWidget(w.brachy_show_ch_path)
+    w.brachy_show_ch_tip = QCheckBox(w.brachy_display_group)
+    w.brachy_show_ch_tip.setObjectName(u"brachy_show_ch_tip")
+    w.brachy_show_ch_tip.setChecked(True)
+    w.horizontalLayout_brachy_display.addWidget(w.brachy_show_ch_tip)
     w.brachy_show_ch_labels = QCheckBox(w.brachy_display_group)
     w.brachy_show_ch_labels.setObjectName(u"brachy_show_ch_labels")
     w.horizontalLayout_brachy_display.addWidget(w.brachy_show_ch_labels)
@@ -1182,11 +1189,23 @@ def create_tab_view(w):
             setattr(w, f"{prefix}_mode_combo", combo)
             gl.addWidget(combo, 4, 4, 1, 1)
 
+            btn_dose = QPushButton(gb)
+            btn_dose.setObjectName(f"{prefix}_from_dose_btn")
+            btn_dose.setText(u"Import from dose")
+            btn_dose.setToolTip(u"Calculation grid = the voxels of a dose: pick an RTDOSE or MCNP dose of the "
+                                u"patient shown in the menu.\nThe grid switches to mm and the MCNP mesh gets the "
+                                u"dose's voxels (same edges and voxel size).")
+            setattr(w, f"{prefix}_from_dose_btn", btn_dose)
+            gl.addWidget(btn_dose, 5, 1, 1, 1)
+
+        cb.setToolTip(u"Show the box on the views while this tab is open.\nDrag an edge or a corner to "
+                      u"resize it, the inside to move it.")
+
         info = QLabel(gb)
         info.setObjectName(f"{prefix}_info")
         info.setText(u"-")
         setattr(w, f"{prefix}_info", info)
-        gl.addWidget(info, 5, 0, 1, 5)
+        gl.addWidget(info, 6, 0, 1, 5)
 
         w.gridLayout_mc.addWidget(gb, 0, col, 1, 1)
 
@@ -1313,7 +1332,16 @@ def create_tab_view(w):
 
     w.mc_tabs.setCurrentIndex(0)
 
+    # Evaluation tab (isodoses, gamma), before MonteCarlo
+    from fcn_create_gui.tab_evaluation import create_tab_evaluation
+    create_tab_evaluation(w)
+    w.tabView01.addTab(w.tab_evaluation, u"Evaluation")
+
     w.tabView01.addTab(w.tab_montecarlo, "")
 
-    w.gridLayout_4.addWidget(w.tabView01, 2, 0, 1, 3)
+    # the sub-tab titles in two columns, larger than in the tab widget's own bar (hidden), where one
+    # column of them ran out of height. Launch_ImGUI moves the box into the view splitter.
+    from fcn_create_gui.column_tabs import column_tab_box
+    w.tabView01_box, w.tabView01_bar = column_tab_box(w.tabView01, w.im_display_tab)
+    w.gridLayout_4.addWidget(w.tabView01_box, 2, 0, 1, 3)
 

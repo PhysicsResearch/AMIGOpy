@@ -867,24 +867,24 @@ def setup_3d_database_tab(self):
     btn_layout = QHBoxLayout()
     
     self.btn_3d_db_add = QPushButton("Add")
-    self.btn_3d_db_add.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_3d_db_add.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_3d_db_add.clicked.connect(lambda: add_material_dialog(self))
     
     self.btn_3d_db_remove = QPushButton("Remove")
-    self.btn_3d_db_remove.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_3d_db_remove.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_3d_db_remove.clicked.connect(lambda: remove_selected_material(self))
 
     self.btn_3d_db_save = QPushButton("Save Database")
-    self.btn_3d_db_save.setStyleSheet("background-color: #16a34a; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_3d_db_save.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_3d_db_save.clicked.connect(lambda: save_3d_database_action(self))
     
     self.btn_3d_db_export_pkg = QPushButton("Export Material...")
-    self.btn_3d_db_export_pkg.setStyleSheet("background-color: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_3d_db_export_pkg.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_3d_db_export_pkg.setToolTip("Save the selected material (reference values, calibration rows, notes) as a package file")
     self.btn_3d_db_export_pkg.clicked.connect(lambda: export_material_package_action(self))
 
     self.btn_3d_db_import_pkg = QPushButton("Import Package...")
-    self.btn_3d_db_import_pkg.setStyleSheet("background-color: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_3d_db_import_pkg.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_3d_db_import_pkg.setToolTip("Import materials or mixes from a package file exported by AMIGOpy")
     self.btn_3d_db_import_pkg.clicked.connect(lambda: import_package_action(self))
 
@@ -952,15 +952,15 @@ def setup_3d_database_tab(self):
     cal_btn_layout = QHBoxLayout()
     
     self.btn_cal_add = QPushButton("Add Calibration Row")
-    self.btn_cal_add.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_cal_add.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_cal_add.clicked.connect(lambda: add_calibration_row(self))
     
     self.btn_cal_remove = QPushButton("Remove Calibration Row")
-    self.btn_cal_remove.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_cal_remove.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_cal_remove.clicked.connect(lambda: remove_calibration_row(self))
     
     self.btn_cal_copy_to = QPushButton("Copy To...")
-    self.btn_cal_copy_to.setStyleSheet("background-color: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_cal_copy_to.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_cal_copy_to.clicked.connect(lambda: copy_calibration_to_another_material(self))
     
     cal_btn_layout.addWidget(self.btn_cal_add)
@@ -1068,28 +1068,28 @@ def setup_mat_mix_tab(self):
     btn_layout = QHBoxLayout()
     
     self.btn_mix_add = QPushButton("Add Mix Group")
-    self.btn_mix_add.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_add.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_add.clicked.connect(lambda: add_mix_group(self))
     
     self.btn_mix_remove = QPushButton("Remove Selected Mix")
-    self.btn_mix_remove.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_remove.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_remove.clicked.connect(lambda: remove_mix_group(self))
     
     self.btn_mix_create = QPushButton("Mix Helper")
-    self.btn_mix_create.setStyleSheet("background-color: #16a34a; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_create.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_create.clicked.connect(lambda: open_create_mix_dialog(self))
 
     self.btn_mix_save = QPushButton("Save Mix Database")
-    self.btn_mix_save.setStyleSheet("background-color: #16a34a; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_save.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_save.clicked.connect(lambda: save_mix_database_action(self))
     
     self.btn_mix_export_pkg = QPushButton("Export Mix...")
-    self.btn_mix_export_pkg.setStyleSheet("background-color: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_export_pkg.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_export_pkg.setToolTip("Save the selected mix (components, calibration, RED ratio measurements, notes) as a package file")
     self.btn_mix_export_pkg.clicked.connect(lambda: export_mix_package_action(self))
 
     self.btn_mix_import_pkg = QPushButton("Import Package...")
-    self.btn_mix_import_pkg.setStyleSheet("background-color: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_import_pkg.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_import_pkg.clicked.connect(lambda: import_package_action(self))
 
     btn_layout.addWidget(self.btn_mix_add)
@@ -1346,15 +1346,15 @@ def setup_mat_mix_tab(self):
     # Buttons for Mix Calibration
     mix_cal_btn_layout = QHBoxLayout()
     self.btn_mix_cal_add = QPushButton("Add Calibration Row")
-    self.btn_mix_cal_add.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_cal_add.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_cal_add.clicked.connect(lambda: add_mix_calibration_row(self))
     
     self.btn_mix_cal_remove = QPushButton("Remove Calibration Row")
-    self.btn_mix_cal_remove.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_cal_remove.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_cal_remove.clicked.connect(lambda: remove_mix_calibration_row(self))
     
     self.btn_mix_cal_clear = QPushButton("Clear All")
-    self.btn_mix_cal_clear.setStyleSheet("background-color: red; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_cal_clear.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_cal_clear.clicked.connect(lambda: clear_all_mix_calibration_rows(self))
     
     mix_cal_btn_layout.addWidget(self.btn_mix_cal_add)
@@ -1417,15 +1417,15 @@ def setup_mat_mix_tab(self):
     
     mix_red_left_btn_layout = QHBoxLayout()
     self.btn_mix_red_ratio_add = QPushButton("Add")
-    self.btn_mix_red_ratio_add.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px; border-radius: 4px;")
+    self.btn_mix_red_ratio_add.setStyleSheet("font-weight: bold; padding: 6px; border-radius: 4px;")
     self.btn_mix_red_ratio_add.clicked.connect(lambda: add_mix_red_ratio(self))
     
     self.btn_mix_red_ratio_edit = QPushButton("Edit")
-    self.btn_mix_red_ratio_edit.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px; border-radius: 4px;")
+    self.btn_mix_red_ratio_edit.setStyleSheet("font-weight: bold; padding: 6px; border-radius: 4px;")
     self.btn_mix_red_ratio_edit.clicked.connect(lambda: edit_mix_red_ratio(self))
     
     self.btn_mix_red_ratio_remove = QPushButton("Remove")
-    self.btn_mix_red_ratio_remove.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px; border-radius: 4px;")
+    self.btn_mix_red_ratio_remove.setStyleSheet("font-weight: bold; padding: 6px; border-radius: 4px;")
     self.btn_mix_red_ratio_remove.clicked.connect(lambda: remove_mix_red_ratio(self))
     
     mix_red_left_btn_layout.addWidget(self.btn_mix_red_ratio_add)
@@ -1501,15 +1501,15 @@ def setup_mat_mix_tab(self):
     
     mix_red_right_btn_layout = QHBoxLayout()
     self.btn_mix_red_cal_add = QPushButton("Add Calibration Row")
-    self.btn_mix_red_cal_add.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_red_cal_add.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_red_cal_add.clicked.connect(lambda: add_mix_red_cal_row(self))
     
     self.btn_mix_red_cal_remove = QPushButton("Remove Calibration Row")
-    self.btn_mix_red_cal_remove.setStyleSheet("background-color: blue; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_red_cal_remove.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_red_cal_remove.clicked.connect(lambda: remove_mix_red_cal_row(self))
     
     self.btn_mix_red_cal_clear = QPushButton("Clear All")
-    self.btn_mix_red_cal_clear.setStyleSheet("background-color: red; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_mix_red_cal_clear.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_mix_red_cal_clear.clicked.connect(lambda: clear_all_mix_red_cal_rows(self))
     
     mix_red_right_btn_layout.addWidget(self.btn_mix_red_cal_add)
@@ -1768,23 +1768,12 @@ def initialize_mix_graph(self):
     graph_ctrl_layout.addWidget(self.check_hold_plot)
     
     self.btn_clear_held = QPushButton("Clear Held")
+    # colours from the button's role (fcn_create_gui/button_style.py)
     self.btn_clear_held.setStyleSheet("""
         QPushButton {
-            background-color: #2b2b36;
-            color: #9ca3af;
-            border: 1px solid #4b5563;
             border-radius: 4px;
             padding: 3px 8px;
             font-size: 11px;
-        }
-        QPushButton:hover {
-            background-color: #3b82f6;
-            color: #ffffff;
-        }
-        QPushButton:disabled {
-            background-color: #1e1e24;
-            color: #4b5563;
-            border-color: #374151;
         }
     """)
     self.btn_clear_held.setEnabled(False)
@@ -2247,10 +2236,10 @@ def _build_overview_tab(self, title, refresh_callback):
     browser.setHtml(_OVERVIEW_PLACEHOLDER)
 
     btn_refresh = QPushButton("Refresh")
-    btn_refresh.setStyleSheet("background-color: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    btn_refresh.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     btn_refresh.clicked.connect(lambda: refresh_callback())
     btn_copy = QPushButton("Copy as text")
-    btn_copy.setStyleSheet("background-color: #4b5563; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    btn_copy.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     btn_copy.clicked.connect(lambda: QApplication.clipboard().setText(browser.toPlainText()))
     button_row.addWidget(btn_refresh)
     button_row.addWidget(btn_copy)
@@ -2624,9 +2613,7 @@ def copy_calibration_to_another_material(self):
     
     buttons = QHBoxLayout()
     btn_ok = QPushButton("OK")
-    btn_ok.setStyleSheet("background-color: #0284c7; color: white;")
     btn_cancel = QPushButton("Cancel")
-    btn_cancel.setStyleSheet("background-color: #4b5563; color: white;")
     
     buttons.addStretch()
     buttons.addWidget(btn_ok)
@@ -2708,8 +2695,6 @@ def add_material_dialog(self):
             padding: 4px;
         }
         QPushButton {
-            background-color: blue;
-            color: white;
             font-weight: bold;
             padding: 6px 12px;
             border-radius: 4px;
@@ -2763,7 +2748,7 @@ def add_material_dialog(self):
     btn_layout = QHBoxLayout()
     btn_ok = QPushButton("Add")
     btn_cancel = QPushButton("Cancel")
-    btn_cancel.setStyleSheet("background-color: #374151; color: white; border-radius: 4px; padding: 6px 12px;")
+    btn_cancel.setStyleSheet("border-radius: 4px; padding: 6px 12px;")
     
     btn_layout.addWidget(btn_ok)
     btn_layout.addWidget(btn_cancel)
@@ -4859,8 +4844,6 @@ def add_mix_red_ratio(self):
             padding: 4px;
         }
         QPushButton {
-            background-color: blue;
-            color: white;
             font-weight: bold;
             padding: 6px 12px;
             border-radius: 4px;
@@ -4894,7 +4877,7 @@ def add_mix_red_ratio(self):
     btn_layout = QHBoxLayout()
     btn_ok = QPushButton("Add")
     btn_cancel = QPushButton("Cancel")
-    btn_cancel.setStyleSheet("background-color: #374151; color: white; border-radius: 4px; padding: 6px 12px;")
+    btn_cancel.setStyleSheet("border-radius: 4px; padding: 6px 12px;")
     btn_layout.addWidget(btn_ok)
     btn_layout.addWidget(btn_cancel)
     form.addRow(btn_layout)
@@ -5336,8 +5319,6 @@ def edit_mix_red_ratio(self):
             padding: 4px;
         }
         QPushButton {
-            background-color: blue;
-            color: white;
             font-weight: bold;
             padding: 6px 12px;
             border-radius: 4px;
@@ -5372,7 +5353,7 @@ def edit_mix_red_ratio(self):
     btn_layout = QHBoxLayout()
     btn_ok = QPushButton("Save")
     btn_cancel = QPushButton("Cancel")
-    btn_cancel.setStyleSheet("background-color: #374151; color: white; border-radius: 4px; padding: 6px 12px;")
+    btn_cancel.setStyleSheet("border-radius: 4px; padding: 6px 12px;")
     btn_layout.addWidget(btn_ok)
     btn_layout.addWidget(btn_cancel)
     form.addRow(btn_layout)
@@ -5685,9 +5666,7 @@ def _choose_import_plan_dialog(self, pkg):
 
     buttons = QHBoxLayout()
     btn_ok = QPushButton("Import")
-    btn_ok.setStyleSheet("background-color: #0284c7; color: white;")
     btn_cancel = QPushButton("Cancel")
-    btn_cancel.setStyleSheet("background-color: #4b5563; color: white;")
     buttons.addStretch()
     buttons.addWidget(btn_ok)
     buttons.addWidget(btn_cancel)
@@ -5798,8 +5777,6 @@ def open_create_mix_dialog(self):
             padding: 4px;
         }
         QPushButton {
-            background-color: blue;
-            color: white;
             font-weight: bold;
             padding: 8px 16px;
             border-radius: 4px;
@@ -5947,7 +5924,7 @@ def open_create_mix_dialog(self):
     right_layout.addLayout(form)
     
     btn_calculate = QPushButton("Calculate Mix")
-    btn_calculate.setStyleSheet("background-color: #16a34a; color: white; font-weight: bold; padding: 10px 20px; border-radius: 4px; font-size: 13px;")
+    btn_calculate.setStyleSheet("font-weight: bold; padding: 10px 20px; border-radius: 4px; font-size: 13px;")
     right_layout.addWidget(btn_calculate)
     
     lbl_results = QLabel("Results")
@@ -6618,7 +6595,7 @@ def setup_view_and_fit_tab(self):
     self.txt_fit_calc_x.setStyleSheet("background-color: #2b2b36; border: 1px solid #4b5563; border-radius: 4px; color: #ffffff; padding: 4px;")
     
     self.btn_calc_y = QPushButton("Calculate Y")
-    self.btn_calc_y.setStyleSheet("background-color: #3b82f6; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_calc_y.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_calc_y.clicked.connect(lambda: evaluate_forward_fit(self))
     
     self.lbl_fit_calc_y_res_label = QLabel("Result Y:")
@@ -6644,7 +6621,7 @@ def setup_view_and_fit_tab(self):
     self.txt_fit_calc_y.setStyleSheet("background-color: #2b2b36; border: 1px solid #4b5563; border-radius: 4px; color: #ffffff; padding: 4px;")
     
     self.btn_calc_x = QPushButton("Calculate X")
-    self.btn_calc_x.setStyleSheet("background-color: #10b981; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;")
+    self.btn_calc_x.setStyleSheet("font-weight: bold; padding: 6px 12px; border-radius: 4px;")
     self.btn_calc_x.clicked.connect(lambda: evaluate_inverse_fit(self))
     
     self.lbl_fit_calc_x_res_label = QLabel("Result X:")

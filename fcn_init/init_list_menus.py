@@ -3,7 +3,7 @@ from fcn_processing.Im_process_list   import on_operation_selected
 from fcn_DECT.DECT_table_disp import on_DECT_list_selection_changed
 from fcn_display.disp_plan_data import update_disp_brachy_plan
 from fcn_display.display_images import update_layer_view
-from fcn_ctcal.ct_cal import update_ct_cal_view,load_ct_cal_curve,update_ct_cal_table
+from fcn_display.layer_panel import init_layer_panel
 # (material assignment is now edited directly in its tables - see material_map.py)
 from fcn_dosecalculations.eqd2_conversion import on_struct_list_change
 import os
@@ -30,6 +30,7 @@ def populate_list_menus(self):
     self.layer_selected = safe_combo_items(self, 'layer_selected', Layers, callback=lambda: update_layer_view(self))
     if self.layer_selected is None:
         self.layer_selected = safe_combo_items(self, 'Layer_sel', Layers, callback=lambda: update_layer_view(self))
+    init_layer_panel(self)      # layer names and colour map buttons of the side bar (once)
 
     # List of operations
     operations = ["none","Invert Image", "Average", "Sum","Crop","Normalize", "Threshold", "Denoise Gaussian","Denoise Median","Denoise Percentile",
@@ -80,37 +81,10 @@ def populate_list_menus(self):
     self.brachy_tg43_dose_grid = safe_combo_items(self, 'Tg43_dose_grid', ["0.5","1","2","3","4","5"], default_index=1)
     self.brachy_tg43_matrix_size = safe_combo_items(self, 'Tg43_matrix_size_2', ["50x50","100x100","150x150","200x200"], default_index=3)
 
-    # Brachy channel or dwell view
+    # Brachy channel or dwell view (View > PLAN > Brachy table): a new mode lists it for the plan shown
     brachy_methods = ["Dwells", "Channels", "Ref. Points"]
-    self.brachy_dw_ch_box_01 = safe_combo_items(self, 'brachy_combobox_01', brachy_methods)
-    self.brachy_dw_ch_box_02 = safe_combo_items(self, 'brachy_combobox_02', brachy_methods)
-
-    if self.brachy_dw_ch_box_01 is not None and self.brachy_dw_ch_box_02 is not None:
-        def sync_box_1_to_2(index):
-            if self.brachy_dw_ch_box_02 is not None:
-                self.brachy_dw_ch_box_02.blockSignals(True)
-                self.brachy_dw_ch_box_02.setCurrentIndex(index)
-                self.brachy_dw_ch_box_02.blockSignals(False)
-                update_disp_brachy_plan(self)
-
-        def sync_box_2_to_1(index):
-            if self.brachy_dw_ch_box_01 is not None:
-                self.brachy_dw_ch_box_01.blockSignals(True)
-                self.brachy_dw_ch_box_01.setCurrentIndex(index)
-                self.brachy_dw_ch_box_01.blockSignals(False)
-                update_disp_brachy_plan(self)
-
-        try:
-            self.brachy_dw_ch_box_01.currentIndexChanged.connect(sync_box_1_to_2)
-            self.brachy_dw_ch_box_02.currentIndexChanged.connect(sync_box_2_to_1)
-        except (TypeError, RuntimeError):
-            pass
-
-    # Color
-    color_methods = ["Black", "Blue", "Green", "Red", "White"]
-    self.brachy_dw_sel_col   = safe_combo_items(self, 'brachy_dw_color', color_methods, default_text="Red")
-    self.brachy_lin_sel_col  = safe_combo_items(self, 'brachy_line_color', color_methods, default_text="White")
-    self.brachy_p1_sel_col   = safe_combo_items(self, 'brachy_ch_p1_color', color_methods, default_text="Blue")
+    self.brachy_dw_ch_box_01 = safe_combo_items(self, 'brachy_combobox_01', brachy_methods,
+                                                callback=lambda: update_disp_brachy_plan(self) if hasattr(self, 'patientID_plan') else None)
 
     # Eqd2
     dose_list = getattr(self, 'dose_list', None)
@@ -127,57 +101,9 @@ def populate_list_menus(self):
             except (TypeError, RuntimeError):
                 pass
 
-    # Ct calibration
-    ct_cal_list = getattr(self, 'ct_cal_list', None)
-    if ct_cal_list is not None and hasattr(ct_cal_list, 'currentTextChanged'):
-        try:
-            ct_cal_list.currentTextChanged.connect(lambda: update_ct_cal_view(self))
-        except (TypeError, RuntimeError):
-            pass
-
-    self.ct_cal_curves = {}
-    ct_cal_dir = get_appdata_ct_cal_dir()
-    if os.path.exists(ct_cal_dir):
-        ct_cal_files = os.listdir(ct_cal_dir)
-        for file in ct_cal_files:
-            file_path = os.path.join(ct_cal_dir, file)
-            ct_cal_data = load_ct_cal_curve(self, fileName=file_path)
-            update_ct_cal_table(self, ct_cal_data)
-            update_ct_cal_view(self)
+    # (HU tables of the Density Map tab: fcn_ctcal/ct_cal.py, init_ct_cal_selector in init_buttons)
 
     # Material assignment: the former Select_mat / Struct_list_mat combo boxes
     # were replaced by dropdowns inside the assignment tables.
     
     
-
-def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    if hasattr(sys, '_MEIPASS'):
-        # PyInstaller stores data files in _MEIPASS
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.abspath(".")
-
-    return os.path.join(base_path, relative_path)
-
-
-def get_appdata_ct_cal_dir():
-    """Returns the user-writable path to the ct_cal_curves folder under AppData/Local/AMIGOpy."""
-    from pathlib import Path
-    appdata_base = os.path.join(Path.home(), 'AppData', 'Local', 'AMIGOpy')
-    ct_cal_dir = os.path.join(appdata_base, 'ct_cal_curves')
-    os.makedirs(ct_cal_dir, exist_ok=True)
-
-    # Copy default files from the bundled directory only if empty
-    if not os.listdir(ct_cal_dir):
-        default_dir = resource_path('fcn_ctcal/ct_cal_curves')
-        if os.path.exists(default_dir):
-            for fname in os.listdir(default_dir):
-                src = os.path.join(default_dir, fname)
-                dst = os.path.join(ct_cal_dir, fname)
-                try:
-                    with open(src, 'rb') as fsrc, open(dst, 'wb') as fdst:
-                        fdst.write(fsrc.read())
-                except Exception as e:
-                    print(f"Error copying {fname} to AppData: {e}")
-    return ct_cal_dir

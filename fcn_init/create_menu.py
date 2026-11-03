@@ -21,12 +21,15 @@ from fcn_load.load_mha import load_mha_files
 from fcn_load.load_npy import load_npy_files
 from fcn_load.load_tiff_similar import load_tiff_files, load_png_files, load_jpeg_files, load_bmp_files  
 from fcn_load.load_microct import load_microct_stack
+from fcn_mcnp.mcnp_import import import_mcnp_input
+from fcn_mcnp.mcnp_meshtal import import_meshtal
 from fcn_autocont.segmentator_calls import open_segmentator_tab
 from functools import partial
 from fcn_init.create_3D_database_tab import (
     export_3dp_database_action, import_3dp_database_action, restore_3dp_database_action,
     export_package_action, import_package_action,
 )
+from fcn_display.figure_style import add_figure_style_listener  # noqa: F401  (imported from here too)
 
 
 def initializeMenuBar(self):
@@ -79,6 +82,12 @@ def initializeMenuBar(self):
             action.triggered.connect(lambda: load_tiff_files(self))
         if item == "microCT (tiff,bmp)":
             action.triggered.connect(lambda: load_microct_stack(self))
+        if item == "MCNPinp":
+            # an input made by AMIGOpy: its material, density and lattice maps as an MCNP series
+            action.triggered.connect(lambda: import_mcnp_input(self))
+        if item == "MCNPout":
+            # a mesh tally output (meshtal): each tally as an RTDOSE (+ relative errors) of the study shown
+            action.triggered.connect(lambda: import_meshtal(self))
         openMenu.addAction(action)
         
     importMenu = fileMenu.addMenu("Import")
@@ -486,6 +495,12 @@ def trigger_mix_graph_update(self):
             self.update_mix_graph_func()
         except Exception as e:
             print(f"Error updating mix graph: {e}")
+    # figures registered with add_figure_style_listener (the 3D Printing tab replaces update_mix_graph_func)
+    for key, func in list((getattr(self, "_figure_style_listeners", None) or {}).items()):
+        try:
+            func()
+        except Exception as e:
+            print(f"Error updating the figure '{key}': {e}")
 
 def set_font_size(self, size):
     self.selected_font_size = int(size)

@@ -160,6 +160,3 @@ def update_brachy_dose_panel(self):
         spin.blockSignals(True)
         spin.setValue(sk)
         spin.blockSignals(False)
-    ac = getattr(self, 'brachy_plan_Ac', None)
-    if ac is not None:
-        ac.setText(f"{sk:.10g}")  # (the plan's Sk, in the Plan module)

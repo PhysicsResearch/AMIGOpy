@@ -1,7 +1,7 @@
 # ──────────────────────────────────────────────────────────────
 # Imports  (put these near the top of your file)
 # ──────────────────────────────────────────────────────────────
-from PySide6.QtCore    import QObject, QThread, Signal, Qt
+from PySide6.QtCore    import QObject, QThread, Signal, Slot, Qt
 from PySide6.QtWidgets import (QFileDialog, QProgressDialog,
                              QMessageBox, QApplication)
 import joblib, pickle, importlib.util
@@ -138,6 +138,21 @@ def _shim_pydicom_pickle():
         # If pydicom isn't installed in this env, just skip.
         pass
 
+class _GuiThreadCall(QObject):
+    """
+    Calls func in the GUI thread: a worker signal connected to its slot is queued to the thread of
+    this object (made in the GUI thread). Connected to a plain function or lambda, the signal would
+    call it in the worker thread, where widgets must not be touched.
+    """
+    def __init__(self, func, parent):
+        super().__init__(parent)
+        self._func = func
+
+    @Slot(object)
+    def call(self, value):
+        self._func(value)
+
+
 class LoadWorker(QObject):
     result   = Signal(object)    # loaded medical_image
     finished = Signal()
@@ -161,13 +176,30 @@ class LoadWorker(QObject):
 # ──────────────────────────────────────────────────────────────
 # Main-window slots
 # ──────────────────────────────────────────────────────────────
-BUNDLE_FILTER = "AMIGOpy data (*.amigo)" 
+BUNDLE_FILTER = "AMIGOpy data (*.amigo)"
+BUNDLE_KEY = "__amigo_bundle__"
+BUNDLE_VERSION = 2      # {BUNDLE_KEY: 2, 'medical_image': ..., 'settings': ...}; version 1: the medical_image itself
+
+
+def unpack_bundle(data):
+    """(medical_image, settings) of a loaded bundle (version 1: the medical_image dict, no settings)."""
+    if isinstance(data, dict) and BUNDLE_KEY in data:
+        return data.get("medical_image") or {}, data.get("settings") or {}
+    return data, {}
+
 
 def save_amigo_bundle(self):
     """
-    Save self.medical_image in a background thread while showing
-    an indeterminate (animated) progress bar.
+    Save self.medical_image (the images with their structures, plans, doses and their material,
+    density and MCNP lattice maps) and the MonteCarlo tab settings (project_settings) in a
+    background thread while showing an indeterminate (animated) progress bar.
     """
+    if not getattr(self, 'medical_image', None):
+        QMessageBox.information(self, "Save AMIGOpy data", "There is no data to save.")
+        return
+    if str(getattr(self, 'DataType', '')).startswith("IrIS"):
+        QMessageBox.information(self, "Save AMIGOpy data", "IrIS data cannot be saved in an AMIGOpy bundle.")
+        return
     path, _ = QFileDialog.getSaveFileName(
         self, "Save AMIGOpy data",
         str(Path.home() / "dataset.amigo"),
@@ -183,22 +215,20 @@ def save_amigo_bundle(self):
     dlg.setMinimumDuration(0)        # show immediately
     dlg.setValue(0)
     # used for debugging
-    if self.DataType == "DICOM" or self.DataType == "Nifti":
-        find_unpicklable(self.medical_image)
-    else:
-        return
+    find_unpicklable(self.medical_image)
     #
     # 2) Thread + worker
+    from fcn_load.project_settings import collect_project_settings
+    bundle = {BUNDLE_KEY: BUNDLE_VERSION, 'medical_image': self.medical_image,
+              'settings': collect_project_settings(self)}
     thread = QThread(self)
-    if self.DataType == "DICOM" or self.DataType == "Nifti":
-        worker = SaveWorker(self.medical_image, path)
-    else:
-        return
+    worker = SaveWorker(bundle, path)
 
     worker.moveToThread(thread)
 
     # 3) Wiring
-    worker.error.connect(lambda msg: QMessageBox.critical(self, "Save error", msg))
+    self._saveError = _GuiThreadCall(lambda msg: QMessageBox.critical(self, "Save error", msg), self)
+    worker.error.connect(self._saveError.call)
     worker.finished.connect(dlg.close)
     worker.finished.connect(thread.quit)
     worker.finished.connect(thread.deleteLater)
@@ -246,22 +276,26 @@ def load_amigo_bundle(self, path: str | None = None):
     worker.moveToThread(thread)
 
     def _apply_loaded_data(data):
-        try:
-            self.DataType = data[0]['metadata']['DataType']
-        except:
-            self.DataType = "DICOM"
+        medical_image, settings = unpack_bundle(data)
+        self.medical_image = medical_image
+        self.DataType = "DICOM"
+        populate_medical_image_tree(self)        # refresh your UI
+        if settings:
+            # after the tree: the grids know the image shown
+            from fcn_load.project_settings import apply_project_settings
+            try:
+                notes = apply_project_settings(self, settings, name=Path(path).stem)
+            except Exception as e:
+                notes = [f"Some MonteCarlo settings could not be restored: {e}"]
+            if notes:
+                QMessageBox.information(self, "Open AMIGOpy data", "\n\n".join(notes))
 
-        if self.DataType == "DICOM" or self.DataType == "nifti":
-            self.medical_image = data
-            self.DataType = "DICOM"
-            populate_medical_image_tree(self)        # refresh your UI
-        else:
-            return
 
-
-    # wiring
-    worker.result.connect(_apply_loaded_data)
-    worker.error.connect(lambda msg: QMessageBox.critical(self, "Load error", msg))
+    # wiring (the data tree and the settings in the GUI thread)
+    self._loadApply = _GuiThreadCall(_apply_loaded_data, self)
+    self._loadError = _GuiThreadCall(lambda msg: QMessageBox.critical(self, "Load error", msg), self)
+    worker.result.connect(self._loadApply.call)
+    worker.error.connect(self._loadError.call)
     worker.finished.connect(dlg.close)
     worker.finished.connect(thread.quit)
     worker.finished.connect(thread.deleteLater)

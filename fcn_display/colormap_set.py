@@ -67,8 +67,8 @@ def set_color_map_blue(self):
     set_color_map(self)
 
 
-def create_lookup_table_with_transparency(self, windowLevel, windowWidth,CmapIDX):
-    idx = self.layer_selected.currentIndex()
+def create_lookup_table_with_transparency(self, windowLevel, windowWidth,CmapIDX, layer=None):
+    idx = self.layer_selected.currentIndex() if layer is None else layer
     #
     lut         = vtk.vtkLookupTable()
     windowWidth = windowWidth
@@ -87,10 +87,11 @@ def create_lookup_table_with_transparency(self, windowLevel, windowWidth,CmapIDX
     lut.Build()
     return lut
 
-def apply_custom_colormap_comp(self):
+def apply_custom_colormap_comp(self, layer=None):
     if not hasattr(self, 'Comp_im_idx') or not hasattr(self, 'display_comp_data'):
         return
-    layer = self.layer_selected.currentIndex()
+    if layer is None:
+        layer = self.layer_selected.currentIndex()
     
     if not hasattr(self, 'CompCmapIDX'):
         self.CompCmapIDX = {}
@@ -128,24 +129,22 @@ def apply_custom_colormap_comp(self):
             self.imageActorAxComp[Ax_idx, layer].GetMapper().SetInputConnection(colorMapper.GetOutputPort())
 
 
-def set_color_map(self):
+def set_color_map(self, layer=None):
+    """Colour map CmapIDX of a layer (the selected one by default) on its views; the intensity scale
+    follows the selected layer only (the layer panel's buttons show each layer's map)."""
     # if self.DataType == "IrIS":
     #     return
-    idx = self.layer_selected.currentIndex()
+    selected = self.layer_selected.currentIndex()
+    idx = selected if layer is None else layer
     # Get window level and width from axial view
     windowLevel = self.windowLevelAxial[idx].GetLevel()
     windowWidth = self.windowLevelAxial[idx].GetWindow()
     # For other indices, create and apply a custom LUT
-    lut = create_lookup_table_with_transparency(self, windowLevel, windowWidth, self.CmapIDX)
-    apply_custom_colormap(self,lut)
+    lut = create_lookup_table_with_transparency(self, windowLevel, windowWidth, self.CmapIDX, layer=idx)
+    apply_custom_colormap(self, lut, layer=idx)
 
-    if hasattr(self, 'combo_colormap') and self.combo_colormap is not None:
-        self.combo_colormap.blockSignals(True)
-        self.combo_colormap.setCurrentIndex(int(self.CmapIDX[idx]))
-        self.combo_colormap.blockSignals(False)
-
-    # Update color intensity scale (colorbar) actors across all views
-    actors = ['scalarBarActorAxial', 'scalarBarActorSagittal', 'scalarBarActorCoronal']
+    # Update color intensity scale (colorbar) actors across all views (it shows the selected layer)
+    actors = ['scalarBarActorAxial', 'scalarBarActorSagittal', 'scalarBarActorCoronal'] if idx == selected else []
     show_scale = getattr(self, 'show_intensity_scale', False)
     has_data = hasattr(self, 'display_data') and self.display_data.get(idx) is not None
     
@@ -196,13 +195,16 @@ def set_color_map(self):
             self.CompCmapIDX[ref_idx, idx] = new_cmap
             
     # Apply custom colormap to comparison views
-    apply_custom_colormap_comp(self)
+    apply_custom_colormap_comp(self, layer=idx)
     # Render the views to reflect the updated colormap
     render_views(self)
     # Render comparison views too
     if hasattr(self, 'renAxComp'):
         for ren in self.renAxComp:
             ren.GetRenderWindow().Render()
+    # the colour map buttons of the layer panel (side bar) show each layer's map
+    from fcn_display.layer_panel import refresh_layer_panel
+    refresh_layer_panel(self)
 
 
 def on_link_colormap_changed(self):
@@ -220,8 +222,8 @@ def on_link_colormap_changed(self):
             for ren in self.renAxComp:
                 ren.GetRenderWindow().Render()
 
-def apply_custom_colormap(self, lut):
-    idx = self.layer_selected.currentIndex()
+def apply_custom_colormap(self, lut, layer=None):
+    idx = self.layer_selected.currentIndex() if layer is None else layer
     views = {'Axial': self.imageActorAxial[idx], 'Sagittal': self.imageActorSagittal[idx], 'Coronal': self.imageActorCoronal[idx]}
     windowLevels = {'Axial': self.dataImporterAxial[idx], 'Sagittal': self.dataImporterSagittal[idx], 'Coronal': self.dataImporterCoronal[idx]}
     # Apply the provided custom LUT to all image actors
@@ -235,6 +237,11 @@ def render_views(self):
     self.vtkWidgetAxial.GetRenderWindow().Render()
     self.vtkWidgetSagittal.GetRenderWindow().Render()
     self.vtkWidgetCoronal.GetRenderWindow().Render()
+
+# Names of the colour maps of create_colormap, by index (CmapIDX)
+COLORMAP_NAMES = ("Gray", "Bone", "Hot", "Cold", "Jet", "Viridis", "CoolWarm", "Rainbow", "Magma", "Cividis",
+                  "Red", "Green", "Blue")
+
 
 def create_colormap(index, scalar_range):
     """

@@ -381,3 +381,19 @@ def test_snapshot_copies_lists():
     refs.append({'DoseReferenceDescription': 'B'})
     bce.restore_channels(refs, snap)
     assert refs == [pt] and pt['DoseReferencePointCoordinates'] == [1.0, 2.0, 3.0]
+
+
+def test_plan_table_axes_are_the_users_axes():
+    # View > PLAN > Brachy table: X = DICOM x, Y = DICOM z ("Slice (Y)", axial), Z = -DICOM y ("Slice (Z)",
+    # anterior), the axes of the MCNP input
+    from fcn_mcnp.mcnp_input import to_mcnp_axes
+    assert bce.table_xyz(1.0, 2.0, 3.0) == (1.0, 3.0, -2.0) == to_mcnp_axes(1.0, 2.0, 3.0)
+    assert bce.dicom_xyz(*bce.table_xyz(1.0, 2.0, 3.0)) == (1.0, 2.0, 3.0)
+    assert str(bce.table_xyz(0.0, 0.0, 0.0)[2]) == "0.0"                        # no -0.0 in the table
+    assert bce.table_xyz('N/A', 'N/A', 'N/A') == ('N/A', 'N/A', 'N/A')          # a point without coordinates
+    dw = np.arange(9, dtype=np.float32)[None]                                   # IDX, Rel, Time, x, y, z, ux, uy, uz
+    shown = bce.table_array("Dwells", dw)
+    assert shown.tolist() == [[0, 1, 2, 3, 5, -4, 6, 8, -7]] and shown.dtype == np.float32
+    assert dw.tolist() == [list(range(9))]                                      # the plan data stay DICOM
+    assert bce.table_array("Channels", np.array([[1.0, 2.0, 3.0]])).tolist() == [[1.0, 3.0, -2.0]]
+    assert bce.table_array("Dwells", np.empty((0, 9))).shape == (0, 9)

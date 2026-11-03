@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor
 
+from fcn_3Dview.volume_3d_viewer import patient_to_view
+
 def init_3D_brachy_table(self):
     # Ensure self.tab_41 (Plan_Brachy) has a grid layout
     if not self.tab_41.layout():
@@ -171,6 +173,11 @@ def repopulate_3D_brachy_table(self):
     # Trigger initial update of the renderer for all elements
     for elem in items_to_add:
         update_3D_brachy_element(self, elem["name"])
+    # the plan in patient mm, where the images will be: frame it when there is nothing else to see yet
+    if items_to_add and not getattr(self, '_volumes', None):
+        self.VTK3D_renderer.ResetCamera()
+        if hasattr(self, 'VTK3D_interactor') and self.VTK3D_interactor:
+            self.VTK3D_interactor.GetRenderWindow().Render()
 
 
 def update_3D_brachy_element(self, element_name, *args):
@@ -241,9 +248,7 @@ def update_3D_brachy_element(self, element_name, *args):
     channels = metadata.get('Plan_Brachy_Channels', [])
     ref_pts = metadata.get('Plan_Dose_References', [])
     
-    # Shift reference to match the 3D volume
-    ref = self.Im_PatPosition3Dview[0, :3] if hasattr(self, "Im_PatPosition3Dview") else np.zeros(3)
-
+    # points in patient mm (as the 2D views use them), placed like the volumes: patient_to_view
     idx = elem_info["index"]
     elem_type = elem_info["type"]
     
@@ -251,15 +256,8 @@ def update_3D_brachy_element(self, element_name, *args):
         if idx < len(channels):
             dw_info = channels[idx].get('DwellInfo')
             if dw_info is not None and isinstance(dw_info, np.ndarray) and dw_info.size > 0:
-                pts = dw_info[:, 3:6]
-                shifted = pts - ref
-                # Swap Y and Z, then flip Z
-                transformed = np.zeros_like(shifted)
-                transformed[:, 0] = shifted[:, 0]
-                transformed[:, 1] = shifted[:, 2]
-                transformed[:, 2] = -shifted[:, 1]
-                shifted = transformed
-                
+                shifted = patient_to_view(dw_info[:, 3:6])
+
                 actor = vtk.vtkActor()
                 
                 if rep_val == "Cross":
@@ -309,14 +307,8 @@ def update_3D_brachy_element(self, element_name, *args):
         if idx < len(channels):
             ch_pos = channels[idx].get('ChPos')
             if ch_pos is not None and isinstance(ch_pos, np.ndarray) and ch_pos.size > 0:
-                shifted = ch_pos - ref
-                # Swap Y and Z, then flip Z
-                transformed = np.zeros_like(shifted)
-                transformed[:, 0] = shifted[:, 0]
-                transformed[:, 1] = shifted[:, 2]
-                transformed[:, 2] = -shifted[:, 1]
-                shifted = transformed
-                
+                shifted = patient_to_view(ch_pos)
+
                 points_vtk = vtk.vtkPoints()
                 lines = vtk.vtkCellArray()
                 lines.InsertNextCell(len(shifted))
@@ -348,21 +340,26 @@ def update_3D_brachy_element(self, element_name, *args):
                     
                 actor.GetProperty().SetColor(rgb)
                 actor.GetProperty().SetOpacity(opac_val)
-                
+
                 self.VTK3D_renderer.AddActor(actor)
                 self._3D_brachy_actors[element_name].append(actor)
-                
+
+                # a cone at the tip (first point), pointing to it: which way the catheter goes
+                tip = catheter_tip_cone(shifted, size_val if rep_val == "Tube" else 1.0)
+                if tip is not None:
+                    tip.GetProperty().SetColor(rgb)
+                    tip.GetProperty().SetOpacity(opac_val)
+                    self.VTK3D_renderer.AddActor(tip)
+                    self._3D_brachy_actors[element_name].append(tip)
+
     elif elem_type == "Reference Points":
         if idx < len(ref_pts):
             rp = ref_pts[idx]
             coords = rp.get('DoseReferencePointCoordinates')
             if isinstance(coords, list) and len(coords) >= 3:
                 if coords[0] != 'N/A' and coords[1] != 'N/A' and coords[2] != 'N/A':
-                    pt = np.array([coords[0], coords[1], coords[2]])
-                    shifted = pt - ref
-                    # Swap Y and Z, then flip Z
-                    shifted = np.array([shifted[0], shifted[2], -shifted[1]])
-                    
+                    shifted = patient_to_view([coords[0], coords[1], coords[2]])[0]
+
                     mapper = vtk.vtkPolyDataMapper()
                     actor = vtk.vtkActor()
                     
@@ -395,6 +392,32 @@ def update_3D_brachy_element(self, element_name, *args):
                     
     if hasattr(self, 'VTK3D_interactor') and self.VTK3D_interactor:
         self.VTK3D_interactor.GetRenderWindow().Render()
+
+
+def catheter_tip_cone(points, radius):
+    """
+    A cone with its point at a catheter's tip (its first point), along the catheter towards the tip
+    (points: the catheter in the 3D view; radius: of its tube). None for a catheter without a direction.
+    """
+    points = np.asarray(points, dtype=float)
+    reach = np.linalg.norm(points - points[0], axis=1)
+    if len(points) < 2 or reach.max() < 1e-6:
+        return None
+    height = max(8.0 * radius, 8.0)
+    # from the first point at least half a cone away (the farthest one when none is) to the tip
+    far = np.nonzero(reach >= min(0.5 * height, reach.max()))[0][0]
+    axis = (points[0] - points[far]) / reach[far]
+    cone = vtk.vtkConeSource()
+    cone.SetResolution(24)
+    cone.SetHeight(height)
+    cone.SetRadius(max(3.0 * radius, 3.0))       # wider than the dwell spheres around it
+    cone.SetDirection(*axis)
+    cone.SetCenter(*(points[0] - axis * height / 2.0))      # the cone points along its direction
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputConnection(cone.GetOutputPort())
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    return actor
 
 
 def pick_3D_brachy_color(self, element_name):

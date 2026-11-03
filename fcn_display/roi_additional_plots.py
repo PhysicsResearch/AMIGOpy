@@ -167,12 +167,12 @@ class ROIDialog(QtWidgets.QDialog):
         top_bar = QtWidgets.QHBoxLayout()
 
         self.btn_theme = QtWidgets.QPushButton("Switch Theme")
-        self.btn_theme.setStyleSheet("background-color: blue; color: white; font-weight: bold; min-height: 25px; border-radius: 4px; padding: 4px;")
+        self.btn_theme.setStyleSheet("font-weight: bold; min-height: 25px; border-radius: 4px; padding: 4px;")
         self.btn_theme.clicked.connect(self.toggle_theme)
         top_bar.addWidget(self.btn_theme)
 
         self.btn_export = QtWidgets.QPushButton("Export CSV")
-        self.btn_export.setStyleSheet("background-color: blue; color: white; font-weight: bold; min-height: 25px; border-radius: 4px; padding: 4px;")
+        self.btn_export.setStyleSheet("font-weight: bold; min-height: 25px; border-radius: 4px; padding: 4px;")
         self.btn_export.clicked.connect(self.export_csv)
         top_bar.addWidget(self.btn_export)
 
@@ -808,11 +808,11 @@ class ROIDialog(QtWidgets.QDialog):
             exp_layout.addWidget(lbl)
 
             btn_matrix = QtWidgets.QPushButton("All Matrix Values in Rectangle")
-            btn_matrix.setStyleSheet("background-color: blue; color: white; font-weight: bold; min-height: 30px; margin: 4px; border-radius: 4px; padding: 4px;")
+            btn_matrix.setStyleSheet("font-weight: bold; min-height: 30px; margin: 4px; border-radius: 4px; padding: 4px;")
             btn_profiles = QtWidgets.QPushButton("Displayed Line Profiles Only")
-            btn_profiles.setStyleSheet("background-color: blue; color: white; font-weight: bold; min-height: 30px; margin: 4px; border-radius: 4px; padding: 4px;")
+            btn_profiles.setStyleSheet("font-weight: bold; min-height: 30px; margin: 4px; border-radius: 4px; padding: 4px;")
             btn_cancel = QtWidgets.QPushButton("Cancel")
-            btn_cancel.setStyleSheet("background-color: #3b3b4a; color: white; min-height: 30px; margin: 4px; border-radius: 4px; padding: 4px;")
+            btn_cancel.setStyleSheet("min-height: 30px; margin: 4px; border-radius: 4px; padding: 4px;")
 
             exp_layout.addWidget(btn_matrix)
             exp_layout.addWidget(btn_profiles)

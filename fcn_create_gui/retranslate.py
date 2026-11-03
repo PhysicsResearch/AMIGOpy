@@ -31,20 +31,16 @@ def retranslate_ui(w):
         w.label.setText("")
     if hasattr(w, 'groupBox'):
         w.groupBox.setTitle("")
-    if hasattr(w, 'lineEdit_18'):
-        w.lineEdit_18.setText(QCoreApplication.translate("w", u"Layer 0", None))
-    if hasattr(w, 'lineEdit_21'):
-        w.lineEdit_21.setText(QCoreApplication.translate("w", u"Layer 3", None))
-    if hasattr(w, 'lineEdit_20'):
-        w.lineEdit_20.setText(QCoreApplication.translate("w", u"Layer 2", None))
-    if hasattr(w, 'lineEdit_22'):
-        w.lineEdit_22.setText(QCoreApplication.translate("w", u"PMI", None))
-    if hasattr(w, 'lineEdit_23'):
-        w.lineEdit_23.setText(QCoreApplication.translate("w", u"Transparency", None))
-    if hasattr(w, 'lineEdit_24'):
-        w.lineEdit_24.setText(QCoreApplication.translate("w", u"Active layer", None))
-    if hasattr(w, 'lineEdit_19'):
-        w.lineEdit_19.setText(QCoreApplication.translate("w", u"Layer 1", None))
+    # Layer panel (sidebar.py): a name selects the layer, its button its colour map
+    # (layers are numbered from 1 in the interface, as their shortcuts Ctrl+1..4; index k = Layer k + 1)
+    for k, btn in enumerate(getattr(w, 'layer_name_btns', [])):
+        btn.setText(QCoreApplication.translate("w", u"Layer {0}", None).format(k + 1))
+        btn.setToolTip(QCoreApplication.translate("w", u"Click to make Layer {0} the active layer (Ctrl+{0})", None).format(k + 1))
+        # the panel has no title: the slider and its value say what they set
+        alpha_tip = QCoreApplication.translate("w", u"Layer {0} transparency: 0 = fully transparent (hidden), 1 = opaque.\nEach module tab keeps its own values.", None).format(k + 1)
+        for alpha in (getattr(w, f'Layer_{k}_alpha_sli', None), getattr(w, f'Layer_{k}_alpha_spin', None)):
+            if alpha is not None:
+                alpha.setToolTip(alpha_tip)
     if hasattr(w, 'label_2'):
         w.label_2.setText(QCoreApplication.translate("w", u"--------------", None))
     if hasattr(w, 'groupBox_17'):
@@ -106,6 +102,8 @@ def retranslate_ui(w):
         w.brachy_show_ch_points.setToolTip(QCoreApplication.translate("w", u"Catheter points", None))
         w.brachy_show_ch_path.setText(QCoreApplication.translate("w", u"path", None))
         w.brachy_show_ch_path.setToolTip(QCoreApplication.translate("w", u"Catheter path (the lines between the points)", None))
+        w.brachy_show_ch_tip.setText(QCoreApplication.translate("w", u"tip", None))
+        w.brachy_show_ch_tip.setToolTip(QCoreApplication.translate("w", u"Arrowhead at the catheter tip (its first point), pointing to the tip: the catheter's direction.\nA ring around the tip where the catheter runs across the image.", None))
         w.brachy_show_ch_labels.setText(QCoreApplication.translate("w", u"names", None))
         w.brachy_show_ch_labels.setToolTip(QCoreApplication.translate("w", u"Catheter names next to the first point (tip): the catheter number unless renamed", None))
         w.display_dw_overlay.setText(QCoreApplication.translate("w", u"Dwells", None))
@@ -318,6 +316,8 @@ def retranslate_ui(w):
         w.tabView01.setTabText(w.tabView01.indexOf(w.tab_30), QCoreApplication.translate("w", u"ROI", None))
     if hasattr(w, 'tabView01') and hasattr(w, 'tab_montecarlo'):
         w.tabView01.setTabText(w.tabView01.indexOf(w.tab_montecarlo), QCoreApplication.translate("w", u"MonteCarlo", None))
+    if hasattr(w, 'tabView01_bar'):
+        w.tabView01_bar.sync()      # the titles in columns (column_tabs.py) follow the texts above
     if hasattr(w, 'tabModules'):
         w.tabModules.setTabText(w.tabModules.indexOf(w.im_display_tab), QCoreApplication.translate("w", u"View", None))
     if hasattr(w, 'View3DgroupBox_12'):
@@ -538,58 +538,6 @@ def retranslate_ui(w):
         w.DECTmenu.setTabText(w.DECTmenu.indexOf(w.tab_8), QCoreApplication.translate("w", u"Eval / Process", None))
     if hasattr(w, 'tabModules'):
         w.tabModules.setTabText(w.tabModules.indexOf(w.DECT_tab), QCoreApplication.translate("w", u"DECT", None))
-    if hasattr(w, 'lineEdit_51'):
-        w.lineEdit_51.setText(QCoreApplication.translate("w", u"Total channel time", None))
-    if hasattr(w, 'lineEdit_52'):
-        w.lineEdit_52.setText(QCoreApplication.translate("w", u"Total time", None))
-    if hasattr(w, 'lineEdit_54'):
-        w.lineEdit_54.setText(QCoreApplication.translate("w", u"Plan Acitvity/kerma", None))
-    if hasattr(w, 'lineEdit_53'):
-        w.lineEdit_53.setText(QCoreApplication.translate("w", u"Number of Channels", None))
-    if hasattr(w, 'pushButton'):
-        w.pushButton.setText(QCoreApplication.translate("w", u"Export", None))
-    if hasattr(w, 'lineEdit_55'):
-        w.lineEdit_55.setText(QCoreApplication.translate("w", u"Current channel", None))
-    if hasattr(w, 'checkBox_show_dw_plot'):
-        w.checkBox_show_dw_plot.setText(QCoreApplication.translate("w", u"Show Active Dwells", None))
-    if hasattr(w, 'checkBox_show_ch_plot'):
-        w.checkBox_show_ch_plot.setText(QCoreApplication.translate("w", u"Show channels", None))
-    if hasattr(w, 'checkBox_dw_ch_plot'):
-        w.checkBox_dw_ch_plot.setText(QCoreApplication.translate("w", u"Plot all channels", None))
-    if hasattr(w, 'brachy_ch_plot'):
-        w.brachy_ch_plot.setText(QCoreApplication.translate("w", u"Plot", None))
-    if hasattr(w, 'groupBox_11'):
-        w.groupBox_11.setTitle(QCoreApplication.translate("w", u"PlotSettings", None))
-    if hasattr(w, 'lineEdit_60'):
-        w.lineEdit_60.setText(QCoreApplication.translate("w", u"Line color", None))
-    if hasattr(w, 'lineEdit_57'):
-        w.lineEdit_57.setText(QCoreApplication.translate("w", u"Ch. line width", None))
-    if hasattr(w, 'lineEdit_56'):
-        w.lineEdit_56.setText(QCoreApplication.translate("w", u"Dw. point size", None))
-    if hasattr(w, 'lineEdit_58'):
-        w.lineEdit_58.setText(QCoreApplication.translate("w", u"First ch. point size", None))
-    if hasattr(w, 'lineEdit_59'):
-        w.lineEdit_59.setText(QCoreApplication.translate("w", u"Dw. color", None))
-    if hasattr(w, 'lineEdit_61'):
-        w.lineEdit_61.setText(QCoreApplication.translate("w", u"1st point color", None))
-    if hasattr(w, 'lineEdit_62'):
-        w.lineEdit_62.setText(QCoreApplication.translate("w", u"Structure", None))
-    if hasattr(w, 'Brachy_groupBox_12'):
-        w.Brachy_groupBox_12.setTitle(QCoreApplication.translate("w", u"Channel settings", None))
-    if hasattr(w, 'Brachy_setalldwtimes'):
-        w.Brachy_setalldwtimes.setText(QCoreApplication.translate("w", u"Set all Dwell Times", None))
-    if hasattr(w, 'Brachy_create_new_channel'):
-        w.Brachy_create_new_channel.setText(QCoreApplication.translate("w", u"Create New Channel", None))
-    if hasattr(w, 'Brachy_DuplicateChannel'):
-        w.Brachy_DuplicateChannel.setText(QCoreApplication.translate("w", u"Duplicate Channel", None))
-    if hasattr(w, 'Brachy_setIDD_distance'):
-        w.Brachy_setIDD_distance.setText(QCoreApplication.translate("w", u"Change Inter dwell Distance", None))
-    if hasattr(w, 'Brachy_DeadSpace_Offset'):
-        w.Brachy_DeadSpace_Offset.setText(QCoreApplication.translate("w", u"Dead space - Offset", None))
-    if hasattr(w, 'Brachy_DeleteChannel'):
-        w.Brachy_DeleteChannel.setText(QCoreApplication.translate("w", u"Delete Channel", None))
-    if hasattr(w, 'BrachytabWidget_2'):
-        w.BrachytabWidget_2.setTabText(w.BrachytabWidget_2.indexOf(w.Br_tab_42), QCoreApplication.translate("w", u"Plan", None))
     if hasattr(w, 'brachy_save_tg43_source'):
         w.brachy_save_tg43_source.setText(QCoreApplication.translate("w", u"Save", None))
     if hasattr(w, 'Brachy_load_sources'):
@@ -790,25 +738,9 @@ def retranslate_ui(w):
     if hasattr(w, 'create_mat_map'):
         w.create_mat_map.setText(QCoreApplication.translate("w", u"Create Material Map", None))
     # (Material Assignment tab label is set in tab_view.py: it lives in View > MonteCarlo)
-    if hasattr(w, 'save_changes_ct_cal'):
-        w.save_changes_ct_cal.setText(QCoreApplication.translate("w", u"Update", None))
-    if hasattr(w, 'Export_ct_cal'):
-        w.Export_ct_cal.setText(QCoreApplication.translate("w", u"Export", None))
-    if hasattr(w, 'load_ct_cal'):
-        w.load_ct_cal.setText(QCoreApplication.translate("w", u"Load", None))
-    if hasattr(w, 'ct_cal_save_copy'):
-        w.ct_cal_save_copy.setText(QCoreApplication.translate("w", u"Save", None))
-    if hasattr(w, 'ct_cal_add_row'):
-        w.ct_cal_add_row.setText(QCoreApplication.translate("w", u"Add row", None))
     if hasattr(w, 'create_density_map'):
         w.create_density_map.setText(QCoreApplication.translate("w", u"Create density map", None))
-    if hasattr(w, 'create_density_map__from_mat_map'):
-        w.create_density_map__from_mat_map.setText(QCoreApplication.translate("w", u"Create density map from material map", None))
-    if hasattr(w, 'delete_density_map'):
-        w.delete_density_map.setText(QCoreApplication.translate("w", u"Delete density map", None))
-    if hasattr(w, 'override_no_tissue'):
-        w.override_no_tissue.setText(QCoreApplication.translate("w", u"Override non tissue materials densities", None))
-    # (Density Map tab label is set in tab_view.py: it lives in View > MonteCarlo)
+    # (Density Map tab label is set in tab_view.py: it lives in View > MonteCarlo; the other texts in tab_plan.py)
     if hasattr(w, 'tabModules'):
         w.tabModules.setTabText(w.tabModules.indexOf(w.Plan_tab), QCoreApplication.translate("w", u"Plan", None))
     if hasattr(w, 'tabWidget_5'):

@@ -18,7 +18,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBox,
+from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox, QDoubleSpinBox,
     QFrame, QGraphicsView, QGridLayout, QGroupBox,
     QHBoxLayout, QHeaderView, QLCDNumber, QLabel,
     QLayout, QLineEdit, QListWidget, QListWidgetItem,
@@ -34,13 +34,31 @@ except ImportError:
     pass
 
 
+# Layer panel (qdarkstyle colours): the names are buttons, the active layer's one highlighted
+LAYER_PANEL_QSS = """
+QPushButton[layerName="true"] {
+    background-color: #19232D; color: #DFE1E2; border: 1px solid #455364;
+    border-radius: 4px; padding: 3px 10px; text-align: left;
+}
+QPushButton[layerName="true"]:hover { border-color: #346792; }
+QPushButton[layerName="true"]:checked {
+    background-color: #346792; border-color: #259AE9; color: #FFFFFF; font-weight: bold;
+}
+QToolButton[layerCmap="true"] {
+    background-color: #19232D; border: 1px solid #455364; border-radius: 4px; padding: 1px;
+}
+QToolButton[layerCmap="true"]:hover { border-color: #259AE9; }
+"""
+
+
 def create_sidebar(w):
     """
     Create the left sidebar widgets.
 
     Creates:
-    - groupBox: Layer controls panel with alpha sliders/spinboxes for
-      Layers 0-3, PMI slider, transparency label, active layer selector
+    - groupBox: Layer panel: per layer a name button (click: active layer),
+      transparency slider / spinbox and colour map button; the active layer
+      combo Layer_sel is hidden (fcn_display.layer_panel)
     - progressBar: Progress indicator bar
     - label_2: Status text label
     - groupBox_17: Data tree panel with DataTreeView
@@ -68,168 +86,69 @@ def create_sidebar(w):
     font1 = w._fonts['font1']
     font2 = w._fonts['font2']
     font3 = w._fonts['font3']
+    # Layer panel: a click on a layer name makes it the active layer (Ctrl+1..4 too), then its
+    # transparency and a colour map button (menu: that layer's map, the active layer stays). The hidden
+    # Layer_sel combo (self.layer_selected) stays the one source of the active layer
+    # (fcn_display.layer_panel connects it all).
     w.groupBox = QGroupBox(w.centralwidget)
     w.groupBox.setObjectName(u"groupBox")
+    w.groupBox.setStyleSheet(LAYER_PANEL_QSS)
     w.gridLayout_14 = QGridLayout(w.groupBox)
     w.gridLayout_14.setObjectName(u"gridLayout_14")
-    w.Layer_1_alpha_sli = QSlider(w.groupBox)
-    w.Layer_1_alpha_sli.setObjectName(u"Layer_1_alpha_sli")
-    w.Layer_1_alpha_sli.setMaximum(100)
-    w.Layer_1_alpha_sli.setValue(50)
-    w.Layer_1_alpha_sli.setOrientation(Qt.Orientation.Horizontal)
+    w.gridLayout_14.setContentsMargins(10, 8, 10, 8)
+    w.gridLayout_14.setHorizontalSpacing(8)
+    w.gridLayout_14.setVerticalSpacing(6)
 
-    w.gridLayout_14.addWidget(w.Layer_1_alpha_sli, 6, 2, 1, 4)
+    # no title: the slider and value tooltips say what they set (retranslate.py)
+    w.layer_name_group = QButtonGroup(w.groupBox)
+    w.layer_name_group.setExclusive(True)
+    w.layer_name_btns, w.layer_cmap_btns = [], []
+    for k in range(4):
+        name = QPushButton(w.groupBox)
+        name.setObjectName(f"layer_name_btn_{k}")
+        name.setProperty("layerName", True)
+        name.setProperty("customStyle", True)      # not coloured by button_style
+        name.setCheckable(True)
+        name.setCursor(Qt.CursorShape.PointingHandCursor)
+        name.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        name.setMinimumWidth(76)
+        w.layer_name_group.addButton(name, k)
+        w.layer_name_btns.append(name)
 
-    w.Layer_2_alpha_sli = QSlider(w.groupBox)
-    w.Layer_2_alpha_sli.setObjectName(u"Layer_2_alpha_sli")
-    w.Layer_2_alpha_sli.setMaximum(100)
-    w.Layer_2_alpha_sli.setValue(50)
-    w.Layer_2_alpha_sli.setOrientation(Qt.Orientation.Horizontal)
+        sli = QSlider(w.groupBox)
+        sli.setObjectName(f"Layer_{k}_alpha_sli")
+        sli.setMaximum(100)
+        sli.setSingleStep(1)
+        sli.setValue(100 if k == 0 else 50)
+        sli.setOrientation(Qt.Orientation.Horizontal)
+        setattr(w, f"Layer_{k}_alpha_sli", sli)
 
-    w.gridLayout_14.addWidget(w.Layer_2_alpha_sli, 7, 2, 1, 4)
+        spin = QDoubleSpinBox(w.groupBox)
+        spin.setObjectName(f"Layer_{k}_alpha_spin")
+        spin.setMaximum(1.0)
+        spin.setSingleStep(0.05)
+        spin.setValue(1.0 if k == 0 else 0.5)
+        spin.setFixedWidth(68)
+        setattr(w, f"Layer_{k}_alpha_spin", spin)
 
-    w.Layer_3_alpha_spin = QDoubleSpinBox(w.groupBox)
-    w.Layer_3_alpha_spin.setObjectName(u"Layer_3_alpha_spin")
-    w.Layer_3_alpha_spin.setMaximum(1.000000000000000)
-    w.Layer_3_alpha_spin.setSingleStep(0.050000000000000)
-    w.Layer_3_alpha_spin.setValue(0.500000000000000)
+        cmap = QToolButton(w.groupBox)
+        cmap.setObjectName(f"layer_cmap_btn_{k}")
+        cmap.setProperty("layerCmap", True)
+        cmap.setIconSize(QSize(34, 12))
+        cmap.setFixedSize(46, 24)
+        cmap.setCursor(Qt.CursorShape.PointingHandCursor)
+        w.layer_cmap_btns.append(cmap)
 
-    w.gridLayout_14.addWidget(w.Layer_3_alpha_spin, 8, 6, 1, 1)
+        w.gridLayout_14.addWidget(name, k, 0, 1, 1)
+        w.gridLayout_14.addWidget(sli, k, 1, 1, 1)
+        w.gridLayout_14.addWidget(spin, k, 2, 1, 1)
+        w.gridLayout_14.addWidget(cmap, k, 3, 1, 1)
+    w.gridLayout_14.setColumnStretch(1, 1)
 
-    w.horizontalSpacer_11 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-    w.gridLayout_14.addItem(w.horizontalSpacer_11, 12, 3, 1, 1)
-
-    w.horizontalSpacer_13 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-    w.gridLayout_14.addItem(w.horizontalSpacer_13, 12, 5, 1, 1)
-
-    w.horizontalSpacer_12 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-    w.gridLayout_14.addItem(w.horizontalSpacer_12, 12, 4, 1, 1)
-
-    w.lineEdit_18 = QLineEdit(w.groupBox)
-    w.lineEdit_18.setObjectName(u"lineEdit_18")
-
-    w.gridLayout_14.addWidget(w.lineEdit_18, 4, 1, 1, 1)
-
-    w.horizontalSpacer_10 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-    w.gridLayout_14.addItem(w.horizontalSpacer_10, 12, 1, 1, 1)
-
-    w.Layer_0_alpha_sli = QSlider(w.groupBox)
-    w.Layer_0_alpha_sli.setObjectName(u"Layer_0_alpha_sli")
-    w.Layer_0_alpha_sli.setMaximum(100)
-    w.Layer_0_alpha_sli.setSingleStep(1)
-    w.Layer_0_alpha_sli.setValue(100)
-    w.Layer_0_alpha_sli.setOrientation(Qt.Orientation.Horizontal)
-
-    w.gridLayout_14.addWidget(w.Layer_0_alpha_sli, 4, 2, 1, 4)
-
-    w.Layer_0_alpha_spin = QDoubleSpinBox(w.groupBox)
-    w.Layer_0_alpha_spin.setObjectName(u"Layer_0_alpha_spin")
-    w.Layer_0_alpha_spin.setMaximum(1.000000000000000)
-    w.Layer_0_alpha_spin.setSingleStep(0.050000000000000)
-    w.Layer_0_alpha_spin.setValue(1.000000000000000)
-
-    w.gridLayout_14.addWidget(w.Layer_0_alpha_spin, 4, 6, 1, 1)
-
-    w.Layer_3_alpha_sli = QSlider(w.groupBox)
-    w.Layer_3_alpha_sli.setObjectName(u"Layer_3_alpha_sli")
-    w.Layer_3_alpha_sli.setMaximum(100)
-    w.Layer_3_alpha_sli.setValue(50)
-    w.Layer_3_alpha_sli.setOrientation(Qt.Orientation.Horizontal)
-
-    w.gridLayout_14.addWidget(w.Layer_3_alpha_sli, 8, 2, 1, 4)
-
-    w.lineEdit_21 = QLineEdit(w.groupBox)
-    w.lineEdit_21.setObjectName(u"lineEdit_21")
-
-    w.gridLayout_14.addWidget(w.lineEdit_21, 8, 1, 1, 1)
-
-    w.line_10 = QFrame(w.groupBox)
-    w.line_10.setObjectName(u"line_10")
-    w.line_10.setFrameShape(QFrame.Shape.HLine)
-    w.line_10.setFrameShadow(QFrame.Shadow.Sunken)
-
-    w.gridLayout_14.addWidget(w.line_10, 9, 1, 1, 6)
-
-    w.lineEdit_20 = QLineEdit(w.groupBox)
-    w.lineEdit_20.setObjectName(u"lineEdit_20")
-
-    w.gridLayout_14.addWidget(w.lineEdit_20, 7, 1, 1, 1)
-
-    w.horizontalSpacer_14 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-    w.gridLayout_14.addItem(w.horizontalSpacer_14, 12, 6, 1, 1)
-
-    w.lineEdit_22 = QLineEdit(w.groupBox)
-    w.lineEdit_22.setObjectName(u"lineEdit_22")
-
-    w.gridLayout_14.addWidget(w.lineEdit_22, 11, 1, 1, 1)
-
-    w.Layer_1_alpha_spin = QDoubleSpinBox(w.groupBox)
-    w.Layer_1_alpha_spin.setObjectName(u"Layer_1_alpha_spin")
-    w.Layer_1_alpha_spin.setMaximum(1.000000000000000)
-    w.Layer_1_alpha_spin.setSingleStep(0.050000000000000)
-    w.Layer_1_alpha_spin.setValue(0.500000000000000)
-
-    w.gridLayout_14.addWidget(w.Layer_1_alpha_spin, 6, 6, 1, 1)
-
-    w.line_11 = QFrame(w.groupBox)
-    w.line_11.setObjectName(u"line_11")
-    w.line_11.setFrameShape(QFrame.Shape.HLine)
-    w.line_11.setFrameShadow(QFrame.Shadow.Sunken)
-
-    w.gridLayout_14.addWidget(w.line_11, 2, 1, 1, 6)
-
-    w.horizontalSlider_5 = QSlider(w.groupBox)
-    w.horizontalSlider_5.setObjectName(u"horizontalSlider_5")
-    w.horizontalSlider_5.setOrientation(Qt.Orientation.Horizontal)
-
-    w.gridLayout_14.addWidget(w.horizontalSlider_5, 11, 2, 1, 4)
-
-    w.lineEdit_23 = QLineEdit(w.groupBox)
-    w.lineEdit_23.setObjectName(u"lineEdit_23")
-    font = QFont()
-    font.setPointSize(10)
-    w.lineEdit_23.setFont(font)
-    w.lineEdit_23.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-    w.gridLayout_14.addWidget(w.lineEdit_23, 3, 1, 1, 6)
-
-    w.Layer_2_alpha_spin = QDoubleSpinBox(w.groupBox)
-    w.Layer_2_alpha_spin.setObjectName(u"Layer_2_alpha_spin")
-    w.Layer_2_alpha_spin.setMaximum(1.000000000000000)
-    w.Layer_2_alpha_spin.setSingleStep(0.050000000000000)
-    w.Layer_2_alpha_spin.setValue(0.500000000000000)
-
-    w.gridLayout_14.addWidget(w.Layer_2_alpha_spin, 7, 6, 1, 1)
-
-    w.horizontalSpacer_15 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-    w.gridLayout_14.addItem(w.horizontalSpacer_15, 12, 2, 1, 1)
-
-    w.lineEdit_24 = QLineEdit(w.groupBox)
-    w.lineEdit_24.setObjectName(u"lineEdit_24")
-
-    w.gridLayout_14.addWidget(w.lineEdit_24, 1, 1, 1, 1)
-
-    w.doubleSpinBox_7 = QDoubleSpinBox(w.groupBox)
-    w.doubleSpinBox_7.setObjectName(u"doubleSpinBox_7")
-
-    w.gridLayout_14.addWidget(w.doubleSpinBox_7, 11, 6, 1, 1)
-
-    w.lineEdit_19 = QLineEdit(w.groupBox)
-    w.lineEdit_19.setObjectName(u"lineEdit_19")
-
-    w.gridLayout_14.addWidget(w.lineEdit_19, 6, 1, 1, 1)
-
+    # the active layer (items in init_list_menus.populate_list_menus): kept, hidden
     w.Layer_sel = QComboBox(w.groupBox)
     w.Layer_sel.setObjectName(u"Layer_sel")
-
-    w.gridLayout_14.addWidget(w.Layer_sel, 1, 2, 1, 1)
-
+    w.Layer_sel.hide()
 
     w.gridLayout_3.addWidget(w.groupBox, 1, 0, 1, 2)
 

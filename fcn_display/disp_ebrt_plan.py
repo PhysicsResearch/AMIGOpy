@@ -274,8 +274,9 @@ def update_disp_ebrt_plan(self):
         it_fs.setFlags(it_fs.flags() & ~Qt.ItemIsEditable)
         table.setItem(row, 9, it_fs)
 
-        # 10: Isocenter
-        iso = beam['Isocenter']
+        # 10: Isocenter, X, Y, Z in the user's axes (DICOM x, z, -y)
+        from fcn_display.brachy_channel_edit import table_xyz
+        iso = table_xyz(*beam['Isocenter'][:3])
         it_iso = QTableWidgetItem(f"[{iso[0]:.1f}, {iso[1]:.1f}, {iso[2]:.1f}]")
         it_iso.setTextAlignment(Qt.AlignCenter)
         it_iso.setFlags(it_iso.flags() & ~Qt.ItemIsEditable)

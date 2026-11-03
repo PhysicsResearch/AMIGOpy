@@ -49,10 +49,12 @@ SIZE_WIDGETS = (('ch_point_size', 'dw_ch_point_size'), ('ch_line_width', 'brachy
 # display_brachy_channel_overlay, display_dw_overlay and brachy_show_ref_points.
 DISPLAY_OPTIONS = (('ch_points', 'brachy_show_ch_points', 'display_brachy_channel_overlay'),
                    ('ch_path', 'brachy_show_ch_path', 'display_brachy_channel_overlay'),
+                   ('ch_tip', 'brachy_show_ch_tip', 'display_brachy_channel_overlay'),
                    ('ch_labels', 'brachy_show_ch_labels', 'display_brachy_channel_overlay'),
                    ('dw_zero', 'brachy_show_dw_zero', 'display_dw_overlay'),
                    ('ref_labels', 'brachy_show_ref_labels', 'brachy_show_ref_points'))
-DISPLAY_DEFAULTS = {'ch_points': True, 'ch_path': True, 'ch_labels': False, 'dw_zero': True, 'ref_labels': False}
+DISPLAY_DEFAULTS = {'ch_points': True, 'ch_path': True, 'ch_tip': True, 'ch_labels': False, 'dw_zero': True,
+                    'ref_labels': False}
 # Display panel: (check box, part of the splitter) for the parts that can be hidden (the list always shows)
 PANEL_BOXES = (('brachy_show_table_panel', 'brachy_table_panel'), ('brachy_show_edit_panel', 'brachy_edit_scroll'),
                ('brachy_show_dose_panel', 'brachy_dose_scroll'), ('brachy_show_style_panel', 'brachy_style_scroll'))
@@ -61,10 +63,8 @@ SPARE_WIDTH_PARTS = ('brachy_style_scroll', 'brachy_dose_scroll', 'brachy_table_
 
 # Table modes (brachy_combobox_01 items) as shown on the mode button
 MODE_BUTTON_TEXT = {"Dwells": "Dwells", "Channels": "Catheters", "Ref. Points": "Ref. points"}
-# "Go" buttons of the table rows (as in the reference point table)
-GO_BUTTON_STYLE = ("QPushButton { background-color: #1c5fa8; color: white; border: 1px solid #104277; margin: 1px;"
-                   " padding: 2px 6px; border-radius: 3px; font-weight: bold; }"
-                   " QPushButton:hover { background-color: #2475cf; }")
+# "Go" buttons of the table rows (as in the reference point table); colours from their role (button_style.py)
+GO_BUTTON_STYLE = "QPushButton { margin: 1px; padding: 2px 6px; border-radius: 3px; font-weight: bold; }"
 
 
 def brachy_style(self):

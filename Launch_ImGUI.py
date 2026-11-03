@@ -192,8 +192,8 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
         self.gridLayout_4.removeWidget(self.AxialSlider)
         self.gridLayout_4.removeWidget(self.SagittalSlider)
         self.gridLayout_4.removeWidget(self.CoronalSlider)
-        self.gridLayout_4.removeWidget(self.tabView01)
-        
+        self.gridLayout_4.removeWidget(self.tabView01_box)     # tabView01 with its titles in columns
+
         # Delete old layout
         shiboken6.delete(self.gridLayout_4)
         
@@ -226,8 +226,9 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
         
         # Add components to splitter
         self.tabView01.setMinimumHeight(1)
+        self.tabView01_box.setMinimumHeight(1)
         self.view_splitter.addWidget(top_views_container)
-        self.view_splitter.addWidget(self.tabView01)
+        self.view_splitter.addWidget(self.tabView01_box)
         
         # Set stretch factors & initial sizes
         self.view_splitter.setStretchFactor(0, 3)
@@ -272,6 +273,10 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
         new_tab5_layout = QHBoxLayout(self.tab_5)
         new_tab5_layout.setContentsMargins(0, 0, 0, 0)
         new_tab5_layout.addWidget(self.bottom_view_splitter)
+
+        # the histogram panel and its controls, before any image is shown (fcn_init/view_hist.py)
+        from fcn_init.view_hist import init_histogram_ui
+        init_histogram_ui(self)
 
         # load ref csv files
         # load_Source_cal_csv_file(self)
@@ -648,7 +653,7 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
         3-col layout in 'all':
         row 0: VTK1 | VTK2 | VTK3
         row 1:  S1  |  S2  |  S3
-        row 2: [ tabView01 spans 3 cols ]
+        row 2: [ tabView01 (tabView01_box, with its titles) spans 3 cols ]
         In single mode:
         row 0: [   BIG spans 3 cols   ]
         row 1: [ BIG slider spans 3  ]
@@ -663,7 +668,7 @@ class MyApp(QMainWindow, VTK3DViewerMixin):
         # resolve widgets
         def w(name): return getattr(self, name)
         views = {k: (w(p), w(s)) for k, (p, s) in _VIEW_ATTRS.items()}
-        tab = self.tabView01
+        tab = self.tabView01_box    # tabView01 and its titles in columns
 
         # Save sizes if we are maximizing from the unmaximized (all) state
         if mode != "all" and self._max_axis is None and hasattr(self, 'view_splitter'):
@@ -865,7 +870,10 @@ if __name__ == "__main__":
         border: none;
     }
     """
-    app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6') + custom_qss)
+    # one colour rule for all buttons: with a function blue, Delete red, Remove black, placeholders grey
+    from fcn_create_gui.button_style import BUTTON_QSS, install_button_style
+    install_button_style(app)
+    app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6') + custom_qss + BUTTON_QSS)
     splash.showMessage("Loading UI…", Qt.AlignBottom | Qt.AlignHCenter | Qt.TextWordWrap, Qt.white)
     app.processEvents()
 

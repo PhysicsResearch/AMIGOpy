@@ -1,4 +1,4 @@
-from fcn_display.mouse_move_slicechanges import onMouseMoveSeg, left_button_pressseg_event, left_button_releaseseg_event
+from fcn_display.mouse_move_slicechanges import cursor_text, onMouseMoveSeg, left_button_pressseg_event, left_button_releaseseg_event
 import numpy as np
 import vtk
 
@@ -232,12 +232,12 @@ def onMouseMoveSeg(self, caller, event):
             x_mm = self.Im_PatPosition[idx, 0] + vx * self.pixel_spac[idx, 1] + self.Im_Offset[idx, 0]
             y_mm = self.Im_PatPosition[idx, 1] + (self.display_data_seg[idx].shape[1] - 1 - vy) * self.pixel_spac[idx, 0] + self.Im_Offset[idx, 1]
             z_mm = P_z
-            msg = f"Slice (Y): {P_z:.2f} mm ({vx}, {vy}, {vz}) Vox. ({x_mm:.2f}, {y_mm:.2f}, {z_mm:.2f}) mm {round(pixel_value,4):.4f}"
+            msg = cursor_text(f"Slice (Y): {P_z:.2f} mm", vx, vy, vz, (x_mm, y_mm, z_mm), pixel_value)
             self.textActorAxial.SetInput(msg)
             if hasattr(self, 'textActorSeg'):
                 self.textActorSeg.SetInput(msg)
         else:
-            msg = f"Slice (Y): {self.current_axial_slice_index[idx]} - {P_z:.2f} mm"
+            msg = f"Slice (Y): {self.current_axial_slice_index[idx]} : {P_z:.2f} mm"
             self.textActorAxial.SetInput(msg)
             if hasattr(self, 'textActorSeg'):
                 self.textActorSeg.SetInput(msg)
@@ -259,12 +259,12 @@ def onMouseMoveSeg(self, caller, event):
             x_mm = self.Im_PatPosition[idx, 0] + vx * self.pixel_spac[idx, 1] + self.Im_Offset[idx, 0]
             y_mm = P_y
             z_mm = self.Im_PatPosition[idx, 2] + vz * self.slice_thick[idx] + self.Im_Offset[idx, 2]
-            msg = f"Slice (Z): {P_y:.2f} mm ({vx}, {vy}, {vz}) Vox. ({x_mm:.2f}, {y_mm:.2f}, {z_mm:.2f}) mm {round(pixel_value,4):.4f}"
+            msg = cursor_text(f"Slice (Z): {0.0 - P_y:.2f} mm", vx, vy, vz, (x_mm, y_mm, z_mm), pixel_value)
             self.textActorCoronal.SetInput(msg)
             if hasattr(self, 'textActorSeg'):
                 self.textActorSeg.SetInput(msg)
         else:
-            msg = f"Slice (Z): {self.current_coronal_slice_index[idx]} - {P_y:.2f} mm"
+            msg = f"Slice (Z): {self.current_coronal_slice_index[idx]} : {0.0 - P_y:.2f} mm"   # Z = -DICOM y
             self.textActorCoronal.SetInput(msg)
             if hasattr(self, 'textActorSeg'):
                 self.textActorSeg.SetInput(msg)
@@ -286,12 +286,12 @@ def onMouseMoveSeg(self, caller, event):
             x_mm = P_x
             y_mm = self.Im_PatPosition[idx, 1] + (self.display_data_seg[idx].shape[1] - 1 - vy) * self.pixel_spac[idx, 0] + self.Im_Offset[idx, 1]
             z_mm = self.Im_PatPosition[idx, 2] + vz * self.slice_thick[idx] + self.Im_Offset[idx, 2]
-            msg = f"Slice (X): {P_x:.2f} mm ({vx}, {vy}, {vz}) Vox. ({x_mm:.2f}, {y_mm:.2f}, {z_mm:.2f}) mm {round(pixel_value,4):.4f}"
+            msg = cursor_text(f"Slice (X): {P_x:.2f} mm", vx, vy, vz, (x_mm, y_mm, z_mm), pixel_value)
             self.textActorSagittal.SetInput(msg)
             if hasattr(self, 'textActorSeg'):
                 self.textActorSeg.SetInput(msg)
         else:
-            msg = f"Slice (X): {self.current_sagittal_slice_index[idx]} - {P_x:.2f} mm"
+            msg = f"Slice (X): {self.current_sagittal_slice_index[idx]} : {P_x:.2f} mm"
             self.textActorSagittal.SetInput(msg)
             if hasattr(self, 'textActorSeg'):
                 self.textActorSeg.SetInput(msg)
@@ -319,13 +319,13 @@ def change_sliceSeg(self, delta):
     displayseg(self)
     if self.segSelectView.currentText() == "Axial":
         P_z = self.Im_PatPosition[idx, 2] + self.current_seg_slice_index[idx] * self.slice_thick[idx] + self.Im_Offset[idx, 2]
-        self.textActorSeg.SetInput(f"Slice (Y): {self.current_seg_slice_index[idx]} - {P_z:.2f} mm")
+        self.textActorSeg.SetInput(f"Slice (Y): {self.current_seg_slice_index[idx]} : {P_z:.2f} mm")
     elif self.segSelectView.currentText() == "Coronal":
         P_y = self.Im_PatPosition[idx, 1] + (self.display_data_seg[idx].shape[1] - 1 - self.current_seg_slice_index[idx]) * self.pixel_spac[idx, 0] + self.Im_Offset[idx, 1]
-        self.textActorSeg.SetInput(f"Slice (Z): {self.current_seg_slice_index[idx]} - {P_y:.2f} mm")
+        self.textActorSeg.SetInput(f"Slice (Z): {self.current_seg_slice_index[idx]} : {0.0 - P_y:.2f} mm")   # Z = -DICOM y
     elif self.segSelectView.currentText() == "Sagittal":
         P_x = self.Im_PatPosition[idx, 0] + self.current_seg_slice_index[idx] * self.pixel_spac[idx, 1] + self.Im_Offset[idx, 0]
-        self.textActorSeg.SetInput(f"Slice (X): {self.current_seg_slice_index[idx]} - {P_x:.2f} mm")
+        self.textActorSeg.SetInput(f"Slice (X): {self.current_seg_slice_index[idx]} : {P_x:.2f} mm")
     else:
         self.textActorSeg.SetInput(f"Slice: {self.current_seg_slice_index[idx]}")
     # Update the slider's value to match the current slice index

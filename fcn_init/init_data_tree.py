@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QMenu, QDialog, QMessageBox
+from PySide6.QtWidgets import QMenu, QDialog, QMessageBox, QInputDialog, QLineEdit
 from fcn_display.Data_tree_general import on_DataTreeView_clicked
 from fcn_export.export_dcm import export_dicom_series
 from fcn_export.export_nii import export_nifti
@@ -219,6 +219,86 @@ def on_tree_context_menu(self, pos):
             print("Delete action triggered")
             delete_structure_set(self, Patient, Study, Modality, Series)
             populate_medical_image_tree(self)
+
+    # -------------------------
+    # Density / material / MCNP lattice map (leaf item under its folder)
+    # -------------------------
+    if Type in ("Medical Image", "DICOM") and len(hierarchy) == 7 and Series_sub_data in SERIES_MAPS:
+        map_name = hierarchy[6]
+        what = SERIES_MAPS[Series_sub_data][1]
+        menu = QMenu()
+        rename_action = menu.addAction(f"Rename '{map_name}'…")
+        menu.addSeparator()
+        delete_action = menu.addAction(f"Delete '{map_name}'")
+        action = menu.exec_(self.DataTreeView.viewport().mapToGlobal(pos))
+        if action == rename_action:
+            new_name = _ask_map_name(self, Patient, Study, Modality, Series, Series_sub_data, map_name)
+            if new_name and rename_series_map(self, Patient, Study, Modality, Series, Series_sub_data,
+                                              map_name, new_name):
+                item.setText(new_name)      # the tree item only: a rebuild would reload the current image
+        elif action == delete_action:
+            if QMessageBox.question(self, f"Delete {what}", f"Delete the {what} '{map_name}'?",
+                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No) == QMessageBox.Yes:
+                delete_series_map(self, Patient, Study, Modality, Series, Series_sub_data, map_name)
+                populate_medical_image_tree(self)
+
+
+# Maps of a series in the data tree: folder label -> (series key, what one map is called)
+SERIES_MAPS = {"Density maps": ("density_maps", "density map"),
+               "Material maps": ("mat_maps", "material map"),
+               "MCNP lattice maps": ("mcnp_lattice_maps", "MCNP lattice map")}
+
+
+def _ask_map_name(self, patient, study, modality, series_index, folder, old):
+    """New name for a map of a series (None if cancelled or unchanged); asks again while it is empty or taken."""
+    key, what = SERIES_MAPS[folder]
+    taken = set(self.medical_image[patient][study][modality][series_index].get(key) or {}) - {old}
+    text = old
+    while True:
+        text, ok = QInputDialog.getText(self, f"Rename {what}", f"New name of the {what} '{old}':",
+                                        QLineEdit.Normal, text)
+        name = text.strip() if ok else ""
+        if not ok or name == old:
+            return None
+        if not name:
+            QMessageBox.warning(self, f"Rename {what}", "Please type a name.")
+        elif name in taken:
+            QMessageBox.warning(self, f"Rename {what}", f"This series already has a {what} named '{name}'.")
+        else:
+            return name
+
+
+def rename_series_map(self, patient, study, modality, series_index, folder, old, new):
+    """
+    Rename a density / material / MCNP lattice map of a series (it keeps its place in the list). The
+    lattice maps made from a renamed material or density map, and the last material map clicked,
+    follow. False if there is no such map or the new name is empty or taken.
+    """
+    series = self.medical_image[patient][study][modality][series_index]
+    key = SERIES_MAPS[folder][0]
+    maps = series.get(key) or {}
+    if old not in maps or not new or new in maps:
+        return False
+    series[key] = {(new if k == old else k): v for k, v in maps.items()}
+    source = {"mat_maps": "material_map", "density_maps": "density_map"}.get(key)
+    if source:
+        for lattice in (series.get("mcnp_lattice_maps") or {}).values():
+            meta = lattice.get("metadata") or {}
+            if meta.get(source) == old:
+                meta[source] = new
+    if key == "mat_maps" and getattr(self, "last_selected_mat_map", None) == old:
+        self.last_selected_mat_map = new
+    return True
+
+
+def delete_series_map(self, patient, study, modality, series_index, folder, name):
+    """Delete a density / material / MCNP lattice map of a series (and its folder when it was the last)."""
+    series = self.medical_image[patient][study][modality][series_index]
+    key = SERIES_MAPS[folder][0]
+    maps = series.get(key) or {}
+    maps.pop(name, None)
+    if not maps:
+        series.pop(key, None)
 
 
 def adjust_reset_view(self):

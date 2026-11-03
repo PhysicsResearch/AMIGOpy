@@ -9,7 +9,6 @@ import pandas as pd
 import numpy as np
 from PySide6.QtWidgets import QTableWidgetItem, QMessageBox
 import csv, math
-from copy import deepcopy
 from datetime import datetime
 from PySide6.QtGui         import QColor, QBrush
 from PySide6.QtCore        import Qt
@@ -258,8 +257,11 @@ def add_mat_HU_row(self):
     t.selectRow(r)
 
 
-def sync_mat_HU_from_table(self):
-    """Read the HU table back into self.mat_HU_list / self.mat_HU."""
+def sync_mat_HU_from_table(self, save=True):
+    """
+    Read the HU table back into self.mat_HU_list / self.mat_HU; save=True (table edits): also
+    save it to the HU LUT shown in the dropdown (hu_lut.autosave_hu_lut, only if it changed).
+    """
     if getattr(self, '_mat_tbl_updating', False):
         return
     t = getattr(self, 'tableMatToHU', None)
@@ -310,10 +312,16 @@ def sync_mat_HU_from_table(self):
                    if d['key'] is not None and d['min'] is not None
                    and d['max'] is not None and d['min'] < d['max']}
     _refresh_overlay(self)
+    if save:
+        try:
+            from fcn_materialassignment.hu_lut import autosave_hu_lut
+            autosave_hu_lut(self)
+        except Exception as e:
+            print(f"[HU LUT] autosave failed: {e}")
 
 
 def update_mat2HU_table(self):
-    """Rebuild the HU table from self.mat_HU_list (or legacy self.mat_HU)."""
+    """Rebuild the HU table from self.mat_HU_list (or legacy self.mat_HU); not saved to the HU LUT."""
     t = setup_mat_hu_table(self)
     if t is None:
         return
@@ -332,7 +340,7 @@ def update_mat2HU_table(self):
                            color=color, visible=d.get('visible', True))
     finally:
         self._mat_tbl_updating = False
-    sync_mat_HU_from_table(self)
+    sync_mat_HU_from_table(self, save=False)
 
 
 def toggle_mat_HU_visibility(self):
@@ -739,9 +747,10 @@ def generate_mat_map(self):
     populate_medical_image_tree(self)
 
 
-def load_mat_map_into_tables(self, map_entry_or_name=None):
+def load_mat_map_into_tables(self, map_entry_or_name=None, map_name=None):
     """Retrieve the HU ranges and structure material assignments stored in a material map
-    and restore them into tableMatToHU and mat_to_struct_tab."""
+    and restore them into tableMatToHU (through the HU LUT dropdown, see
+    hu_lut.show_map_hu_table) and mat_to_struct_tab. map_name: name of a map entry passed."""
     if not getattr(self, 'patientID', None):
         QMessageBox.critical(self, 'Error', 'No Patient selected')
         return False
@@ -761,7 +770,7 @@ def load_mat_map_into_tables(self, map_entry_or_name=None):
         return False
 
     entry = None
-    map_name = "Selected map"
+    map_name = map_name or "Selected map"
     if isinstance(map_entry_or_name, dict):
         entry = map_entry_or_name
     elif isinstance(map_entry_or_name, str) and map_entry_or_name in mat_maps:
@@ -792,8 +801,8 @@ def load_mat_map_into_tables(self, map_entry_or_name=None):
 
     # Restore HU table
     if hu_table:
-        self.mat_HU_list = deepcopy(hu_table)
-        update_mat2HU_table(self)
+        from fcn_materialassignment.hu_lut import show_map_hu_table
+        show_map_hu_table(self, hu_table, map_name)
 
     # Restore structures table
     if structs:

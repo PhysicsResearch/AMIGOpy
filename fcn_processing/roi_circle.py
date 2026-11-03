@@ -314,7 +314,7 @@ def roi_c_add_row(self):
     self.table_circ_roi.setCellWidget(row_position, 7, dir_combo)
 
     btn = QPushButton("Move center two slice")
-    btn.setStyleSheet("background-color: #3b82f6; color: white; font-weight: bold;")
+    btn.setStyleSheet("font-weight: bold;")
     btn.clicked.connect(lambda _, r=row_position: move_center_to_current(self, r))
     self.table_circ_roi.setCellWidget(row_position, 11, btn)
 
@@ -575,7 +575,7 @@ def import_roi_circ_table(self):
             self.table_circ_roi.setCellWidget(row_position, 7, dir_combo)
 
             btn = QPushButton("Move center two slice")
-            btn.setStyleSheet("background-color: #3b82f6; color: white; font-weight: bold;")
+            btn.setStyleSheet("font-weight: bold;")
             btn.clicked.connect(lambda _, r=row_position: move_center_to_current(self, r))
             self.table_circ_roi.setCellWidget(row_position, 11, btn)
             
@@ -652,8 +652,8 @@ def open_series_selection_dialog(self):
     btn_box_check = QHBoxLayout()
     btn_check_all = QPushButton("Check All")
     btn_clear_all = QPushButton("Clear All")
-    btn_check_all.setStyleSheet("background-color: #2b2b36; color: white; padding: 4px;")
-    btn_clear_all.setStyleSheet("background-color: #2b2b36; color: white; padding: 4px;")
+    btn_check_all.setStyleSheet("padding: 4px;")
+    btn_clear_all.setStyleSheet("padding: 4px;")
     
     def check_all_action():
         for i in range(list_widget.count()):

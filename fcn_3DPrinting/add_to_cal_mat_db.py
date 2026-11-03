@@ -746,9 +746,7 @@ def open_add_roi_to_3dp_dialog(self):
     # --- buttons ---------------------------------------------------------------------------
     buttons = QHBoxLayout()
     btn_ok = QPushButton("Add rows")
-    btn_ok.setStyleSheet("background-color: #16a34a; color: white;")
     btn_cancel = QPushButton("Cancel")
-    btn_cancel.setStyleSheet("background-color: #4b5563; color: white;")
     buttons.addStretch()
     buttons.addWidget(btn_ok)
     buttons.addWidget(btn_cancel)

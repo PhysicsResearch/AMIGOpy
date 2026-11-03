@@ -114,6 +114,9 @@ def _on_tab_changed(w, index):
                 setup_3d_database_tab(w)
                 setup_mat_mix_tab(w)
                 setup_view_and_fit_tab(w)
+                # Flow_Infill buttons: initialize_software_buttons is not run again for this tab
+                from fcn_init.init_buttons import connect_3dp_flow_infill_buttons
+                connect_3dp_flow_infill_buttons(w)
             except Exception:
                 # Leave w._is_loading as it is: if the tables never finished loading, autosave must
                 # stay disabled so a half-empty table cannot overwrite the database files.

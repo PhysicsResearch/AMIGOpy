@@ -77,3 +77,9 @@ def onTabChanged(self):
         from fcn_segmentation.functions_segmentation import update_seg_struct_list, disp_seg_image_slice
         update_seg_struct_list(self)
         disp_seg_image_slice(self)
+
+    # 4. Button colours again: the lazy initialization above (and a first load of the tab) connects buttons
+    #    that were already polished as placeholders (fcn_create_gui/button_style.py)
+    from PySide6.QtCore import QTimer
+    from fcn_create_gui.button_style import apply_button_roles
+    QTimer.singleShot(0, lambda: apply_button_roles(self))

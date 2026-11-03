@@ -32,12 +32,13 @@ DRAG_REDRAW_INTERVAL = 0.04
 GRAB_TOL_PX = 8
 # Number of edits that can be undone
 UNDO_LIMIT = 50
-# New catheter button: (text, style, tooltip) before New is pressed and while points are clicked
-NEW_CATHETER_BUTTON = ("New", "background-color: #28a745; color: white;",
+# New catheter button: (text, style, tooltip) before New is pressed and while points are clicked.
+# Its colours come from its role (fcn_create_gui/button_style.py): while points are clicked it is checked.
+NEW_CATHETER_BUTTON = ("New", "",
                        "New catheter: after pressing New, click on the images to add its points, starting from the tip.\n"
                        "Each click adds a point on the current slice (keep the mouse button down to adjust it).\n"
                        "Press Stop when done.")
-STOP_CATHETER_BUTTON = ("Stop", "background-color: #dc3545; color: white; font-weight: bold;",
+STOP_CATHETER_BUTTON = ("Stop", "font-weight: bold;",
                         "Stop adding points: the new catheter is done (without points it is discarded).")
 
 # View name -> VTK widget attribute, and the patient axis normal to the view
@@ -511,6 +512,42 @@ def ref_point_xyz(pt):
     return xyz[:3] if xyz.size >= 3 and np.all(np.isfinite(xyz[:3])) else None
 
 
+def _negated(v):
+    """-v (arrays too) without -0.0; v itself if it is not a number ('N/A')."""
+    if isinstance(v, np.ndarray):
+        return 0.0 - v
+    try:
+        return 0.0 - float(v)
+    except (TypeError, ValueError):
+        return v
+
+
+def table_xyz(x, y, z):
+    """
+    DICOM (x, y, z) -> X, Y, Z of the interface (plan table, catheter list, views), the user's axes
+    as in MCNP (mcnp_input.to_mcnp_axes): X = x, Y = z (axial slice, superior), Z = -y (anterior).
+    Values that are not numbers ('N/A') are kept. Inverse: dicom_xyz.
+    """
+    return x, z, _negated(y)
+
+
+def dicom_xyz(X, Y, Z):
+    """X, Y, Z of the interface (table_xyz) -> DICOM (x, y, z)."""
+    return X, _negated(Z), Y
+
+
+def table_array(mode, data):
+    """
+    A plan array as the table shows it (DwellInfo in "Dwells" mode, else ChPos): its positions (and
+    dwell orientations) as X, Y, Z of table_xyz. A copy: the plan data stay DICOM.
+    """
+    out = np.array(data)
+    for c in (3, 6) if mode == "Dwells" else (0,):
+        if out.ndim == 2 and c + 2 < out.shape[1]:
+            out[:, c:c + 3] = np.column_stack(table_xyz(*out[:, c:c + 3].T))
+    return out
+
+
 def ref_point_name(pt, k):
     """Name of dose reference point k (0-based): its description, else "Point <number>"."""
     name = str(pt.get('DoseReferenceDescription', '') or '').strip()
@@ -768,7 +805,7 @@ def go_to_point(self, xyz):
 
 
 def commit_channel_edit(self, select_row=None):
-    """Refresh tables, plots and views after the channel geometry changed."""
+    """Refresh the table, list and views after the channel geometry changed."""
     from fcn_display.disp_plan_data import update_disp_brachy_plan
     update_disp_brachy_plan(self)
     if (select_row is not None and self.brachy_combobox_01.currentText() == "Channels"
@@ -777,21 +814,15 @@ def commit_channel_edit(self, select_row=None):
 
 
 def _set_channel_count(self, n, current):
-    """Catheter spin boxes (View and Plan modules) and count after catheters were added or removed."""
+    """Catheter spin box (and the _3Dview catheter table) after catheters were added or removed."""
     current = int(min(max(current, 1), max(n, 1)))
-    changed = self.brachy_spinBox_01.maximum() != n
-    for name in ('brachy_spinBox_01', 'brachy_spinBox_02'):
-        spin = getattr(self, name, None)
-        if spin is None:
-            continue
-        spin.blockSignals(True)
-        spin.setMinimum(1)
-        spin.setMaximum(max(n, 1))
-        spin.setValue(current)
-        spin.blockSignals(False)
-    count = getattr(self, 'brachy_N_channels', None)
-    if count is not None:
-        count.setText(f"{n:.0f}")
+    spin = self.brachy_spinBox_01
+    changed = spin.maximum() != n
+    spin.blockSignals(True)
+    spin.setMinimum(1)
+    spin.setMaximum(max(n, 1))
+    spin.setValue(current)
+    spin.blockSignals(False)
     if changed and hasattr(self, '_3D_brachy_table'):
         from fcn_3Dview.brachy_3D_table import repopulate_3D_brachy_table
         repopulate_3D_brachy_table(self)
@@ -985,7 +1016,7 @@ def _stop_new_catheter(self):
 
 
 def update_new_catheter_button(self):
-    """New / Stop text, color and tooltip; back to New when the new catheter is gone (undo, delete)."""
+    """New / Stop text, style and tooltip; back to New when the new catheter is gone (undo, delete)."""
     btn = getattr(self, 'brachy_new_catheter_btn', None)
     if btn is None:
         return
@@ -995,8 +1026,7 @@ def update_new_catheter_button(self):
     _set_checked(btn, active)
     text, style, tip = STOP_CATHETER_BUTTON if active else NEW_CATHETER_BUTTON
     btn.setText(text)
-    from fcn_create_gui.brachy_widgets import colored_button_style
-    btn.setStyleSheet(colored_button_style(style))
+    btn.setStyleSheet(style)
     btn.setToolTip(tip)
 
 

@@ -6,6 +6,7 @@ import numpy as np
 import math
 from fcn_RTFiles.process_contours import build_contours_for_structure, actors_from_contours
 from fcn_processing.mc_grid import update_mc_grid_axial, update_mc_grid_coronal, update_mc_grid_sagittal
+from fcn_evaluation.isodose import update_isodose_axial, update_isodose_coronal, update_isodose_sagittal
 from fcn_materialassignment.mat_overlay import update_mat_overlay_axial, update_mat_overlay_coronal, update_mat_overlay_sagittal
 from vtkmodules.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray
 from fcn_display.brachy_channel_edit import (brachy_highlight, dwell_directions, view_dir, dwell_glyph_size, dwell_outline,
@@ -16,6 +17,8 @@ from fcn_display.brachy_panel import brachy_style, brachy_display, catheter_colo
 
 # Catheter numbers / reference point names: offset (px) from their point
 LABEL_OFFSET_PX = 6
+# Arrowhead at a catheter's tip: its length in catheter point sizes (Style panel), at least TIP_MIN_MM
+TIP_LENGTH, TIP_MIN_MM = 3.0, 5.0
 
 
 def displayaxial(self, Im = None):
@@ -43,6 +46,7 @@ def displayaxial(self, Im = None):
                 disp_roi_axial(self)
 
             update_mc_grid_axial(self)
+            update_isodose_axial(self)
             update_mat_overlay_axial(self)
 
             # Dose reference points and dwells, as set under View > PLAN > Brachy > Display
@@ -780,6 +784,13 @@ def display_brachy_channel_overlay_ax(self):
             renderer.AddActor(polyline_actor)
             self.channel_actors_ax.append(polyline_actor)
 
+        # Arrowhead at the tip (first point): which way the catheter goes
+        if show['ch_tip'] and len(x):
+            tip = catheter_tip_actor(x, y, 0.55, max(TIP_LENGTH * style['ch_point_size'], TIP_MIN_MM), line_color,
+                                     style['ch_line_width'])
+            renderer.AddActor(tip)
+            self.channel_actors_ax.append(tip)
+
         # Catheter name (its number unless renamed) next to its first point (tip)
         if show['ch_labels'] and len(x):
             label = brachy_label_actor(x[0], y[0], 0.5, catheter_label(current_ch, k), line_color, style['label_size'])
@@ -815,6 +826,7 @@ def displaycoronal(self, Im = None):
                 disp_roi_coronal(self)
 
             update_mc_grid_coronal(self)
+            update_isodose_coronal(self)
             update_mat_overlay_coronal(self)
 
             # Dose reference points and dwells, as set under View > PLAN > Brachy > Display
@@ -1495,6 +1507,13 @@ def display_brachy_channel_overlay_co(self):
             renderer.AddActor(polyline_actor)
             self.channel_actors_co.append(polyline_actor)
 
+        # Arrowhead at the tip (first point): which way the catheter goes
+        if show['ch_tip'] and len(x):
+            tip = catheter_tip_actor(x, y, 0.55, max(TIP_LENGTH * style['ch_point_size'], TIP_MIN_MM), line_color,
+                                     style['ch_line_width'])
+            renderer.AddActor(tip)
+            self.channel_actors_co.append(tip)
+
         # Catheter name (its number unless renamed) next to its first point (tip)
         if show['ch_labels'] and len(x):
             label = brachy_label_actor(x[0], y[0], 0.5, catheter_label(current_ch, k), line_color, style['label_size'])
@@ -1533,6 +1552,7 @@ def displaysagittal(self,Im = None):
                 disp_roi_sagittal(self)
 
             update_mc_grid_sagittal(self)
+            update_isodose_sagittal(self)
             update_mat_overlay_sagittal(self)
 
             # Dose reference points and dwells, as set under View > PLAN > Brachy > Display
@@ -2191,6 +2211,13 @@ def display_brachy_channel_overlay_sa(self):
             renderer.AddActor(polyline_actor)
             self.channel_actors_sa.append(polyline_actor)
 
+        # Arrowhead at the tip (first point): which way the catheter goes
+        if show['ch_tip'] and len(x):
+            tip = catheter_tip_actor(x, y, 0.55, max(TIP_LENGTH * style['ch_point_size'], TIP_MIN_MM), line_color,
+                                     style['ch_line_width'])
+            renderer.AddActor(tip)
+            self.channel_actors_sa.append(tip)
+
         # Catheter name (its number unless renamed) next to its first point (tip)
         if show['ch_labels'] and len(x):
             label = brachy_label_actor(x[0], y[0], 0.5, catheter_label(current_ch, k), line_color, style['label_size'])
@@ -2237,18 +2264,13 @@ def update_layer_view(self):
             displayaxial(self)
             displaysagittal(self)
             displaycoronal(self)
-            
-            from fcn_init.view_hist import set_vtk_histogran_fig
-            try:
-                set_vtk_histogran_fig(self)
-            except Exception as e:
-                print(f"Error updating histogram: {e}")
 
-        if hasattr(self, 'combo_colormap') and self.combo_colormap is not None and hasattr(self, 'CmapIDX'):
-            if len(self.CmapIDX) > idx:
-                self.combo_colormap.blockSignals(True)
-                self.combo_colormap.setCurrentIndex(int(self.CmapIDX[idx]))
-                self.combo_colormap.blockSignals(False)
+        # the histogram follows the selected layer, even an empty one (with Hold, the layers shown before stay)
+        from fcn_init.view_hist import set_vtk_histogran_fig
+        try:
+            set_vtk_histogran_fig(self, data_changed=False)
+        except Exception as e:
+            print(f"Error updating histogram: {e}")
 
 
 def create_cross_actor(x_c, y_c, z_c, size, color, thickness=2.0):
@@ -2293,6 +2315,47 @@ def brachy_label_actor(x, y, z, text, color, size):
     prop.SetColor(*color)
     prop.SetBold(True)
     prop.ShadowOn()
+    return actor
+
+
+def catheter_tip_actor(x, y, z, length, color, line_width):
+    """
+    The tip of a catheter (its first point) in a 2D view (x, y: its points in the view): an arrowhead
+    with its point at the tip, along the catheter as seen in this view, so that the catheter reads as an
+    arrow towards its tip. A ring around the tip where the catheter runs across the image (seen end-on).
+    """
+    x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+    tip = np.array([x[0], y[0]])
+    reach = np.hypot(x - tip[0], y - tip[1])
+    if reach.max() < 1.0:
+        ring = vtk.vtkRegularPolygonSource()
+        ring.SetCenter(tip[0], tip[1], z)
+        ring.SetRadius(0.4 * length)
+        ring.SetNumberOfSides(32)
+        ring.GeneratePolygonOff()
+        ring.Update()
+        poly = ring.GetOutput()
+    else:
+        # from the first point at least half an arrow away (the farthest one when none is) to the tip
+        far = np.nonzero(reach >= min(0.5 * length, reach.max()))[0][0]
+        axis = (tip - [x[far], y[far]]) / reach[far]
+        side = np.array([-axis[1], axis[0]]) * 0.35 * length
+        base = tip - axis * length
+        points = vtk.vtkPoints()
+        triangle = vtk.vtkCellArray()
+        triangle.InsertNextCell(3)
+        for i, (px, py) in enumerate((tip, base + side, base - side)):
+            points.InsertNextPoint(px, py, z)
+            triangle.InsertCellPoint(i)
+        poly = vtk.vtkPolyData()
+        poly.SetPoints(points)
+        poly.SetPolys(triangle)
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(poly)
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(*color)
+    actor.GetProperty().SetLineWidth(line_width)
     return actor
 
 

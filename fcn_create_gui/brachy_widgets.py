@@ -1,8 +1,8 @@
 """
 Widgets for View > PLAN > Brachy: a table whose preferred width fits its columns,
 a tree with check boxes (catheter / reference point list), a number box without
-trailing zeros, the style of the colored buttons, and the icons of the catheter
-edit tools and color buttons (drawn, no image files).
+trailing zeros, and the icons of the catheter edit tools and color buttons (drawn,
+no image files). The colours of the buttons come from their role (button_style.py).
 """
 from PySide6.QtCore import QLocale, QPointF, QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap, QPolygonF
@@ -12,13 +12,6 @@ from PySide6.QtWidgets import QDoubleSpinBox, QScrollArea, QStyle, QStyleOptionV
 INK = QColor("#263238")
 PATH = QColor("#78909c")
 ACCENT = QColor("#ff8f00")
-# Colored buttons when disabled (their color would make them look enabled)
-DISABLED_BUTTON_STYLE = "background-color: #37414f; color: #788d9c; border: 1px solid #455364;"
-
-
-def colored_button_style(style):
-    """Style sheet of a colored button: 'style', and greyed when disabled."""
-    return f"QPushButton {{ {style} }} QPushButton:disabled {{ {DISABLED_BUTTON_STYLE} }}"
 
 
 class TrimmedDoubleSpinBox(QDoubleSpinBox):

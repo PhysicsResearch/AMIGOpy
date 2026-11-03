@@ -1,7 +1,6 @@
 from PySide6 import QtWidgets
 from PySide6.QtWidgets import QHeaderView, QAbstractItemView, QTableWidget
 from fcn_processing.roi_circle import on_roitable_item_changed
-from fcn_ctcal.ct_cal import init_ct_cal_table
 from fcn_materialassignment.material_assignment_properties import create_dataframe_materials,update_mat_properties_table,update_mat_table_style
 
 
@@ -113,16 +112,10 @@ def initialize_software_tables(self):
         print(f"Warning: could not set up material assignment tables: {e}")
 
     b1 = safe_table(self, 'brachy_table_01')
-    b2 = safe_table(self, 'brachy_table_02')
     from fcn_display.disp_plan_data import on_brachy_table_item_changed
     if b1 is not None and hasattr(b1, 'itemChanged'):
         try:
             b1.itemChanged.connect(lambda item: on_brachy_table_item_changed(self, b1, item))
-        except (TypeError, RuntimeError):
-            pass
-    if b2 is not None and hasattr(b2, 'itemChanged'):
-        try:
-            b2.itemChanged.connect(lambda item: on_brachy_table_item_changed(self, b2, item))
         except (TypeError, RuntimeError):
             pass
 

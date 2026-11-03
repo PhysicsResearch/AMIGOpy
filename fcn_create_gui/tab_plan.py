@@ -40,9 +40,9 @@ def create_tab_plan(w):
 
     Creates the treatment planning interface:
     - Plan_tabs QTabWidget with sub-tabs:
-      * Brachy plan: plan data display, TG43 source data (radial dose,
-        anisotropy, along-away tables) and dose grid (the TG43 dose is
-        calculated in View > PLAN > Brachy)
+      * Brachy: TG43 tab with the source data (radial dose, anisotropy,
+        along-away tables) and the dose grid (the plan and its TG43 dose
+        are in View > PLAN > Brachy)
       * EQD2: alpha/beta ratio table and EQD2 dose conversion
       * Plan Evaluation: uncertainty analysis and error simulation
       (Material Assignment and Density Map now live in View > MonteCarlo;
@@ -82,293 +82,6 @@ def create_tab_plan(w):
     w.gridLayout_43.setObjectName(u"gridLayout_43")
     w.BrachytabWidget_2 = QTabWidget(w.Brachy_plan_tab)
     w.BrachytabWidget_2.setObjectName(u"BrachytabWidget_2")
-    w.Br_tab_42 = QWidget()
-    w.Br_tab_42.setObjectName(u"Br_tab_42")
-    w.gridLayout_48 = QGridLayout(w.Br_tab_42)
-    w.gridLayout_48.setObjectName(u"gridLayout_48")
-    w.verticalSpacer_9 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-    w.gridLayout_48.addItem(w.verticalSpacer_9, 0, 0, 1, 1)
-
-    w.brachy_ax_01 = QWidget(w.Br_tab_42)
-    w.brachy_ax_01.setObjectName(u"brachy_ax_01")
-
-    w.gridLayout_48.addWidget(w.brachy_ax_01, 0, 1, 2, 5)
-
-    w.brachy_ax_02 = QWidget(w.Br_tab_42)
-    w.brachy_ax_02.setObjectName(u"brachy_ax_02")
-
-    w.gridLayout_48.addWidget(w.brachy_ax_02, 0, 6, 2, 4)
-
-    w.verticalSpacer_11 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-    w.gridLayout_48.addItem(w.verticalSpacer_11, 1, 0, 1, 1)
-
-    w.verticalSpacer_10 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-    w.gridLayout_48.addItem(w.verticalSpacer_10, 2, 0, 1, 1)
-
-    w.brachy_table_02 = QTableWidget(w.Br_tab_42)
-    w.brachy_table_02.setObjectName(u"brachy_table_02")
-    w.brachy_table_02.setFont(font2)
-
-    w.gridLayout_48.addWidget(w.brachy_table_02, 2, 1, 2, 5)
-
-    w.verticalSpacer_8 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-    w.gridLayout_48.addItem(w.verticalSpacer_8, 3, 0, 1, 1)
-
-    w.lineEdit_51 = QLineEdit(w.Br_tab_42)
-    w.lineEdit_51.setObjectName(u"lineEdit_51")
-    w.lineEdit_51.setEnabled(False)
-    w.lineEdit_51.setFont(font)
-
-    w.gridLayout_48.addWidget(w.lineEdit_51, 4, 1, 1, 1)
-
-    w.brachy_ch_time = QLineEdit(w.Br_tab_42)
-    w.brachy_ch_time.setObjectName(u"brachy_ch_time")
-    w.brachy_ch_time.setEnabled(False)
-    w.brachy_ch_time.setFont(font)
-
-    w.gridLayout_48.addWidget(w.brachy_ch_time, 4, 2, 1, 1)
-
-    w.lineEdit_52 = QLineEdit(w.Br_tab_42)
-    w.lineEdit_52.setObjectName(u"lineEdit_52")
-    w.lineEdit_52.setEnabled(False)
-    w.lineEdit_52.setFont(font)
-
-    w.gridLayout_48.addWidget(w.lineEdit_52, 4, 3, 1, 1)
-
-    w.brachy_total_time = QLineEdit(w.Br_tab_42)
-    w.brachy_total_time.setObjectName(u"brachy_total_time")
-    w.brachy_total_time.setEnabled(False)
-    w.brachy_total_time.setFont(font)
-
-    w.gridLayout_48.addWidget(w.brachy_total_time, 4, 4, 1, 1)
-
-    w.lineEdit_54 = QLineEdit(w.Br_tab_42)
-    w.lineEdit_54.setObjectName(u"lineEdit_54")
-    w.lineEdit_54.setEnabled(False)
-    w.lineEdit_54.setFont(font)
-
-    w.gridLayout_48.addWidget(w.lineEdit_54, 4, 5, 1, 1)
-
-    w.brachy_plan_Ac = QLineEdit(w.Br_tab_42)
-    w.brachy_plan_Ac.setObjectName(u"brachy_plan_Ac")
-    w.brachy_plan_Ac.setEnabled(False)
-    w.brachy_plan_Ac.setFont(font)
-
-    w.gridLayout_48.addWidget(w.brachy_plan_Ac, 4, 6, 1, 1)
-
-    w.lineEdit_53 = QLineEdit(w.Br_tab_42)
-    w.lineEdit_53.setObjectName(u"lineEdit_53")
-    w.lineEdit_53.setEnabled(False)
-    w.lineEdit_53.setFont(font)
-
-    w.gridLayout_48.addWidget(w.lineEdit_53, 4, 7, 1, 1)
-
-    w.brachy_N_channels = QLineEdit(w.Br_tab_42)
-    w.brachy_N_channels.setObjectName(u"brachy_N_channels")
-    w.brachy_N_channels.setEnabled(False)
-    w.brachy_N_channels.setFont(font)
-
-    w.gridLayout_48.addWidget(w.brachy_N_channels, 4, 8, 1, 1)
-
-    w.pushButton = QPushButton(w.Br_tab_42)
-    w.pushButton.setObjectName(u"pushButton")
-
-    w.gridLayout_48.addWidget(w.pushButton, 4, 9, 1, 1)
-
-    w.lineEdit_55 = QLineEdit(w.Br_tab_42)
-    w.lineEdit_55.setObjectName(u"lineEdit_55")
-    w.lineEdit_55.setEnabled(False)
-    w.lineEdit_55.setFont(font)
-
-    w.gridLayout_48.addWidget(w.lineEdit_55, 5, 1, 1, 1)
-
-    w.brachy_spinBox_02 = QSpinBox(w.Br_tab_42)
-    w.brachy_spinBox_02.setObjectName(u"brachy_spinBox_02")
-    w.brachy_spinBox_02.setFont(font)
-
-    w.gridLayout_48.addWidget(w.brachy_spinBox_02, 5, 2, 1, 1)
-
-    w.brachy_combobox_02 = QComboBox(w.Br_tab_42)
-    w.brachy_combobox_02.setObjectName(u"brachy_combobox_02")
-
-    w.gridLayout_48.addWidget(w.brachy_combobox_02, 5, 3, 1, 1)
-
-    w.checkBox_show_dw_plot = QCheckBox(w.Br_tab_42)
-    w.checkBox_show_dw_plot.setObjectName(u"checkBox_show_dw_plot")
-    w.checkBox_show_dw_plot.setFont(font)
-    w.checkBox_show_dw_plot.setChecked(True)
-
-    w.gridLayout_48.addWidget(w.checkBox_show_dw_plot, 5, 6, 1, 1)
-
-    w.checkBox_show_ch_plot = QCheckBox(w.Br_tab_42)
-    w.checkBox_show_ch_plot.setObjectName(u"checkBox_show_ch_plot")
-    w.checkBox_show_ch_plot.setFont(font)
-    w.checkBox_show_ch_plot.setChecked(True)
-
-    w.gridLayout_48.addWidget(w.checkBox_show_ch_plot, 5, 7, 1, 1)
-
-    w.checkBox_dw_ch_plot = QCheckBox(w.Br_tab_42)
-    w.checkBox_dw_ch_plot.setObjectName(u"checkBox_dw_ch_plot")
-    w.checkBox_dw_ch_plot.setFont(font)
-    w.checkBox_dw_ch_plot.setChecked(True)
-
-    w.gridLayout_48.addWidget(w.checkBox_dw_ch_plot, 5, 8, 1, 1)
-
-    w.brachy_ch_plot = QPushButton(w.Br_tab_42)
-    w.brachy_ch_plot.setObjectName(u"brachy_ch_plot")
-
-    w.gridLayout_48.addWidget(w.brachy_ch_plot, 5, 9, 1, 1)
-
-    w.groupBox_11 = QGroupBox(w.Br_tab_42)
-    w.groupBox_11.setObjectName(u"groupBox_11")
-    w.gridLayout_46 = QGridLayout(w.groupBox_11)
-    w.gridLayout_46.setObjectName(u"gridLayout_46")
-    w.brachy_ch_line_width = QDoubleSpinBox(w.groupBox_11)
-    w.brachy_ch_line_width.setObjectName(u"brachy_ch_line_width")
-    w.brachy_ch_line_width.setFont(font)
-    w.brachy_ch_line_width.setValue(1.000000000000000)
-
-    w.gridLayout_46.addWidget(w.brachy_ch_line_width, 1, 3, 1, 1)
-
-    w.brachy_ch_p1_color = QComboBox(w.groupBox_11)
-    w.brachy_ch_p1_color.setObjectName(u"brachy_ch_p1_color")
-    w.brachy_ch_p1_color.setFont(font)
-
-    w.gridLayout_46.addWidget(w.brachy_ch_p1_color, 7, 2, 1, 1)
-
-    w.lineEdit_60 = QLineEdit(w.groupBox_11)
-    w.lineEdit_60.setObjectName(u"lineEdit_60")
-    w.lineEdit_60.setEnabled(False)
-    w.lineEdit_60.setFont(font)
-
-    w.gridLayout_46.addWidget(w.lineEdit_60, 2, 2, 1, 1)
-
-    w.brachy_dw_size = QSpinBox(w.groupBox_11)
-    w.brachy_dw_size.setObjectName(u"brachy_dw_size")
-    w.brachy_dw_size.setFont(font)
-    w.brachy_dw_size.setValue(15)
-
-    w.gridLayout_46.addWidget(w.brachy_dw_size, 1, 1, 1, 1)
-
-    w.lineEdit_57 = QLineEdit(w.groupBox_11)
-    w.lineEdit_57.setObjectName(u"lineEdit_57")
-    w.lineEdit_57.setEnabled(False)
-    w.lineEdit_57.setFont(font)
-
-    w.gridLayout_46.addWidget(w.lineEdit_57, 1, 2, 1, 1)
-
-    w.brachy_ch_size = QDoubleSpinBox(w.groupBox_11)
-    w.brachy_ch_size.setObjectName(u"brachy_ch_size")
-    w.brachy_ch_size.setFont(font)
-    w.brachy_ch_size.setValue(20.000000000000000)
-
-    w.gridLayout_46.addWidget(w.brachy_ch_size, 4, 3, 1, 1)
-
-    w.lineEdit_56 = QLineEdit(w.groupBox_11)
-    w.lineEdit_56.setObjectName(u"lineEdit_56")
-    w.lineEdit_56.setEnabled(False)
-    w.lineEdit_56.setFont(font)
-
-    w.gridLayout_46.addWidget(w.lineEdit_56, 1, 0, 1, 1)
-
-    w.lineEdit_58 = QLineEdit(w.groupBox_11)
-    w.lineEdit_58.setObjectName(u"lineEdit_58")
-    w.lineEdit_58.setEnabled(False)
-    w.lineEdit_58.setFont(font)
-
-    w.gridLayout_46.addWidget(w.lineEdit_58, 4, 2, 1, 1)
-
-    w.brachy_line_color = QComboBox(w.groupBox_11)
-    w.brachy_line_color.setObjectName(u"brachy_line_color")
-    w.brachy_line_color.setFont(font)
-
-    w.gridLayout_46.addWidget(w.brachy_line_color, 3, 2, 1, 1)
-
-    w.lineEdit_59 = QLineEdit(w.groupBox_11)
-    w.lineEdit_59.setObjectName(u"lineEdit_59")
-    w.lineEdit_59.setEnabled(False)
-    w.lineEdit_59.setFont(font)
-
-    w.gridLayout_46.addWidget(w.lineEdit_59, 2, 0, 1, 1)
-
-    w.brachy_dw_color = QComboBox(w.groupBox_11)
-    w.brachy_dw_color.setObjectName(u"brachy_dw_color")
-    w.brachy_dw_color.setFont(font)
-
-    w.gridLayout_46.addWidget(w.brachy_dw_color, 3, 0, 1, 1)
-
-    w.lineEdit_61 = QLineEdit(w.groupBox_11)
-    w.lineEdit_61.setObjectName(u"lineEdit_61")
-    w.lineEdit_61.setEnabled(False)
-    w.lineEdit_61.setFont(font)
-
-    w.gridLayout_46.addWidget(w.lineEdit_61, 5, 2, 1, 1)
-
-    w.lineEdit_62 = QLineEdit(w.groupBox_11)
-    w.lineEdit_62.setObjectName(u"lineEdit_62")
-    w.lineEdit_62.setEnabled(False)
-
-    w.gridLayout_46.addWidget(w.lineEdit_62, 4, 0, 1, 1)
-
-    w.brachy_struc_show_01 = QComboBox(w.groupBox_11)
-    w.brachy_struc_show_01.setObjectName(u"brachy_struc_show_01")
-    w.brachy_struc_show_01.setFont(font)
-
-    w.gridLayout_46.addWidget(w.brachy_struc_show_01, 5, 0, 1, 1)
-
-    w.brachy_struc_show_02 = QComboBox(w.groupBox_11)
-    w.brachy_struc_show_02.setObjectName(u"brachy_struc_show_02")
-    w.brachy_struc_show_02.setFont(font)
-
-    w.gridLayout_46.addWidget(w.brachy_struc_show_02, 7, 0, 1, 1)
-
-
-    w.gridLayout_48.addWidget(w.groupBox_11, 2, 6, 1, 4)
-
-    w.Brachy_groupBox_12 = QGroupBox(w.Br_tab_42)
-    w.Brachy_groupBox_12.setObjectName(u"Brachy_groupBox_12")
-    w.gridLayout_49 = QGridLayout(w.Brachy_groupBox_12)
-    w.gridLayout_49.setObjectName(u"gridLayout_49")
-    w.Brachy_setalldwtimes = QPushButton(w.Brachy_groupBox_12)
-    w.Brachy_setalldwtimes.setObjectName(u"Brachy_setalldwtimes")
-
-    w.gridLayout_49.addWidget(w.Brachy_setalldwtimes, 1, 0, 1, 1)
-
-    w.Brachy_create_new_channel = QPushButton(w.Brachy_groupBox_12)
-    w.Brachy_create_new_channel.setObjectName(u"Brachy_create_new_channel")
-
-    w.gridLayout_49.addWidget(w.Brachy_create_new_channel, 1, 1, 1, 1)
-
-    w.Brachy_DuplicateChannel = QPushButton(w.Brachy_groupBox_12)
-    w.Brachy_DuplicateChannel.setObjectName(u"Brachy_DuplicateChannel")
-
-    w.gridLayout_49.addWidget(w.Brachy_DuplicateChannel, 2, 1, 1, 1)
-
-    w.Brachy_setIDD_distance = QPushButton(w.Brachy_groupBox_12)
-    w.Brachy_setIDD_distance.setObjectName(u"Brachy_setIDD_distance")
-
-    w.gridLayout_49.addWidget(w.Brachy_setIDD_distance, 2, 0, 1, 1)
-
-    w.Brachy_DeadSpace_Offset = QPushButton(w.Brachy_groupBox_12)
-    w.Brachy_DeadSpace_Offset.setObjectName(u"Brachy_DeadSpace_Offset")
-
-    w.gridLayout_49.addWidget(w.Brachy_DeadSpace_Offset, 3, 0, 1, 1)
-
-    w.Brachy_DeleteChannel = QPushButton(w.Brachy_groupBox_12)
-    w.Brachy_DeleteChannel.setObjectName(u"Brachy_DeleteChannel")
-
-    w.gridLayout_49.addWidget(w.Brachy_DeleteChannel, 4, 1, 1, 1)
-
-    # (the TG43 dose is calculated in View > PLAN > Brachy > Dose calculation)
-
-
-    w.gridLayout_48.addWidget(w.Brachy_groupBox_12, 3, 6, 1, 4)
-
-    w.BrachytabWidget_2.addTab(w.Br_tab_42, "")
     w.Br_tab_43 = QWidget()
     w.Br_tab_43.setObjectName(u"Br_tab_43")
     w.gridLayout_51 = QGridLayout(w.Br_tab_43)
@@ -1398,7 +1111,7 @@ def create_tab_mat_assignment(w):
     """
     Create the Material Assignment widget (w.tab_mat_assignment):
     material-to-HU mapping, structure assignment, material database table,
-    HU LUT load/save and HU range info of the selected series.
+    HU LUT dropdown (saved automatically) and HU range info of the selected series.
 
     The caller is responsible for adding w.tab_mat_assignment to a tab widget.
     """
@@ -1503,43 +1216,74 @@ def create_tab_mat_assignment(w):
     w.mat_to_HU_box.setObjectName(u"mat_to_HU_box")
     w.gridLayout_71 = QGridLayout(w.mat_to_HU_box)
     w.gridLayout_71.setObjectName(u"gridLayout_71")
+
+    # HU LUT (saved list of HU ranges) shown in the table: every edit of the table is saved
+    # to it (%LOCALAPPDATA%\AMIGOpy\HU_LUTs, see fcn_materialassignment/hu_lut.py)
+    w.hu_lut_bar = QWidget(w.mat_to_HU_box)
+    w.hu_lut_bar.setObjectName(u"hu_lut_bar")
+    w.hu_lut_bar_layout = QHBoxLayout(w.hu_lut_bar)
+    w.hu_lut_bar_layout.setContentsMargins(0, 0, 0, 0)
+    w.hu_lut_bar_layout.setSpacing(6)
+
+    w.hu_lut_label = QLabel(w.hu_lut_bar)
+    w.hu_lut_label.setObjectName(u"hu_lut_label")
+    w.hu_lut_label.setText(u"HU LUT:")
+    w.hu_lut_bar_layout.addWidget(w.hu_lut_label)
+
+    w.hu_lut_combo = QComboBox(w.hu_lut_bar)
+    w.hu_lut_combo.setObjectName(u"hu_lut_combo")
+    w.hu_lut_bar_layout.addWidget(w.hu_lut_combo, 1)
+
+    w.hu_lut_new = QPushButton(w.hu_lut_bar)
+    w.hu_lut_new.setObjectName(u"hu_lut_new")
+    w.hu_lut_new.setText(u"New")
+    w.hu_lut_new.setToolTip(u"Create an empty HU LUT")
+    w.hu_lut_bar_layout.addWidget(w.hu_lut_new)
+
+    w.hu_lut_duplicate = QPushButton(w.hu_lut_bar)
+    w.hu_lut_duplicate.setObjectName(u"hu_lut_duplicate")
+    w.hu_lut_duplicate.setText(u"Duplicate")
+    w.hu_lut_duplicate.setToolTip(u"Save a copy of the table under a new name")
+    w.hu_lut_bar_layout.addWidget(w.hu_lut_duplicate)
+
+    w.hu_lut_rename = QPushButton(w.hu_lut_bar)
+    w.hu_lut_rename.setObjectName(u"hu_lut_rename")
+    w.hu_lut_rename.setText(u"Rename")
+    w.hu_lut_rename.setToolTip(u"Rename the HU LUT shown")
+    w.hu_lut_bar_layout.addWidget(w.hu_lut_rename)
+
+    w.hu_lut_delete = QPushButton(w.hu_lut_bar)
+    w.hu_lut_delete.setObjectName(u"hu_lut_delete")
+    w.hu_lut_delete.setText(u"Delete")
+    w.hu_lut_delete.setToolTip(u"Delete the HU LUT shown")
+    w.hu_lut_bar_layout.addWidget(w.hu_lut_delete)
+
+    w.gridLayout_71.addWidget(w.hu_lut_bar, 0, 0, 1, 2)
+
     w.tableMatToHU = QTableWidget(w.mat_to_HU_box)
     w.tableMatToHU.setObjectName(u"tableMatToHU")
 
-    w.gridLayout_71.addWidget(w.tableMatToHU, 0, 0, 6, 1)
+    w.gridLayout_71.addWidget(w.tableMatToHU, 1, 0, 4, 1)
 
     # Buttons stacked on the right of the table (saves vertical space)
     w.add_mat_hu_row = QPushButton(w.mat_to_HU_box)
     w.add_mat_hu_row.setObjectName(u"add_mat_hu_row")
     w.add_mat_hu_row.setText(u"Add Material")
     w.add_mat_hu_row.setToolTip(u"Add a row: pick the material in the first column and type the HU range")
-    w.gridLayout_71.addWidget(w.add_mat_hu_row, 0, 1, 1, 1)
+    w.gridLayout_71.addWidget(w.add_mat_hu_row, 1, 1, 1, 1)
 
     w.remove_mat_fromhu = QPushButton(w.mat_to_HU_box)
     w.remove_mat_fromhu.setObjectName(u"remove_mat_fromhu")
     w.remove_mat_fromhu.setToolTip(u"Remove the selected rows (or the last row)")
-    w.gridLayout_71.addWidget(w.remove_mat_fromhu, 1, 1, 1, 1)
+    w.gridLayout_71.addWidget(w.remove_mat_fromhu, 2, 1, 1, 1)
 
     w.mat_hu_toggle_vis = QPushButton(w.mat_to_HU_box)
     w.mat_hu_toggle_vis.setObjectName(u"mat_hu_toggle_vis")
     w.mat_hu_toggle_vis.setText(u"Show / Hide all")
     w.mat_hu_toggle_vis.setToolTip(u"Show all HU-range overlays (or hide all if all are shown)")
-    w.gridLayout_71.addWidget(w.mat_hu_toggle_vis, 2, 1, 1, 1)
-
-    # Save / load lists of HU ranges (HU look-up tables)
-    w.load_hu_lut = QPushButton(w.mat_to_HU_box)
-    w.load_hu_lut.setObjectName(u"load_hu_lut")
-    w.load_hu_lut.setText(u"Load HU LUT")
-    w.load_hu_lut.setToolTip(u"Load a saved list of material HU ranges (CSV: Material,From,To)")
-    w.gridLayout_71.addWidget(w.load_hu_lut, 3, 1, 1, 1)
-
-    w.save_hu_lut = QPushButton(w.mat_to_HU_box)
-    w.save_hu_lut.setObjectName(u"save_hu_lut")
-    w.save_hu_lut.setText(u"Save HU LUT")
-    w.save_hu_lut.setToolTip(u"Save the current material HU ranges to a CSV file")
-    w.gridLayout_71.addWidget(w.save_hu_lut, 4, 1, 1, 1)
+    w.gridLayout_71.addWidget(w.mat_hu_toggle_vis, 3, 1, 1, 1)
     w.gridLayout_71.addItem(QSpacerItem(10, 10, QSizePolicy.Policy.Minimum,
-                                        QSizePolicy.Policy.Expanding), 5, 1, 1, 1)
+                                        QSizePolicy.Policy.Expanding), 4, 1, 1, 1)
     w.gridLayout_71.setColumnStretch(0, 1)
 
 
@@ -1591,11 +1335,14 @@ def create_tab_mat_assignment(w):
 
 def create_tab_density_map(w):
     """
-    Create the Density Map widget (w.density_map_tab): CT calibration curves
-    and electron/mass density map creation.
+    Create the Density Map widget (w.density_map_tab): the HU tables (HU -> mass density, RED or
+    SPR; saved in %LOCALAPPDATA%\\AMIGOpy\\ct_cal_curves, see fcn_ctcal/ct_cal.py) with their graph,
+    and "Create density map" (a dialog with all the choices, see fcn_densitymap/density_map.py).
 
     The caller is responsible for adding w.density_map_tab to a tab widget.
     """
+    from fcn_ctcal.ct_cal import TYPES
+
     w.density_map_tab = QWidget()
     w.density_map_tab.setObjectName(u"density_map_tab")
     w.gridLayout_58 = QGridLayout(w.density_map_tab)
@@ -1604,78 +1351,75 @@ def create_tab_density_map(w):
     w.ct_cal_input.setObjectName(u"ct_cal_input")
     w.gridLayout_57 = QGridLayout(w.ct_cal_input)
     w.gridLayout_57.setObjectName(u"gridLayout_57")
-    w.save_changes_ct_cal = QPushButton(w.ct_cal_input)
-    w.save_changes_ct_cal.setObjectName(u"save_changes_ct_cal")
+    w.gridLayout_57.setContentsMargins(0, 0, 0, 0)
 
-    w.gridLayout_57.addWidget(w.save_changes_ct_cal, 1, 0, 1, 1)
+    # HU table shown in the table: every edit of the table is saved to it
+    w.ct_cal_bar = QWidget(w.ct_cal_input)
+    w.ct_cal_bar.setObjectName(u"ct_cal_bar")
+    bar = QHBoxLayout(w.ct_cal_bar)
+    bar.setContentsMargins(0, 0, 0, 0)
+    bar.setSpacing(6)
+    w.ct_cal_list_label = QLabel(u"HU table:", w.ct_cal_bar)
+    bar.addWidget(w.ct_cal_list_label)
+    w.ct_cal_list = QComboBox(w.ct_cal_bar)
+    w.ct_cal_list.setObjectName(u"ct_cal_list")
+    w.ct_cal_list.setMinimumContentsLength(20)
+    w.ct_cal_list.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+    bar.addWidget(w.ct_cal_list, 1)
+    for attr, text, tip in (("ct_cal_new", u"New", u"Create an HU table (mass density, RED or SPR)"),
+                            ("ct_cal_duplicate", u"Duplicate", u"Save a copy of the table under a new name"),
+                            ("ct_cal_rename", u"Rename", u"Rename the HU table shown"),
+                            ("ct_cal_delete", u"Delete", u"Delete the HU table shown")):
+        btn = QPushButton(text, w.ct_cal_bar)
+        btn.setObjectName(attr)
+        btn.setToolTip(tip)
+        setattr(w, attr, btn)
+        bar.addWidget(btn)
+    w.gridLayout_57.addWidget(w.ct_cal_bar, 0, 0, 1, 4)
+
+    w.ct_cal_type_label = QLabel(u"Type:", w.ct_cal_input)
+    w.gridLayout_57.addWidget(w.ct_cal_type_label, 1, 0, 1, 1)
+    w.ct_cal_type = QComboBox(w.ct_cal_input)
+    w.ct_cal_type.setObjectName(u"ct_cal_type")
+    for key, (label, _) in TYPES.items():
+        w.ct_cal_type.addItem(label, key)
+    w.ct_cal_type.setToolTip(u"What the table gives for each HU: mass density (g/cm3), RED (relative electron "
+                             u"density)\nor SPR (stopping power ratio); saved with the table.")
+    w.gridLayout_57.addWidget(w.ct_cal_type, 1, 1, 1, 1)
+    w.ct_cal_hold = QCheckBox(u"Hold plot", w.ct_cal_input)
+    w.ct_cal_hold.setObjectName(u"ct_cal_hold")
+    w.ct_cal_hold.setToolTip(u"Keep the curves of the tables shown before in the graph, to compare them")
+    w.gridLayout_57.addWidget(w.ct_cal_hold, 1, 3, 1, 1, Qt.AlignmentFlag.AlignRight)
 
     w.ct_cal_table = QTableWidget(w.ct_cal_input)
     w.ct_cal_table.setObjectName(u"ct_cal_table")
+    w.ct_cal_table.setColumnCount(2)
+    w.ct_cal_table.setHorizontalHeaderLabels([u"HU", u"Mass density"])
+    w.gridLayout_57.addWidget(w.ct_cal_table, 2, 0, 1, 4)
 
-    w.gridLayout_57.addWidget(w.ct_cal_table, 2, 0, 1, 2)
+    for col, (attr, text, tip) in enumerate((
+            ("ct_cal_add_row", u"Add row", u"Add a row (saved once it holds two numbers)"),
+            ("ct_cal_del_row", u"Delete row", u"Delete the selected rows"),
+            ("load_ct_cal", u"Import...", u"Import a CSV file (columns HU and DENSITY, RED or SPR) as a new table"),
+            ("Export_ct_cal", u"Export...", u"Save the table shown as a CSV file"))):
+        btn = QPushButton(text, w.ct_cal_input)
+        btn.setObjectName(attr)
+        btn.setToolTip(tip)
+        setattr(w, attr, btn)
+        w.gridLayout_57.addWidget(btn, 3, col, 1, 1)
 
-    w.Export_ct_cal = QPushButton(w.ct_cal_input)
-    w.Export_ct_cal.setObjectName(u"Export_ct_cal")
-
-    w.gridLayout_57.addWidget(w.Export_ct_cal, 1, 1, 1, 1)
-
-    w.load_ct_cal = QPushButton(w.ct_cal_input)
-    w.load_ct_cal.setObjectName(u"load_ct_cal")
-
-    w.gridLayout_57.addWidget(w.load_ct_cal, 0, 1, 1, 1)
-
-    w.ct_cal_save_copy = QPushButton(w.ct_cal_input)
-    w.ct_cal_save_copy.setObjectName(u"ct_cal_save_copy")
-
-    w.gridLayout_57.addWidget(w.ct_cal_save_copy, 3, 1, 1, 1)
-
-    w.ct_cal_list = QComboBox(w.ct_cal_input)
-    w.ct_cal_list.setObjectName(u"ct_cal_list")
-    w.ct_cal_list.setEditable(True)
-
-    w.gridLayout_57.addWidget(w.ct_cal_list, 0, 0, 1, 1)
-
-    w.ct_cal_add_row = QPushButton(w.ct_cal_input)
-    w.ct_cal_add_row.setObjectName(u"ct_cal_add_row")
-
-    w.gridLayout_57.addWidget(w.ct_cal_add_row, 3, 0, 1, 1)
-
-
-    w.gridLayout_58.addWidget(w.ct_cal_input, 0, 0, 1, 2)
-
-    w.ct_cal_plot = QWidget(w.density_map_tab)
-    w.ct_cal_plot.setObjectName(u"ct_cal_plot")
-
-    w.gridLayout_58.addWidget(w.ct_cal_plot, 0, 2, 1, 1)
+    w.gridLayout_58.addWidget(w.ct_cal_input, 0, 0, 1, 1)
 
     w.create_density_map = QPushButton(w.density_map_tab)
     w.create_density_map.setObjectName(u"create_density_map")
-
+    w.create_density_map.setToolTip(u"Create a mass density, RED or SPR map of the CT: a dialog asks for the HU table "
+                                    u"and the material map options")
     w.gridLayout_58.addWidget(w.create_density_map, 1, 0, 1, 1)
 
-    w.create_density_map__from_mat_map = QPushButton(w.density_map_tab)
-    w.create_density_map__from_mat_map.setObjectName(u"create_density_map__from_mat_map")
+    w.ct_cal_plot = QWidget(w.density_map_tab)
+    w.ct_cal_plot.setObjectName(u"ct_cal_plot")
+    w.gridLayout_58.addWidget(w.ct_cal_plot, 0, 1, 2, 1)
 
-    w.gridLayout_58.addWidget(w.create_density_map__from_mat_map, 2, 0, 1, 1)
-
-    w.vspacer_ct_cal = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-    w.gridLayout_58.addItem(w.vspacer_ct_cal, 3, 0, 1, 1)
-
-    w.delete_density_map = QPushButton(w.density_map_tab)
-    w.delete_density_map.setObjectName(u"delete_density_map")
-
-    w.gridLayout_58.addWidget(w.delete_density_map, 2, 1, 1, 1)
-
-    w.override_no_tissue = QCheckBox(w.density_map_tab)
-    w.override_no_tissue.setObjectName(u"override_no_tissue")
-
-    w.gridLayout_58.addWidget(w.override_no_tissue, 1, 1, 1, 1)
-
-    w.gridLayout_58.setRowStretch(0, 6)
-    w.gridLayout_58.setRowStretch(1, 2)
-    w.gridLayout_58.setRowStretch(2, 2)
-    w.gridLayout_58.setColumnStretch(0, 1)
-    w.gridLayout_58.setColumnStretch(1, 1)
-    w.gridLayout_58.setColumnStretch(2, 6)
-
+    w.gridLayout_58.setRowStretch(0, 1)
+    w.gridLayout_58.setColumnStretch(0, 2)
+    w.gridLayout_58.setColumnStretch(1, 3)

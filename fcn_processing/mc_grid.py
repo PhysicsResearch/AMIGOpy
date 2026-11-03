@@ -21,15 +21,26 @@ layer 0 (inclusive bounds):
 sagittal = Z-Y, coronal = X-Y.)
 
 Each grid has its own "Display" checkbox, and the boxes are only shown
-while the MonteCarlo tab is the selected tab.
+while the MonteCarlo tab is the selected tab. There the boxes can be dragged
+on the views: an edge or a corner resizes, the inside moves the box.
+
+In mm mode the calculation grid boxes hold mm of the first / last voxel
+centres in the user's (MCNP) axes: X = DICOM x, Y = DICOM z, Z = -DICOM y
+(anterior +). The layer 0 rows are stored flipped (row r is DICOM row
+n_rows - 1 - r), so Z runs with them, as in voxel mode.
+"Import from dose" sets the calculation grid to the voxels of a dose.
 
 NOTE: this module must NOT import fcn_display.display_images at module
 level (display_images imports this module -> circular import).
 """
 
+import time
+
 import numpy as np
 import vtk
-from PySide6.QtWidgets import QDoubleSpinBox
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QCursor
+from PySide6.QtWidgets import QApplication, QDoubleSpinBox, QMenu
 
 # prefix -> appearance
 GRIDS = {
@@ -39,6 +50,7 @@ GRIDS = {
 
 _LINE_WIDTH = 2.0
 _VIEWS = ("ax", "co", "sa")
+MM_DECIMALS = 4     # mm mode boxes: 0.1 um, so a grid taken from a dose keeps its voxels
 
 
 # ----------------------------------------------------------------------------
@@ -49,7 +61,18 @@ def _fields(prefix):
 
 
 def _ref_origin_and_spacing(self):
-    """Return (ox, oy, oz), (ps_col, ps_row, st) for reference image (layer 0)."""
+    """
+    Return (ox, oy, oz), (ps_col, ps_row, st) for reference image: the one shown in layer 0, which
+    the boxes are drawn on; without one, the series selected in the data tree.
+    """
+    if _has_image(self):
+        try:
+            ipp = self.Im_PatPosition[0]
+            ps_row, ps_col, st = float(self.pixel_spac[0, 0]), float(self.pixel_spac[0, 1]), float(self.slice_thick[0])
+            if ps_col > 0 and ps_row > 0 and st > 0:
+                return (float(ipp[0]), float(ipp[1]), float(ipp[2])), (ps_col, ps_row, st)
+        except Exception:
+            pass
     ox, oy, oz = 0.0, 0.0, 0.0
     ps_col, ps_row, st = 1.0, 1.0, 1.0
 
@@ -119,6 +142,27 @@ def _has_image(self):
         return False
 
 
+def _row_of_y(self, y, oy, ps_row):
+    """Row of layer 0 as stored and shown (UI Z, voxel mode) of a DICOM y (mm): rows are stored flipped."""
+    r = (y - oy) / (ps_row if ps_row > 0 else 1.0)
+    return (self.display_data[0].shape[1] - 1) - r if _has_image(self) else r
+
+
+def _y_of_row(self, r, oy, ps_row):
+    """DICOM y (mm) of a row of layer 0 as stored and shown (inverse of _row_of_y)."""
+    return oy + ((self.display_data[0].shape[1] - 1) - r if _has_image(self) else r) * ps_row
+
+
+def _row_of_ui_z(self, z, oy, ps_row):
+    """Row of layer 0 as stored and shown of a mm mode Z (= -DICOM y, the user's / MCNP axes)."""
+    return _row_of_y(self, 0.0 - z, oy, ps_row)
+
+
+def _ui_z_of_row(self, r, oy, ps_row):
+    """mm mode Z (= -DICOM y) of a row of layer 0 as stored and shown (inverse of _row_of_ui_z)."""
+    return 0.0 - _y_of_row(self, r, oy, ps_row)
+
+
 def _mc_tab_active(self):
     """True only when the MonteCarlo tab AND its GRID sub-tab are selected."""
     tabs = getattr(self, "tabView01", None)
@@ -149,8 +193,8 @@ def get_grid_bounds(self, prefix):
         cmax = (xmax - ox) / (ps_col if ps_col > 0 else 1.0)
         smin = (ymin - oz) / (st if st > 0 else 1.0)
         smax = (ymax - oz) / (st if st > 0 else 1.0)
-        rmin = (zmin - oy) / (ps_row if ps_row > 0 else 1.0)
-        rmax = (zmax - oy) / (ps_row if ps_row > 0 else 1.0)
+        rmin = _row_of_ui_z(self, zmin, oy, ps_row)   # UI Z = -DICOM y: with the rows as stored
+        rmax = _row_of_ui_z(self, zmax, oy, ps_row)
     else:
         cmin, cmax = xmin, xmax
         smin, smax = ymin, ymax
@@ -163,7 +207,10 @@ def get_grid_bounds(self, prefix):
 
 
 def get_grid_origin_abs(self, prefix):
-    """Return (origin_x, origin_y, origin_z) in absolute DICOM mm, or None."""
+    """
+    Return the first voxel centre (X, Y, Z) of a grid in absolute mm, the user's (MCNP) axes:
+    X = DICOM x, Y = DICOM z, Z = -DICOM y; or None.
+    """
     names = _fields(prefix)
     if not all(hasattr(self, f) for f in names):
         return None
@@ -176,17 +223,10 @@ def get_grid_origin_abs(self, prefix):
     zmax = float(getattr(self, f"{prefix}_zmax").value())
 
     if is_grid_mm_mode(self, prefix):
-        orig_x = min(xmin, xmax)
-        orig_y = min(zmin, zmax)  # UI Z is row -> DICOM Y
-        orig_z = min(ymin, ymax)  # UI Y is slice -> DICOM Z
-    else:
-        cmin = min(xmin, xmax)
-        smin = min(ymin, ymax)
-        rmin = min(zmin, zmax)
-        orig_x = ox + cmin * ps_col
-        orig_y = oy + rmin * ps_row
-        orig_z = oz + smin * st
-
+        return min(xmin, xmax), min(ymin, ymax), min(zmin, zmax)
+    orig_x = ox + min(xmin, xmax) * ps_col
+    orig_y = oz + min(ymin, ymax) * st          # UI Y is slice -> DICOM z
+    orig_z = min(_ui_z_of_row(self, zmin, oy, ps_row), _ui_z_of_row(self, zmax, oy, ps_row))   # UI Z: rows
     return orig_x, orig_y, orig_z
 
 
@@ -294,35 +334,48 @@ def _current_index(self, attr, slider_name):
 # ----------------------------------------------------------------------------
 # Per-view drawing
 # ----------------------------------------------------------------------------
+def _view_rect(self, prefix, view):
+    """
+    Box of a grid on a view: (x0, x1, y0, y1) in world mm (voxel edges, as drawn) and whether the
+    slice shown crosses it; None without bounds.
+    """
+    b = get_grid_bounds(self, prefix)
+    if b is None:
+        return None
+    # internal order: columns, rows, slices (see get_grid_bounds)
+    cmin, cmax, rmin, rmax, smin, smax = b
+    ps_row, ps_col = self.pixel_spac[0, 0], self.pixel_spac[0, 1]
+    st = self.slice_thick[0]
+    ox, oy, oz = self.Im_Offset[0, 0], self.Im_Offset[0, 1], self.Im_Offset[0, 2]
+
+    if view == "ax":
+        curr = _current_index(self, "current_axial_slice_index", "AxialSlider")
+        inside = smin - 0.5 <= curr <= smax + 0.5
+        rect = (ox + (cmin - 0.5) * ps_col, ox + (cmax + 0.5) * ps_col,
+                oy + (rmin - 0.5) * ps_row, oy + (rmax + 0.5) * ps_row)
+    elif view == "co":
+        curr = _current_index(self, "current_coronal_slice_index", "CoronalSlider")
+        inside = rmin - 0.5 <= curr <= rmax + 0.5
+        rect = (ox + (cmin - 0.5) * ps_col, ox + (cmax + 0.5) * ps_col,
+                oz + (smin - 0.5) * st,     oz + (smax + 0.5) * st)
+    else:  # "sa"
+        curr = _current_index(self, "current_sagittal_slice_index", "SagittalSlider")
+        inside = cmin - 0.5 <= curr <= cmax + 0.5
+        rect = (oy + (rmin - 0.5) * ps_row, oy + (rmax + 0.5) * ps_row,
+                oz + (smin - 0.5) * st,     oz + (smax + 0.5) * st)
+    return rect, inside
+
+
 def _update_view(self, prefix, view):
     try:
-        b = get_grid_bounds(self, prefix)
-        if b is None or not _is_enabled(self, prefix) or not _has_image(self):
+        if not _is_enabled(self, prefix) or not _has_image(self):
             _hide(self, prefix, view)
             return
-        # internal order: columns, rows, slices (see get_grid_bounds)
-        cmin, cmax, rmin, rmax, smin, smax = b
-        ps_row, ps_col = self.pixel_spac[0, 0], self.pixel_spac[0, 1]
-        st = self.slice_thick[0]
-        ox, oy, oz = self.Im_Offset[0, 0], self.Im_Offset[0, 1], self.Im_Offset[0, 2]
-
-        if view == "ax":
-            curr = _current_index(self, "current_axial_slice_index", "AxialSlider")
-            inside = smin - 0.5 <= curr <= smax + 0.5
-            rect = (ox + (cmin - 0.5) * ps_col, ox + (cmax + 0.5) * ps_col,
-                    oy + (rmin - 0.5) * ps_row, oy + (rmax + 0.5) * ps_row)
-        elif view == "co":
-            curr = _current_index(self, "current_coronal_slice_index", "CoronalSlider")
-            inside = rmin - 0.5 <= curr <= rmax + 0.5
-            rect = (ox + (cmin - 0.5) * ps_col, ox + (cmax + 0.5) * ps_col,
-                    oz + (smin - 0.5) * st,     oz + (smax + 0.5) * st)
-        else:  # "sa"
-            curr = _current_index(self, "current_sagittal_slice_index", "SagittalSlider")
-            inside = cmin - 0.5 <= curr <= cmax + 0.5
-            rect = (oy + (rmin - 0.5) * ps_row, oy + (rmax + 0.5) * ps_row,
-                    oz + (smin - 0.5) * st,     oz + (smax + 0.5) * st)
-
-        _set_rect(self, prefix, view, *rect, inside=inside)
+        box = _view_rect(self, prefix, view)
+        if box is None:
+            _hide(self, prefix, view)
+            return
+        _set_rect(self, prefix, view, *box[0], inside=box[1])
     except Exception as e:
         print(f"[MC grid] {prefix}/{view} update failed: {e}")
 
@@ -479,7 +532,7 @@ def sync_grid_limits(self):
                 if untouched:
                     if is_grid_mm_mode(self, prefix):
                         (ox, oy, oz), (ps_col, ps_row, st) = _ref_origin_and_spacing(self)
-                        orig = {"x": ox, "y": oz, "z": oy}[ax]
+                        orig = {"x": ox, "y": oz, "z": 0.0 - oy - top * ps_row}[ax]   # Z = -DICOM y
                         sp = {"x": ps_col, "y": st, "z": ps_row}[ax]
                         smin.setValue(orig)
                         smax.setValue(orig + top * sp)
@@ -553,7 +606,7 @@ def grid_fit_to_image(self, prefix):
     if is_grid_mm_mode(self, prefix):
         vals = (ox, ox + (n_cols - 1) * ps_col,
                 oz, oz + (n_slices - 1) * st,
-                oy, oy + (n_rows - 1) * ps_row)
+                0.0 - oy - (n_rows - 1) * ps_row, 0.0 - oy)     # Z = -DICOM y
     else:
         vals = (0, n_cols - 1, 0, n_slices - 1, 0, n_rows - 1)
 
@@ -604,7 +657,7 @@ def on_grid_mode_changed(self, mode):
         if h_max is not None: h_max.setText(u"Max (mm)")
         if lbl_x is not None: lbl_x.setText(u"X (DICOM X):")
         if lbl_y is not None: lbl_y.setText(u"Y (DICOM Z):")
-        if lbl_z is not None: lbl_z.setText(u"Z (DICOM Y):")
+        if lbl_z is not None: lbl_z.setText(u"Z (-DICOM Y):")
 
         # Read current voxel values
         vx_min = getattr(self, f"{prefix}_xmin").value()
@@ -614,20 +667,21 @@ def on_grid_mode_changed(self, mode):
         vz_min = getattr(self, f"{prefix}_zmin").value()
         vz_max = getattr(self, f"{prefix}_zmax").value()
 
-        # Convert to mm
+        # Convert to mm (Z: -DICOM y of the rows as stored)
+        z_a, z_b = _ui_z_of_row(self, vz_min, oy, ps_row), _ui_z_of_row(self, vz_max, oy, ps_row)
         mm_vals = {
             f"{prefix}_xmin": ox + vx_min * ps_col,
             f"{prefix}_xmax": ox + vx_max * ps_col,
             f"{prefix}_ymin": oz + vy_min * st,
             f"{prefix}_ymax": oz + vy_max * st,
-            f"{prefix}_zmin": oy + vz_min * ps_row,
-            f"{prefix}_zmax": oy + vz_max * ps_row,
+            f"{prefix}_zmin": min(z_a, z_b),
+            f"{prefix}_zmax": max(z_a, z_b),
         }
 
         for f in names:
             sb = getattr(self, f)
             sb.blockSignals(True)
-            sb.setDecimals(2)
+            sb.setDecimals(MM_DECIMALS)
             sb.setSingleStep(1.0)
             sb.setRange(-99999.0, 99999.0)
             sb.setValue(mm_vals[f])
@@ -655,14 +709,15 @@ def on_grid_mode_changed(self, mode):
         mmz_min = getattr(self, f"{prefix}_zmin").value()
         mmz_max = getattr(self, f"{prefix}_zmax").value()
 
-        # Convert to voxels
+        # Convert to voxels (Z: rows as stored of the -DICOM y)
+        r_a, r_b = _row_of_ui_z(self, mmz_min, oy, ps_row), _row_of_ui_z(self, mmz_max, oy, ps_row)
         vox_vals = {
             f"{prefix}_xmin": round((mmx_min - ox) / (ps_col if ps_col > 0 else 1.0)),
             f"{prefix}_xmax": round((mmx_max - ox) / (ps_col if ps_col > 0 else 1.0)),
             f"{prefix}_ymin": round((mmy_min - oz) / (st if st > 0 else 1.0)),
             f"{prefix}_ymax": round((mmy_max - oz) / (st if st > 0 else 1.0)),
-            f"{prefix}_zmin": round((mmz_min - oy) / (ps_row if ps_row > 0 else 1.0)),
-            f"{prefix}_zmax": round((mmz_max - oy) / (ps_row if ps_row > 0 else 1.0)),
+            f"{prefix}_zmin": round(min(r_a, r_b)),
+            f"{prefix}_zmax": round(max(r_a, r_b)),
         }
 
         for f in names:
@@ -683,3 +738,286 @@ def on_grid_mode_changed(self, mode):
 
     update_mc_grid_all(self)
 
+
+# ----------------------------------------------------------------------------
+# Calculation grid from a dose (RTDOSE or MCNP series)
+# ----------------------------------------------------------------------------
+DOSE_MODALITIES = ("RTDOSE", "MCNP")
+
+
+def series_grid(series):
+    """(ImagePositionPatient, (ps_col, ps_row, st), (n_slices, n_rows, n_cols)) of a series volume; None."""
+    if not isinstance(series, dict):
+        return None
+    meta = series.get("metadata") or {}
+    try:
+        ns, nr, nc = series["3DMatrix"].shape
+        ipp = tuple(float(v) for v in meta["ImagePositionPatient"][:3])
+        ps_row, ps_col = (float(v) for v in meta["PixelSpacing"][:2])
+        st = float(meta["SliceThickness"])
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return None
+    if min(ps_col, ps_row, st) <= 0 or len(ipp) != 3:
+        return None
+    return ipp, (ps_col, ps_row, st), (int(ns), int(nr), int(nc))
+
+
+def dose_series(self):
+    """(label, series) of the RTDOSE and MCNP series of the patient shown that hold a volume."""
+    studies = (getattr(self, "medical_image", None) or {}).get(getattr(self, "patientID", None)) or {}
+    several = len(studies) > 1
+    out = []
+    for sid, study in studies.items():
+        if not isinstance(study, dict):
+            continue
+        for modality in DOSE_MODALITIES:
+            for k, series in enumerate(study.get(modality) or []):
+                grid = series_grid(series)
+                if grid is None:
+                    continue
+                _, (sx, sy, sz), (ns, nr, nc) = grid
+                name = (series.get("metadata") or {}).get("SeriesDescription") or f"Series {series.get('SeriesNumber', k + 1)}"
+                label = f"{modality}: {name}  ({nc} x {ns} x {nr} voxels of {sx:g} x {sz:g} x {sy:g} mm)"
+                out.append((f"Study {sid} / {label}" if several else label, series))
+    return out
+
+
+def mc_grid_from_dose(self, series):
+    """
+    Calculation grid = the voxels of a dose series: mm mode, resolution = its voxel size, and the
+    boxes (first / last voxel centres of the CT, the MCNP mesh adding half a CT voxel, mcnp_input) set
+    so that the mesh runs from the lower edge of its first voxel to the upper edge of its last one.
+    False if the series has no volume geometry.
+    """
+    grid = series_grid(series)
+    if grid is None or not all(hasattr(self, f) for f in _fields("mc_grid")):
+        return False
+    (x0, y0, z0), (sx, sy, sz), (ns, nr, nc) = grid
+    from fcn_mcnp.mcnp_input import ct_origin_and_spacing, input_ct
+    ct = input_ct(self)
+    _, (ps_col, ps_row, st) = ct_origin_and_spacing(self, ct) if ct is not None else _ref_origin_and_spacing(self)
+    combo = getattr(self, "mc_grid_mode_combo", None)
+    if combo is not None and combo.currentText() != "mm":
+        combo.blockSignals(True)
+        combo.setCurrentText("mm")
+        combo.blockSignals(False)
+        on_grid_mode_changed(self, "mm")     # labels, decimals and sliders of mm mode
+    for ax, s in zip("xyz", (sx, sz, sy)):  # UI X = DICOM x, Y = DICOM z (slices), Z = -DICOM y (rows)
+        sb = getattr(self, f"mc_grid_{ax}res", None)
+        if sb is not None:
+            sb.blockSignals(True)
+            sb.setValue(s)
+            sb.blockSignals(False)
+    _set_fields(self, "mc_grid", (x0 - sx / 2 + ps_col / 2, x0 + (nc - 0.5) * sx - ps_col / 2,
+                                  z0 - sz / 2 + st / 2, z0 + (ns - 0.5) * sz - st / 2,
+                                  ps_row / 2 - y0 - (nr - 0.5) * sy, sy / 2 - y0 - ps_row / 2))
+    return True
+
+
+def mc_grid_import_dose_menu(self, button=None):
+    """'Import from dose': a menu of the dose series of the patient shown; the one picked sets the calculation grid."""
+    button = button or getattr(self, "mc_grid_from_dose_btn", None)
+    menu = QMenu(button)
+    doses = dose_series(self)
+    for label, series in doses:
+        menu.addAction(label).triggered.connect(lambda checked=False, s=series: mc_grid_from_dose(self, s))
+    if not doses:
+        menu.addAction("No RTDOSE or MCNP dose for the patient shown").setEnabled(False)
+    menu.exec(button.mapToGlobal(button.rect().bottomLeft()) if button is not None else QCursor.pos())
+
+
+# ----------------------------------------------------------------------------
+# Dragging the boxes on the views (MonteCarlo > GRID, Display checked)
+# ----------------------------------------------------------------------------
+GRAB_TOL_PX = 8                 # an edge grabs the mouse within this many pixels
+DRAG_REDRAW_INTERVAL = 0.04     # s between redraws while dragging
+# UI axes along the world x and y of each view (X = columns, Y = slices, Z = rows as stored)
+VIEW_AXES = {"ax": ("x", "z"), "co": ("x", "y"), "sa": ("z", "y")}
+_VIEW_WIDGETS = (("ax", "vtkWidgetAxial"), ("co", "vtkWidgetCoronal"), ("sa", "vtkWidgetSagittal"))
+_BUTTON_DOWN = ("LeftButtonAxialDown", "LeftButtonCoronalDown", "LeftButtonSagittalDown")
+
+
+def grid_handle(rect, mouse, tol):
+    """
+    What of a box (x0, x1, y0, y1) the mouse (world x, y) grabs: the edges within tol, e.g.
+    {'x0'} or {'x1', 'y0'} at a corner, {'move'} inside, None outside.
+    """
+    x0, x1, y0, y1 = rect
+    mx, my = mouse
+    if not (x0 - tol <= mx <= x1 + tol and y0 - tol <= my <= y1 + tol):
+        return None
+    dist = {"x0": abs(mx - x0), "x1": abs(mx - x1), "y0": abs(my - y0), "y1": abs(my - y1)}
+    edges = {e for e, d in dist.items() if d <= tol}
+    for lo, hi in (("x0", "x1"), ("y0", "y1")):
+        if lo in edges and hi in edges:     # a thin box: the nearer edge
+            edges.discard(hi if dist[hi] > dist[lo] else lo)
+    if edges:
+        return frozenset(edges)
+    return frozenset({"move"}) if x0 < mx < x1 and y0 < my < y1 else None
+
+
+def dragged_values(values, view, handle, delta, steps):
+    """
+    The 6 box values (X min, X max, Y min, Y max, Z min, Z max) after dragging 'handle' (grid_handle)
+    of the box on 'view' by delta (world mm along the view's x, y). steps[ax]: world mm per unit of
+    the values of an axis (its voxel size in voxel mode, 1 in mm mode); the values of every axis
+    grow with the world coordinates (mm mode Z = -DICOM y runs with the rows as stored).
+    """
+    out = list(values)
+    for k, ax in enumerate(VIEW_AXES[view]):
+        i = "xyz".index(ax) * 2
+        d = delta[k] / steps[ax]
+        if "move" in handle:
+            out[i] += d
+            out[i + 1] += d
+        else:
+            if f"{'xy'[k]}0" in handle:
+                out[i] += d
+            if f"{'xy'[k]}1" in handle:
+                out[i + 1] += d
+    return out
+
+
+def _event_world_xy(renderer, x, y):
+    """Display position -> world (x, y) of a 2D view."""
+    renderer.SetDisplayPoint(x, y, 0)
+    renderer.DisplayToWorld()
+    wp = renderer.GetWorldPoint()
+    if wp[3] != 0.0:
+        return np.array([wp[0] / wp[3], wp[1] / wp[3]])
+    return np.array([wp[0], wp[1]])
+
+
+def _drag_steps(self, mm_mode):
+    """steps of dragged_values for a grid in voxel or mm mode (layer 0 voxels)."""
+    if mm_mode:
+        return {"x": 1.0, "y": 1.0, "z": 1.0}
+    ps_row, ps_col, st = float(self.pixel_spac[0, 0]), float(self.pixel_spac[0, 1]), float(self.slice_thick[0])
+    return {"x": ps_col, "y": st, "z": ps_row}
+
+
+def _grab(self, view, interactor):
+    """(grid prefix, handle, mouse world xy) of the displayed box under the mouse on a view, or None."""
+    if not _mc_tab_active(self) or not _has_image(self):
+        return None
+    renderer = _renderer(_widget(self, view))
+    x, y = interactor.GetEventPosition()
+    mouse = _event_world_xy(renderer, x, y)
+    tol = abs(_event_world_xy(renderer, x + GRAB_TOL_PX, y)[0] - mouse[0])
+    best = None
+    for prefix in GRIDS:
+        box = _view_rect(self, prefix, view) if _is_enabled(self, prefix) else None
+        handle = None if box is None else grid_handle(box[0], mouse, tol)
+        if handle is None:
+            continue
+        x0, x1, y0, y1 = box[0]
+        rank = ("move" in handle, (x1 - x0) * (y1 - y0))      # edges first, then the smaller box
+        if best is None or rank < best[0]:
+            best = (rank, prefix, handle)
+    return None if best is None else (best[1], best[2], mouse)
+
+
+def _cursor_shape(handle):
+    if "move" in handle:
+        return Qt.CursorShape.SizeAllCursor
+    if len(handle) == 2:   # corner; world y runs up on the screen
+        return Qt.CursorShape.SizeBDiagCursor if handle in ({"x0", "y0"}, {"x1", "y1"}) else Qt.CursorShape.SizeFDiagCursor
+    return Qt.CursorShape.SizeHorCursor if next(iter(handle))[0] == "x" else Qt.CursorShape.SizeVerCursor
+
+
+def _set_drag_values(self, drag, delta):
+    """Box values of a drag: whole voxels in voxel mode, within the ranges of the boxes, min <= max."""
+    prefix, v0 = drag["prefix"], drag["values"]
+    values = dragged_values(v0, drag["view"], drag["handle"], delta, drag["steps"])
+    boxes = [getattr(self, f) for f in _fields(prefix)]
+    for i in (0, 2, 4):
+        lo, hi = values[i], values[i + 1]
+        if not drag["mm"]:
+            lo, hi = float(round(lo)), float(round(hi))
+        bottom, top = boxes[i].minimum(), boxes[i + 1].maximum()
+        if "move" in drag["handle"]:
+            shift = min(max(lo, bottom), top - (hi - lo)) - lo      # the box keeps its size
+            lo, hi = lo + shift, hi + shift
+        else:
+            lo, hi = min(max(lo, bottom), top), min(max(hi, bottom), top)
+            if lo > hi:     # an edge stops at the other one
+                lo, hi = (hi, hi) if lo != v0[i] else (lo, lo)
+        for sb, v in ((boxes[i], lo), (boxes[i + 1], hi)):
+            sb.blockSignals(True)
+            sb.setValue(v if isinstance(sb, QDoubleSpinBox) else int(v))
+            sb.blockSignals(False)
+    for ax in "xyz":
+        _sync_slider_from_spins(self, prefix, ax)
+
+
+def on_mc_grid_press(self, view, interactor):
+    if getattr(self, "_mc_grid_drag", None) is not None:
+        return
+    grab = _grab(self, view, interactor)
+    if grab is None:
+        return      # not on a box: left-drag stays window/level
+    prefix, handle, mouse = grab
+    mm_mode = is_grid_mm_mode(self, prefix)
+    self._mc_grid_drag = {"prefix": prefix, "view": view, "handle": handle, "mouse0": mouse, "mm": mm_mode,
+                          "values": [float(getattr(self, f).value()) for f in _fields(prefix)],
+                          "steps": _drag_steps(self, mm_mode), "last_draw": 0.0}
+    self._text_dragging = True      # window/level and the other left-drag handlers skip
+    QApplication.setOverrideCursor(_cursor_shape(handle))
+
+
+def on_mc_grid_move(self, view, interactor):
+    drag = getattr(self, "_mc_grid_drag", None)
+    if drag is None:
+        _hover(self, view, interactor)
+        return
+    if drag["view"] != view:
+        return
+    x, y = interactor.GetEventPosition()
+    _set_drag_values(self, drag, _event_world_xy(_renderer(_widget(self, view)), x, y) - drag["mouse0"])
+    now = time.perf_counter()
+    if now - drag["last_draw"] >= DRAG_REDRAW_INTERVAL:
+        drag["last_draw"] = now
+        update_mc_grid_all(self)
+
+
+def on_mc_grid_release(self, view, interactor):
+    if getattr(self, "_mc_grid_drag", None) is None:
+        return
+    self._mc_grid_drag = None
+    self._text_dragging = False
+    QApplication.restoreOverrideCursor()
+    update_mc_grid_all(self)
+
+
+def _hover(self, view, interactor):
+    """Cursor over a box: resize arrows on its edges and corners, move arrows inside."""
+    cursors = getattr(self, "_mc_grid_cursor", None)
+    if cursors is None:
+        cursors = self._mc_grid_cursor = {}
+    grab = None
+    if not getattr(self, "_text_dragging", False) and not any(getattr(self, b, False) for b in _BUTTON_DOWN):
+        grab = _grab(self, view, interactor)
+    shape = None if grab is None else _cursor_shape(grab[1])
+    if shape == cursors.get(view):
+        return
+    widget = _widget(self, view)
+    if shape is None:
+        widget.unsetCursor()
+    else:
+        widget.setCursor(shape)
+    cursors[view] = shape
+
+
+def add_mc_grid_drag_observers(self):
+    """
+    Mouse observers dragging the grid boxes. Priority 1 runs them before the window/level handlers
+    (priority 0), which skip while self._text_dragging is set.
+    """
+    self._mc_grid_drag = None
+    for view, attr in _VIEW_WIDGETS:
+        widget = getattr(self, attr, None)
+        if widget is None:
+            continue
+        widget.AddObserver("LeftButtonPressEvent", lambda caller, event, v=view: on_mc_grid_press(self, v, caller), 1.0)
+        widget.AddObserver("MouseMoveEvent", lambda caller, event, v=view: on_mc_grid_move(self, v, caller), 1.0)
+        widget.AddObserver("LeftButtonReleaseEvent", lambda caller, event, v=view: on_mc_grid_release(self, v, caller), 1.0)
