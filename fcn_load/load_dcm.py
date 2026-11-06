@@ -212,6 +212,17 @@ def assemble_and_reorient_volume(series_data):
     ]
 
 
+def image_int_type(vol):
+    """
+    Integer type of a loaded CT / MR: int16, or int32 if its values do not fit in int16. int16 would
+    wrap them to negative values (unsigned 16-bit data above 32767, e.g. small-animal CBCT).
+    """
+    lim = np.iinfo(np.int16)
+    if vol.size and (vol.min() < lim.min or vol.max() > lim.max):
+        return np.int32
+    return np.int16
+
+
 def rtplan_metadata(dicom_file, file_info=None, file_path=''):
     """
     Metadata of an RTPLAN series ('DCM_Info': the dataset). Also used for the plans saved
@@ -637,7 +648,7 @@ def load_images(self,detailed_files_info, progress_callback=None, total_steps=No
                                 series_data['metadata']['WindowWidth'] = 0.5
                                 series_data['metadata']['WindowCenter'] = 1.0  
                             elif modality != 'RTDOSE' and modality != 'RTIMAGE':
-                                series_data['3DMatrix'] = series_data['3DMatrix'].astype(np.int16)
+                                series_data['3DMatrix'] = series_data['3DMatrix'].astype(image_int_type(series_data['3DMatrix']))
                         
                         valid_series.append(series_data)
                     except Exception as e:
